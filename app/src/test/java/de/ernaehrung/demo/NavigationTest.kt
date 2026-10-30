@@ -34,19 +34,19 @@ class NavigationTest {
         rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }; screen("S02")
     }
     @Test fun bodyTabsAndChartFilters() {
-        go("K01"); rule.onNodeWithText("Training",exact=true).performClick(); screen("K02")
-        rule.onNodeWithText("Entwicklung",exact=true).performClick(); screen("K03")
-        rule.onNodeWithText("7 Tage",exact=true).performClick()
+        go("K01"); rule.onNodeWithText("Training",substring=false).performClick(); screen("K02")
+        rule.onNodeWithText("Entwicklung",substring=false).performClick(); screen("K03")
+        rule.onNodeWithText("7 Tage",substring=false).performClick()
         rule.onNodeWithContentDescription("4 fiktive Rohmesspunkte; gestrichelte vorbereitete Beispielkurve").assertExists()
-        rule.onNodeWithText("Fettmasse",exact=true).performClick()
-        rule.onNodeWithText("Fettmasse · 7 Tage",exact=true).assertExists()
+        rule.onNodeWithText("Fettmasse",substring=false).performClick()
+        rule.onNodeWithText("Fettmasse · 7 Tage",substring=false).assertExists()
     }
     @Test fun productCatalogueIncludesZeroStockAndRetainsSelection() {
         rule.onNodeWithTag("tab_Scan").performClick(); go("P02"); go("P03"); go("L01")
-        rule.onNodeWithText("Bestand 0",exact=true).performClick()
+        rule.onNodeWithText("Bestand 0",substring=false).performClick()
         tap("product_DEMO-CHICK-001"); screen("P02")
-        rule.onNodeWithText("Kichererbsen",exact=true).assertExists()
-        go("T02"); rule.onNodeWithText("Kichererbsen",exact=true).assertExists()
+        rule.onNodeWithText("Kichererbsen",substring=false).assertExists()
+        go("T02"); rule.onNodeWithText("Kichererbsen",substring=false).assertExists()
         open("L02"); tap("product_DEMO-TOFU-001"); screen("L03"); go("T02")
     }
     @Test fun receiptPreviewCannotBookStock() {
@@ -65,7 +65,7 @@ class NavigationTest {
     }
     @Test fun planningNeedsAndShoppingAreConnected() {
         rule.onNodeWithTag("tab_Plan").performClick(); screen("G01")
-        rule.onNodeWithText("Monat",exact=true).performClick(); screen("G02"); go("G01")
+        rule.onNodeWithText("Monat",substring=false).performClick(); screen("G02"); go("G01")
         go("G03"); go("T01"); assertEquals(1, DemoRepository.eaten.size)
         open("H01"); go("H02"); tap("check_DEMO-TOFU-001")
         rule.onNodeWithTag("check_DEMO-TOFU-001").assertIsOn()
@@ -85,17 +85,17 @@ class NavigationTest {
         tap("Verzehr bestätigen"); rule.onNodeWithText("Menge noch unklar").assertExists(); closeNotice()
         repeat(2) {
             rule.onNodeWithText("Tatsächlich gegessene Menge").performTextReplacement("50")
-            tap("Verzehr bestätigen"); notice(); rule.onNodeWithText("Schließen",exact=true).performClick()
+            tap("Verzehr bestätigen"); notice(); rule.onNodeWithText("Schließen",substring=false).performClick()
         }
         assertEquals(400.0, DemoRepository.tofu.quantity, 0.0); assertEquals(1, DemoRepository.eaten.size)
     }
     @Test fun measurementAndActivityFormsAcceptInputWithoutSaving() {
         open("K01"); tap("Neue Messung"); rule.onNodeWithTag("form_dialog").assertExists()
         rule.onNodeWithText("Gewicht in kg").performScrollTo().performTextInput("81.5")
-        rule.onNodeWithText("Speichern · Demo",exact=true).performClick(); notice(); closeNotice()
-        rule.onNodeWithText("Training",exact=true).performScrollTo().performClick(); tap("Einheit eintragen")
+        rule.onNodeWithText("Speichern · Demo",substring=false).performClick(); notice(); closeNotice()
+        rule.onNodeWithText("Training",substring=false).performScrollTo().performClick(); tap("Einheit eintragen")
         rule.onNodeWithText("Dauer in Minuten").performScrollTo().performTextInput("30")
-        rule.onNodeWithText("Speichern · Demo",exact=true).performClick(); notice(); closeNotice()
+        rule.onNodeWithText("Speichern · Demo",substring=false).performClick(); notice(); closeNotice()
         assertEquals(8, DemoRepository.measurements.size); assertEquals(3, DemoRepository.activities.size)
     }
     @Test fun correctionAndBackupButtonsDoNotWrite() {

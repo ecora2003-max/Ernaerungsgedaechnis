@@ -31,10 +31,10 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
-      - name: Build and check
+      - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --max-workers=2 :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
       - name: Upload demo APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -42,6 +42,8 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 1
+      - name: Run lint and unit tests
+        run: ./gradlew --no-daemon --max-workers=2 :app:lintDebug :app:testDebugUnitTest
       - name: Upload test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
