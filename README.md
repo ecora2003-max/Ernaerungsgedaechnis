@@ -64,7 +64,7 @@ Der Workflow **Android checks and optional APK** prüft bei Code-Push/PR automat
 
 Eine APK entsteht nur für bewusst ausgewählte Meilensteine: **Actions → Android checks and optional APK → Run workflow → `build_apk` aktivieren**. Der manuelle Lauf führt die Prüfungen aus und baut/lädt erst nach Erfolg die APK hoch. Ohne aktivierte Option bleibt auch ein manueller Lauf ein reiner Prüflauf. Unter dem erfolgreichen APK-Lauf → Artifacts liegt die Debug-APK als ZIP. Die Workflow-Datei bleibt `.github/workflows/android-demo.yml`.
 
-Standard-Linux-Runner, unabhängig von Repositorysichtbarkeit, 20-Minuten-Grenze und ein Tag Artefaktaufbewahrung. Private Läufe verwenden das Actions-Kontingent des GitHub-Kontos. Actions per Commit gepinnt und Gradle-Abhängigkeitscache eingerichtet; keine größeren Runner oder verpflichtenden externen Dienste. Testberichte werden auch bei fehlgeschlagenen Prüfungen hochgeladen.
+Standard-Linux-Runner, unabhängig von Repositorysichtbarkeit, 20-Minuten-Grenze und sieben Tage Artefaktaufbewahrung, damit APK und Berichte die angekündigte fünftägige Pause überstehen. Private Läufe verwenden das Actions-Kontingent des GitHub-Kontos. Actions per Commit gepinnt und Gradle-Abhängigkeitscache eingerichtet; keine größeren Runner oder verpflichtenden externen Dienste. Testberichte werden auch bei fehlgeschlagenen Prüfungen hochgeladen.
 
 GitHub ist ausschließlich die Entwicklungsablage. Es ist keine Ernährungsdatenbank. Google Sheets und persönliche Daten wurden für diese Demo nicht gelesen oder geändert.
 

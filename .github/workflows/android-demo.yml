@@ -60,7 +60,7 @@ jobs:
           name: Ernaehrungsgedaechtnis-Demo-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
       - name: Upload test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -71,4 +71,4 @@ jobs:
             app/build/reports/lint-results-debug.*
             app/build/test-results/testDebugUnitTest/*.xml
           if-no-files-found: ignore
-          retention-days: 1
+          retention-days: 7

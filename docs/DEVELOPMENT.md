@@ -44,7 +44,7 @@ JDK 17+ (lokal 21, CI 17), SDK 35/Build Tools 34, Gradle 8.9. Proxy/CA/Anmeldung
 
 ## Pause / Als Nächstes
 
-Nutzer meldet nur noch 35 Credits und anschließend etwa fünf Tage Pause. Phase 5 jetzt sichern und die ausdrücklich angeforderte APK-Erstellung anstoßen. Keine weitere Phase vor dieser Pause beginnen. Nach Rückkehr zuerst diesen Stand und den manuellen Actions-Lauf prüfen, dann auf Nutzerauftrag fortsetzen.
+Nutzer meldet nur noch 35 Credits und anschließend etwa fünf Tage Pause. Phase 5 jetzt sichern und die ausdrücklich angeforderte APK-Erstellung anstoßen. APK und Testberichte deshalb sieben Tage aufbewahren. Der erste manuelle Lauf 41080103685 wurde für diese Aufbewahrungsänderung bewusst abgebrochen; der nachfolgende manuelle Lauf mit `build_apk=true` ist maßgeblich. Keine weitere Phase vor dieser Pause beginnen. Nach Rückkehr zuerst diesen Stand und den neuesten manuellen Actions-Lauf prüfen, dann auf Nutzerauftrag fortsetzen.
 
 Phase 6 auf Nutzerauftrag: versionierter gezielter JSON-Export, validierter Import mit Identitäten/konkreten Versionen, Mengen/Einheiten und Aktualitäts-/Bestands-/Budgetkonflikten, kontrollierte Übernahme ausschließlich als Planung. Import darf nie tatsächlichen Verzehr, Einkäufe oder Ist-Bewegungen erzeugen. Quellen und Unsicherheit erhalten; kein API-Zwang.
 
