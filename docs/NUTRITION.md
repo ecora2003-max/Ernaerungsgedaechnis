@@ -39,6 +39,10 @@ Das Bestätigungsfenster behält den gerade geprüften Datenstand. Ein neuer ode
 
 „Tag wieder öffnen“ nimmt die Bestätigung zurück. Neue Verzehre oder Verzehrstornos setzen den Status wieder auf TEILWEISE. Zukünftige Tage dürfen betrachtet, aber nicht als tatsächlich vollständig erfasst bestätigt werden.
 
+## Grenze bei vergangenen Bestandskorrekturen
+
+Die konservative Rückdatierungssperre aus 0.3 gilt weiter. Nach einem Storno zum aktuellen Datum kann eine bestandsgebundene Neuerfassung für einen früheren Verzehrtag an späteren Chargenbewegungen scheitern. Einfache Neuerfassung ohne Lagerbezug ist davon nicht betroffen. Komplexe Vergangenheitskorrekturen mit gemeinsamem Ernährung-/Bestandsersatz sind noch kein fertiger Bedienablauf und müssen vor Produktivbetrieb gesondert gelöst und getestet werden. Niemals ein falsches Verzehrdatum wählen, nur um eine Buchung durchzulassen. Die tatsächliche Tageszuordnung und die Bestandskorrektur müssen beide nachvollziehbar bleiben.
+
 ## Technik, Prüfungen und Grenzen
 
 `NutritionReader` erstellt alle benötigten Daten einer Ansicht innerhalb einer Room-Transaktion. Reaktive Ansichten beobachten die beteiligten Tabellen, ohne während der Rechnung zu schreiben. Der Snapshot-Token berücksichtigt Erfassungsstatus, Statushistorie, aktive Verzehre und deren berechnete Ergebnisse. Referenzen, Historie, alte Produkt-Retry-Fingerprints ohne Zusatznährstoffe und das Datenbankschema 2 bleiben erhalten.

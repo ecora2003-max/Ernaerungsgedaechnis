@@ -27,7 +27,11 @@ Abschließender vollständiger lokaler Lauf: **69 Tests bestanden, 0 Fehlschläg
 
 UI-Prüfungen: zusätzliche Nährstoffe über das Produktformular; Rezeptvorschau; tatsächliches Kochen ohne Ernährung und späterer Portionsverzehr mit 170 kcal/12 g Protein bei unveränderten Rohwaren; Teilsummen/unklare Mengen/Tagesbestätigung/Storno auf 320×640 dp mit Schriftfaktor 1,3. Die zwei zugehörigen Ernährungsansicht-Ausschnitte wurden visuell nachgeprüft. Kein Smartphone-/Emulatortest. Details: `TEST_REPORT_NUTRITION.md`.
 
-**Noch vor Abschluss:** lokal geprüften Stand auf Entwicklungsbranch und main sichern, frischen GitHub-Actions-Lauf prüfen und dessen Code-SHA, XML-Zahlen und APK-Link hier ergänzen. Bis dahin bleibt der frische CI-Nachweis offen. Nicht frühere Prüfberichte als neuen Nachweis ausgeben.
+Geprüfter App-Code auf `development/nutrition-diary` und `main` gesichert: `4a79515ed46e14a7c13a386c4ba9404ca9bb6c4b`. Der frische [GitHub-Actions-Lauf 41045875849](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849) auf JDK 17 ist erfolgreich: Build-Job 9 Minuten 21 Sekunden, APK-Build, Schema-Abgleich, Lint und alle **69 Tests** bestanden. Die elf heruntergeladenen JUnit-XML-Dateien haben Zeitstempel innerhalb dieses Laufs und ergeben 0 Fehlschläge/Fehler/Skips. Lint: elf Warnungen (Bibliotheksversionen und `OldTargetApi`), keine Fehler. Die geprüfte Code-SHA stimmt mit dem Lauf überein; der folgende Abschlusscommit ergänzt nur Dokumentation.
+
+[APK-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849/artifacts/12972328210), Aufbewahrung ein Tag. Die heruntergeladene APK wurde geprüft: `de.ernaehrung.demo`, Version 0.4.0-nutrition/code 4, minSdk 26/targetSdk 35; APK-Signaturprüfung erfolgreich. Weiterhin Debug-/Testsignierung, keine stabile Release-Signierung. Bei abgelaufenem Artefakt den vorhandenen Workflow manuell erneut starten.
+
+Der erfolgreiche Workflow meldet Wartungshinweise zu den bisherigen Node-20-Actions und `setup-java` v4. Beim nächsten Workflow-Wartungsschritt aktuelle unterstützte Hauptversionen mit geprüften Commit-Pins verwenden.
 
 ## Migration und Wiederaufnahme
 
@@ -40,6 +44,10 @@ python /workspace/tooling/run-gradle.py :app:assembleDebug :app:lintDebug :app:t
 ```
 
 Der Helper verwendet den geerbten Proxy nur für Build-/Testprozesse und `-PtestHome=/workspace/tooling/test-home`. TLS-/Checksum-Prüfungen bleiben aktiv. Falls diese Werkzeuge nach Wiederaufnahme fehlen, normale Android-Studio-/Gradle-Einrichtung oder vorhandenen Actions-Workflow verwenden. JDK 17+, SDK 35, Build Tools 34.0.0, Gradle 8.9/AGP 8.7.3/Kotlin 2.0.21/Room 2.7.2. Keine Zugangsdaten in Skripte übernehmen.
+
+## Vor Produktivbetrieb zu schließen
+
+Die bestehende konservative Bestandsrückdatierungssperre kann bestandsgebundene Vergangenheitskorrekturen nach einem heutigen Storno verhindern. Der neue direkte Storno-/Neuerfassungsweg ist für solche mehrtägigen Ersatzbuchungen nicht vollständig. Kein falsches tatsächliches Datum empfehlen. Vor Produktivbetrieb eine atomare Korrektur mit erhaltener Tageszuordnung und nachvollziehbarer Bestandswirkung entwerfen/testen; vorhandene historische Referenzen nicht überschreiben. Ohne Lagerbezug bleiben vergangene Verzehre normal erfassbar. Erläuterung in `NUTRITION.md`.
 
 ## Nächster Meilenstein: verknüpfte Planung und Bedarf
 

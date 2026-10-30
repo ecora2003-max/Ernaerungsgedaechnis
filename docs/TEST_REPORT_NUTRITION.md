@@ -58,6 +58,14 @@ Bestätigungsdialoge besitzen einen begrenzten scrollbaren Textbereich, damit ih
 
 ## Grenzen und CI-Abschluss
 
-Android-Prüfungen laufen unter Robolectric/Room/SQLite, nicht auf einem Smartphone oder Emulator. Keine vollständige klinische Plausibilitätsprüfung der Nutzer-/Etikettangaben, keine bestätigten persönlichen Ziele, keine automatische Kalibrierung. Die bisherigen 33 Fachansichten außerhalb des lokalen Testbereichs bleiben Demoansichten. Sehr große Datenmengen und tiefe Produktionsketten sind nicht lastgetestet. Backups, stabile Release-Signierung und freigegebene produktive Migration fehlen noch.
+Android-Prüfungen laufen unter Robolectric/Room/SQLite, nicht auf einem Smartphone oder Emulator. Mehrtägige bestandsgebundene Ersatzbuchungen nach heutigem Storno sind aufgrund der vorhandenen Rückdatierungssperre noch eingeschränkt; siehe `NUTRITION.md`. Für diesen komplexen Korrekturfall wird keine Fertigstellung behauptet. Keine vollständige klinische Plausibilitätsprüfung der Nutzer-/Etikettangaben, keine bestätigten persönlichen Ziele, keine automatische Kalibrierung. Die bisherigen 33 Fachansichten außerhalb des lokalen Testbereichs bleiben Demoansichten. Sehr große Datenmengen und tiefe Produktionsketten sind nicht lastgetestet. Backups, stabile Release-Signierung und freigegebene produktive Migration fehlen noch.
 
-Der frische GitHub-Actions-Lauf auf JDK 17, seine geprüfte Code-SHA, aktuellen XML-Zahlen und APK-Link werden nach Abschluss in `DEVELOPMENT.md` festgehalten. Der lokale Nachweis allein behauptet keinen erfolgreichen frischen CI-Lauf.
+## Frischer GitHub-Actions-Nachweis
+
+[Lauf 41045875849](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849), geprüfter App-Code `4a79515ed46e14a7c13a386c4ba9404ca9bb6c4b`, JDK 17. Am 30.10.2026 um 11:17:37 UTC erfolgreich abgeschlossen, Build-Job 9 Minuten 21 Sekunden. APK-Build, Abgleich der versionierten Room-Schemata, Lint und Unit-/Robolectric-Tests erfolgreich.
+
+Das [aktuelle Testbericht-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849/artifacts/12971944371) wurde heruntergeladen. Alle elf JUnit-XML-Dateien tragen Zeitstempel innerhalb dieses Laufs (11:16:48–11:17:30 UTC). Ihre Suite-Zahlen stimmen mit der Tabelle oben überein: **69 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Der Lauf gehört genau zur genannten Code-SHA. Lint-XML: elf Warnungen (`GradleDependency`, `OldTargetApi`), keine Fehler oder Fatal-Befunde. Bestehende Workflow-Wartungshinweise ändern das erfolgreiche Ergebnis nicht.
+
+Die [APK](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849/artifacts/12972328210) wurde ebenfalls heruntergeladen und geprüft: Paket `de.ernaehrung.demo`, Version `0.4.0-nutrition`, versionCode 4, minSdk 26, targetSdk 35. `apksigner verify --verbose` erfolgreich, APK-Signaturschema v2 mit einem Signierer. Es ist eine Debug-APK. Artefakte werden einen Tag aufbewahrt; danach Workflow manuell erneut starten. Dieser Nachweis ist kein Geräte-/Emulatortest.
+
+Nach dieser geprüften Code-SHA wurden nur Abschlussdokumentation und bekannte Einschränkungen ergänzt; keine App-/Schema-/Teständerung ohne neuen Nachweis.
