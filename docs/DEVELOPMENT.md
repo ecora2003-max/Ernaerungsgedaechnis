@@ -1,6 +1,6 @@
 # Entwicklungsstand / Fortsetzung
 
-Stand 30.10.2026. Zuerst `AGENTS.md` lesen. Fachlicher Produktplan: `product/Gesamtplanung-2026-10-30.txt`.
+Stand 30.10.2026. Ausführliche Wiederaufnahme: [UEBERGABE_2026-10-30_PHASE5.md](UEBERGABE_2026-10-30_PHASE5.md). Zuerst diese Übergabe und `AGENTS.md` lesen. Fachlicher Produktplan: `product/Gesamtplanung-2026-10-30.txt`.
 
 ## Auftrag und Arbeitsweise
 
