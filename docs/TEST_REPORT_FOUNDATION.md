@@ -36,7 +36,7 @@ Anschließend wurde ein zusätzlicher Regressionstest für eine nachträglich ve
 
 APK-Erstellung, exakter Vergleich des generierten mit dem versionierten Room-Schema und Lint erfolgreich. CI-Lint enthält 11 nicht fatale Hinweise, keine Fehler. Die heruntergeladene APK weist Version `0.2.0-foundation` / Code 2 / minSdk 26 / targetSdk 35 auf; `apksigner verify` bestätigt ihre v2-Signatur. Es handelt sich um eine Debug-APK, keinen Store-Release.
 
-Lint: 0 Fehler, 10 Hinweise auf neuere Bibliotheksversionen. Keine Fachprüfung wurde deaktiviert, keine Assertion entfernt. Die alten Icon-Deprecation-Warnungen bestehen weiter; Bibliotheks-Upgrades sind kein Bestandteil dieses Meilensteins.
+Im lokalen Lauf: Lint mit 0 Fehlern und 10 Hinweisen auf neuere Bibliotheksversionen. Im frischen CI kam zusätzlich der Hinweis auf das bestehende targetSdk 35 hinzu (11 Hinweise insgesamt). Keine Fachprüfung wurde deaktiviert, keine Assertion entfernt. Die alten Icon-Deprecation-Warnungen bestehen weiter; Bibliotheks-/Target-SDK-Upgrades sind kein Bestandteil dieses Meilensteins.
 
 ## Fachliche Ergebnisse, anhand gespeicherter Daten geprüft
 
