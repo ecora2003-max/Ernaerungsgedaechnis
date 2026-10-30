@@ -26,6 +26,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     fun recipes() = dao.observeRecipes()
     fun recipeIngredients() = dao.observeIngredients()
     fun versions() = dao.observeVersions()
+    suspend fun operationDetails(key: String): OperationDetails = db.withTransaction {
+        OperationDetails(requireNotNull(dao.operation(key)) { "Vorgang nicht gefunden." }, dao.reversal(key),
+            dao.movementDetails(key), dao.consumptionForOperation(key))
+    }
     suspend fun transfer(key: String, input: TransferInput, confirmed: Boolean) = stock.transfer(key, input, confirmed)
     suspend fun waste(key: String, input: WasteInput, confirmed: Boolean) = stock.waste(key, input, confirmed)
     suspend fun correctStock(key: String, input: StockCountInput, confirmed: Boolean) = stock.correctStock(key, input, confirmed)

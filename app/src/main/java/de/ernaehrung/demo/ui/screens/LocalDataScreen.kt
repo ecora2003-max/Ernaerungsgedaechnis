@@ -47,7 +47,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
         operationId = UUID.randomUUID().toString()
         model.newOperation()
     }
-    Choices(listOf("Katalog", "Lager", "Chronik"), mode) { mode = it }
+    Choices(listOf("Katalog", "Lager", "Küche", "Chronik"), mode) { mode = it }
 
     when (mode) {
         "Katalog" -> {
@@ -82,16 +82,21 @@ fun LocalDataContent(model: LocalDataViewModel) {
                     KV("MHD", row.batch.bestBefore ?: "Unbekannt")
                     KV("Verbrauchsdatum", row.batch.useBy ?: "Unbekannt")
                     Text("Charge: ${row.batch.id}", style = MaterialTheme.typography.labelSmall)
+                    if (row.originReversed) Badge("Herkunft storniert · nur Historie", Amber)
                 }
             }
             if (state.batches.any { it.stockAmount > 0 }) ConsumptionEditor(state, blocked, operationId, model)
+            StockEventEditor(state, blocked, operationId, model)
         }
+        "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
-            Hint("Zugänge und Verzehr sind getrennte bestätigte Ereignisse. Hier stehen die letzten 30 Bestandsbewegungen; die vollständige Historie bleibt in der Datenbank.", Sage)
+            ReversalEditor(state, blocked, operationId, model)
+            Hint("Hier stehen die letzten 30 Bewegungen. Stornos ergänzen Gegenbewegungen; die ursprünglichen Ereignisse bleiben in der Datenbank. Kochen ist kein Verzehr.", Sage)
             if (state.movements.isEmpty()) Text("Noch keine Bestandsbewegungen.")
             state.movements.forEach { row -> Panel {
-                Section(row.productName, row.movement.kind.name)
+                Section(row.productName, movementLabel(row.movement.kind))
                 KV("Menge", "${Amounts.format(row.movement.delta)} ${row.unit.label}")
+                KV("Ereignisdatum", row.movement.occurredOn ?: "Nicht gesondert erfasst · Altbestand")
                 Text("Vorgang: ${row.movement.operationId}\nCharge: ${row.movement.batchId}", style = MaterialTheme.typography.labelSmall)
                 Text(row.movement.reason)
             } }
@@ -206,12 +211,12 @@ private fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId:
     }
 }
 
-@Composable private fun Check(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+@Composable internal fun Check(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().toggleable(checked, role = Role.Checkbox, onValueChange = onChange)) {
         Checkbox(checked, null); Text(label, Modifier.weight(1f))
     }
 }
-@Composable private fun SaveButton(label: String, busy: Boolean, onClick: () -> Unit) {
+@Composable internal fun SaveButton(label: String, busy: Boolean, onClick: () -> Unit) {
     Button(onClick, Modifier.fillMaxWidth().testTag(label), enabled = !busy) { Text(label) }
 }
 private fun optionalNutrient(value: String): Double? {

@@ -16,12 +16,15 @@ enum class EntryStatus { DRAFT, CONFIRMED, CANCELLED }
 /** All quantities use 1/1000 of their declared base unit, never floating point. */
 object Amounts {
     const val MAX = 1_000_000_000_000L
-    fun parse(text: String): Long {
+    fun parse(text: String): Long = positive(parseCount(text))
+    /** Zero is valid only for an explicitly counted physical stock, never an event quantity. */
+    fun parseCount(text: String): Long {
         val normal = text.trim().replace(',', '.')
         require(normal.matches(Regex("[0-9]+(\\.[0-9]{1,3})?"))) { "Menge als positive Zahl mit höchstens 3 Nachkommastellen eingeben." }
         val amount = try { BigDecimal(normal).movePointRight(3).longValueExact() }
         catch (_: ArithmeticException) { throw IllegalArgumentException("Menge außerhalb des zulässigen Bereichs.") }
-        return positive(amount)
+        require(amount in 0..MAX) { "Menge außerhalb des zulässigen Bereichs." }
+        return amount
     }
     fun positive(value: Long): Long {
         require(value in 1..MAX) { "Menge muss größer als 0 und im zulässigen Bereich sein." }

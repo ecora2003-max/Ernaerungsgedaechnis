@@ -2,6 +2,27 @@
 
 Stand: 30.10.2026. Dieses Dokument ist der Einstieg nach einer Unterbrechung.
 
+## SOFORTIGE ÜBERGABE WEGEN KONTINGENTENDE
+
+Aktueller Entwicklungsbranch: **`development/stock-events`**. Auf Nutzerhinweis sofort gesichert; noch **nicht nach main übernehmen**, noch kein neuer CI-Lauf gestartet. `main` bleibt bei der zuletzt vollständig geprüften Version 0.2.0.
+
+Version **0.3.0-transactions / Schema 2** ist implementiert: Umlagerungen mit Herkunftsbezug, Entsorgung, Istzählung mit veraltetem-Bestand-Schutz, vollständige verknüpfte Stornos, Rezeptversionen und atomare Meal-Prep-Produktion. Neue UI auf M03 im lokalen Testbereich: Lager enthält Bestandsvorgänge, Küche enthält Rezept-/Herstellungsformulare, Chronik enthält eine vollständige Stornovorschau. Backend-Teilsicherung: Commit `7bf89c1`. Dieser neuere Übergabecommit sichert zusätzlich die Oberflächenintegration.
+
+**Letzter vollständiger lokaler Lauf:** `:app:assembleDebug :app:lintDebug :app:testDebugUnitTest`, Log `/tmp/transactions-full.log`: APK und Lint erfolgreich; **53 Tests ausgeführt, 52 erfolgreich, 1 fehlgeschlagen**. Fehler: `LocalDataScreenTest.transferAndItsFullReversalThroughUiPreserveBothSides`, Assertion bei Zeile 89 im gemeinsamen `tap`-Helper. Genaue Fehlermeldung steht in `app/build/test-results/testDebugUnitTest/TEST-de.ernaehrung.demo.LocalDataScreenTest.xml` (ggf. Artefakte nach Wiederaufnahme nicht mehr vorhanden; gezielt neu ausführen). Den fehlgeschlagenen UI-Schritt zuerst diagnostizieren, keine Assertion entfernen/abschwächen. Neuer Kochformular-Test, Produktformular-Test und alle Datenbank-/Produktions-/Migrationstests waren erfolgreich.
+
+**Erfolgreiche Architekturprüfungen:** Umlagerung erhält Gesamtbestand/Herkunft; Stornos erhalten Historie und schützen abhängige Vorgänge; konkurrierende Entnahmen/Produktionen; echte SQLite-Fehlerinjektion beim Produktionszugang mit vollständigem Rollback; Produktion ist kein Verzehr und späterer Portionsverzehr entnimmt Rohwaren nicht erneut. Migration 1→2 separat erfolgreich: alle Zeilen/alten Spalten aus **22 befüllten Tabellen** verglichen, Fremdschlüssel, NULL vs. 0, alte Idempotenzschlüssel und neue Ereignisse nach Upgrade sowie Wiederöffnung geprüft. Schema 1 blieb unverändert, Schema 2 ist versioniert, Migration registriert.
+
+**Nächste Schritte, ohne bisherige Arbeiten neu zu beginnen:**
+
+1. `AGENTS.md`, diesen Block und den Fehler im UI-Test lesen. Aktuellen Branch und Git-Status prüfen, nicht zurücksetzen. Laufzeitwerkzeuge unten verwenden, falls noch vorhanden.
+2. UI-Test für Umlagerung/Storno gezielt ausführen und Fehler an `tap(...)` lokalisieren (u.a. kleine Bildschirmbreite und horizontal scrollende Bereichsauswahl prüfen). Screenshot `app/build/reports/demo-screenshots/local-production.png` wurde vom erfolgreichen Herstellungs-UI-Test erzeugt; bei Bedarf visuell nachprüfen. Kleine Stornoaufnahme erst nach erfolgreichem Test vorhanden.
+3. Noch offene Review-Frage vor Freigabe: `FoodDao.latestMovementDate` berücksichtigt aktuell nur `stock_movements.occurredOn`. Bei alten Schema-1-Verzehren bleibt dieses neue Feld NULL, obwohl das bekannte Ereignisdatum über `consumption_events.operationId` verfügbar ist. Prüfen, ob die Rückdatierungssperre mit `MAX(COALESCE(m.occurredOn,c.date))` ergänzt werden muss; dazu einen passenden Migration-/Regressionstest mit Zugang vor altem Verzehr schreiben. Alte Werte nicht erfinden oder überschreiben.
+4. Mengenparser `Amounts.parseCount` (0 für expliziten Restbestand) ergänzend prüfen, falls sinnvoll; `parse` für normale Ereignisse bleibt strikt positiv.
+5. Nach Korrektur relevante Tests, APK und Lint ausführen; aktuelle XML-Dateien mit Testzahlen/Fehlern/Skips auswerten. Dokumentation `LOCAL_DATABASE.md`, README und neuen Prüfbericht für 0.3 aktualisieren (sie beschreiben bisher überwiegend 0.2). Fachentscheidungen/Begrenzungen klar benennen: konservative Lagerprüfung vor Herstellung, unbekannte Portionsnährwerte, aktive Ernährung schließt stornierte Ereignisse aus.
+6. Erst dann nach main übernehmen, frischen Actions-Lauf prüfen, APK/Report-Link und Abschlussstand sichern. Kein Cloud-Publish, keine persönlichen Sheets-Daten migrieren.
+
+Unterbrechung ist ausdrücklich ein Kontingent-Zwischenstand, keine Fertigmeldung für 0.3.0.
+
 ## Auftrag und verbindliche Grundlage
 
 Die vorhandene Android-Demo schrittweise nach `product/Gesamtplanung-2026-10-30.txt` weiterentwickeln. Die Spezifikation ist vollständig im Repository gespeichert. Kapitel 30 beschreibt die Reihenfolge; zunächst das lokale Room-/SQLite-Fundament, keine vollständige Umsetzung aller Module gleichzeitig. Quellcode, Tests und Übergabe in relevanten Meilensteinen auf GitHub sichern. Bei Kontingentwarnung sofort einen ehrlichen Zwischenstand sichern.

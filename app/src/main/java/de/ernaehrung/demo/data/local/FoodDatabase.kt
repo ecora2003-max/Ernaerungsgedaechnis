@@ -6,10 +6,12 @@ import kotlinx.coroutines.flow.Flow
 
 data class CatalogRow(@Embedded val version: ProductVersionEntity, val stockAmount: Long)
 data class BatchRow(@Embedded val batch: BatchEntity, val productName: String, val unit: BaseUnit,
-    val locationName: String, val stockAmount: Long)
+    val locationName: String, val stockAmount: Long, val originReversed: Boolean)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
 data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
 data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
+data class OperationDetails(val operation: OperationEntity, val reversal: OperationReversalEntity?,
+    val movements: List<MovementRow>, val consumption: ConsumptionEntity?)
 
 /** Internal write API: application callers must use FoodStore's validated transactions. No replace/upsert of history. */
 @Dao
@@ -79,7 +81,8 @@ internal interface FoodDao {
     fun observeCatalog(): Flow<List<CatalogRow>>
 
     @Query("""SELECT b.*, v.name AS productName, v.baseUnit AS unit, l.name AS locationName,
-        (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount
+        (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount,
+        EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = b.originOperationId) AS originReversed
         FROM batches b JOIN product_versions v ON v.id = b.versionId
         JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     fun observeBatches(): Flow<List<BatchRow>>
@@ -89,6 +92,9 @@ internal interface FoodDao {
         JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
         ORDER BY m.recordedAt DESC, m.id DESC LIMIT 30""")
     fun observeMovements(): Flow<List<MovementRow>>
+    @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
+        JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
+        WHERE m.operationId = :id ORDER BY m.id""") suspend fun movementDetails(id: String): List<MovementRow>
 }
 
 @Database(entities = [ProductEntity::class, ProductVersionEntity::class, ProductAliasEntity::class,
