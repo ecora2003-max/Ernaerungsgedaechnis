@@ -60,7 +60,13 @@ Den erzeugten Ausschnitt `local-planning-small-large-text.png` visuell geprüft:
 
 ## Frischer CI-Nachweis
 
-Nach dem Sichern auf `main` den neuen GitHub-Actions-Lauf auf JDK 17 prüfen, seine genaue Code-SHA sowie aktuelle XML-Zahlen und APK-Link hier und in `DEVELOPMENT.md` ergänzen. Bis dahin ist nur der oben beschriebene lokale Abschluss nachgewiesen; frühere CI-Läufe sind kein Nachweis für 0.5.
+App-Code auf `main` und `development/planning-demand`: `62370b11be8ea7c8a4445e70282317b76a00679c`. Frischer [GitHub-Actions-Lauf 41051110227](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41051110227) auf JDK 17, erfolgreich abgeschlossen am 30.10.2026 um 11:59:28 UTC. Build-Job 7 Minuten 41 Sekunden. APK-Build, Schema-Abgleich, Lint und alle Tests erfolgreich.
+
+Das [aktuelle Testbericht-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41051110227/artifacts/12975520504) wurde heruntergeladen und ausgewertet. Alle zwölf JUnit-XML-Dateien liegen zeitlich innerhalb dieses Laufs (11:58:45–11:59:21 UTC); ihre Suite-Zahlen stimmen mit der lokalen Tabelle überein: **84 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Die Code-SHA des Laufs stimmt genau mit dem genannten geprüften App-Code überein. Lint-XML: elf Warnungen (`GradleDependency`, `OldTargetApi`), keine Fehler/Fatal-Befunde. Keine früheren Prüfberichte als neuen Nachweis verwendet.
+
+Die [GitHub-APK](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41051110227/artifacts/12974073892) wurde heruntergeladen: Paket `de.ernaehrung.demo`, Version 0.5.0-planning, versionCode 5, minSdk 26/targetSdk 35. `apksigner verify --verbose` erfolgreich, v2 mit einem Signierer. Debug-APK, kein Geräte-/Emulatortest. Artefaktaufbewahrung ein Tag; danach vorhandenen Workflow manuell erneut starten.
+
+Nach der geprüften Code-SHA wurden ausschließlich Abschlussdokumentation und Hinweise zur Wiederaufnahme ergänzt; keine App-/Schema-/Teständerung ohne neuen Prüfnachweis.
 
 ## Grenzen
 

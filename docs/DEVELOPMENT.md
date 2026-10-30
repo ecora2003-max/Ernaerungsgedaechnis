@@ -10,7 +10,7 @@ Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebene
 
 ## Aktueller Meilenstein: gemeinsame Planung und Bedarf (0.5)
 
-Arbeitsstand auf `development/planning-demand`, Version **0.5.0-planning**, versionCode 5, Schema **3** mit 26 Tabellen. Vollständig lokal geprüft; der frische CI-Nachweis folgt vor Abschluss.
+Gesicherter Stand auf `development/planning-demand` und `main`, Version **0.5.0-planning**, versionCode 5, Schema **3** mit 26 Tabellen. Vollständig lokal und im frischen GitHub-Actions-Lauf geprüft; weiterhin isolierter Testbetrieb.
 
 - `PlanningOperations` speichert ganze unveränderliche Fassungen, stabile `plan_series`-Identität, begründetes Verwerfen, atomare Einträge und remappte Koch-/Portionsverknüpfungen. Retry vor Aktualitätsprüfung, parallele veraltete Änderungen werden abgewiesen.
 - `PlanningReader`: eine konsistente Lese-Transaktion, abgeleitete Fehlmengen ohne Buchungen. Alle neuesten bestätigten Planidentitäten teilen sich einmalig passende Chargen nach Termin und näherer Haltbarkeitsgrenze. Auch Tagesausschnitte berücksichtigen vorherige Reservierungsannahmen außerhalb ihres Ausschnitts.
@@ -22,7 +22,9 @@ Abschließender vollständiger lokaler Lauf: **84 Tests bestanden, 0 Fehlschläg
 
 Sechs Bedienprüfungen enthalten beide neuen Planungsfälle und vorhandene Buchungs-/Ernährungswege. Auf 320×640 dp/Schriftfaktor 1,3 Tages-/Wochen-/56-Tage-Bedarf sowie neue Version und Verwerfen geprüft; ursprünglicher Bestand/Historie bleiben erhalten. Geplante Zubereitung mit verknüpften späteren Portionen/unklarer Menge über die Formulare gespeichert. Ein dabei gefundener veralteter Speicherzustand im später geöffneten Versionsbereich ist korrigiert: aktuelle Zustandsreferenzen für Speichersperre/Vorgangs-ID. Den neuen Planungsansicht-Ausschnitt visuell geprüft, keine Geräte-/Emulatortests. Details: `TEST_REPORT_PLANNING.md`. Bedienung/Rechenregeln: `PLANNING.md`.
 
-**Vor Abschluss noch offen:** lokal geprüften App-Code auf Entwicklungsbranch und `main` sichern, frischen Actions-Lauf verfolgen und dessen Code-SHA, aktuelle XML-Zahlen und APK-Link ergänzen. Keine alten CI-Läufe als Nachweis für 0.5 verwenden.
+Geprüfter App-Code: `62370b11be8ea7c8a4445e70282317b76a00679c`. Der frische [Actions-Lauf 41051110227](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41051110227) ist auf genau dieser SHA erfolgreich, JDK 17, Build-Job 7 Minuten 41 Sekunden. APK-Build, Schema-Abgleich, Lint und alle **84 Tests** bestanden. Zwölf heruntergeladene aktuelle XML-Dateien (11:58:45–11:59:21 UTC) ausgewertet: 0 Fehlschläge/Fehler/Skips. Lint elf Warnungen (Bibliotheksversionen/`OldTargetApi`), keine Fehler. Der folgende Abschlusscommit ergänzt ausschließlich Dokumentation.
+
+[APK-Artefakt 0.5](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41051110227/artifacts/12974073892), einen Tag aufbewahrt. Heruntergeladene APK-Metadaten und Signatur geprüft: `de.ernaehrung.demo`, Version 0.5.0-planning/code 5, minSdk 26/targetSdk 35, v2 mit einem Signierer. Debug-/Testsignierung; keine Geräte-/Emulatortests. Nach Ablauf den vorhandenen Workflow manuell neu ausführen.
 
 Wichtige Grenze: noch kein bestätigter Ausführungs-/Erfüllungsabgleich. Offene Planannahmen nach tatsächlicher Durchführung bewusst überarbeiten/verwerfen; Vergangenes wird nicht mit heutigem Bestand rückgerechnet. Geplante Portionen sind bedingt und ohne Sicherheitsfreigabe. Keine Packungs-, Preis-, Budget- oder Kapazitätsoptimierung. Nicht als vollständige Phase 4 oder produktionsreif bezeichnen.
 
@@ -52,9 +54,13 @@ Die bestehende konservative Bestandsrückdatierungssperre kann bestandsgebundene
 
 Als Erstes den ausdrücklich bestätigten Ausführungs-/Erfüllungsabgleich für Planung entwerfen: tatsächlichen Verzehr/Herstellung einer konkreten Planposition zuordnen, Abweichungen und Storno erhalten, keine neue Ist-Buchung durch bloße Zuordnung. Bereits ausgeführte Planannahmen dürfen nicht zusätzlich vom aktuellen Restbestand abgezogen werden. Keine implizite Zuordnung anhand ähnlicher Bezeichnung/Menge.
 
+Dafür eine stabile fachliche Positionsidentität über zukünftige Planversionen definieren: Die heutigen `planned_entries.id` sind versionseigene Zeilen und werden beim Kopieren neu vergeben. Frühere Zeilen nicht allein anhand ähnlicher Inhalte als dieselbe Absicht behandeln. Bei Migration bestehender Planhistorien fehlende Herkunft nicht erfinden; Übernahme von Erfüllung bei Mengen-/Terminänderung ausdrücklich regeln und testen.
+
 Darauf Fehlmengen in eine überprüfbare Einkaufsliste mit bestätigter nutzbarer Packungsbasis, versionsbezogenen Preisbeobachtungen und Budgetunsicherheit überführen. Einkaufsrundung nur bei bekannten Größen; abhaken ist kein Einkauf/Zugang. Konkurrierende Bedarfe, unbekannte Menge, Zutaten/Portionen und zeitliche Haltbarkeit weiterhin getrennt halten. Änderungen nach Veröffentlichung von Schema 3 brauchen Version 4+ und Erhaltungstests.
 
 Schrittweise die passenden bisherigen Fachansichten anschließen, ohne fiktive und tatsächliche Daten zu vermischen. Später: Beleg-/Ausgabenlogik und Erkennung, validierter JSON-Austausch, persönliche Zielhistorie/Körper/Training, sichere Backups/stabile Release-Signierung und ausdrücklich bestätigte Migration realer Daten. Vorbereitete Tabellen sind keine fertigen Module.
+
+Beim nächsten ohnehin nötigen Workflow-Schritt unterstützte Actions-Hauptversionen mit geprüften Commit-Pins und einen passenden Gradle-Abhängigkeitscache prüfen. Der bisherige erfolgreiche 0.4-Lauf brauchte rund 5:40 für APK und 3:09 für Lint/Tests bei jeweils frischem Runner; kein zusätzlicher Lauf nur für diese Beobachtung nötig.
 
 ## Historie
 
