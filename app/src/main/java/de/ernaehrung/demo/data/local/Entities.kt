@@ -173,14 +173,35 @@ data class ReceiptLineEntity(@PrimaryKey val id: String, val receiptId: String, 
     val totalCents: Long?, val quality: Quality, val stockOperationId: String?)
 
 @Entity(tableName = "price_observations", foreignKeys = [
-    ForeignKey(entity = ProductVersionEntity::class, parentColumns = ["id"], childColumns = ["versionId"], onDelete = ForeignKey.RESTRICT)
-], indices = [Index("versionId")])
+    ForeignKey(entity = ProductVersionEntity::class, parentColumns = ["id"], childColumns = ["versionId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PriceObservationEntity::class, parentColumns = ["id"], childColumns = ["supersedesId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["operationId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("versionId"), Index(value = ["supersedesId"], unique = true), Index(value = ["operationId"], unique = true)])
 data class PriceObservationEntity(@PrimaryKey val id: String, val versionId: String, val merchant: String?,
-    val observedOn: String, val amount: Long, val totalCents: Long, val source: Source, val quality: Quality)
+    val observedOn: String, val amount: Long?, val totalCents: Long?, val source: Source, val quality: Quality,
+    val wholePack: Boolean? = null, val basisConfirmed: Boolean? = null, val basisDescription: String? = null,
+    val validFrom: String? = null, val validUntil: String? = null, val currency: String? = null,
+    val supersedesId: String? = null, val operationId: String? = null, val recordedAt: Long? = null, val reason: String? = null)
 
-@Entity(tableName = "budgets")
+@Entity(tableName = "budgets", foreignKeys = [
+    ForeignKey(entity = BudgetEntity::class, parentColumns = ["id"], childColumns = ["supersedesId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["operationId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["supersedesId"], unique = true), Index(value = ["operationId"], unique = true)])
 data class BudgetEntity(@PrimaryKey val id: String, val startsOn: String, val endsOn: String,
-    val amountCents: Long?, val quality: Quality)
+    val amountCents: Long?, val quality: Quality, val label: String? = null, val currency: String? = null,
+    val supersedesId: String? = null, val operationId: String? = null, val recordedAt: Long? = null, val reason: String? = null)
+
+/** Manual checklist status, never a purchase or inventory event. Latest revision per scope is authoritative. */
+@Entity(tableName = "shopping_marks", foreignKeys = [
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["operationId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = ProductVersionEntity::class, parentColumns = ["id"], childColumns = ["versionId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PriceObservationEntity::class, parentColumns = ["id"], childColumns = ["offerId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = ShoppingMarkEntity::class, parentColumns = ["operationId"], childColumns = ["previousId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["versionId", "startsOn", "endsOn", "purchaseOn", "revision"], unique = true),
+    Index("offerId"), Index(value = ["previousId"], unique = true)])
+data class ShoppingMarkEntity(@PrimaryKey val operationId: String, val versionId: String,
+    val startsOn: String, val endsOn: String, val purchaseOn: String, val offerId: String?,
+    val checked: Boolean, val itemToken: String, val revision: Int, val previousId: String?)
 
 @Entity(tableName = "body_measurements", foreignKeys = [
     ForeignKey(entity = BodyMeasurementEntity::class, parentColumns = ["id"], childColumns = ["correctsId"], onDelete = ForeignKey.RESTRICT)

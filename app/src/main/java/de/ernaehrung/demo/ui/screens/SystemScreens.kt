@@ -46,11 +46,11 @@ import de.ernaehrung.demo.ui.*
                 LocalDataScreen()
             }else{
             Heading(screen.title,"Lokales Datenfundament · getrennt von der Demo")
-            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Jetzt: lokal mit Room / SQLite");Text("Lokaler Testbereich für Produktversionen, Chargen, Stornos, Rezepte, tatsächliches Kochen, Tagesernährung sowie Planung und Bedarf. Daten bleiben nach einem App-Neustart erhalten.",style=MaterialTheme.typography.bodyLarge);Badge("Testdaten · noch kein Produktivbetrieb",Amber)}
+            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Jetzt: lokal mit Room / SQLite");Text("Lokaler Testbereich für Produkte, Chargen, Stornos, Rezepte, Kochen, Ernährung, Planung und Einkaufsvorschläge. Daten bleiben nach einem App-Neustart erhalten.",style=MaterialTheme.typography.bodyLarge);Badge("Testdaten · noch kein Produktivbetrieb",Amber)}
             Action("Lokalen Testbereich öffnen"){local=true}
             Hint("Die übrigen Fachansichten verwenden weiterhin feste Beispieldaten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Migration folgen später.")
             listOf("Backup erstellen","Daten exportieren","Sicherung wiederherstellen").forEach{label->Action(label,true){ui.demo("$label ist eine inaktive Vorschau. Keine Datei wird gelesen oder geschrieben; keine Sicherung wird verändert.")}}
-            Panel{KV("Entwicklungsversion","0.6.0");KV("Datenbankschema","4 · erhaltende Migration aus Schema 1, 2 und 3");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
+            Panel{KV("Entwicklungsversion","0.7.0");KV("Datenbankschema","5 · erhaltende Migration aus Schema 1 bis 4");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
             }
         }
         Screen.I01->{val options=listOf("Ernährungsprofil","Aktuelle Vorräte","Rezepte","Preisübersicht","Planungszeitraum","Körperwerte","Trainingsdaten")

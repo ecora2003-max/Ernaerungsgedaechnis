@@ -4,6 +4,43 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Preserve every old value. Nullability now permits genuinely unknown quantities/prices.
+            db.execSQL("""CREATE TABLE price_observations_new (id TEXT NOT NULL, versionId TEXT NOT NULL, merchant TEXT,
+                observedOn TEXT NOT NULL, amount INTEGER, totalCents INTEGER, source TEXT NOT NULL, quality TEXT NOT NULL,
+                wholePack INTEGER, basisConfirmed INTEGER, basisDescription TEXT, validFrom TEXT, validUntil TEXT, currency TEXT,
+                supersedesId TEXT, operationId TEXT, recordedAt INTEGER, reason TEXT, PRIMARY KEY(id),
+                FOREIGN KEY(versionId) REFERENCES product_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(supersedesId) REFERENCES price_observations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("""INSERT INTO price_observations_new(id,versionId,merchant,observedOn,amount,totalCents,source,quality)
+                SELECT id,versionId,merchant,observedOn,amount,totalCents,source,quality FROM price_observations""")
+            db.execSQL("DROP TABLE price_observations")
+            db.execSQL("ALTER TABLE price_observations_new RENAME TO price_observations")
+            db.execSQL("CREATE INDEX index_price_observations_versionId ON price_observations(versionId)")
+            db.execSQL("CREATE UNIQUE INDEX index_price_observations_supersedesId ON price_observations(supersedesId)")
+            db.execSQL("CREATE UNIQUE INDEX index_price_observations_operationId ON price_observations(operationId)")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN label TEXT")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN currency TEXT")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN supersedesId TEXT REFERENCES budgets(id) ON UPDATE NO ACTION ON DELETE RESTRICT")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN operationId TEXT REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN recordedAt INTEGER")
+            db.execSQL("ALTER TABLE budgets ADD COLUMN reason TEXT")
+            db.execSQL("CREATE UNIQUE INDEX index_budgets_supersedesId ON budgets(supersedesId)")
+            db.execSQL("CREATE UNIQUE INDEX index_budgets_operationId ON budgets(operationId)")
+            db.execSQL("""CREATE TABLE shopping_marks (operationId TEXT NOT NULL, versionId TEXT NOT NULL,
+                startsOn TEXT NOT NULL, endsOn TEXT NOT NULL, purchaseOn TEXT NOT NULL, offerId TEXT, checked INTEGER NOT NULL,
+                itemToken TEXT NOT NULL, revision INTEGER NOT NULL, previousId TEXT, PRIMARY KEY(operationId),
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(versionId) REFERENCES product_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(offerId) REFERENCES price_observations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(previousId) REFERENCES shopping_marks(operationId) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_shopping_marks_versionId_startsOn_endsOn_purchaseOn_revision ON shopping_marks(versionId,startsOn,endsOn,purchaseOn,revision)")
+            db.execSQL("CREATE INDEX index_shopping_marks_offerId ON shopping_marks(offerId)")
+            db.execSQL("CREATE UNIQUE INDEX index_shopping_marks_previousId ON shopping_marks(previousId)")
+        }
+    }
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""CREATE TABLE IF NOT EXISTS plan_positions (id TEXT NOT NULL, seriesId TEXT, createdAt INTEGER NOT NULL,

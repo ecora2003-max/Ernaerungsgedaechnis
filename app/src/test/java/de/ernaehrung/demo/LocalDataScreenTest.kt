@@ -431,6 +431,103 @@ class LocalDataScreenTest {
         }
     }
 
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun shoppingUiStoresConfirmedPackPriceAndBudgetThenChecksListWithoutBuyingAnything() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val version = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("p", ProductInput("Testtofu"))
+            store.savePlan("plan", PlanInput("Woche", "2026-10-30", "2026-11-05", listOf(PlanEntryInput("eat",
+                "2026-10-30", PlanKind.DIRECT_CONSUMPTION, v, amount = 350_000, unit = BaseUnit.GRAM)), "Planung"))
+            v
+        }
+        val model = mount(database, 1.3f, clock)
+        tap("Einkauf"); rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report != null }
+        field("Bedarf ab JJJJ-MM-TT", "2026-10-30"); field("Geplanter Einkaufstag JJJJ-MM-TT", "2026-10-30"); tap("Einkaufsliste anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report != null }
+        tap("Packungsbasis und Preis speichern"); choose("Artikelversion der Preisangabe", version)
+        field("Händler der Preisangabe · optional", "Testmarkt"); field("Beobachtet am JJJJ-MM-TT", "2026-10-30")
+        field("Nutzbare Menge der Preisangabe in g · optional", "200"); field("Preis für diese Menge in EUR · optional", "1,99")
+        tap("Preisbezug ist genau eine ganze Kaufpackung")
+        field("Mengenbasis beschreiben, etwa Abtropfgewicht", "200 g nutzbares Abtropfgewicht pro Kaufpackung")
+        tap("Nutzbare Packungsbasis ausdrücklich bestätigt")
+        field("Preis gültig ab JJJJ-MM-TT · optional", "2026-10-30"); field("Preis gültig bis JJJJ-MM-TT · optional", "2026-11-05")
+        tap("Preisangabe geprüft · keine bezahlte Ausgabe"); field("Quelle / Änderungsgrund der Preisangabe", "Packung und Aktionsschild geprüft")
+        tap("Preisfassung lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.prices?.size == 1 }
+        val offer = model.shopping.value.report!!.prices.single().id
+        assertEquals(null, model.shopping.value.report!!.estimatedTotalCents)
+        tap("Neuen Vorgang beginnen"); tap("Budgetobergrenze speichern")
+        field("Budgetname", "Testwoche"); field("Budgetbeginn JJJJ-MM-TT", "2026-10-30"); field("Budgetende JJJJ-MM-TT", "2026-11-05")
+        field("Budgetobergrenze in EUR · optional", "3,00"); tap("Diese Budgetobergrenze bewusst bestätigen")
+        field("Änderungsgrund des Budgets", "Bestätigter Wochenrahmen")
+        tap("Budgetfassung lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.budgets?.size == 1 }
+        val budget = model.shopping.value.report!!.budgets.single().id
+        tap("Neuen Vorgang beginnen"); choose("Budget für Einkaufsvergleich", budget); tap("Einkaufsliste anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.scope?.budgetId == budget }
+        choose("Packungs-/Preisfassung ${version.take(8)}", offer)
+        rule.onNodeWithTag("shopping_packs_$version").assertTextEquals("Ganze Packungen: 2")
+        rule.onNodeWithTag("shopping_cost_$version").assertTextEquals("Kosten dieser Auswahl: 3,98 €")
+        tap("Auf Einkaufsliste abhaken ${version.take(8)} · kein Kauf")
+        tap("Auswahl / Markierung speichern ${version.take(8)}"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.items?.singleOrNull()?.checked == true }
+        rule.onNodeWithTag("shopping_total").assertTextEquals("Voraussichtliche Gesamtkosten: 3,98 €")
+        assertEquals(98L, model.shopping.value.report!!.budget.knownCostsOverLimitCents)
+        assertEquals(null, model.shopping.value.report!!.budget.remainingBudgetCents)
+        rule.onNodeWithTag("shopping_cost_$version").performScrollTo(); capture("local-shopping-small-large-text")
+        runBlocking {
+            val dao = database.foodDao(); val price = dao.prices().single()
+            assertEquals(200_000L, price.amount); assertEquals(199L, price.totalCents); assertEquals(true, price.basisConfirmed)
+            assertEquals(1, dao.shoppingMarks("2026-10-30", "2026-11-05", "2026-10-30").size)
+            assertTrue(dao.planningBatches().isEmpty()); assertEquals(0, dao.consumptionCount())
+            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM receipts").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+        }
+    }
+
+    @Test fun shoppingUiKeepsOldPriceHistoryAndRequiresFreshChoiceAfterPriceReplacement() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val (version, firstPrice) = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("p", ProductInput("Testtofu"))
+            store.savePlan("plan", PlanInput("Woche", "2026-10-30", "2026-11-05", listOf(PlanEntryInput("eat", "2026-10-30",
+                PlanKind.DIRECT_CONSUMPTION, v, amount = 350_000, unit = BaseUnit.GRAM)), "Planung"))
+            val price = store.savePrice("price", PriceInput(v, "Testmarkt", "2026-10-30", 200_000, 199, true, true, "Nutzbare Packungsmenge",
+                "2026-10-30", "2026-11-05", true, "Erste Beobachtung"))
+            val scope = ShoppingScope("2026-10-30", "2026-11-05", "2026-10-30")
+            val item = store.shoppingReport(scope).items.single()
+            store.markShopping("checked", ShoppingMarkInput(scope, v, price, true, item.snapshot))
+            v to price
+        }
+        val model = mount(database, now = clock)
+        tap("Einkauf"); rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report != null }
+        field("Bedarf ab JJJJ-MM-TT", "2026-10-30"); field("Geplanter Einkaufstag JJJJ-MM-TT", "2026-10-30"); tap("Einkaufsliste anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.items?.singleOrNull()?.checked == true }
+        tap("Packungsbasis und Preis speichern"); choose("Preisfassung bearbeiten", firstPrice)
+        field("Nutzbare Menge der Preisangabe in g · optional", "100"); field("Preis für diese Menge in EUR · optional", "1,49")
+        field("Mengenbasis beschreiben, etwa Abtropfgewicht", "Neue Packung: 100 g nutzbare Menge")
+        tap("Nutzbare Packungsbasis ausdrücklich bestätigt"); tap("Preisangabe geprüft · keine bezahlte Ausgabe")
+        field("Quelle / Änderungsgrund der Preisangabe", "Neue Kaufpackung geprüft")
+        tap("Preisfassung lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.prices?.size == 2 }
+        val current = model.shopping.value.report!!
+        assertTrue(current.items.single().staleCheck); assertTrue(!current.items.single().checked); assertEquals(null, current.estimatedTotalCents)
+        rule.onNodeWithTag("shopping_checked_$version").assertTextEquals("Gespeichert: nicht abgehakt")
+        val secondPrice = current.prices.single { it.supersedesId == firstPrice }.id
+        tap("Neuen Vorgang beginnen"); choose("Packungs-/Preisfassung ${version.take(8)}", secondPrice)
+        rule.onNodeWithTag("shopping_packs_$version").assertTextEquals("Ganze Packungen: 4")
+        rule.onNodeWithTag("shopping_cost_$version").assertTextEquals("Kosten dieser Auswahl: 5,96 €")
+        tap("Auswahl / Markierung speichern ${version.take(8)}"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.estimatedTotalCents == 596L }
+        runBlocking {
+            assertEquals(2, database.foodDao().prices().size)
+            assertEquals(2, database.foodDao().shoppingMarks("2026-10-30", "2026-11-05", "2026-10-30").size)
+            assertTrue(database.foodDao().planningBatches().isEmpty()); assertEquals(0, database.foodDao().consumptionCount())
+        }
+    }
+
     private fun capture(name: String) = rule.runOnUiThread {
         val view = rule.activity.window.decorView
         val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)

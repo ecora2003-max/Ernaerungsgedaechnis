@@ -37,6 +37,14 @@ internal interface FoodDao {
     @Insert suspend fun insertReversal(value: OperationReversalEntity)
     @Insert suspend fun insertOutputProduct(value: RecipeOutputProductEntity)
     @Insert suspend fun insertProduction(value: ProductionEntity)
+    @Insert suspend fun insertPriceObservation(value: PriceObservationEntity)
+    @Insert suspend fun insertBudget(value: BudgetEntity)
+    @Insert suspend fun insertShoppingMark(value: ShoppingMarkEntity)
+    @Query("SELECT * FROM price_observations ORDER BY id") suspend fun prices(): List<PriceObservationEntity>
+    @Query("SELECT * FROM budgets ORDER BY id") suspend fun budgets(): List<BudgetEntity>
+    @Query("SELECT * FROM shopping_marks WHERE startsOn=:start AND endsOn=:end AND purchaseOn=:purchase ORDER BY versionId,revision")
+    suspend fun shoppingMarks(start: String, end: String, purchase: String): List<ShoppingMarkEntity>
+    @Query("SELECT id FROM operations WHERE kind != 'SHOPPING_MARK' ORDER BY id") suspend fun shoppingContextOperations(): List<String>
 
     @Query("SELECT * FROM plans ORDER BY revision DESC, id") suspend fun allPlans(): List<PlanEntity>
     @Query("SELECT * FROM planned_entries ORDER BY date, id") suspend fun allPlannedEntries(): List<PlannedEntryEntity>
@@ -136,7 +144,7 @@ internal interface FoodDao {
     PriceObservationEntity::class, BudgetEntity::class, BodyMeasurementEntity::class,
     TrainingEventEntity::class, TrainingSetEntity::class, OperationReversalEntity::class,
     RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
-    PlanPositionEntity::class, PlanExecutionEntity::class], version = 4, exportSchema = true)
+    PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class], version = 5, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -147,7 +155,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

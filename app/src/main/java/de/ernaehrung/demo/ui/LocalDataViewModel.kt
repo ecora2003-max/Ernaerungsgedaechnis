@@ -16,9 +16,22 @@ data class DayUiState(val date: String, val report: DayNutrition? = null, val er
 data class RecipeNutritionUiState(val report: NutritionResult? = null, val error: String? = null)
 data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
 data class ExecutionUiState(val view: PlanExecutionView? = null, val error: String? = null)
+data class ShoppingUiState(val report: ShoppingReport? = null, val error: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalDataViewModel(private val store: FoodStore) : ViewModel() {
+    private val shoppingQuery = MutableStateFlow(java.time.LocalDate.now().let {
+        ShoppingScope(it.toString(), it.plusDays(6).toString(), it.toString()) to 0L
+    })
+    val shopping: StateFlow<ShoppingUiState> = shoppingQuery.flatMapLatest { (query, _) ->
+        store.watchShopping(query).map { ShoppingUiState(it) }.onStart { emit(ShoppingUiState()) }
+            .catch { emit(ShoppingUiState(error = "Einkaufsliste konnte nicht gelesen werden: ${it.message}")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ShoppingUiState())
+    fun showShopping(start: String, days: Long, purchase: String, budgetId: String?) {
+        val first = start.trim()
+        val last = runCatching { java.time.LocalDate.parse(first).plusDays(days - 1).toString() }.getOrDefault(first)
+        shoppingQuery.value = ShoppingScope(first, last, purchase.trim(), budgetId) to shoppingQuery.value.second + 1
+    }
     private val chosenExecutionEntry = MutableStateFlow("")
     val selectedExecutionEntry = chosenExecutionEntry.asStateFlow()
     val execution: StateFlow<ExecutionUiState> = chosenExecutionEntry.flatMapLatest { entry ->
