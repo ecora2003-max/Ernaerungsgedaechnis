@@ -26,6 +26,7 @@ internal interface FoodDao {
     @Insert suspend fun insertConsumption(value: ConsumptionEntity)
     @Insert suspend fun insertAllocation(value: ConsumptionAllocationEntity)
     @Upsert suspend fun saveDay(value: DiaryDayEntity)
+    @Insert suspend fun insertPlanSeries(value: PlanSeriesEntity)
     @Insert suspend fun insertPlan(value: PlanEntity)
     @Insert suspend fun insertPlannedEntry(value: PlannedEntryEntity)
     @Insert suspend fun insertRecipe(value: RecipeEntity)
@@ -34,6 +35,11 @@ internal interface FoodDao {
     @Insert suspend fun insertReversal(value: OperationReversalEntity)
     @Insert suspend fun insertOutputProduct(value: RecipeOutputProductEntity)
     @Insert suspend fun insertProduction(value: ProductionEntity)
+
+    @Query("SELECT * FROM plans ORDER BY revision DESC, id") suspend fun allPlans(): List<PlanEntity>
+    @Query("SELECT * FROM planned_entries ORDER BY date, id") suspend fun allPlannedEntries(): List<PlannedEntryEntity>
+    @Query("SELECT * FROM plans WHERE id = :id") suspend fun plan(id: String): PlanEntity?
+    @Query("SELECT * FROM plans WHERE seriesId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestPlan(id: String): PlanEntity?
 
     @Query("SELECT * FROM operation_reversals WHERE originalOperationId = :id") suspend fun reversal(id: String): OperationReversalEntity?
     @Query("SELECT * FROM recipe_versions WHERE id = :id") suspend fun recipeVersion(id: String): RecipeVersionEntity?
@@ -98,6 +104,13 @@ internal interface FoodDao {
         JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     fun observeBatches(): Flow<List<BatchRow>>
 
+    @Query("""SELECT b.*, v.name AS productName, v.baseUnit AS unit, l.name AS locationName,
+        (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount,
+        EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = b.originOperationId) AS originReversed
+        FROM batches b JOIN product_versions v ON v.id = b.versionId
+        JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
+    suspend fun planningBatches(): List<BatchRow>
+
     @Query("SELECT * FROM storage_locations ORDER BY name") fun observeLocations(): Flow<List<StorageLocationEntity>>
     @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
         JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
@@ -115,7 +128,7 @@ internal interface FoodDao {
     PlanEntity::class, PlannedEntryEntity::class, ReceiptEntity::class, ReceiptLineEntity::class,
     PriceObservationEntity::class, BudgetEntity::class, BodyMeasurementEntity::class,
     TrainingEventEntity::class, TrainingSetEntity::class, OperationReversalEntity::class,
-    RecipeOutputProductEntity::class, ProductionEntity::class], version = 2, exportSchema = true)
+    RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class], version = 3, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -126,7 +139,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

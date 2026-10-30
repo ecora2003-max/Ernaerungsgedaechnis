@@ -91,6 +91,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
             StockEventEditor(state, blocked, operationId, model)
         }
         "Ernährung" -> NutritionScreen(state, blocked, operationId, model)
+        "Planung" -> LocalPlanningScreen(state, blocked, operationId, model)
         "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
@@ -109,7 +110,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
 
 @Composable
 private fun LocalSections(selected: String, onSelect: (String) -> Unit) =
-    WrappingChoices(listOf("Katalog", "Lager", "Ernährung", "Küche", "Chronik"), selected, "local_section_", onSelect)
+    WrappingChoices(listOf("Katalog", "Lager", "Ernährung", "Küche", "Planung", "Chronik"), selected, "local_section_", onSelect)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

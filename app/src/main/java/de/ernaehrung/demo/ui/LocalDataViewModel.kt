@@ -14,9 +14,20 @@ data class LocalDataState(val loading: Boolean = true, val catalog: List<Catalog
 data class SaveState(val busy: Boolean = false, val message: String? = null, val succeeded: Boolean = false)
 data class DayUiState(val date: String, val report: DayNutrition? = null, val error: String? = null)
 data class RecipeNutritionUiState(val report: NutritionResult? = null, val error: String? = null)
+data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalDataViewModel(private val store: FoodStore) : ViewModel() {
+    private val planRange = MutableStateFlow(java.time.LocalDate.now().let { it.toString() to it.plusDays(6).toString() })
+    val planning: StateFlow<PlanningUiState> = planRange.flatMapLatest { (start, end) ->
+        store.watchPlanning(start, end).map { PlanningUiState(it) }.onStart { emit(PlanningUiState()) }
+            .catch { emit(PlanningUiState(error = "Planung konnte nicht gelesen werden: ${it.message}")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanningUiState())
+    fun showPlanning(start: String, days: Long) {
+        val first = start.trim()
+        val end = runCatching { java.time.LocalDate.parse(first).plusDays(days - 1).toString() }.getOrDefault(first)
+        planRange.value = first to end
+    }
     private val chosenDay = MutableStateFlow(java.time.LocalDate.now().toString())
     val selectedDay = chosenDay.asStateFlow()
     val daily: StateFlow<DayUiState> = chosenDay.flatMapLatest { date ->

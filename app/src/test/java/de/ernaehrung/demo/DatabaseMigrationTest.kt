@@ -18,11 +18,14 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DatabaseMigrationTest {
-    @Test fun upgradeFromPublishedV1PreservesEveryOldRowAndRetryKeyThenSupportsNewEvents() = runBlocking {
+    @Test fun upgradeFromPublishedV1PreservesEveryOldRowAndRetryKeyThenSupportsNewEvents() = upgradeFromPublishedVersion(1)
+    @Test fun upgradeFromPublishedV2PreservesAll25TablesAndIntroducesPlanVersioning() = upgradeFromPublishedVersion(2)
+
+    private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-${UUID.randomUUID()}.db"
         val file = context.getDatabasePath(name).also { it.parentFile!!.mkdirs() }
-        val schema = javaClass.classLoader!!.getResourceAsStream("de.ernaehrung.demo.data.local.FoodDatabase/1.json")!!
+        val schema = javaClass.classLoader!!.getResourceAsStream("de.ernaehrung.demo.data.local.FoodDatabase/$fromVersion.json")!!
             .bufferedReader().use { JSONObject(it.readText()).getJSONObject("database") }
         val tables = schema.getJSONArray("entities")
         val columns = (0 until tables.length()).associate { i ->
@@ -49,16 +52,18 @@ class DatabaseMigrationTest {
                 val setup = schema.getJSONArray("setupQueries")
                 for (i in 0 until setup.length()) old.execSQL(setup.getString(i))
                 seedV1(old)
-                old.version = 1
+                if (fromVersion == 2) seedV2(old)
+                old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(22, before.size)
+            assertEquals(if (fromVersion == 1) 22 else 25, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
-            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name).addMigrations(FoodMigrations.MIGRATION_1_2).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the migrated schema against v2.
+            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v3.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(2, sql.version)
+            assertEquals(3, sql.version)
             val dao = upgraded.foodDao()
             assertEquals(150_000L, dao.balance("batch")); assertNull(dao.batch("batch")!!.parentBatchId)
             assertNull(dao.movements("old-buy").single().occurredOn)
@@ -82,10 +87,48 @@ class DatabaseMigrationTest {
             val moved = store.transfer("new-move", TransferInput("batch", target, 100_000, "2026-10-30", "Nach Upgrade"), true)
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
-            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name).addMigrations(FoodMigrations.MIGRATION_1_2).build()
+            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(4, upgraded.foodDao().operationCount()) // 2 old + location + transfer
+            assertEquals(if (fromVersion == 1) 4 else 8, upgraded.foodDao().operationCount())
+            val legacy = upgraded.foodDao().plan("plan")!!
+            assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
+            val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
+                upgraded.foodDao().allPlannedEntries().filter { it.planId == "plan" }.map(PlanEntryInput::from), "Nach Migration"), legacy.id)
+            assertEquals(2, upgraded.foodDao().plan(newPlan)!!.revision)
+            assertEquals(EntryStatus.DRAFT, upgraded.foodDao().plan("plan")!!.status)
+            assertEquals(EntryStatus.CONFIRMED, upgraded.foodDao().plan(newPlan)!!.status)
+            assertEquals(150_000L - 100_000L, upgraded.foodDao().balance("batch"))
         } finally { upgraded?.close(); context.deleteDatabase(name) }
+    }
+
+    private fun seedV2(db: SQLiteDatabase) {
+        db.execSQL("INSERT INTO products(id,createdAt) VALUES('out-product',1)")
+        db.execSQL("""INSERT INTO product_versions(id,productId,revision,name,baseUnit,nutritionBasis,source,quality,recordedAt,changeReason)
+            VALUES('out-version','out-product',1,'Fertiges Altgericht','PORTION',1000,'USER','UNKNOWN',1,'Altproduktion')""")
+        for ((id, kind, result) in listOf(Triple("v2-buy", "RECEIPT", "raw-batch"), Triple("v2-cook", "PRODUCTION", "out-batch"),
+            Triple("v2-waste", "WASTE", "out-batch"), Triple("v2-reverse", "REVERSAL", "v2-waste"))) {
+            db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES(?,?,?,1,?)", arrayOf(id, kind, "old-$id", result))
+        }
+        db.execSQL("""INSERT INTO batches(id,versionId,locationId,originOperationId,acquiredOn,release)
+            VALUES('raw-batch','pv1','loc','v2-buy','2026-10-30','RELEASED')""")
+        db.execSQL("""INSERT INTO batches(id,versionId,locationId,originOperationId,acquiredOn,release,recipeVersionId)
+            VALUES('out-batch','out-version','loc','v2-cook','2026-10-30','RELEASED','rv')""")
+        db.execSQL("INSERT INTO recipe_output_products(recipeId,productId) VALUES('r','out-product')")
+        db.execSQL("""INSERT INTO productions(operationId,recipeVersionId,outputBatchId,actualPortions,producedOn,storageNote)
+            VALUES('v2-cook','rv','out-batch',6000,'2026-10-30','Überlieferter Platz-/Lagervermerk')""")
+        for ((id, op, batch, delta, kind) in listOf(
+            listOf("v2-in", "v2-buy", "raw-batch", "100000", "RECEIPT"),
+            listOf("v2-used", "v2-cook", "raw-batch", "-100000", "PRODUCTION_INPUT"),
+            listOf("v2-out", "v2-cook", "out-batch", "6000", "PRODUCTION_OUTPUT"),
+            listOf("v2-discarded", "v2-waste", "out-batch", "-1000", "WASTE"),
+            listOf("v2-restored", "v2-reverse", "out-batch", "1000", "CORRECTION"))) {
+            db.execSQL("""INSERT INTO stock_movements(id,batchId,operationId,delta,kind,source,reason,recordedAt,occurredOn,reversesId)
+                VALUES(?,?,?,?,?,'USER','Altstand',1,'2026-10-30',?)""",
+                arrayOf(id, batch, op, delta.toLong(), kind, if (id == "v2-restored") "v2-discarded" else null))
+        }
+        db.execSQL("""INSERT INTO operation_reversals(originalOperationId,reversalOperationId,date,reason)
+            VALUES('v2-waste','v2-reverse','2026-10-30','Korrektur Altstand')""")
     }
 
     private fun seedV1(db: SQLiteDatabase) {

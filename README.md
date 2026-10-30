@@ -2,11 +2,13 @@
 
 Native Android-Oberflächendemo mit Kotlin, Jetpack Compose und Material 3. Alle Daten sind fiktiv. Enthalten sind die 33 vorgesehenen Ansichten und eine zusätzliche Mehr-Übersicht.
 
-Version **0.4.0-nutrition** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produkte, Bestände, Rezepte, tatsächliches Kochen und Verzehr verwalten. Stornos ergänzen Gegenbuchungen, ohne Historie zu löschen.
+Version **0.5.0-planning** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produkte, Bestände, Rezepte, tatsächliches Kochen und Verzehr verwalten. Stornos ergänzen Gegenbuchungen, ohne Historie zu löschen.
 
-Neu unter **Ernährung**: tatsächliche Verzehre mit oder ohne Lagerbezug, bekannte Nährwertsummen und ausdrücklich gekennzeichnete Datenlücken, Tagesbestätigung und Storno. Fertigportionen werden aus tatsächlichen Zutaten und Ausbeuten berechnet. Rezeptvorschauen bleiben von diesen Ist-Werten getrennt. Im Katalog sind auch weitere Nährstoffe manuell erfassbar; leer bleibt unbekannt, 0 bleibt eine bekannte Null.
+Neu unter **Planung**: gemeinsame Einträge für einen, sieben und 56 Tage, unveränderliche Planversionen, geplante Zubereitung und verknüpfte spätere Portionen. Die Bedarfsrechnung teilt freigegebene passende Chargen einmalig auf aktive Pläne auf, prüft erfasste Haltbarkeitsgrenzen zum Termin und zeigt Fehlmengen sowie offene Mengen. Geplante Portionen erzeugen keine physischen Bestände oder erneuten Zutatenbedarf. Bedienung und Grenzen: [docs/PLANNING.md](docs/PLANNING.md). Preis-/Packungs-/Budgetvorschläge und die Zuordnung tatsächlicher Ausführung zur Planerfüllung folgen später.
 
-Schema 2 bleibt unverändert; bestehende Schema-1-Testdaten werden ohne Löschung migriert. Die bisherigen 33 Fachansichten bleiben Demoansichten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
+Unter **Ernährung**: tatsächliche Verzehre mit oder ohne Lagerbezug, bekannte Nährwertsummen und ausdrücklich gekennzeichnete Datenlücken, Tagesbestätigung und Storno. Fertigportionen werden aus tatsächlichen Zutaten und Ausbeuten berechnet. Rezeptvorschauen bleiben von diesen Ist-Werten getrennt. Im Katalog sind auch weitere Nährstoffe manuell erfassbar; leer bleibt unbekannt, 0 bleibt eine bekannte Null.
+
+Schema 3 ergänzt Planidentitäten und Portionsverknüpfungen; bestehende Schema-1-/Schema-2-Testdaten werden ohne Löschung migriert. Die bisherigen 33 Fachansichten bleiben Demoansichten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
 
 Entwicklungsstand und Fortsetzung: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Bedienung, Datenmodell und Grenzen: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md). Der vollständige Produktplan liegt unter [docs/product/](docs/product/).
 
@@ -42,7 +44,7 @@ Außerhalb des lokalen Testbereichs sind Buchungs-, Import-, Export- und Sicheru
 
 Produktinformationen sind unabhängig vom fiktiven Vorratsstand verfügbar. Unbekannte Nährwerte werden als unbekannt angezeigt. Geplante Mahlzeiten zählen nicht zur tatsächlichen Tagesbilanz. Die Vorschau für 50 g Naturtofu ist fest vorbereitet; andere Mengen erzeugen keine scheinbar berechneten Werte.
 
-Der Bedarfsabgleich ist ein erklärter Auszug für vier Produkte. Der Monatsplan enthält vier Beispielwochen, davon eine detailliert. Diagramme zeigen acht fiktive Rohmessungen und vorbereitete Beispielkurven; keine Regression oder Kalibrierung.
+Der Bedarfsabgleich in den bisherigen Hauptansichten ist ein erklärter Auszug für vier Produkte. Deren Monatsplan enthält vier Beispielwochen, davon eine detailliert. Die neue persistente Berechnung liegt im lokalen Testbereich. Diagramme zeigen acht fiktive Rohmessungen und vorbereitete Beispielkurven; keine Regression oder Kalibrierung.
 
 ## Quellcode
 

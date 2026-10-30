@@ -83,11 +83,11 @@ class LocalDataScreenTest {
         rule.onNodeWithTag("Produkt lokal speichern").performScrollTo().assertIsEnabled()
     }
 
-    private fun mount(database: FoodDatabase, fontScale: Float = 1f): LocalDataViewModel {
+    private fun mount(database: FoodDatabase, fontScale: Float = 1f, now: Long = 1_800_000_000_000L): LocalDataViewModel {
         db = database
         val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(database) { 1_800_000_000_000L }) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(database) { now }) as T
         })[LocalDataViewModel::class.java]
         rule.runOnUiThread { rule.activity.setContent {
             DemoTheme { CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
@@ -234,6 +234,99 @@ class LocalDataScreenTest {
         }
         rule.onNodeWithTag("day_status").performScrollTo()
         capture("local-nutrition-small-large-text")
+    }
+
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun planningFormSharesDayAndWeekDemandAndPreservesReplacedAndCancelledVersions() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val (version, batch) = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("p", ProductInput("Testtofu"))
+            val loc = store.addLocation("loc", "Vorrat", true)
+            v to store.receive("b", BatchInput(v, loc, 500_000, "2026-10-30", useBy = "2026-11-06", release = ReleaseStatus.RELEASED), true)
+        }
+        val model = mount(database, 1.3f, clock)
+        tap("Planung")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report != null }
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-30"); tap("Planungszeitraum anzeigen")
+        tap("Plan anlegen oder überarbeiten")
+        field("Plantitel", "Testwoche"); field("Planbeginn JJJJ-MM-TT", "2026-10-30"); field("Planende JJJJ-MM-TT", "2026-11-05")
+        choose("Planbezug", version)
+        field("Geplanter Termin JJJJ-MM-TT", "2026-10-30"); field("Geplante Menge · g · leer bei unbekannt", "300")
+        tap("Zum Planentwurf hinzufügen")
+        field("Geplanter Termin JJJJ-MM-TT", "2026-10-31"); field("Geplante Menge · g · leer bei unbekannt", "300")
+        tap("Zum Planentwurf hinzufügen"); field("Änderungsgrund des Plans", "Gemeinsame Testwoche")
+        tap("Planversion lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.shopping?.singleOrNull()?.knownMissing == 100_000L }
+        rule.onNodeWithTag("shopping_$version").assertTextEquals("Fehlmenge: 100 g")
+        tap("56 Tage"); tap("Planungszeitraum anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.endsOn == "2026-12-24" }
+        assertEquals(2, model.planning.value.report!!.entries.size)
+        rule.onNodeWithTag("shopping_$version").assertTextEquals("Fehlmenge: 100 g")
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-31"); tap("1 Tag"); tap("Planungszeitraum anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.entries?.size == 1 }
+        rule.onNodeWithTag("shopping_$version").assertTextEquals("Fehlmenge: 100 g")
+        rule.onNodeWithTag("shopping_$version").performScrollTo(); capture("local-planning-small-large-text")
+        tap("Neuen Vorgang beginnen"); tap("Plan anlegen oder überarbeiten")
+        val first = model.planning.value.report!!.plans.single().version.id
+        choose("Plan bearbeiten", first)
+        tap("Planeintrag 2 entfernen"); field("Änderungsgrund des Plans", "Nur eine Mahlzeit")
+        tap("Planversion lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.plans?.singleOrNull()?.version?.revision == 2 }
+        assertTrue(model.planning.value.report!!.shopping.isEmpty())
+        tap("Neuen Vorgang beginnen"); tap("Planversionen und Verwerfen")
+        field("Verwerfungsgrund Testwoche", "Termin entfällt")
+        val second = model.planning.value.report!!.plans.single().version.id
+        rule.onNodeWithTag("Plan verwerfen ${second.take(8)}").performScrollTo().assertIsEnabled()
+        tap("Plan verwerfen ${second.take(8)}"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.plans?.singleOrNull()?.version?.status == EntryStatus.CANCELLED }
+        runBlocking {
+            assertEquals(3, database.foodDao().allPlans().size)
+            assertEquals("Termin entfällt", database.foodDao().latestPlan(model.planning.value.report!!.plans.single().version.seriesId!!)!!.changeReason)
+            assertEquals(4, database.foodDao().allPlannedEntries().size)
+            assertEquals(500_000L, database.foodDao().balance(batch)); assertEquals(0, database.foodDao().consumptionCount())
+        }
+    }
+
+    @Test fun plannedCookingAndLinkedPortionFormCalculateIngredientsOnceAndKeepUnknownsVisible() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val (version, recipe) = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("p", ProductInput("Testtofu"))
+            val loc = store.addLocation("loc", "Vorrat", true)
+            store.receive("b", BatchInput(v, loc, 200_000, "2026-10-30", useBy = "2026-11-06", release = ReleaseStatus.RELEASED), true)
+            v to store.saveRecipe("r", RecipeInput("Testtopf", 6000, listOf(RecipeItemInput(v, 300_000)), "Garen"))
+        }
+        val model = mount(database, now = clock)
+        tap("Planung"); rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report != null }
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-30"); tap("Planungszeitraum anzeigen")
+        tap("Plan anlegen oder überarbeiten")
+        field("Plantitel", "Meal Prep"); field("Planbeginn JJJJ-MM-TT", "2026-10-30"); field("Planende JJJJ-MM-TT", "2026-11-05")
+        field("Geplanter Termin JJJJ-MM-TT", "2026-10-30")
+        choose("Art des Planeintrags", PlanKind.PREPARATION.name); choose("Planbezug", recipe)
+        field("Geplante Menge · Portion · leer bei unbekannt", "6"); tap("Zum Planentwurf hinzufügen")
+        choose("Art des Planeintrags", PlanKind.PREPARED_PORTION.name)
+        tap("Geplante Zubereitung")
+        rule.onNodeWithTag("Planbezug").performScrollTo().performClick()
+        rule.onNodeWithText("Testtopf · 2026-10-30", substring = false).performScrollTo().performClick()
+        field("Geplanter Termin JJJJ-MM-TT", "2026-10-31")
+        field("Geplante Menge · Portion · leer bei unbekannt", "2"); tap("Zum Planentwurf hinzufügen")
+        field("Geplanter Termin JJJJ-MM-TT", "2026-11-01"); tap("Zum Planentwurf hinzufügen") // deliberately unknown amount
+        field("Änderungsgrund des Plans", "Ein Kochtermin und spätere Portionen")
+        tap("Planversion lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.entries?.size == 3 }
+        val report = model.planning.value.report!!
+        assertEquals(100_000L, report.shopping.single().knownMissing)
+        assertEquals(300_000L, report.entries.flatMap { it.demands }.sumOf { it.required!! })
+        assertTrue(report.hasUnknownRequirements)
+        rule.onNodeWithTag("shopping_$version").assertTextEquals("Fehlmenge: 100 g")
+        rule.onNodeWithText(PlanningIssue.UNKNOWN_AMOUNT.label, substring = false).assertExists()
+        runBlocking {
+            assertEquals(1, database.foodDao().planningBatches().size)
+            assertEquals(0, database.foodDao().consumptionCount())
+        }
     }
 
     private fun capture(name: String) = rule.runOnUiThread {

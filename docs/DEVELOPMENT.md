@@ -8,34 +8,33 @@ Die vorhandene Android-App schrittweise nach `product/Gesamtplanung-2026-10-30.t
 
 Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebenen Migration produktiv verbindlich. Keine neue Sheets-Datenbank, kein eigener Server, keine verpflichtende kostenpflichtige KI-API. GitHub speichert Code und Dokumentation, niemals persönliche App-Daten, Datenbankdateien oder Geheimnisse. Cloud-Umgebung nicht eigenständig veröffentlichen.
 
-## Aktueller Meilenstein: Ernährung und berechnete Nährwerte
+## Aktueller Meilenstein: gemeinsame Planung und Bedarf (0.5)
 
-Version **0.4.0-nutrition**, versionCode 4, weiterhin Datenbankschema **2** (25 Tabellen). Aktiver Entwicklungsbranch: `development/nutrition-diary`.
+Arbeitsstand auf `development/planning-demand`, Version **0.5.0-planning**, versionCode 5, Schema **3** mit 26 Tabellen. Vollständig lokal geprüft; der frische CI-Nachweis folgt vor Abschluss.
 
-- Rechnung pro konkreter Artikelversion und tatsächlicher Menge, getrennt nach g/ml/Portion. Alle bereits modellierten Makro-/Mikronährstoffe sind auswertbar und im Produktformular erfassbar. Alte Produkt-Retry-Fingerprints ohne Zusatznährstoffe bleiben kompatibel.
-- NULL ist unbekannt, eingegebene 0 bleibt bekannt. Bekannte Teilsummen und Lücken werden pro Nährstoff getrennt ausgewiesen; keine falschen Prozentabdeckungen. BigDecimal/DECIMAL128, Rundung nur für Anzeige.
-- Fertigportionen basieren auf tatsächlichen Zutatenbewegungen und tatsächlicher Ausbeute, auch nach Weiterverarbeitung/Umlagerung. Neue Produkt-/Rezeptversionen ändern historische Ansätze nicht. Rezeptvorschauen verwenden weiterhin eigene Soll-Mengen.
-- Reaktive lokale Tagesbilanz nur aus aktiven tatsächlichen Verzehren; Pläne, Zugänge, Entsorgung und bloßes Kochen zählen nicht. Verzehr ohne Lagerbezug und mit unbekannter Menge ist auch über die Oberfläche möglich.
-- Tageserfassung ausdrücklich bestätigen oder wieder öffnen; Lücken bleiben sichtbar. Snapshotprüfung schützt gegen veraltete Bestätigungen, Statushistorie gegen gleiche Uhrzeit/erneute Zustandsfolge. Neue Einträge/Stornos setzen TEILWEISE; alter Retry setzt einen geänderten Tag nicht erneut vollständig.
-- Bedienung im vorhandenen M03-Testbereich jetzt mit Ernährung, direktem Verzehrstorno und scrollbaren Bestätigungsdialogen. Die bisherigen 33 Fachansichten bleiben getrennte fiktive Beispiele. Keine persönlichen Zielwerte aus der Demo übernehmen.
+- `PlanningOperations` speichert ganze unveränderliche Fassungen, stabile `plan_series`-Identität, begründetes Verwerfen, atomare Einträge und remappte Koch-/Portionsverknüpfungen. Retry vor Aktualitätsprüfung, parallele veraltete Änderungen werden abgewiesen.
+- `PlanningReader`: eine konsistente Lese-Transaktion, abgeleitete Fehlmengen ohne Buchungen. Alle neuesten bestätigten Planidentitäten teilen sich einmalig passende Chargen nach Termin und näherer Haltbarkeitsgrenze. Auch Tagesausschnitte berücksichtigen vorherige Reservierungsannahmen außerhalb ihres Ausschnitts.
+- Direkte Produkte, Zubereitung und vorhandene/geplante Fertigportionen getrennt. Soll-Zutaten nur beim Kochtermin skalieren; spätere verknüpfte Portionen teilen die geplante Ausbeute. Keine physischen Portionen durch Plananlage und keine automatisch bestätigten Lagerbedingungen.
+- Freigabe/Verbrauchsdatum/MHD/erfasste Haltbarkeit zum Termin, konkreter Versionsbezug, unbekannte Mengen und Einheitenkonflikte sichtbar. Ungeklärter konkurrierender Bedarf führt zu einer ausdrücklichen Teilergebniswarnung. Bedarfsskalierung mit BigInteger, auf 1/1000 Basiseinheit aufgerundet, keine erfundene Umrechnung.
+- Lokaler Bereich **Planung** mit 1-/7-/56-Tage-Ansicht, Planformular, Fehlmengen und Versionshistorie. Bisherige 33 Haupt-Fachansichten bleiben fiktiv.
 
-Bedienung/Fachregeln: `NUTRITION.md`; allgemeine Architektur: `LOCAL_DATABASE.md`. Produktplan unverändert im Repository.
+Abschließender vollständiger lokaler Lauf: **84 Tests bestanden, 0 Fehlschläge/Fehler/Skips**, zwölf aktuelle XML-Dateien ausgewertet (11:49:07–11:49:24 UTC). APK-Build und Lint erfolgreich nach 38 Sekunden bei vorbereiteten Abhängigkeiten, zehn Bibliotheks-Updatehinweise/keine Lint-Fehler. Schemaexporte 1/2 unverändert, Schema 3 exportiert und beide Migrationswege an echten Dateien geprüft. APK-Metadaten und v2-Signatur gültig. Keine Assertion entfernt/deaktiviert.
 
-## Prüfergebnisse und Freigabestatus
+Sechs Bedienprüfungen enthalten beide neuen Planungsfälle und vorhandene Buchungs-/Ernährungswege. Auf 320×640 dp/Schriftfaktor 1,3 Tages-/Wochen-/56-Tage-Bedarf sowie neue Version und Verwerfen geprüft; ursprünglicher Bestand/Historie bleiben erhalten. Geplante Zubereitung mit verknüpften späteren Portionen/unklarer Menge über die Formulare gespeichert. Ein dabei gefundener veralteter Speicherzustand im später geöffneten Versionsbereich ist korrigiert: aktuelle Zustandsreferenzen für Speichersperre/Vorgangs-ID. Den neuen Planungsansicht-Ausschnitt visuell geprüft, keine Geräte-/Emulatortests. Details: `TEST_REPORT_PLANNING.md`. Bedienung/Rechenregeln: `PLANNING.md`.
 
-Abschließender vollständiger lokaler Lauf: **69 Tests bestanden, 0 Fehlschläge, 0 Fehler, 0 Skips**, APK-Build und Lint erfolgreich nach 32 Sekunden bei vorbereiteten Abhängigkeiten. Die elf aktuellen JUnit-XML-Dateien wurden ausgewertet. Lint: zehn Bibliotheks-Updatehinweise, keine Fehler. Keine Assertion wurde deaktiviert. Datenbankschema 1 und 2 unverändert.
+**Vor Abschluss noch offen:** lokal geprüften App-Code auf Entwicklungsbranch und `main` sichern, frischen Actions-Lauf verfolgen und dessen Code-SHA, aktuelle XML-Zahlen und APK-Link ergänzen. Keine alten CI-Läufe als Nachweis für 0.5 verwenden.
 
-UI-Prüfungen: zusätzliche Nährstoffe über das Produktformular; Rezeptvorschau; tatsächliches Kochen ohne Ernährung und späterer Portionsverzehr mit 170 kcal/12 g Protein bei unveränderten Rohwaren; Teilsummen/unklare Mengen/Tagesbestätigung/Storno auf 320×640 dp mit Schriftfaktor 1,3. Die zwei zugehörigen Ernährungsansicht-Ausschnitte wurden visuell nachgeprüft. Kein Smartphone-/Emulatortest. Details: `TEST_REPORT_NUTRITION.md`.
+Wichtige Grenze: noch kein bestätigter Ausführungs-/Erfüllungsabgleich. Offene Planannahmen nach tatsächlicher Durchführung bewusst überarbeiten/verwerfen; Vergangenes wird nicht mit heutigem Bestand rückgerechnet. Geplante Portionen sind bedingt und ohne Sicherheitsfreigabe. Keine Packungs-, Preis-, Budget- oder Kapazitätsoptimierung. Nicht als vollständige Phase 4 oder produktionsreif bezeichnen.
 
-Geprüfter App-Code auf `development/nutrition-diary` und `main` gesichert: `4a79515ed46e14a7c13a386c4ba9404ca9bb6c4b`. Der frische [GitHub-Actions-Lauf 41045875849](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849) auf JDK 17 ist erfolgreich: Build-Job 9 Minuten 21 Sekunden, APK-Build, Schema-Abgleich, Lint und alle **69 Tests** bestanden. Die elf heruntergeladenen JUnit-XML-Dateien haben Zeitstempel innerhalb dieses Laufs und ergeben 0 Fehlschläge/Fehler/Skips. Lint: elf Warnungen (Bibliotheksversionen und `OldTargetApi`), keine Fehler. Die geprüfte Code-SHA stimmt mit dem Lauf überein; der folgende Abschlusscommit ergänzt nur Dokumentation.
+## Bisherige Ernährung und Buchungen
 
-[APK-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41045875849/artifacts/12972328210), Aufbewahrung ein Tag. Die heruntergeladene APK wurde geprüft: `de.ernaehrung.demo`, Version 0.4.0-nutrition/code 4, minSdk 26/targetSdk 35; APK-Signaturprüfung erfolgreich. Weiterhin Debug-/Testsignierung, keine stabile Release-Signierung. Bei abgelaufenem Artefakt den vorhandenen Workflow manuell erneut starten.
-
-Der erfolgreiche Workflow meldet Wartungshinweise zu den bisherigen Node-20-Actions und `setup-java` v4. Beim nächsten Workflow-Wartungsschritt aktuelle unterstützte Hauptversionen mit geprüften Commit-Pins verwenden.
+Der abgeschlossene Ernährungsmeilenstein 0.4 bleibt erhalten: konkrete Artikelversionen, tatsächliche Zutaten/Ausbeute, getrennte Nährstofflücken, Tagesbestätigung mit Snapshot und Statushistorie, alte Produkt-Retry-Fingerprints. Bedienung/Fachregeln in `NUTRITION.md`, Architektur in `LOCAL_DATABASE.md`. Historische Prüfberichte unten; kein alter Lauf ist ein Nachweis für 0.5.
 
 ## Migration und Wiederaufnahme
 
-Schema 1 unverändert erhalten. Schema 2 ergänzt `batches.parentBatchId`, `stock_movements.occurredOn`, `operation_reversals`, `recipe_output_products` und `productions`. `FoodMigrations.MIGRATION_1_2` ist im App-Builder registriert; keine destruktive Fallback-Migration. Der Dateitest befüllt alle 22 alten Tabellen, vergleicht alle bisherigen Spalten/Zeilen, prüft Fremdschlüssel, NULL gegenüber 0, alte Retry-Schlüssel, neue Vorgänge und Wiederöffnung. Ab Freigabe von Schema 2 sind Strukturänderungen Schema 3+ mit eigener Erhaltungsmigration.
+Schemaexporte 1 und 2 unverändert erhalten. Schema 2 ergänzt `batches.parentBatchId`, `stock_movements.occurredOn`, `operation_reversals`, `recipe_output_products` und `productions`. Schema 3 ergänzt `plan_series`, nullable historische Metadaten/Planidentitäten und `planned_entries.preparationEntryId`/`label`. Alte Pläne bekommen jeweils ihre eigene Identität; fehlende Titel/Gründe bleiben NULL. App registriert `MIGRATION_1_2` und `MIGRATION_2_3`, keine destruktive Fallback-Migration.
+
+Zwei Dateitests starten aus den veröffentlichten Schemaexporten 1 und 2. Alle 22 bzw. 25 alten Tabellen enthalten Daten; sämtliche bisherigen Spalten/Zeilen werden verglichen, Fremdschlüssel, NULL gegenüber 0, alte Retry-Schlüssel, neue Buchungen/Planversionen und Wiederöffnung geprüft. Nach Veröffentlichung von Schema 3 neue Strukturänderungen nur als Schema 4+ mit Erhaltungsmigration.
 
 Lokale Werkzeuge (außerhalb des Repositories): SDK `/workspace/tooling/android`, Gradle-Cache `/workspace/tooling/gradle`, Helper:
 
@@ -49,15 +48,17 @@ Der Helper verwendet den geerbten Proxy nur für Build-/Testprozesse und `-Ptest
 
 Die bestehende konservative Bestandsrückdatierungssperre kann bestandsgebundene Vergangenheitskorrekturen nach einem heutigen Storno verhindern. Der neue direkte Storno-/Neuerfassungsweg ist für solche mehrtägigen Ersatzbuchungen nicht vollständig. Kein falsches tatsächliches Datum empfehlen. Vor Produktivbetrieb eine atomare Korrektur mit erhaltener Tageszuordnung und nachvollziehbarer Bestandswirkung entwerfen/testen; vorhandene historische Referenzen nicht überschreiben. Ohne Lagerbezug bleiben vergangene Verzehre normal erfassbar. Erläuterung in `NUTRITION.md`.
 
-## Nächster Meilenstein: verknüpfte Planung und Bedarf
+## Nächste Entwicklungsschritte
 
-Auf Basis der bestehenden bestätigten Ereignisse zunächst die zeitbezogene Bestands-/Bedarfsrechnung entwickeln und mit konkreten Beispielen testen. Nutzbare Chargen von physischem Bestand trennen: Freigabe, Verbrauchsdatum, Zieltermin und konkurrierende Verwendung berücksichtigen. Keine automatische Sicherheitsfreigabe bei unbekannten Bedingungen.
+Als Erstes den ausdrücklich bestätigten Ausführungs-/Erfüllungsabgleich für Planung entwerfen: tatsächlichen Verzehr/Herstellung einer konkreten Planposition zuordnen, Abweichungen und Storno erhalten, keine neue Ist-Buchung durch bloße Zuordnung. Bereits ausgeführte Planannahmen dürfen nicht zusätzlich vom aktuellen Restbestand abgezogen werden. Keine implizite Zuordnung anhand ähnlicher Bezeichnung/Menge.
 
-Planarten unterscheiden: direkter Produktverzehr, Zubereitung und späterer Verzehr fertiger Portionen. Zutaten nicht bei jedem Portionsverzehr erneut als Bedarf zählen; Tages-/Wochen-/Langfristziele nicht additiv doppelt zählen. Pläne bleiben vollständig ohne Ist-Buchungen. Unbekannte Mengen, Packungsbasen, Preise/Budgets sichtbar lassen; Einkaufsrundung nur bei bestätigten Größen. Vor Tabellenänderungen auf Schema 3 mit Migration und Erhaltungstests gehen; Schema 2 nicht überschreiben.
+Darauf Fehlmengen in eine überprüfbare Einkaufsliste mit bestätigter nutzbarer Packungsbasis, versionsbezogenen Preisbeobachtungen und Budgetunsicherheit überführen. Einkaufsrundung nur bei bekannten Größen; abhaken ist kein Einkauf/Zugang. Konkurrierende Bedarfe, unbekannte Menge, Zutaten/Portionen und zeitliche Haltbarkeit weiterhin getrennt halten. Änderungen nach Veröffentlichung von Schema 3 brauchen Version 4+ und Erhaltungstests.
 
 Schrittweise die passenden bisherigen Fachansichten anschließen, ohne fiktive und tatsächliche Daten zu vermischen. Später: Beleg-/Ausgabenlogik und Erkennung, validierter JSON-Austausch, persönliche Zielhistorie/Körper/Training, sichere Backups/stabile Release-Signierung und ausdrücklich bestätigte Migration realer Daten. Vorbereitete Tabellen sind keine fertigen Module.
 
 ## Historie
+
+Ernährung 0.4.0: `TEST_REPORT_NUTRITION.md`, geprüfter App-Code `4a79515`, erfolgreicher CI-Lauf 41045875849 mit 69 Tests.
 
 Buchungen/Meal Prep 0.3.0: `TEST_REPORT_TRANSACTIONS.md`, Code `68c80ba`, erfolgreicher CI-Lauf 41039703367 mit 54 Tests.
 

@@ -1,10 +1,10 @@
-# Lokale Testdaten: Buchungen, Meal Prep und Ernährung (Schema 2)
+# Lokale Testdaten: Buchungen, Meal Prep, Ernährung und Planung (Schema 3)
 
 ## Einstieg und Grenzen
 
-In der App: **Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen**. Die Bereiche Katalog, Lager, Ernährung, Küche und Chronik umbrechen auf schmalen Displays, statt horizontal aus dem sichtbaren Bereich zu rutschen.
+In der App: **Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen**. Die Bereiche Katalog, Lager, Ernährung, Küche, Planung und Chronik umbrechen auf schmalen Displays, statt horizontal aus dem sichtbaren Bereich zu rutschen.
 
-Der Bereich startet bei Erstinstallation leer und speichert in `food-local-sandbox.db` im privaten App-Verzeichnis. Schema-1-Testdaten werden beim Update migriert. Die 33 bisherigen Demoansichten bleiben getrennte unveränderliche Beispiele. Keine persönlichen Sheets-Daten übernehmen; keine automatische Netzwerk-/KI-Verbindung.
+Der Bereich startet bei Erstinstallation leer und speichert in `food-local-sandbox.db` im privaten App-Verzeichnis. Schema-1-/Schema-2-Testdaten werden beim Update migriert. Planung, Versionshistorie, aktuelle Bedarfsrechnung und Grenzen des noch fehlenden Erfüllungsabgleichs: `PLANNING.md`. Die 33 bisherigen Demoansichten bleiben getrennte unveränderliche Beispiele. Keine persönlichen Sheets-Daten übernehmen; keine automatische Netzwerk-/KI-Verbindung.
 
 Ein App-Neustart erhält die Daten, eine Deinstallation löscht sie. Backups sind noch nicht implementiert. GitHub-APKs sind Debug-Builds, keine Store-Releases; Updates ohne Deinstallation benötigen auch eine übereinstimmende Android-Signatur. Stabile Release-Signierung folgt später. Keine App-Datenbanken oder privaten Signierschlüssel ins Repository aufnehmen.
 
@@ -44,12 +44,12 @@ Mengen sind `Long` in 1/1000 von g, ml oder Portion. kg/l werden exakt umgerechn
 
 ## Schema und Migration
 
-Room 2.7.2/KSP exportiert Schema 1 und 2 unter `app/schemas/`. Schema 1 bleibt unverändert. Schema 2 ergänzt zwei nullable Spalten (`batches.parentBatchId`, `stock_movements.occurredOn`) und drei Tabellen (`operation_reversals`, `recipe_output_products`, `productions`): insgesamt 25 Tabellen.
+Room 2.7.2/KSP exportiert Schema 1, 2 und 3 unter `app/schemas/`. Schema 1/2 bleiben unverändert. Schema 2 ergänzt zwei nullable Spalten (`batches.parentBatchId`, `stock_movements.occurredOn`) und drei Tabellen (`operation_reversals`, `recipe_output_products`, `productions`): insgesamt 25 Tabellen. Schema 3 ergänzt `plan_series`, historische Planmetadaten und Koch-/Portionsverknüpfungen: 26 Tabellen.
 
-`FoodMigrations.MIGRATION_1_2` ist im App-Builder registriert. Keine Löschung/Umdeutung alter Werte, keine destruktive Fallback-Migration. Der Migrationstest verwendet eine echte Datei nach dem veröffentlichten Schema 1, befüllt alle 22 alten Tabellen, vergleicht jede alte Spalte/Zeile, prüft Fremdschlüssel und alte Retry-Schlüssel, neue Buchungen und Wiederöffnung. Neue unbekannte Felder bleiben NULL. Nach Freigabe von Schema 2 benötigen Strukturänderungen Version 3+ mit Migration und Upgrade-Test.
+`MIGRATION_1_2` und `MIGRATION_2_3` sind im App-Builder registriert. Keine Löschung/Umdeutung alter Werte, keine destruktive Fallback-Migration. Zwei Dateitests starten nach veröffentlichtem Schema 1 bzw. 2, befüllen alle 22 bzw. 25 alten Tabellen, vergleichen jede alte Spalte/Zeile und prüfen Fremdschlüssel, alte Retry-Schlüssel, neue Buchungen/Planversionen und Wiederöffnung. Neue unbekannte Felder bleiben NULL. Nach Veröffentlichung von Schema 3 benötigen Strukturänderungen Version 4+ mit Migration und Upgrade-Test.
 
 ## Prüfungen und nächste Module
 
 Aktuelle Resultate: `TEST_REPORT_NUTRITION.md` und `DEVELOPMENT.md`; der vorherige Buchungsmeilenstein steht in `TEST_REPORT_TRANSACTIONS.md`. Room-/SQLite-Tests laufen unter Robolectric; keine Geräte-/Emulatortests. Die Produktion wird auch mit einem echten SQLite-Fehler nach Zutatenentnahmen geprüft, nicht nur mit abgewiesenen Eingaben. UI-Tests kontrollieren gespeicherte Bestände nach Kochen, Umlagern und Storno.
 
-Neu in Version 0.4 sind Rezeptvorschau, tatsächliche Portionsrechnung und lokale Tagesbilanz mit Datenlücken sowie Verzehr-/Tagesbestätigung: siehe `NUTRITION.md`. Noch offen: Anbindung der bisherigen Demo-Fachansichten, Profil-/Zielhistorie, Planung/Bedarf/Budget, Beleg-/Ausgabenlogik, automatische Aliasauflösung/Erkennung, JSON-Austausch, Körper/Training, Backups und ausdrücklich freizugebende produktive Migration. Vorbereitete Tabellen allein sind keine fertigen Module.
+Seit Version 0.4: Rezeptvorschau, tatsächliche Portionsrechnung und lokale Tagesbilanz mit Datenlücken sowie Verzehr-/Tagesbestätigung, siehe `NUTRITION.md`. Seit 0.5: erste gemeinsame Planversionen und Bedarfsrechnung, siehe `PLANNING.md`. Noch offen: bestätigter Plan-Erfüllungsabgleich, Preis-/Packungs-/Budgetlogik, Anbindung der bisherigen Demo-Fachansichten, Profil-/Zielhistorie, Beleg-/Ausgabenlogik, automatische Aliasauflösung/Erkennung, JSON-Austausch, Körper/Training, Backups und ausdrücklich freizugebende produktive Migration. Vorbereitete Tabellen allein sind keine fertigen Module.

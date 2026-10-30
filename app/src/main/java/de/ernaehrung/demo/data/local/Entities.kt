@@ -119,18 +119,26 @@ data class ConsumptionAllocationEntity(val consumptionId: String, val batchId: S
 @Entity(tableName = "diary_days")
 data class DiaryDayEntity(@PrimaryKey val date: String, val status: DayStatus, val confirmedAt: Long?)
 
-// Future modules have typed, separate records. There is deliberately no conversion of a plan to an event.
-@Entity(tableName = "plans")
+// A plan's identity is stable; each row in plans is an immutable complete version.
+@Entity(tableName = "plan_series")
+data class PlanSeriesEntity(@PrimaryKey val id: String, val createdAt: Long)
+
+@Entity(tableName = "plans", foreignKeys = [
+    ForeignKey(entity = PlanSeriesEntity::class, parentColumns = ["id"], childColumns = ["seriesId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["seriesId", "revision"], unique = true)])
 data class PlanEntity(@PrimaryKey val id: String, val revision: Int, val startsOn: String, val endsOn: String,
-    val status: EntryStatus, val source: Source, val recordedAt: Long)
+    val status: EntryStatus, val source: Source, val recordedAt: Long,
+    val seriesId: String? = null, val title: String? = null, val changeReason: String? = null)
 
 @Entity(tableName = "planned_entries", foreignKeys = [
     ForeignKey(entity = PlanEntity::class, parentColumns = ["id"], childColumns = ["planId"], onDelete = ForeignKey.RESTRICT),
     ForeignKey(entity = ProductVersionEntity::class, parentColumns = ["id"], childColumns = ["productVersionId"], onDelete = ForeignKey.RESTRICT),
-    ForeignKey(entity = RecipeVersionEntity::class, parentColumns = ["id"], childColumns = ["recipeVersionId"], onDelete = ForeignKey.RESTRICT)
-], indices = [Index("planId"), Index("productVersionId"), Index("recipeVersionId")])
+    ForeignKey(entity = RecipeVersionEntity::class, parentColumns = ["id"], childColumns = ["recipeVersionId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PlannedEntryEntity::class, parentColumns = ["id"], childColumns = ["preparationEntryId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("planId"), Index("productVersionId"), Index("recipeVersionId"), Index("preparationEntryId")])
 data class PlannedEntryEntity(@PrimaryKey val id: String, val planId: String, val date: String, val kind: PlanKind,
-    val productVersionId: String?, val recipeVersionId: String?, val amount: Long?, val unit: BaseUnit)
+    val productVersionId: String?, val recipeVersionId: String?, val amount: Long?, val unit: BaseUnit,
+    val preparationEntryId: String? = null, val label: String? = null)
 
 @Entity(tableName = "receipts")
 data class ReceiptEntity(@PrimaryKey val id: String, val merchant: String?, val purchasedOn: String?,
