@@ -20,7 +20,11 @@ Die vorhandene Android-Demo schrittweise nach `product/Gesamtplanung-2026-10-30.
 3. Persistenten, deutlich isolierten lokalen Testbereich in der bestehenden Navigation anbieten; keine stillschweigende Übernahme der bisherigen Fixtures.
 4. Beziehungen, Rollback, Idempotenz, Dateipersistenz und unveränderte Historie automatisiert testen; Schema exportieren, APK/Lint/Tests ausführen.
 
-Implementierungs- und Prüfergebnisse werden vor dem nächsten Meilenstein hier eingetragen. Die Punkte oben sind noch keine Fertigmeldung.
+Implementiert sind das Schema mit 22 Tabellen, die Transaktionsschicht für Produktversion/Lagerort/Zugang/Verzehr, der isolierte Testbereich auf M03 und fachliche Datenbank-/Mengen-/UI-Tests. Details und Bedienung: `LOCAL_DATABASE.md`.
+
+Prüfstatus des Zwischenstands: vollständiger lokaler APK-/Lint-/Testlauf läuft noch. Der erste Build verwendete während der Modellbearbeitung einen überholten KSP-Zwischenstand; der neue Lauf regeneriert das Schema. Noch keine Fertigmeldung und kein Geräte-/Emulatortest. Vor Freigabe das endgültige `app/schemas/.../1.json` einchecken und alle Resultate hier aktualisieren.
+
+Lokale Cloud-Werkzeuge (nicht Teil des App-Repositories): SDK in `/workspace/tooling/android`, Gradle-Cache in `/workspace/tooling/gradle`, Helper `python /workspace/tooling/run-gradle.py :app:assembleDebug :app:lintDebug :app:testDebugUnitTest`. Der Helper übergibt den geerbten Netzwerkproxy nur für den Buildprozess. SDK-Lizenz-/TLS-/Archivprüfung wurde nicht deaktiviert. Falls diese Dateien nach Wiederaufnahme fehlen, Android Studio oder den vorhandenen Actions-Workflow verwenden; keine Laufzeit-Zugangsdaten in Quellcode schreiben.
 
 ## Folgende Phasen
 

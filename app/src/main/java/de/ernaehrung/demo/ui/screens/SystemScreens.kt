@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,10 +20,10 @@ import de.ernaehrung.demo.ui.*
             Route("Körper & Training","Messungen, Bewegung und Entwicklung",Icons.Outlined.MonitorHeart,Screen.K01,ui)
             Route("Profil & Ziele","Fiktives Profil und Zielwerte",Icons.Outlined.PersonOutline,Screen.M01,ui)
             Route("Datenqualität","Offene Angaben und Quellen",Icons.Outlined.FactCheck,Screen.M02,ui,Amber)
-            Route("Daten & Sicherungen","Ausblick auf lokale Datenhaltung",Icons.Outlined.Storage,Screen.M03,ui)
+            Route("Lokale Testdaten & Sicherungen","Persistenter Katalog, Chargen und Buchungen",Icons.Outlined.Storage,Screen.M03,ui)
             Route("ChatGPT-Bereich","Simulierter Export und Planimport",Icons.Outlined.AutoAwesome,Screen.I01,ui,Purple)
             Fold("Demo-Rundgang · alle 33 Ansichten"){Screen.entries.filter{it!=Screen.MORE}.forEach{Go("${it.name} · ${it.title}",it,ui,true)}}
-            Hint("Ernährungsgedächtnis · UI-Demo 0.1.0\nAlle Personen, Produkte, Belege und Messungen sind fiktiv. Keine echte Buchung, keine Datenerfassung, keine Cloudverbindung.",Sage)
+            Hint("Ernährungsgedächtnis · Entwicklung 0.2.0\nDie bisherigen Ansichten zeigen fiktive Beispiele. Unter Lokale Testdaten können eigene Testprodukte und -buchungen dauerhaft auf diesem Gerät gespeichert werden. Keine Cloud- oder Sheets-Verbindung.",Sage)
         }
         Screen.M01->{var form by remember{mutableStateOf(false)}
             Heading("Profil & Ernährungsziele","Deine Richtung, mit flexiblen Leitplanken.")
@@ -39,11 +40,18 @@ import de.ernaehrung.demo.ui.*
             Fold("Versionschronik"){KV("DEMO-v1","Aktuelle feste Produktversion");KV("DEMO-v2","Korrekturvorschau · nicht gespeichert");Text("Eine neue Version darf historische Verzehre nicht verändern.",style=MaterialTheme.typography.bodyMedium)}
         }
         Screen.M03->{
-            Heading(screen.title,"Ausblick auf eine lokale, klare Datenbasis.")
-            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Später: lokal mit SQLite / Room");Text("Eine einzige schreibbare Datenquelle. Google Drive wäre ausschließlich Sicherung oder Export.",style=MaterialTheme.typography.bodyLarge);Badge("Noch nicht implementiert",Amber)}
-            Hint("Die Demo verwendet nur feste Beispieldaten im App-Code. Keine Datenbank und keine dauerhafte Speicherung.")
+            var local by rememberSaveable { mutableStateOf(false) }
+            if(local){
+                Action("Zurück zu Daten & Sicherungen",true){local=false}
+                LocalDataScreen()
+            }else{
+            Heading(screen.title,"Lokales Datenfundament · getrennt von der Demo")
+            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Jetzt: lokal mit Room / SQLite");Text("Ein leerer Testbereich für Produktversionen, Lagerorte, Chargen und nachvollziehbare Buchungen. Daten bleiben nach einem App-Neustart erhalten.",style=MaterialTheme.typography.bodyLarge);Badge("Testdaten · noch kein Produktivbetrieb",Amber)}
+            Action("Lokalen Testbereich öffnen"){local=true}
+            Hint("Die übrigen Fachansichten verwenden weiterhin feste Beispieldaten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Migration folgen später.")
             listOf("Backup erstellen","Daten exportieren","Sicherung wiederherstellen").forEach{label->Action(label,true){ui.demo("$label ist eine inaktive Vorschau. Keine Datei wird gelesen oder geschrieben; keine Sicherung wird verändert.")}}
-            Panel{KV("Demo-Version","0.1.0");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
+            Panel{KV("Entwicklungsversion","0.2.0");KV("Datenbankschema","1 · isolierter Testbereich");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
+            }
         }
         Screen.I01->{val options=listOf("Ernährungsprofil","Aktuelle Vorräte","Rezepte","Preisübersicht","Planungszeitraum","Körperwerte","Trainingsdaten")
             val checked=remember{mutableStateMapOf<String,Boolean>().apply{options.take(5).forEach{put(it,true)}}}

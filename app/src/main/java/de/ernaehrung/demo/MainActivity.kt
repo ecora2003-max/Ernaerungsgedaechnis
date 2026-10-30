@@ -47,7 +47,7 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
                 else Icon(Icons.Outlined.Spa,null,Modifier.padding(start=18.dp).size(24.dp),tint=Forest)},
             actions={Text(current.name,Modifier.padding(end=16.dp),style=MaterialTheme.typography.labelSmall,color=Muted)},colors=TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor=Warm))
         Row(Modifier.fillMaxWidth().background(Sage).padding(horizontal=16.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
-            Icon(Icons.Outlined.Science,null,Modifier.size(14.dp),tint=Forest);Text("UI-Demo · fiktive Daten · ohne Speicherung",fontSize=11.sp,color=Forest)
+            Icon(Icons.Outlined.Science,null,Modifier.size(14.dp),tint=Forest);Text("Entwicklung · Demoansichten + lokale Testdaten",fontSize=11.sp,color=Forest)
         }
     }},bottomBar={Surface(color=Color.White){Row(Modifier.fillMaxWidth().navigationBarsPadding(),verticalAlignment=Alignment.CenterVertically){
         MainTab.entries.forEach{tab->val selected=current.tab==tab
