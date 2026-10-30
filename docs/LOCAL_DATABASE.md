@@ -1,8 +1,8 @@
-# Lokale Testdaten: Buchungen und Meal Prep (Schema 2)
+# Lokale Testdaten: Buchungen, Meal Prep und Ernährung (Schema 2)
 
 ## Einstieg und Grenzen
 
-In der App: **Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen**. Die Bereiche Katalog, Lager, Küche und Chronik umbrechen auf schmalen Displays, statt horizontal aus dem sichtbaren Bereich zu rutschen.
+In der App: **Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen**. Die Bereiche Katalog, Lager, Ernährung, Küche und Chronik umbrechen auf schmalen Displays, statt horizontal aus dem sichtbaren Bereich zu rutschen.
 
 Der Bereich startet bei Erstinstallation leer und speichert in `food-local-sandbox.db` im privaten App-Verzeichnis. Schema-1-Testdaten werden beim Update migriert. Die 33 bisherigen Demoansichten bleiben getrennte unveränderliche Beispiele. Keine persönlichen Sheets-Daten übernehmen; keine automatische Netzwerk-/KI-Verbindung.
 
@@ -17,7 +17,7 @@ Ein App-Neustart erhält die Daten, eine Deinstallation löscht sie. Backups sin
 5. **Küche:** Rezept mit konkreten Artikelversionen, Mengen für den gesamten Ansatz, Soll-Ausbeute, Schritten und Änderungsgrund speichern. Leere Rezeptmengen bleiben ungeklärt. Rezeptanlage bucht weder Vorräte noch Ernährung.
 6. **Tatsächliche Herstellung:** Rezeptversion, wirklich verwendete Chargen und genaue Mengen sowie tatsächliche Portionszahl angeben. Mehrere Chargen derselben Zutat sind möglich. Andere Artikelversionen erfordern eine neue Rezeptversion; andere Mengen/Ausbeuten gegebenenfalls eine Abweichungsnotiz.
 7. Die erste Herstellungsoberfläche unterstützt nur Ansätze mit ausdrücklich geprüften Lagerbedingungen, Behältern und verfügbarem Platz samt Notiz. Das ist eine manuelle Aussage, keine automatische Kapazitäts-/Kühlkettenprüfung. Ohne separate Freigabe bleiben Fertigportionen ungeklärt. Haltbarkeitsfristen werden nicht erfunden.
-8. Bestätigte Herstellung entnimmt Zutaten und erzeugt atomar eine neue Portionscharge. **Kochen ist kein Essen.** Später unter Lager aus der Fertigportionencharge essen; dadurch werden die Rohwaren nicht erneut entnommen. Portionsnährwerte bleiben vorerst unbekannt.
+8. Bestätigte Herstellung entnimmt Zutaten und erzeugt atomar eine neue Portionscharge. **Kochen ist kein Essen.** Später unter Lager aus der Fertigportionencharge essen; dadurch werden die Rohwaren nicht erneut entnommen. Portionsnährwerte werden in Version 0.4 für die Tagesbilanz aus dem tatsächlichen Ansatz berechnet; unvollständige Zutatenwerte bleiben als Lücken sichtbar.
 9. **Chronik:** Letzte 30 Bewegungen ansehen oder einen der letzten 30 Buchungsvorgänge stornieren. Die Vorschau enthält alle Gegenbewegungen des Vorgangs, auch wenn sie nicht vollständig in den letzten 30 Bewegungen stehen. Vollständiges Storno mit Datum/Grund bestätigen.
 
 ## Fachliche und technische Regeln
@@ -36,7 +36,7 @@ Bei Zugängen, Umlagerungen und Produktionen zuerst aktive abhängige Buchungen 
 
 Neue Bewegungen dürfen nicht vor bekannten späteren Chargenereignissen liegen. Bei alten Schema-1-Verzehren berücksichtigt die Sperre deren vorhandenes Verzehrdatum, obwohl das neue Bewegungsdatumsfeld NULL bleibt. Diese konservative Regel verhindert rückwirkend unmögliche Chroniken; spätere Korrekturen begründet zum aktuellen Datum buchen.
 
-Eine Produktion verbindet Zutatenabgänge und Fertigportionenzugang über eine Vorgangs-ID. Fehler rollen alle Teile zurück. Ein stabiles Ausgabeprodukt pro Rezeptidentität erhält pro Ansatz eine neue Produktversion und Charge. Rezept, tatsächliche Artikelversionen, Mengen und Ausbeute bleiben nachvollziehbar. Portionsnährwerte werden noch nicht berechnet.
+Eine Produktion verbindet Zutatenabgänge und Fertigportionenzugang über eine Vorgangs-ID. Fehler rollen alle Teile zurück. Ein stabiles Ausgabeprodukt pro Rezeptidentität erhält pro Ansatz eine neue Produktversion und Charge. Rezept, tatsächliche Artikelversionen, Mengen und Ausbeute bleiben nachvollziehbar. Portionsnährwerte werden in Version 0.4 aus diesen unveränderlichen Ist-Daten abgeleitet, nicht als zweite Summenwahrheit gespeichert.
 
 Mengen sind `Long` in 1/1000 von g, ml oder Portion. kg/l werden exakt umgerechnet; Stück/Packung benötigen eine bestätigte Basis. Keine implizite Masse-/Volumenumrechnung. Unbekannter Verzehr ohne Lagerbezug ist im Service möglich, hat noch keine entsprechende Maske.
 
@@ -50,6 +50,6 @@ Room 2.7.2/KSP exportiert Schema 1 und 2 unter `app/schemas/`. Schema 1 bleibt u
 
 ## Prüfungen und nächste Module
 
-Aktuelle Resultate: `TEST_REPORT_TRANSACTIONS.md` und `DEVELOPMENT.md`. Room-/SQLite-Tests laufen unter Robolectric; keine Geräte-/Emulatortests. Die Produktion wird auch mit einem echten SQLite-Fehler nach Zutatenentnahmen geprüft, nicht nur mit abgewiesenen Eingaben. UI-Tests kontrollieren gespeicherte Bestände nach Kochen, Umlagern und Storno.
+Aktuelle Resultate: `TEST_REPORT_NUTRITION.md` und `DEVELOPMENT.md`; der vorherige Buchungsmeilenstein steht in `TEST_REPORT_TRANSACTIONS.md`. Room-/SQLite-Tests laufen unter Robolectric; keine Geräte-/Emulatortests. Die Produktion wird auch mit einem echten SQLite-Fehler nach Zutatenentnahmen geprüft, nicht nur mit abgewiesenen Eingaben. UI-Tests kontrollieren gespeicherte Bestände nach Kochen, Umlagern und Storno.
 
-Noch offen: Rezept-/Portionsnährwerte und lokale Tagesbilanz, Anbindung der bisherigen Demo-Fachansichten, Profil-/Zielhistorie, Planung/Bedarf/Budget, Beleg-/Ausgabenlogik, automatische Aliasauflösung/Erkennung, JSON-Austausch, Körper/Training, Backups und ausdrücklich freizugebende produktive Migration. Vorbereitete Tabellen allein sind keine fertigen Module.
+Neu in Version 0.4 sind Rezeptvorschau, tatsächliche Portionsrechnung und lokale Tagesbilanz mit Datenlücken sowie Verzehr-/Tagesbestätigung: siehe `NUTRITION.md`. Noch offen: Anbindung der bisherigen Demo-Fachansichten, Profil-/Zielhistorie, Planung/Bedarf/Budget, Beleg-/Ausgabenlogik, automatische Aliasauflösung/Erkennung, JSON-Austausch, Körper/Training, Backups und ausdrücklich freizugebende produktive Migration. Vorbereitete Tabellen allein sind keine fertigen Module.

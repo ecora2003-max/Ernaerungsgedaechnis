@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.room.Room
@@ -53,6 +56,10 @@ class LocalDataScreenTest {
         rule.waitUntil(15_000) { rule.onAllNodesWithText("0 gespeicherte Produkte · unabhängig vom Bestand").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Produkt speichern / neue Version").performClick()
         rule.onNodeWithText("Produktname · lokal").performScrollTo().performTextInput("Testtofu")
+        rule.onNodeWithText("Protein in g · optional").performScrollTo().performTextInput("13,5")
+        rule.onNodeWithText("Fett in g · optional").performScrollTo().performTextInput("0")
+        tap("Weitere Produktnährstoffe")
+        rule.onNodeWithText("Calcium in mg · optional").performScrollTo().performTextInput("120")
         rule.onNodeWithText("Änderungsgrund").performScrollTo().performTextInput("Erster Test")
         rule.onNodeWithTag("Produkt lokal speichern").performScrollTo().performClick()
         rule.waitUntil(15_000) {
@@ -66,6 +73,9 @@ class LocalDataScreenTest {
             val rows = database.foodDao().observeCatalog().first()
             assertEquals("Testtofu", rows.single().version.name)
             assertEquals(null, rows.single().version.energyKcal)
+            assertEquals(13.5, rows.single().version.proteinGrams!!, 0.0)
+            assertEquals(0.0, rows.single().version.fatGrams!!, 0.0)
+            assertEquals(120.0, rows.single().version.calciumMg!!, 0.0)
             assertEquals(0L, rows.single().stockAmount)
             assertEquals(1, database.foodDao().operationCount())
         }
@@ -73,14 +83,16 @@ class LocalDataScreenTest {
         rule.onNodeWithTag("Produkt lokal speichern").performScrollTo().assertIsEnabled()
     }
 
-    private fun mount(database: FoodDatabase): LocalDataViewModel {
+    private fun mount(database: FoodDatabase, fontScale: Float = 1f): LocalDataViewModel {
         db = database
         val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(database) { 1_800_000_000_000L }) as T
         })[LocalDataViewModel::class.java]
         rule.runOnUiThread { rule.activity.setContent {
-            DemoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { LocalDataContent(model) } }
+            DemoTheme { CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
+                Column(Modifier.verticalScroll(rememberScrollState())) { LocalDataContent(model) }
+            } }
         } }
         rule.waitUntil(15_000) { rule.waitForIdle(); model.state.value.loading.not() }
         return model
@@ -136,18 +148,23 @@ class LocalDataScreenTest {
         capture("local-storno-small")
     }
 
-    @Test fun actualCookingFormPersistsIngredientOutflowAndSixPortionsWithoutEating() {
+    @Test fun actualCookingAndLaterEatingThroughUiCountPortionsOnlyOnce() {
         val database = database(); db = database
         val ids = runBlocking {
             val store = FoodStore(database)
-            val version = store.rememberProduct("p", ProductInput("Testlinsen"))
+            val version = store.rememberProduct("p", ProductInput("Testlinsen", energyKcal = 340.0, proteinGrams = 24.0))
             val location = store.addLocation("loc", "Kühlschrank", true)
             val batch = store.receive("buy", BatchInput(version, location, 300_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
             val recipe = store.saveRecipe("recipe", RecipeInput("Linsentopf", 6000, listOf(RecipeItemInput(version, 300_000)), "Garen"))
             Triple(recipe, batch, location)
         }
         val model = mount(database)
-        tap("Küche"); tap("Tatsächliche Herstellung buchen")
+        tap("Küche")
+        tap("Nährwerte pro Rezeptportion · Vorschau")
+        rule.waitUntil(15_000) { rule.onAllNodesWithTag("recipe_${ids.first}_ENERGY").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("recipe_${ids.first}_ENERGY").assertTextContains("170 kcal", substring = true)
+        tap("Nährwerte pro Rezeptportion · Vorschau")
+        tap("Tatsächliche Herstellung buchen")
         choose("Rezept für Herstellung", ids.first); choose("Zutatencharge 1", ids.second)
         field("Tatsächliche Zutatmenge 1 in g", "300"); field("Tatsächlich hergestellte Portionen", "6")
         field("Herstellungsdatum JJJJ-MM-TT", "2026-10-30"); choose("Fertigportionen lagern in", ids.third)
@@ -164,6 +181,59 @@ class LocalDataScreenTest {
         }
         rule.onNodeWithTag("Herstellung buchen").assertIsNotEnabled()
         capture("local-production")
+        val output = runBlocking { database.foodDao().observeOperations().first().single { it.operation.kind == "PRODUCTION" }.operation.resultId }
+        tap("Neuen Vorgang beginnen"); tap("Ernährung")
+        field("Tag JJJJ-MM-TT", "2026-10-30"); tap("Tag anzeigen"); waitDay(model, 0)
+        rule.onNodeWithTag("active_meal_count").assertTextContains("0 aktive Verzehre")
+        tap("Tatsächlichen Verzehr erfassen"); tap("Aus Charge"); choose("Verzehrcharge", output)
+        field("Mahlzeit / Beschreibung", "Mittag"); field("Gegessene Menge in Portion", "1")
+        tap("Tatsächlich gegessen · lokal speichern"); tap("Verzehr lokal buchen"); saved(model); waitDay(model, 1)
+        rule.onNodeWithTag("day_ENERGY").assertTextContains("170 kcal", substring = true)
+        runBlocking {
+            assertEquals(0L, database.foodDao().balance(ids.second)); assertEquals(5000L, database.foodDao().balance(output))
+            assertEquals(1, database.foodDao().activeConsumptionCount())
+        }
+        capture("local-nutrition-portions")
+    }
+
+    private fun waitDay(model: LocalDataViewModel, count: Int) = rule.waitUntil(15_000) {
+        rule.waitForIdle(); model.daily.value.report?.let { it.date == "2026-10-30" && it.meals.size == count } == true
+    }
+
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun diaryShowsPartialSumsConfirmsRecordingAndStornoKeepsUnknownsAtLargeText() {
+        val database = database(); db = database
+        val version = runBlocking { FoodStore(database).rememberProduct("p", ProductInput("Testtofu", energyKcal = 125.0, proteinGrams = 13.0)) }
+        val model = mount(database, fontScale = 1.3f)
+        tap("Ernährung"); field("Tag JJJJ-MM-TT", "2026-10-30"); tap("Tag anzeigen"); waitDay(model, 0)
+        tap("Tatsächlichen Verzehr erfassen"); choose("Verzehr-Artikelversion", version)
+        field("Mahlzeit / Beschreibung", "Mittag"); field("Gegessene Menge in g", "50")
+        tap("Tatsächlich gegessen · lokal speichern"); tap("Verzehr lokal buchen"); saved(model); waitDay(model, 1)
+        rule.onNodeWithTag("day_ENERGY").assertTextContains("62,5 kcal", substring = true)
+        val firstMeal = model.daily.value.report!!.meals.single().event.id
+        tap("Neuen Vorgang beginnen")
+        field("Mahlzeit / Beschreibung", "Unterwegs"); field("Gegessene Menge in g", "")
+        tap("Tatsächlich gegessen · lokal speichern"); tap("Verzehr lokal buchen"); saved(model); waitDay(model, 2)
+        rule.onNodeWithTag("day_ENERGY").assertTextContains("Teilsumme: 62,5 kcal", substring = true)
+        tap("Neuen Vorgang beginnen"); tap("Erfassung als vollständig bestätigen")
+        rule.onNodeWithTag("confirm_day_status").assertIsNotEnabled()
+        tap("Alle Mahlzeiten dieses Tages sind erfasst")
+        rule.onNodeWithTag("confirm_day_status").performClick(); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.daily.value.report?.status == DayStatus.COMPLETE }
+        rule.onNodeWithTag("day_status").assertTextEquals("Erfassung vollständig bestätigt")
+        rule.onNodeWithTag("day_ENERGY").assertTextContains("Teilsumme: 62,5 kcal", substring = true)
+        tap("Neuen Vorgang beginnen")
+        rule.onNodeWithTag("storno_meal_$firstMeal").performScrollTo().performClick()
+        field("Stornodatum JJJJ-MM-TT", "2026-10-30"); field("Stornogrund", "Falscher Eintrag")
+        rule.onNodeWithTag("confirm_meal_storno").performClick(); saved(model); waitDay(model, 1)
+        rule.onNodeWithTag("day_ENERGY").assertTextContains("Unbekannt", substring = true)
+        rule.onNodeWithTag("day_status").assertTextEquals("Erfassung teilweise")
+        runBlocking {
+            assertTrue(database.foodDao().observeBatches().first().isEmpty())
+            assertEquals(2, database.foodDao().consumptionCount()); assertEquals(1, database.foodDao().activeConsumptionCount())
+        }
+        rule.onNodeWithTag("day_status").performScrollTo()
+        capture("local-nutrition-small-large-text")
     }
 
     private fun capture(name: String) = rule.runOnUiThread {

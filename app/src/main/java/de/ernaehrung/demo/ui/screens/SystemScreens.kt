@@ -23,7 +23,7 @@ import de.ernaehrung.demo.ui.*
             Route("Lokale Testdaten & Sicherungen","Persistenter Katalog, Chargen und Buchungen",Icons.Outlined.Storage,Screen.M03,ui)
             Route("ChatGPT-Bereich","Simulierter Export und Planimport",Icons.Outlined.AutoAwesome,Screen.I01,ui,Purple)
             Fold("Demo-Rundgang · alle 33 Ansichten"){Screen.entries.filter{it!=Screen.MORE}.forEach{Go("${it.name} · ${it.title}",it,ui,true)}}
-            Hint("Ernährungsgedächtnis · Entwicklung 0.3.0\nDie bisherigen Ansichten zeigen fiktive Beispiele. Unter Lokale Testdaten können eigene Testprodukte und -buchungen dauerhaft auf diesem Gerät gespeichert werden. Keine Cloud- oder Sheets-Verbindung.",Sage)
+            Hint("Ernährungsgedächtnis · Entwicklung 0.4.0\nDie bisherigen Ansichten zeigen fiktive Beispiele. Unter Lokale Testdaten können eigene Testprodukte und -buchungen dauerhaft auf diesem Gerät gespeichert werden. Keine Cloud- oder Sheets-Verbindung.",Sage)
         }
         Screen.M01->{var form by remember{mutableStateOf(false)}
             Heading("Profil & Ernährungsziele","Deine Richtung, mit flexiblen Leitplanken.")
@@ -46,11 +46,11 @@ import de.ernaehrung.demo.ui.*
                 LocalDataScreen()
             }else{
             Heading(screen.title,"Lokales Datenfundament · getrennt von der Demo")
-            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Jetzt: lokal mit Room / SQLite");Text("Lokaler Testbereich für Produktversionen, Chargen, Stornos, Rezepte und tatsächliches Kochen. Daten bleiben nach einem App-Neustart erhalten.",style=MaterialTheme.typography.bodyLarge);Badge("Testdaten · noch kein Produktivbetrieb",Amber)}
+            Panel(color=Sage){Icon(Icons.Outlined.Storage,null,Modifier.size(36.dp),tint=Forest);Section("Jetzt: lokal mit Room / SQLite");Text("Lokaler Testbereich für Produktversionen, Chargen, Stornos, Rezepte, tatsächliches Kochen und die Tagesernährung. Daten bleiben nach einem App-Neustart erhalten.",style=MaterialTheme.typography.bodyLarge);Badge("Testdaten · noch kein Produktivbetrieb",Amber)}
             Action("Lokalen Testbereich öffnen"){local=true}
             Hint("Die übrigen Fachansichten verwenden weiterhin feste Beispieldaten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Migration folgen später.")
             listOf("Backup erstellen","Daten exportieren","Sicherung wiederherstellen").forEach{label->Action(label,true){ui.demo("$label ist eine inaktive Vorschau. Keine Datei wird gelesen oder geschrieben; keine Sicherung wird verändert.")}}
-            Panel{KV("Entwicklungsversion","0.3.0");KV("Datenbankschema","2 · erhaltende Migration aus Schema 1");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
+            Panel{KV("Entwicklungsversion","0.4.0");KV("Datenbankschema","2 · erhaltende Migration aus Schema 1");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
             }
         }
         Screen.I01->{val options=listOf("Ernährungsprofil","Aktuelle Vorräte","Rezepte","Preisübersicht","Planungszeitraum","Körperwerte","Trainingsdaten")

@@ -90,6 +90,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
             if (state.batches.any { it.stockAmount > 0 }) ConsumptionEditor(state, blocked, operationId, model)
             StockEventEditor(state, blocked, operationId, model)
         }
+        "Ernährung" -> NutritionScreen(state, blocked, operationId, model)
         "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
@@ -106,13 +107,17 @@ fun LocalDataContent(model: LocalDataViewModel) {
     }
 }
 
+@Composable
+private fun LocalSections(selected: String, onSelect: (String) -> Unit) =
+    WrappingChoices(listOf("Katalog", "Lager", "Ernährung", "Küche", "Chronik"), selected, "local_section_", onSelect)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LocalSections(selected: String, onSelect: (String) -> Unit) {
+internal fun WrappingChoices(options: List<String>, selected: String, tagPrefix: String, onSelect: (String) -> Unit) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("Katalog", "Lager", "Küche", "Chronik").forEach { section ->
+        options.forEach { section ->
             FilterChip(selected == section, { onSelect(section) }, label = { Text(section) },
-                modifier = Modifier.heightIn(min = 48.dp).testTag("local_section_$section"),
+                modifier = Modifier.heightIn(min = 48.dp).testTag("$tagPrefix$section"),
                 colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Forest, selectedLabelColor = Color.White))
         }
     }
@@ -124,8 +129,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
     var name by rememberSaveable { mutableStateOf("") }
     var brand by rememberSaveable { mutableStateOf("") }
     var unitName by rememberSaveable { mutableStateOf(BaseUnit.GRAM.name) }
-    var kcal by rememberSaveable { mutableStateOf("") }
-    var protein by rememberSaveable { mutableStateOf("") }
+    var nutrientTexts by rememberSaveable { mutableStateOf<List<String>>(Nutrient.entries.map { "" }) }
     var reason by rememberSaveable { mutableStateOf("") }
     Fold("Produkt speichern / neue Version") {
         Picker("Produkt", listOf("Neues Produkt") + state.catalog.map { it.version.name + " · " + it.version.productId },
@@ -133,7 +137,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
             val row = state.catalog.find { it.version.name + " · " + it.version.productId == choice }
             selected = row?.version?.productId.orEmpty(); name = row?.version?.name.orEmpty()
             brand = row?.version?.brand.orEmpty(); unitName = (row?.version?.baseUnit ?: BaseUnit.GRAM).name
-            kcal = row?.version?.energyKcal?.toString().orEmpty(); protein = row?.version?.proteinGrams?.toString().orEmpty()
+            nutrientTexts = Nutrient.entries.map { nutrient -> row?.version?.nutrient(nutrient)?.toString()?.replace('.', ',').orEmpty() }
             reason = ""
         }
         Field("Produktname · lokal", name, { name = it })
@@ -143,17 +147,30 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
         val previous = state.catalog.find { it.version.productId == selected }?.version
         val basis = previous?.nutritionBasis ?: if (unit == BaseUnit.PORTION) 1000L else 100_000L
         Text("Nährwerte je ${Amounts.format(basis)} ${unit.label}. Leer bedeutet unbekannt, 0 bedeutet bekannte Null.")
-        Field("Energie in kcal · optional", kcal, { kcal = it })
-        Field("Protein in g · optional", protein, { protein = it })
+        Nutrient.entries.take(5).forEach { nutrient ->
+            Field("${nutrient.label} in ${nutrient.unit} · optional", nutrientTexts[nutrient.ordinal], { text ->
+                nutrientTexts = nutrientTexts.toMutableList().apply { this[nutrient.ordinal] = text }
+            })
+        }
+        Fold("Weitere Produktnährstoffe") {
+            Nutrient.entries.drop(5).forEach { nutrient ->
+                Field("${nutrient.label} in ${nutrient.unit} · optional", nutrientTexts[nutrient.ordinal], { text ->
+                    nutrientTexts = nutrientTexts.toMutableList().apply { this[nutrient.ordinal] = text }
+                })
+            }
+        }
         Field("Änderungsgrund", reason, { reason = it })
         SaveButton("Produkt lokal speichern", busy) {
             // Capture this form before launching; edits during a save cannot change its request.
-            val productName = name; val productBrand = brand; val energy = kcal; val proteinText = protein
+            val productName = name; val productBrand = brand; val values = nutrientTexts.toList()
             val productId = selected.takeIf { it.isNotEmpty() }; val change = reason
-            model.save(operationId) { rememberProduct(operationId, ProductInput(productName, productBrand,
-                unit, packageAmount = previous?.packageAmount, nutritionBasis = basis,
-                energyKcal = optionalNutrient(energy), proteinGrams = optionalNutrient(proteinText),
-                fatGrams = previous?.fatGrams, carbsGrams = previous?.carbsGrams), productId, change) }
+            val base = previous?.let(ProductInput::from) ?: ProductInput(productName, unit = unit, nutritionBasis = basis)
+            model.save(operationId) {
+                val parsed = Nutrient.entries.associateWith { optionalNutrient(values[it.ordinal]) }
+                rememberProduct(operationId, base.copy(name = productName, brand = productBrand, source = Source.USER,
+                    quality = Quality.UNKNOWN, sourceDetail = previous?.let { "Manuelle Bearbeitung; vorige Version ${it.id}" })
+                    .withNutrients(parsed), productId, change)
+            }
         }
     }
 }

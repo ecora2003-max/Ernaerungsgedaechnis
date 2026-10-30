@@ -8,34 +8,26 @@ Die vorhandene Android-App schrittweise nach `product/Gesamtplanung-2026-10-30.t
 
 Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebenen Migration produktiv verbindlich. Keine neue Sheets-Datenbank, kein eigener Server, keine verpflichtende kostenpflichtige KI-API. GitHub speichert Code und Dokumentation, niemals persönliche App-Daten, Datenbankdateien oder Geheimnisse. Cloud-Umgebung nicht eigenständig veröffentlichen.
 
-## Aktueller Meilenstein: Buchungen und Meal Prep
+## Aktueller Meilenstein: Ernährung und berechnete Nährwerte
 
-**Neuer Meilenstein in Arbeit: Ernährung/Nährwerte (0.4).** Der Rechenkern und seine ersten 13 gezielten Tests wurden erfolgreich ausgeführt (`NutritionMathTest` 4 + `NutritionDatabaseTest` 9). Berechnung liest innerhalb einer Room-Transaktion unveränderliche Artikelversionen, tatsächliche Produktionsbewegungen und tatsächliche Ausbeute; keine Schemaänderung und kein zweiter gespeicherter Summenstand. Unbekannt/0/Teilsumme bleiben unterscheidbar pro Nährstoff. Verschachtelte/umgelagerte Fertigportionen, Stornos, Datenlücken und sichere Tagesbestätigungen mit Snapshotprüfung sind im Service implementiert. Oberflächenintegration und Gesamtprüfung stehen noch aus. Zusätzlich ergänzt, noch im nächsten Lauf zu prüfen: alter Produkt-Fingerprint und Auswertung migrierter v1-Nährwerte. Neues Produkt-API unterstützt zusätzliche Nährstoffe, behält alte Produkt-Retry-Hashes ohne diese Zusatzfelder bei. Dies ist noch keine Freigabe von 0.4; die unten dokumentierte Version 0.3 bleibt letzter vollständig geprüfter Hauptstand.
+Version **0.4.0-nutrition**, versionCode 4, weiterhin Datenbankschema **2** (25 Tabellen). Aktiver Entwicklungsbranch: `development/nutrition-diary`.
 
-Version **0.3.0-transactions**, versionCode 3, Datenbankschema **2** (25 Tabellen).
+- Rechnung pro konkreter Artikelversion und tatsächlicher Menge, getrennt nach g/ml/Portion. Alle bereits modellierten Makro-/Mikronährstoffe sind auswertbar und im Produktformular erfassbar. Alte Produkt-Retry-Fingerprints ohne Zusatznährstoffe bleiben kompatibel.
+- NULL ist unbekannt, eingegebene 0 bleibt bekannt. Bekannte Teilsummen und Lücken werden pro Nährstoff getrennt ausgewiesen; keine falschen Prozentabdeckungen. BigDecimal/DECIMAL128, Rundung nur für Anzeige.
+- Fertigportionen basieren auf tatsächlichen Zutatenbewegungen und tatsächlicher Ausbeute, auch nach Weiterverarbeitung/Umlagerung. Neue Produkt-/Rezeptversionen ändern historische Ansätze nicht. Rezeptvorschauen verwenden weiterhin eigene Soll-Mengen.
+- Reaktive lokale Tagesbilanz nur aus aktiven tatsächlichen Verzehren; Pläne, Zugänge, Entsorgung und bloßes Kochen zählen nicht. Verzehr ohne Lagerbezug und mit unbekannter Menge ist auch über die Oberfläche möglich.
+- Tageserfassung ausdrücklich bestätigen oder wieder öffnen; Lücken bleiben sichtbar. Snapshotprüfung schützt gegen veraltete Bestätigungen, Statushistorie gegen gleiche Uhrzeit/erneute Zustandsfolge. Neue Einträge/Stornos setzen TEILWEISE; alter Retry setzt einen geänderten Tag nicht erneut vollständig.
+- Bedienung im vorhandenen M03-Testbereich jetzt mit Ernährung, direktem Verzehrstorno und scrollbaren Bestätigungsdialogen. Die bisherigen 33 Fachansichten bleiben getrennte fiktive Beispiele. Keine persönlichen Zielwerte aus der Demo übernehmen.
 
-- Umlagerung mit neuer Zielcharge, Quellbezug, erhaltenen Datums-/Versionsangaben und zwei atomaren Bewegungen. Bestehende Freigabe am Ziel nur nach ausdrücklicher Prüfung beibehalten; gesperrte/ungeklärte Ware wird nicht freigegeben.
-- Entsorgung ohne Ernährungseintrag; begründete Istzählung als Differenzbewegung, auch bis Restbestand 0. Schutz gegen inzwischen veränderten Ausgangsbestand und gegen Wiederbelebung stornierter Chargen.
-- Vollständiges, einmaliges Storno mit verknüpften Gegenbewegungen. Originale bleiben erhalten. Abhängige Buchungen zuerst stornieren. Stornierter Verzehr zählt nicht zur aktiven Ernährung; Tagesstatus wird TEILWEISE.
-- Rezeptidentitäten/-versionen und tatsächliche Herstellung: alle Zutatenabgänge und der Fertigportionenzugang gemeinsam oder gar nicht. Kein Verzehr durch Kochen, kein erneuter Rohwarenabgang beim späteren Essen einer Portion. Andere Artikelversionen benötigen eine neue Rezeptversion; abweichende/ungeklärte Mengen oder Ausbeuten eine Begründung.
-- Manuell bestätigte Lagerbedingungen/Behälter/Platz samt Notiz sind in dieser ersten Herstellungsoberfläche erforderlich. Das ersetzt keine automatische Kühlketten-/Kapazitätsprüfung. Fertigportionen-Nährwerte bleiben bis zur korrekten Berechnung unbekannt.
-- Bedienung im vorhandenen M03-Testbereich: Katalog, Lager, Küche und Chronik. Bereichsauswahl umbrechend auf kleinen Displays; Stornovorschau enthält alle Gegenbewegungen des gewählten Vorgangs. Bisherige 33 Fachansichten bleiben unveränderliche Beispiele.
-
-Bedienung und Architektur: `LOCAL_DATABASE.md`. Produktplan bleibt unverändert im Repository.
+Bedienung/Fachregeln: `NUTRITION.md`; allgemeine Architektur: `LOCAL_DATABASE.md`. Produktplan unverändert im Repository.
 
 ## Prüfergebnisse und Freigabestatus
 
-Der vorherige Kontingent-Zwischenstand lag auf `development/stock-events`, Commit `6740d96` (53 Tests, ein offener UI-Test). Dieser Fehler ist behoben: horizontales Scrollen brachte den Chronik-Chip nicht in den vertikalen Ausschnitt. Eine umbrechende lokale Bereichsauswahl und eine zusätzliche Auswahl-Assertion lösen das Problem, ohne Bestands-/Stornoassertionen zu entfernen.
+Abschließender vollständiger lokaler Lauf: **69 Tests bestanden, 0 Fehlschläge, 0 Fehler, 0 Skips**, APK-Build und Lint erfolgreich nach 32 Sekunden bei vorbereiteten Abhängigkeiten. Die elf aktuellen JUnit-XML-Dateien wurden ausgewertet. Lint: zehn Bibliotheks-Updatehinweise, keine Fehler. Keine Assertion wurde deaktiviert. Datenbankschema 1 und 2 unverändert.
 
-Eine weitere Regression wurde vor der Korrektur nachgewiesen: die Rückdatierungssperre ignorierte bekannte Schema-1-Verzehrdaten. Nun berücksichtigt die Leseabfrage vorhandene Verzehrdaten per COALESCE; alte Bewegungsfelder bleiben NULL. Der Migrationstest prüft die gesperrte Rückdatierung ohne Teilbuchung.
+UI-Prüfungen: zusätzliche Nährstoffe über das Produktformular; Rezeptvorschau; tatsächliches Kochen ohne Ernährung und späterer Portionsverzehr mit 170 kcal/12 g Protein bei unveränderten Rohwaren; Teilsummen/unklare Mengen/Tagesbestätigung/Storno auf 320×640 dp mit Schriftfaktor 1,3. Die zwei zugehörigen Ernährungsansicht-Ausschnitte wurden visuell nachgeprüft. Kein Smartphone-/Emulatortest. Details: `TEST_REPORT_NUTRITION.md`.
 
-Vollständiger lokaler Lauf: **54 Tests bestanden, 0 Fehlschläge, 0 Fehler, 0 Skips**, APK-Build und Lint erfolgreich. Die aktuellen neun XML-Dateien wurden ausgewertet. Die vier Formularzustände in `KitchenEditor` sind als schreibgeschützte Listen typisiert (weiterhin nur Kopien ersetzen); der abschließende vollständige Lauf dieses Stands war nach 50 Sekunden erfolgreich. Lint meldet nur zehn Bibliotheks-Updatehinweise, keine Collection-State-Warnungen. Kein Smartphone-/Emulatortest. Detaillierter Prüfbericht: `TEST_REPORT_TRANSACTIONS.md`.
-
-**Meilenstein abgeschlossen und auf main gesichert.** Geprüfter Code-Commit: `68c80ba911517b0a90a974af2834f198d13d47c7` (auch auf `development/stock-events`). Frischer [GitHub-Actions-Lauf 41039703367](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367) auf JDK 17 erfolgreich nach 9 min 8 s: APK, Schema-Abgleich, Lint und **54 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Die neun heruntergeladenen aktuellen XML-Dateien wurden mit Code-SHA und Laufzeitstempeln abgeglichen. CI-Lint: 11 nicht fatale Hinweise, keine Fehler.
-
-[APK 0.3.0 herunterladen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367/artifacts/12970112194) (ein Tag verfügbar). ZIP entpacken, `app-debug.apk` verwenden. APK-Metadaten mit aapt geprüft: versionCode 3, minSdk 26, targetSdk 35. `apksigner verify` erfolgreich. Debug-/Testversion, noch kein Produktivbetrieb und kein Gerätetest. Bei abgelaufenem Artefakt unter Actions → Android demo APK → Run workflow neu bauen.
-
-Der frühere Kontingent-Zwischenstand und der offene UI-Test sind damit erledigt. Nicht erneut implementieren oder alte fehlgeschlagene Läufe als aktuellen Status behandeln. Nächster sinnvoller Entwicklungsschritt ist die unten beschriebene Nährwertrechnung/Tagesbilanz.
+**Noch vor Abschluss:** lokal geprüften Stand auf Entwicklungsbranch und main sichern, frischen GitHub-Actions-Lauf prüfen und dessen Code-SHA, XML-Zahlen und APK-Link hier ergänzen. Bis dahin bleibt der frische CI-Nachweis offen. Nicht frühere Prüfberichte als neuen Nachweis ausgeben.
 
 ## Migration und Wiederaufnahme
 
@@ -49,15 +41,16 @@ python /workspace/tooling/run-gradle.py :app:assembleDebug :app:lintDebug :app:t
 
 Der Helper verwendet den geerbten Proxy nur für Build-/Testprozesse und `-PtestHome=/workspace/tooling/test-home`. TLS-/Checksum-Prüfungen bleiben aktiv. Falls diese Werkzeuge nach Wiederaufnahme fehlen, normale Android-Studio-/Gradle-Einrichtung oder vorhandenen Actions-Workflow verwenden. JDK 17+, SDK 35, Build Tools 34.0.0, Gradle 8.9/AGP 8.7.3/Kotlin 2.0.21/Room 2.7.2. Keine Zugangsdaten in Skripte übernehmen.
 
-## Nächster Meilenstein: Ernährung und berechnete Nährwerte
+## Nächster Meilenstein: verknüpfte Planung und Bedarf
 
-1. Nährwertrechnung pro tatsächlicher Menge und konkreter Artikelversion einführen; Masse/Volumen/Portion nicht vermischen. Unbekannte Werte nicht als 0 summieren, Teilabdeckung pro Nährstoff kenntlich machen.
-2. Produktionsportionen aus tatsächlich entnommenen Versionen/Mengen und tatsächlicher Ausbeute berechnen. Historische Ansätze nach späteren Produkt-/Rezeptänderungen nicht umdeuten. Umgelagerte Portionen behalten Herkunft; Rohwaren nicht doppelt zählen. Gegebenenfalls Schema 3 mit geprüftem Upgrade erforderlich.
-3. Aktive Verzehrhistorie und Tagesbilanz mit echten lokalen Daten anzeigen, Stornos herausrechnen und Vollständigkeit ausdrücklich bestätigen lassen. Restaurant-/unbekannte Mengen ohne fiktive Lagerentnahme unterstützen.
-4. Fachtests mit konkreten erwarteten Nährstoffmengen, Datenlücken, Stornos und Produktionsketten ausführen; erst dann die passenden bisherigen Demoansichten schrittweise anschließen.
+Auf Basis der bestehenden bestätigten Ereignisse zunächst die zeitbezogene Bestands-/Bedarfsrechnung entwickeln und mit konkreten Beispielen testen. Nutzbare Chargen von physischem Bestand trennen: Freigabe, Verbrauchsdatum, Zieltermin und konkurrierende Verwendung berücksichtigen. Keine automatische Sicherheitsfreigabe bei unbekannten Bedingungen.
 
-Weitere Phasen: Planung/Bedarf/Einkauf/Budget; Barcode/OCR/Produktrecherche; validierter JSON-Austausch; Profil-/Zielhistorie und Körper/Training; verschlüsselte Backups, stabile Release-Signierung und ausdrücklich bestätigte Migration realer Daten. Vorbereitete Tabellen sind keine fertig implementierten Module.
+Planarten unterscheiden: direkter Produktverzehr, Zubereitung und späterer Verzehr fertiger Portionen. Zutaten nicht bei jedem Portionsverzehr erneut als Bedarf zählen; Tages-/Wochen-/Langfristziele nicht additiv doppelt zählen. Pläne bleiben vollständig ohne Ist-Buchungen. Unbekannte Mengen, Packungsbasen, Preise/Budgets sichtbar lassen; Einkaufsrundung nur bei bestätigten Größen. Vor Tabellenänderungen auf Schema 3 mit Migration und Erhaltungstests gehen; Schema 2 nicht überschreiben.
+
+Schrittweise die passenden bisherigen Fachansichten anschließen, ohne fiktive und tatsächliche Daten zu vermischen. Später: Beleg-/Ausgabenlogik und Erkennung, validierter JSON-Austausch, persönliche Zielhistorie/Körper/Training, sichere Backups/stabile Release-Signierung und ausdrücklich bestätigte Migration realer Daten. Vorbereitete Tabellen sind keine fertigen Module.
 
 ## Historie
+
+Buchungen/Meal Prep 0.3.0: `TEST_REPORT_TRANSACTIONS.md`, Code `68c80ba`, erfolgreicher CI-Lauf 41039703367 mit 54 Tests.
 
 Erstes Datenfundament 0.2.0: `TEST_REPORT_FOUNDATION.md`, Code `39ea5ad`, erfolgreicher CI-Lauf 41032992779 mit 36 Tests. Die damaligen APK-Artefakte sind zeitlich begrenzt; der Workflow kann erneut ausgeführt werden. Für neue Versionen ausschließlich neue Prüfberichte als Freigabenachweis verwenden.

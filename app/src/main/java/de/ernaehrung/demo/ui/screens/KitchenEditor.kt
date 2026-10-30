@@ -8,11 +8,12 @@ import androidx.compose.ui.Modifier
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
 import java.time.LocalDate
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
     Heading("Rezepte & tatsächliche Herstellung", "Kochen ist kein Essen.")
-    Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Nährwerte der Portionen sind noch unbekannt.", Sage)
+    Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
     if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model)
     state.recipes.forEach { recipe -> Panel {
@@ -21,6 +22,14 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
             KV(item.productName, item.ingredient.amount?.let { "${Amounts.format(it)} ${item.ingredient.unit.label}" } ?: "Menge unbekannt")
         }
         if (recipe.steps.isNotBlank()) Text(recipe.steps)
+        Fold("Nährwerte pro Rezeptportion · Vorschau") {
+            val calculated by remember(model, recipe.id) { model.recipeNutrition(recipe.id) }.collectAsStateWithLifecycle()
+            calculated.error?.let { Hint(it) }
+            calculated.report?.let { nutrition ->
+                NutrientLines(nutrition, "recipe_${recipe.id}"); QualityNotes(nutrition)
+                Text("Soll-Rezept, keine tatsächliche Mahlzeit. Ein realer Ansatz kann andere Mengen und Ausbeuten haben.")
+            } ?: if (calculated.error == null) CircularProgressIndicator() else Unit
+        }
     } }
 }
 
@@ -114,7 +123,7 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
         Field("Abweichungen von Rezeptmengen oder Ausbeute · falls nötig", deviation, { deviation = it; confirmed = false })
         Field("Verbrauchsdatum der Portionen · optional", useBy, { useBy = it; confirmed = false })
         Check("Fertigportionen für diesen Test ausdrücklich freigeben", released) { released = it; confirmed = false }
-        Hint("Unbekannte Haltbarkeit wird nicht berechnet. Keine automatische Sicherheitsfreigabe. Nährwerte der Fertigportionen sind noch unbekannt.")
+        Hint("Unbekannte Haltbarkeit wird nicht berechnet. Keine automatische Sicherheitsfreigabe. Nährwerte entstehen aus den tatsächlich verwendeten Chargen; fehlende Werte bleiben offen.")
         Check("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen", confirmed) { confirmed = it }
         SaveButton("Herstellung buchen", blocked || selected.isEmpty()) {
             val recipeVersion = selected; val yield = portions; val day = date; val target = location

@@ -23,7 +23,7 @@ internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: Stri
     var confirmed by rememberSaveable { mutableStateOf(false) }
     var conditions by rememberSaveable { mutableStateOf(false) }
     Fold("Umlagern, entsorgen oder zählen") {
-        Choices(listOf("Umlagern", "Entsorgen", "Istzählung"), kind) { kind = it; confirmed = false }
+        WrappingChoices(listOf("Umlagern", "Entsorgen", "Istzählung"), kind, "stock_action_") { kind = it; confirmed = false }
         val batches = state.batches.filter { !it.originReversed }
         val batch = batches.find { it.batch.id == selected }
         IdPicker("Quellcharge", batches.map { it.batch.id to "${it.productName} · ${it.locationName} · ${Amounts.format(it.stockAmount)} ${it.unit.label} · ${it.batch.id.take(8)}" }, selected) {
