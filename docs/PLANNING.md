@@ -1,5 +1,7 @@
 # Lokale Planung und Bedarf (0.5)
 
+Ergänzung ab 0.6: bestätigte Ist-Zuordnung und Restbedarf mit dauerhaften Positionsidentitäten, siehe `PLAN_EXECUTION.md`. Die Beschreibung unten dokumentiert die Grundlagen aus 0.5. Dessen damalige Grenze des fehlenden Erfüllungsabgleichs ist durch den gesondert beschriebenen ausdrücklichen Zuordnungsweg erweitert; es gibt weiterhin keine automatische Ausführung oder Zuordnung.
+
 ## Bedienung
 
 Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen → **Planung**. Nur Testdaten. Die bisherigen Hauptansichten für Tages-/Wochen-/Monatsplanung bleiben fiktive Beispiele; dieser Bereich arbeitet mit Room.

@@ -329,6 +329,108 @@ class LocalDataScreenTest {
         }
     }
 
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun executionUiMapsPartialMealCarriesIdentityAfterConfirmedEditAndReleasesOnlyTheMapping() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val (entry, batch) = runBlocking {
+            val store = FoodStore(database) { clock }
+            val version = store.rememberProduct("p", ProductInput("Testtofu", energyKcal = 125.0))
+            val loc = store.addLocation("loc", "Vorrat", true)
+            val stock = store.receive("b", BatchInput(version, loc, 200_000, "2026-10-30", useBy = "2026-11-05", release = ReleaseStatus.RELEASED), true)
+            val plan = store.savePlan("plan", PlanInput("Testtag", "2026-10-30", "2026-11-05", listOf(PlanEntryInput("eat-plan",
+                "2026-10-30", PlanKind.DIRECT_CONSUMPTION, version, amount = 200_000, unit = BaseUnit.GRAM)), "Tagesplan"))
+            store.consume("eat", ConsumptionInput(version, "2026-10-30", "Mittag", 50_000, listOf(Allocation(stock, 50_000))), true)
+            database.foodDao().allPlannedEntries().single { it.planId == plan } to stock
+        }
+        val model = mount(database, 1.3f, clock)
+        tap("Planung"); rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report != null }
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-30"); tap("Planungszeitraum anzeigen")
+        tap("Ist-Ausführung zuordnen oder zurücknehmen"); choose("Planposition für Ist-Zuordnung", entry.id)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.entry?.id == entry.id }
+        choose("Bereits gebuchtes Ist-Ereignis", "eat")
+        field("Begründung der Ist-Zuordnung", "Erster Teil des Mittagessens")
+        tap("Abweichenden Termin oder Menge bewusst zuordnen"); tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        tap("Ist-Zuordnung speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.status?.remainingAmount == 150_000L }
+        rule.onNodeWithTag("execution_remaining").assertTextEquals("Noch offen: 150 g")
+        assertTrue(model.planning.value.report!!.shopping.isEmpty())
+        val assignment = model.execution.value.view!!.status.events.single().link.operationId
+        tap("Neuen Vorgang beginnen"); tap("Plan anlegen oder überarbeiten"); choose("Plan bearbeiten", entry.planId)
+        field("Menge Planposition 1 · g", "300")
+        field("Änderungsgrund des Plans", "Mehr geplant; tatsächlichen Teil behalten")
+        tap("Planversion lokal speichern")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.saveState.value.message != null }
+        assertTrue(model.saveState.value.message, !model.saveState.value.succeeded)
+        tap("Bestehende Ist-Zuordnungen bei Termin- oder Mengenänderung bewusst übernehmen")
+        tap("Planversion lokal speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.plans?.singleOrNull()?.version?.revision == 2 }
+        val current = model.planning.value.report!!.plans.single().entries.single()
+        assertEquals(entry.positionId, current.positionId)
+        rule.onNodeWithTag("remaining_${current.id}").assertTextEquals("Noch offen: 250 g")
+        rule.onNodeWithTag("remaining_${current.id}").performScrollTo(); capture("local-execution-partial-large-text")
+        tap("Neuen Vorgang beginnen"); tap("Ist-Ausführung zuordnen oder zurücknehmen")
+        choose("Planposition für Ist-Zuordnung", current.id)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.entry?.id == current.id }
+        field("Rücknahmegrund ${assignment.take(8)}", "Andere Planposition gemeint")
+        tap("Nur diese Zuordnung zurücknehmen ${assignment.take(8)}")
+        tap("Zuordnung zurücknehmen ${assignment.take(8)}"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.status?.remainingAmount == 300_000L }
+        runBlocking {
+            assertEquals(150_000L, database.foodDao().balance(batch)); assertEquals(1, database.foodDao().activeConsumptionCount())
+            assertEquals(2, database.foodDao().allPlanExecutions().size)
+            assertEquals(1, FoodStore(database).dayNutrition("2026-10-30").meals.size)
+        }
+    }
+
+    @Test fun executionUiLinksActualCookingThenItsPortionsAndNeverCreatesAnExtraMealOrBatch() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val (prep, plannedMeal, stockIds) = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("p", ProductInput("Testlinsen", energyKcal = 340.0))
+            val loc = store.addLocation("loc", "Kühlschrank", true)
+            val raw = store.receive("b", BatchInput(v, loc, 300_000, "2026-10-30", useBy = "2026-11-05", release = ReleaseStatus.RELEASED), true)
+            val recipe = store.saveRecipe("r", RecipeInput("Testtopf", 6000, listOf(RecipeItemInput(v, 300_000)), "Garen"))
+            val plan = store.savePlan("plan", PlanInput("Meal Prep", "2026-10-30", "2026-11-05", listOf(
+                PlanEntryInput("prep", "2026-10-30", PlanKind.PREPARATION, recipeVersionId = recipe, amount = 6000, unit = BaseUnit.PORTION),
+                PlanEntryInput("meal", "2026-10-31", PlanKind.PREPARED_PORTION, amount = 6000, unit = BaseUnit.PORTION, preparationKey = "prep")), "Planung"))
+            val out = store.produce("cook", ProductionInput(recipe, 4000, listOf(Allocation(raw, 200_000)), loc, "2026-10-30",
+                true, "Geeigneter Platz und Bedingungen", ReleaseStatus.RELEASED, useBy = "2026-11-05"), true)
+            store.consume("eat", ConsumptionInput(database.foodDao().batch(out)!!.versionId, "2026-10-30", "Mittag", 2000, listOf(Allocation(out, 2000))), true)
+            val items = database.foodDao().allPlannedEntries().filter { it.planId == plan }
+            Triple(items.single { it.kind == PlanKind.PREPARATION }, items.single { it.kind == PlanKind.PREPARED_PORTION }, raw to out)
+        }
+        val model = mount(database, now = clock)
+        tap("Planung"); rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report != null }
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-30"); tap("Planungszeitraum anzeigen")
+        tap("Ist-Ausführung zuordnen oder zurücknehmen"); choose("Planposition für Ist-Zuordnung", prep.id)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.entry?.id == prep.id }
+        choose("Bereits gebuchtes Ist-Ereignis", "cook")
+        field("Begründung der Ist-Zuordnung", "Vier von sechs Portionen gekocht")
+        tap("Abweichenden Termin oder Menge bewusst zuordnen"); tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        tap("Ist-Zuordnung speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.status?.remainingAmount == 2000L }
+        tap("Neuen Vorgang beginnen"); tap("Ist-Ausführung zuordnen oder zurücknehmen")
+        choose("Planposition für Ist-Zuordnung", plannedMeal.id)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.entry?.id == plannedMeal.id }
+        choose("Bereits gebuchtes Ist-Ereignis", "eat")
+        field("Begründung der Ist-Zuordnung", "Zwei Portionen schon heute gegessen")
+        tap("Abweichenden Termin oder Menge bewusst zuordnen"); tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        tap("Ist-Zuordnung speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report?.entries?.singleOrNull { it.entry.id == plannedMeal.id }?.execution?.remainingAmount == 4000L }
+        val report = model.planning.value.report!!
+        val meal = report.entries.single { it.entry.id == plannedMeal.id }
+        assertEquals(2000L, meal.actualPortionsCovered); assertEquals(2000L, meal.projectedPortions); assertEquals(0L, meal.missingPortions)
+        assertEquals(100_000L, report.entries.single { it.entry.id == prep.id }.demands.single().required)
+        assertTrue(report.shopping.isEmpty())
+        runBlocking {
+            assertEquals(100_000L, database.foodDao().balance(stockIds.first)); assertEquals(2000L, database.foodDao().balance(stockIds.second))
+            assertEquals(2, database.foodDao().planningBatches().size); assertEquals(1, database.foodDao().consumptionCount())
+            assertEquals(2, database.foodDao().allPlanExecutions().size)
+        }
+    }
+
     private fun capture(name: String) = rule.runOnUiThread {
         val view = rule.activity.window.decorView
         val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)

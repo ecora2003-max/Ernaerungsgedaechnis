@@ -15,9 +15,17 @@ data class SaveState(val busy: Boolean = false, val message: String? = null, val
 data class DayUiState(val date: String, val report: DayNutrition? = null, val error: String? = null)
 data class RecipeNutritionUiState(val report: NutritionResult? = null, val error: String? = null)
 data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
+data class ExecutionUiState(val view: PlanExecutionView? = null, val error: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalDataViewModel(private val store: FoodStore) : ViewModel() {
+    private val chosenExecutionEntry = MutableStateFlow("")
+    val selectedExecutionEntry = chosenExecutionEntry.asStateFlow()
+    val execution: StateFlow<ExecutionUiState> = chosenExecutionEntry.flatMapLatest { entry ->
+        if (entry.isBlank()) flowOf(ExecutionUiState()) else store.watchPlanExecution(entry).map { ExecutionUiState(it) }
+            .onStart { emit(ExecutionUiState()) }.catch { emit(ExecutionUiState(error = "Ist-Zuordnung konnte nicht gelesen werden: ${it.message}")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExecutionUiState())
+    fun showExecution(entryId: String) { chosenExecutionEntry.value = entryId }
     private val planRange = MutableStateFlow(java.time.LocalDate.now().let { it.toString() to it.plusDays(6).toString() })
     val planning: StateFlow<PlanningUiState> = planRange.flatMapLatest { (start, end) ->
         store.watchPlanning(start, end).map { PlanningUiState(it) }.onStart { emit(PlanningUiState()) }

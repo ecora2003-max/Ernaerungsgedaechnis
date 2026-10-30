@@ -27,6 +27,8 @@ internal interface FoodDao {
     @Insert suspend fun insertAllocation(value: ConsumptionAllocationEntity)
     @Upsert suspend fun saveDay(value: DiaryDayEntity)
     @Insert suspend fun insertPlanSeries(value: PlanSeriesEntity)
+    @Insert suspend fun insertPlanPosition(value: PlanPositionEntity)
+    @Insert suspend fun insertPlanExecution(value: PlanExecutionEntity)
     @Insert suspend fun insertPlan(value: PlanEntity)
     @Insert suspend fun insertPlannedEntry(value: PlannedEntryEntity)
     @Insert suspend fun insertRecipe(value: RecipeEntity)
@@ -40,6 +42,11 @@ internal interface FoodDao {
     @Query("SELECT * FROM planned_entries ORDER BY date, id") suspend fun allPlannedEntries(): List<PlannedEntryEntity>
     @Query("SELECT * FROM plans WHERE id = :id") suspend fun plan(id: String): PlanEntity?
     @Query("SELECT * FROM plans WHERE seriesId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestPlan(id: String): PlanEntity?
+    @Query("SELECT * FROM planned_entries WHERE id = :id") suspend fun plannedEntry(id: String): PlannedEntryEntity?
+    @Query("SELECT * FROM plan_executions ORDER BY actualOperationId, revision") suspend fun allPlanExecutions(): List<PlanExecutionEntity>
+    @Query("SELECT * FROM plan_executions WHERE actualOperationId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestExecution(id: String): PlanExecutionEntity?
+    @Query("SELECT * FROM plan_executions WHERE operationId = :id") suspend fun planExecution(id: String): PlanExecutionEntity?
+    @Query("SELECT * FROM operations WHERE kind IN ('CONSUMPTION','PRODUCTION') ORDER BY recordedAt DESC, id") suspend fun actualOperations(): List<OperationEntity>
 
     @Query("SELECT * FROM operation_reversals WHERE originalOperationId = :id") suspend fun reversal(id: String): OperationReversalEntity?
     @Query("SELECT * FROM recipe_versions WHERE id = :id") suspend fun recipeVersion(id: String): RecipeVersionEntity?
@@ -128,7 +135,8 @@ internal interface FoodDao {
     PlanEntity::class, PlannedEntryEntity::class, ReceiptEntity::class, ReceiptLineEntity::class,
     PriceObservationEntity::class, BudgetEntity::class, BodyMeasurementEntity::class,
     TrainingEventEntity::class, TrainingSetEntity::class, OperationReversalEntity::class,
-    RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class], version = 3, exportSchema = true)
+    RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
+    PlanPositionEntity::class, PlanExecutionEntity::class], version = 4, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -139,7 +147,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

@@ -11,8 +11,8 @@ android {
         applicationId="de.ernaehrung.demo"
         minSdk=26
         targetSdk=35
-        versionCode=5
-        versionName="0.5.0-planning"
+        versionCode=6
+        versionName="0.6.0-execution"
     }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget="17" }

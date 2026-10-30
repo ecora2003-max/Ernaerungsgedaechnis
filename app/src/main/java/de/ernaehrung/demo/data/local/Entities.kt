@@ -123,6 +123,11 @@ data class DiaryDayEntity(@PrimaryKey val date: String, val status: DayStatus, v
 @Entity(tableName = "plan_series")
 data class PlanSeriesEntity(@PrimaryKey val id: String, val createdAt: Long)
 
+@Entity(tableName = "plan_positions", foreignKeys = [
+    ForeignKey(entity = PlanSeriesEntity::class, parentColumns = ["id"], childColumns = ["seriesId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("seriesId")])
+data class PlanPositionEntity(@PrimaryKey val id: String, val seriesId: String?, val createdAt: Long)
+
 @Entity(tableName = "plans", foreignKeys = [
     ForeignKey(entity = PlanSeriesEntity::class, parentColumns = ["id"], childColumns = ["seriesId"], onDelete = ForeignKey.RESTRICT)
 ], indices = [Index(value = ["seriesId", "revision"], unique = true)])
@@ -134,11 +139,25 @@ data class PlanEntity(@PrimaryKey val id: String, val revision: Int, val startsO
     ForeignKey(entity = PlanEntity::class, parentColumns = ["id"], childColumns = ["planId"], onDelete = ForeignKey.RESTRICT),
     ForeignKey(entity = ProductVersionEntity::class, parentColumns = ["id"], childColumns = ["productVersionId"], onDelete = ForeignKey.RESTRICT),
     ForeignKey(entity = RecipeVersionEntity::class, parentColumns = ["id"], childColumns = ["recipeVersionId"], onDelete = ForeignKey.RESTRICT),
-    ForeignKey(entity = PlannedEntryEntity::class, parentColumns = ["id"], childColumns = ["preparationEntryId"], onDelete = ForeignKey.RESTRICT)
-], indices = [Index("planId"), Index("productVersionId"), Index("recipeVersionId"), Index("preparationEntryId")])
+    ForeignKey(entity = PlannedEntryEntity::class, parentColumns = ["id"], childColumns = ["preparationEntryId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PlanPositionEntity::class, parentColumns = ["id"], childColumns = ["positionId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("planId"), Index("productVersionId"), Index("recipeVersionId"), Index("preparationEntryId"),
+    Index(value = ["positionId", "id"], unique = true), Index(value = ["planId", "positionId"], unique = true)])
 data class PlannedEntryEntity(@PrimaryKey val id: String, val planId: String, val date: String, val kind: PlanKind,
     val productVersionId: String?, val recipeVersionId: String?, val amount: Long?, val unit: BaseUnit,
-    val preparationEntryId: String? = null, val label: String? = null)
+    val preparationEntryId: String? = null, val label: String? = null, val positionId: String? = null)
+
+/** Append-only claim/release chain per actual operation; only its latest revision can be effective. */
+@Entity(tableName = "plan_executions", foreignKeys = [
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["operationId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["actualOperationId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PlannedEntryEntity::class, parentColumns = ["positionId", "id"], childColumns = ["positionId", "entryId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = PlanExecutionEntity::class, parentColumns = ["operationId"], childColumns = ["previousId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["actualOperationId", "revision"], unique = true), Index(value = ["positionId", "entryId"]),
+    Index("entryId"), Index(value = ["previousId"], unique = true)])
+data class PlanExecutionEntity(@PrimaryKey val operationId: String, val actualOperationId: String,
+    val positionId: String, val entryId: String, val revision: Int, val assigned: Boolean,
+    val previousId: String?, val reason: String)
 
 @Entity(tableName = "receipts")
 data class ReceiptEntity(@PrimaryKey val id: String, val merchant: String?, val purchasedOn: String?,

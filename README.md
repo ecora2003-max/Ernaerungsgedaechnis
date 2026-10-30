@@ -2,13 +2,15 @@
 
 Native Android-Oberflächendemo mit Kotlin, Jetpack Compose und Material 3. Alle Daten sind fiktiv. Enthalten sind die 33 vorgesehenen Ansichten und eine zusätzliche Mehr-Übersicht.
 
-Version **0.5.0-planning** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produkte, Bestände, Rezepte, tatsächliches Kochen und Verzehr verwalten. Stornos ergänzen Gegenbuchungen, ohne Historie zu löschen.
+Version **0.6.0-execution** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produkte, Bestände, Rezepte, tatsächliches Kochen und Verzehr verwalten. Stornos ergänzen Gegenbuchungen, ohne Historie zu löschen.
 
-Neu unter **Planung**: gemeinsame Einträge für einen, sieben und 56 Tage, unveränderliche Planversionen, geplante Zubereitung und verknüpfte spätere Portionen. Die Bedarfsrechnung teilt freigegebene passende Chargen einmalig auf aktive Pläne auf, prüft erfasste Haltbarkeitsgrenzen zum Termin und zeigt Fehlmengen sowie offene Mengen. Geplante Portionen erzeugen keine physischen Bestände oder erneuten Zutatenbedarf. Bedienung und Grenzen: [docs/PLANNING.md](docs/PLANNING.md). Preis-/Packungs-/Budgetvorschläge und die Zuordnung tatsächlicher Ausführung zur Planerfüllung folgen später.
+Neu unter **Planung**: bereits gebuchten tatsächlichen Verzehr und Herstellung ausdrücklich einer Planposition zuordnen. Teilmengen reduzieren nur den noch offenen Bedarf, unbekannte Mengen bleiben ungeklärt. Zuordnungskorrektur und echtes Storno bleiben getrennt; keine zweite Ernährungs- oder Bestandsbuchung. Dauerhafte Positionsidentitäten erhalten Zuordnungen über neue Planfassungen, Termin-/Mengenänderungen mit Ist-Bezügen brauchen bewusste Übernahme. Bedienung und Grenzen: [docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md).
+
+Die gemeinsamen Einträge für einen, sieben und 56 Tage, Planversionen und Bedarfsrechnung aus 0.5 bleiben erhalten. Passende freigegebene Chargen werden einmalig angerechnet, geplante Portionen erzeugen keinen Bestand. Ausgeführte Herstellung und ihre wirklich vorhandenen Portionen werden jetzt mit dem Restplan abgeglichen. Planungsgrundlagen: [docs/PLANNING.md](docs/PLANNING.md). Preis-/Packungs-/Budgetvorschläge folgen später.
 
 Unter **Ernährung**: tatsächliche Verzehre mit oder ohne Lagerbezug, bekannte Nährwertsummen und ausdrücklich gekennzeichnete Datenlücken, Tagesbestätigung und Storno. Fertigportionen werden aus tatsächlichen Zutaten und Ausbeuten berechnet. Rezeptvorschauen bleiben von diesen Ist-Werten getrennt. Im Katalog sind auch weitere Nährstoffe manuell erfassbar; leer bleibt unbekannt, 0 bleibt eine bekannte Null.
 
-Schema 3 ergänzt Planidentitäten und Portionsverknüpfungen; bestehende Schema-1-/Schema-2-Testdaten werden ohne Löschung migriert. Die bisherigen 33 Fachansichten bleiben Demoansichten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
+Schema 4 ergänzt Positionsidentitäten und nachvollziehbare Ist-Zuordnungsketten; Testdaten aus Schema 1, 2 und 3 werden ohne Löschung migriert. Vorhandene kopierte alte Planzeilen werden nicht automatisch als dieselbe Absicht interpretiert und nicht automatisch ausgeführt. Die bisherigen 33 Fachansichten bleiben Demoansichten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
 
 Entwicklungsstand und Fortsetzung: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Bedienung, Datenmodell und Grenzen: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md). Der vollständige Produktplan liegt unter [docs/product/](docs/product/).
 
@@ -58,7 +60,7 @@ Vorgesehenes Repository: https://github.com/ecora2003-max/Ern-hrungsged-chtnis-
 
 Das Repository wurde vom Nutzer erstellt; Quellcode-Uploads und Actions-Builds sind eingerichtet. Der aktuelle Repositoryname ist `ecora2003-max/Ernaerungsgedaechnis`; der ursprüngliche Link wird von GitHub weitergeleitet.
 
-Der Workflow verwendet einen Standard-Linux-Runner, läuft unabhängig von der Sichtbarkeit und hat ein 20-Minuten-Zeitlimit. Private Builds verwenden das Actions-Kontingent des GitHub-Kontos. Artefakte werden einen Tag aufbewahrt; keine größeren Runner oder verpflichtenden externen Dienste. Unter Actions → Android demo APK → erfolgreicher Lauf → Artifacts liegt die Debug-APK als ZIP. APK-Erstellung und Lint-/Testresultate sind getrennte Schritte.
+Der Workflow verwendet einen Standard-Linux-Runner, läuft unabhängig von der Sichtbarkeit und hat ein 20-Minuten-Zeitlimit. Private Builds verwenden das Actions-Kontingent des GitHub-Kontos. Aktuelle Actions sind per Commit gepinnt; ein Gradle-Abhängigkeitscache ist eingerichtet, dessen erster Lauf den Cache aufwärmt. Artefakte werden einen Tag aufbewahrt; keine größeren Runner oder verpflichtenden externen Dienste. Unter Actions → Android demo APK → erfolgreicher Lauf → Artifacts liegt die Debug-APK als ZIP. APK-Erstellung und Lint-/Testresultate sind getrennte Schritte.
 
 GitHub ist ausschließlich die Entwicklungsablage. Es ist keine Ernährungsdatenbank. Google Sheets und persönliche Daten wurden für diese Demo nicht gelesen oder geändert.
 

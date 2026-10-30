@@ -50,7 +50,7 @@ import de.ernaehrung.demo.ui.*
             Action("Lokalen Testbereich öffnen"){local=true}
             Hint("Die übrigen Fachansichten verwenden weiterhin feste Beispieldaten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Migration folgen später.")
             listOf("Backup erstellen","Daten exportieren","Sicherung wiederherstellen").forEach{label->Action(label,true){ui.demo("$label ist eine inaktive Vorschau. Keine Datei wird gelesen oder geschrieben; keine Sicherung wird verändert.")}}
-            Panel{KV("Entwicklungsversion","0.5.0");KV("Datenbankschema","3 · erhaltende Migration aus Schema 1 und 2");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
+            Panel{KV("Entwicklungsversion","0.6.0");KV("Datenbankschema","4 · erhaltende Migration aus Schema 1, 2 und 3");KV("Netzverbindung / Anmeldung","Nicht erforderlich");KV("Produktive Daten","Nicht verbunden")}
             }
         }
         Screen.I01->{val options=listOf("Ernährungsprofil","Aktuelle Vorräte","Rezepte","Preisübersicht","Planungszeitraum","Körperwerte","Trainingsdaten")

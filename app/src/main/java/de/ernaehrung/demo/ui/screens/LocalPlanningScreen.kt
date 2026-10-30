@@ -33,8 +33,12 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
         return
     }
     Text("${report.startsOn} bis ${report.endsOn} · Bestandsstand ${report.asOf}")
-    Hint("Berechnet werden offene Planannahmen ab dem Bestandsstand. Vergangene Termine werden nicht mit heutigem Bestand rückgerechnet. Nach tatsächlicher Ausführung den Plan bewusst anpassen; eine automatische Erfüllungszuordnung folgt später.")
-    androidx.compose.runtime.key(operationId) { PlanEditor(state, report, blocked, operationId, model) }
+    Hint("Berechnet wird der noch offene Bedarf. Bereits gebuchten Verzehr oder Herstellung ausdrücklich dem Plan zuordnen. Das bucht nichts erneut. Vergangene offene Termine werden nicht mit heutigem Bestand rückgerechnet.")
+    val currentReport = rememberUpdatedState(report)
+    androidx.compose.runtime.key(operationId) {
+        PlanEditor(state, report, blocked, operationId, model)
+        PlanExecutionEditor(state, currentReport, currentBlocked, currentOperation, model)
+    }
     if (report.hasUnknownRequirements) Hint("Teilergebnis: Ungeklärte Mengen oder Bezüge in aktiven Plänen können weiteren Bedarf verursachen. Bekannte Fehlmengen sind keine vollständige Einkaufsliste.")
     Section("Fehlmengen im angezeigten Zeitraum", "Noch keine Packungs-, Preis- oder Budgetvorschläge")
     if (report.shopping.isEmpty()) Text("Keine bekannte Produktfehlmenge. Offene Daten und geplante Portionen gesondert prüfen.")
@@ -49,9 +53,15 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
     report.entries.forEach { result -> Panel {
         Section(result.entry.label ?: result.name, "${result.entry.date} · ${planKindLabel(result.entry.kind)}")
         Text("Geplant: ${result.entry.amount?.let(Amounts::format) ?: "Unbekannt"} ${result.entry.unit.label}")
+        result.execution?.let { execution ->
+            Text("Bestätigt ausgeführt: ${Amounts.format(execution.knownExecuted)} ${result.entry.unit.label}${if (execution.hasUnknownExecuted) " + ungeklärte Beiträge" else ""}", Modifier.testTag("executed_${result.entry.id}"))
+            Text("Noch offen: ${execution.remainingAmount?.let(Amounts::format) ?: "Ungeklärt"} ${result.entry.unit.label}", Modifier.testTag("remaining_${result.entry.id}"))
+        }
         if (result.entry.preparationEntryId != null) {
+            KV("Aus tatsächlich vorhandenen Portionen", "${Amounts.format(result.actualPortionsCovered)} Portion")
             KV("Aus verknüpftem Kochplan", result.projectedPortions?.let { "${Amounts.format(it)} geplante Portionen" } ?: "Ungeklärt")
             KV("Zusätzlich fehlende Portionen", result.missingPortions?.let(Amounts::format) ?: "Ungeklärt")
+            result.excludedPortions.forEach { Text("Nicht angerechnet: ${Amounts.format(it.amount)} Portion · ${it.reason.label}") }
         }
         result.demands.forEach { line ->
             Text(line.name, style = MaterialTheme.typography.titleSmall)
@@ -108,6 +118,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
     var end by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(6).toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
     var draft by remember { mutableStateOf<List<PlanEntryInput>>(emptyList()) }
+    var editedAmounts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var amount by rememberSaveable { mutableStateOf("") }
     var label by rememberSaveable { mutableStateOf("") }
@@ -115,6 +126,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
     var reference by rememberSaveable { mutableStateOf("") }
     var source by rememberSaveable { mutableStateOf("Vorhandener Artikel") }
     var error by remember { mutableStateOf<String?>(null) }
+    var carry by rememberSaveable { mutableStateOf(false) }
     Fold("Plan anlegen oder überarbeiten") {
         IdPicker("Plan bearbeiten", listOf("" to "Neuer Plan") + report.plans.map {
             it.version.id to "${it.version.title ?: "Übernommener Plan"} · v${it.version.revision} · ${it.version.status}"
@@ -123,7 +135,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
             previousId = id; title = record?.version?.title.orEmpty()
             start = record?.version?.startsOn ?: LocalDate.now().toString()
             end = record?.version?.endsOn ?: LocalDate.now().plusDays(6).toString()
-            reason = ""; draft = record?.entries?.map(PlanEntryInput::from).orEmpty(); error = null
+            reason = ""; draft = record?.entries?.map(PlanEntryInput::from).orEmpty(); error = null; carry = false; editedAmounts = emptyMap()
         }
         Field("Plantitel", title, { title = it })
         Field("Planbeginn JJJJ-MM-TT", start, { start = it })
@@ -132,7 +144,13 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
         draft.forEachIndexed { index, entry ->
             val name = entry.label ?: state.versions.find { it.id == entry.productVersionId }?.name ?:
                 state.recipes.find { it.id == entry.recipeVersionId }?.name ?: "Verknüpfte Portionen"
-            Text("${index + 1}. ${entry.date} · $name · ${entry.amount?.let(Amounts::format) ?: "Menge unbekannt"} ${entry.unit.label}")
+            val shownAmount = if (editedAmounts.containsKey(entry.key)) editedAmounts.getValue(entry.key).ifBlank { "Menge unbekannt" }
+                else entry.amount?.let(Amounts::format) ?: "Menge unbekannt"
+            Text("${index + 1}. ${entry.date} · $name · $shownAmount ${entry.unit.label}")
+            Field("Termin Planposition ${index + 1}", entry.date, { value -> draft = draft.toMutableList().apply { this[index] = entry.copy(date = value) }; carry = false })
+            Field("Menge Planposition ${index + 1} · ${entry.unit.label}", editedAmounts[entry.key] ?: entry.amount?.let(Amounts::format).orEmpty(), { value ->
+                editedAmounts = editedAmounts + (entry.key to value); carry = false
+            })
             SaveButton("Planeintrag ${index + 1} entfernen", blocked) {
                 draft = draft.filter { it.key != entry.key && it.preparationKey != entry.key }
             }
@@ -171,9 +189,13 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
         Text("Der Formularentwurf ist noch nicht gespeichert. Beim Verlassen dieses Bereichs kann er verloren gehen.")
         error?.let { Hint(it) }
         Field("Änderungsgrund des Plans", reason, { reason = it })
+        if (previousId.isNotEmpty()) Check("Bestehende Ist-Zuordnungen bei Termin- oder Mengenänderung bewusst übernehmen", carry) { carry = it }
         SaveButton("Planversion lokal speichern", blocked) {
-            val input = PlanInput(title, start, end, draft.toList(), reason); val previous = previousId.takeIf { it.isNotEmpty() }
-            model.save(operationId) { savePlan(operationId, input, previous) }
+            val name = title; val first = start; val last = end; val items = draft.toList(); val changes = editedAmounts.toMap()
+            val note = reason; val accepted = carry; val previous = previousId.takeIf { it.isNotEmpty() }
+            model.save(operationId) { savePlan(operationId, PlanInput(name, first, last, items.map {
+                if (changes.containsKey(it.key)) it.copy(amount = changes.getValue(it.key).takeIf(String::isNotBlank)?.let(Amounts::parse)) else it
+            }, note, accepted), previous) }
         }
     }
 }

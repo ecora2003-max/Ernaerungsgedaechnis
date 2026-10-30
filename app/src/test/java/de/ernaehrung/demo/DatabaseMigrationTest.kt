@@ -20,6 +20,7 @@ import java.util.UUID
 class DatabaseMigrationTest {
     @Test fun upgradeFromPublishedV1PreservesEveryOldRowAndRetryKeyThenSupportsNewEvents() = upgradeFromPublishedVersion(1)
     @Test fun upgradeFromPublishedV2PreservesAll25TablesAndIntroducesPlanVersioning() = upgradeFromPublishedVersion(2)
+    @Test fun upgradeFromPublishedV3Preserves26TablesWithoutGuessingPositionLineageOrExecutingPlans() = upgradeFromPublishedVersion(3)
 
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -52,19 +53,30 @@ class DatabaseMigrationTest {
                 val setup = schema.getJSONArray("setupQueries")
                 for (i in 0 until setup.length()) old.execSQL(setup.getString(i))
                 seedV1(old)
-                if (fromVersion == 2) seedV2(old)
+                if (fromVersion >= 2) seedV2(old)
+                if (fromVersion == 3) seedV3(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(if (fromVersion == 1) 22 else 25, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; else -> 26 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v3.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v4.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(3, sql.version)
+            assertEquals(4, sql.version)
             val dao = upgraded.foodDao()
+            assertTrue(dao.allPlanExecutions().isEmpty())
+            assertTrue(dao.allPlannedEntries().all { it.positionId == it.id })
+            if (fromVersion == 3) {
+                assertNotEquals(dao.plannedEntry("history-entry1")!!.positionId, dao.plannedEntry("history-entry2")!!.positionId)
+                val legacyInput = PlanInput("Altplan", "2026-10-31", "2026-11-06", listOf(PlanEntryInput("history-entry1",
+                    "2026-10-31", PlanKind.DIRECT_CONSUMPTION, "pv1", amount = 10_000, unit = BaseUnit.GRAM)), "Überarbeitet")
+                assertEquals("history-v2", FoodStore(upgraded).savePlan("legacy-plan", legacyInput, "history-v1"))
+                assertEquals("c8bfa1a548145f0a14c964a6bc9007851a36370fb5250275e76dd059c653da4b", dao.operation("legacy-plan")!!.fingerprint)
+                assertEquals(3, dao.allPlans().size)
+            }
             assertEquals(150_000L, dao.balance("batch")); assertNull(dao.batch("batch")!!.parentBatchId)
             assertNull(dao.movements("old-buy").single().occurredOn)
             assertNull(dao.version("pv1")!!.energyKcal); assertEquals(0.0, dao.version("pv2")!!.energyKcal!!, 0.0)
@@ -88,9 +100,9 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(if (fromVersion == 1) 4 else 8, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; else -> 9 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -100,6 +112,21 @@ class DatabaseMigrationTest {
             assertEquals(EntryStatus.CONFIRMED, upgraded.foodDao().plan(newPlan)!!.status)
             assertEquals(150_000L - 100_000L, upgraded.foodDao().balance("batch"))
         } finally { upgraded?.close(); context.deleteDatabase(name) }
+    }
+
+    private fun seedV3(db: SQLiteDatabase) {
+        db.execSQL("INSERT INTO plan_series(id,createdAt) SELECT id,recordedAt FROM plans")
+        db.execSQL("UPDATE plans SET seriesId=id")
+        db.execSQL("INSERT INTO plan_series(id,createdAt) VALUES('history-series',1)")
+        for (revision in 1..2) {
+            db.execSQL("""INSERT INTO plans(id,revision,startsOn,endsOn,status,source,recordedAt,seriesId,title,changeReason)
+                VALUES(?,?,'2026-10-31','2026-11-06','CONFIRMED','USER',1,'history-series','Altplan',?)""",
+                arrayOf("history-v$revision", revision, if (revision == 1) "Erste Planung" else "Überarbeitet"))
+            db.execSQL("""INSERT INTO planned_entries(id,planId,date,kind,productVersionId,amount,unit)
+                VALUES(?,?,'2026-10-31','DIRECT_CONSUMPTION','pv1',10000,'GRAM')""", arrayOf("history-entry$revision", "history-v$revision"))
+        }
+        db.execSQL("""INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId)
+            VALUES('legacy-plan','PLAN_SAVE','c8bfa1a548145f0a14c964a6bc9007851a36370fb5250275e76dd059c653da4b',1,'history-v2')""")
     }
 
     private fun seedV2(db: SQLiteDatabase) {

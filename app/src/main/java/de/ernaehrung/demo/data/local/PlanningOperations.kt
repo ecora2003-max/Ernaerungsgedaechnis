@@ -20,8 +20,10 @@ internal class PlanningOperations(private val db: FoodDatabase, private val now:
         require(input.entries.all { it.key.isNotBlank() } && input.entries.map { it.key }.distinct().size == input.entries.size) {
             "Planeinträge brauchen verschiedene eindeutige Schlüssel."
         }
-        val hash = fingerprint("PLAN_V1", previousVersionId, input.title, input.startsOn, input.endsOn, input.reason,
+        val legacyHash = fingerprint("PLAN_V1", previousVersionId, input.title, input.startsOn, input.endsOn, input.reason,
             input.entries.map { listOf(it.key, it.date, it.kind, it.productVersionId, it.recipeVersionId, it.amount, it.unit, it.preparationKey, it.label) })
+        val hash = if (input.entries.all { it.positionId == null } && !input.carryExecutionsConfirmed) legacyHash
+            else fingerprint("PLAN_V2", legacyHash, input.entries.map { it.positionId }, input.carryExecutionsConfirmed)
         replay(dao, key, hash)?.let { return@withTransaction it }
         val previous = previousVersionId?.let { latest(it) }
         val byKey = input.entries.associateBy { it.key }
@@ -48,7 +50,30 @@ internal class PlanningOperations(private val db: FoodDatabase, private val now:
                 }
             }
         }
+        val previousEntries = dao.allPlannedEntries().filter { it.planId == previous?.id }
+        val previousByPosition = previousEntries.filter { it.positionId != null }.associateBy { it.positionId!! }
+        val positions = input.entries.associate { entry ->
+            if (entry.positionId != null) require(entry.positionId in previousByPosition) { "Positionsidentität gehört nicht zur letzten Planfassung." }
+            entry.key to (entry.positionId ?: previousEntries.find { it.id == entry.key }?.positionId ?: id())
+        }
+        require(positions.values.distinct().size == input.entries.size) { "Gleiche Planposition darf nicht doppelt in einer Fassung stehen." }
+        val ledger = ExecutionLedger.load(dao)
+        input.entries.forEach { entry ->
+            previousByPosition[positions.getValue(entry.key)]?.let { old ->
+                val oldParent = previousEntries.find { it.id == old.preparationEntryId }?.positionId
+                val newParent = entry.preparationKey?.let(positions::getValue)
+                require(old.kind == entry.kind && old.unit == entry.unit && old.productVersionId == entry.productVersionId &&
+                    old.recipeVersionId == entry.recipeVersionId && oldParent == newParent) {
+                    "Bedeutung einer bestehenden Position nicht wechseln. Für anderen Artikel, Rezept oder Kochbezug eine neue Position anlegen."
+                }
+                val hasExecution = ledger.status(old).events.any { it.link.assigned && it.actual?.reversed != true }
+                require(!hasExecution || old.date == entry.date && old.amount == entry.amount || input.carryExecutionsConfirmed) {
+                    "Termin oder Menge einer ausgeführten Position geändert. Übernahme bestehender Ist-Zuordnungen ausdrücklich bestätigen."
+                }
+            }
+        }
         val series = previous?.seriesId ?: id().also { dao.insertPlanSeries(PlanSeriesEntity(it, now())) }
+        positions.values.filter { it !in previousByPosition }.forEach { dao.insertPlanPosition(PlanPositionEntity(it, series, now())) }
         val version = id()
         dao.insertPlan(PlanEntity(version, (previous?.revision ?: 0) + 1, input.startsOn, input.endsOn,
             EntryStatus.CONFIRMED, Source.USER, now(), series, input.title.trim(), input.reason.trim()))
@@ -56,7 +81,7 @@ internal class PlanningOperations(private val db: FoodDatabase, private val now:
         input.entries.sortedBy { it.preparationKey != null }.forEach { entry ->
             dao.insertPlannedEntry(PlannedEntryEntity(ids.getValue(entry.key), version, entry.date, entry.kind,
                 entry.productVersionId, entry.recipeVersionId, entry.amount, entry.unit,
-                entry.preparationKey?.let(ids::getValue), entry.label?.trim()?.takeIf { it.isNotEmpty() }))
+                entry.preparationKey?.let(ids::getValue), entry.label?.trim()?.takeIf { it.isNotEmpty() }, positions.getValue(entry.key)))
         }
         dao.insertOperation(OperationEntity(key, "PLAN_SAVE", hash, now(), version))
         version
