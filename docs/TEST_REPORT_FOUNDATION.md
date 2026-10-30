@@ -18,7 +18,23 @@ Die JUnit-XML-Dateien wurden unmittelbar nach Ende dieses vollständigen Laufs a
 | ScreenRenderTest | 2 | 0 | 0 | 0 |
 | **Gesamt** | **35** | **0** | **0** | **0** |
 
-Anschließend wurde ein zusätzlicher Regressionstest für eine nachträglich verstellte Geräteuhr ergänzt und gezielt mit der gesamten Datenbanksuite ausgeführt: **17 Tests, 0 Fehler, 0 Fehlschläge, 0 Skips**, erfolgreicher Gradle-Lauf nach 26 Sekunden. Bereits gebuchte Zugänge/Verzehre müssen bei gleichem Schlüssel erfolgreich wiedererkannt werden, auch wenn die Uhr zurückgestellt wurde. Neue zukünftige Ereignisse bleiben abgewiesen. Dafür erfolgt die dynamische Datumsprüfung erst nach dem Abgleich vorhandener Vorgangs-IDs. Die Testsuite umfasst nun insgesamt 36 Testfälle; ein frischer vollständiger CI-Lauf folgt.
+Anschließend wurde ein zusätzlicher Regressionstest für eine nachträglich verstellte Geräteuhr ergänzt und gezielt mit der gesamten Datenbanksuite ausgeführt: **17 Tests, 0 Fehler, 0 Fehlschläge, 0 Skips**, erfolgreicher Gradle-Lauf nach 26 Sekunden. Bereits gebuchte Zugänge/Verzehre müssen bei gleichem Schlüssel erfolgreich wiedererkannt werden, auch wenn die Uhr zurückgestellt wurde. Neue zukünftige Ereignisse bleiben abgewiesen. Dafür erfolgt die dynamische Datumsprüfung erst nach dem Abgleich vorhandener Vorgangs-IDs.
+
+## Abschließender frischer GitHub-Lauf
+
+[Lauf 41032992779](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41032992779), Code-Commit `39ea5ada7da979e00595a22dc21f9cc54a202436`, JDK 17, 30.10.2026: erfolgreich nach 8 min 5 s. Die sechs XML-Reports aus dem zugehörigen Artefakt wurden heruntergeladen, Zeitstempel mit diesem Lauf abgeglichen und separat ausgewertet:
+
+| Testsuite | Ausgeführt | Fehlgeschlagen | Fehler | Übersprungen |
+| --- | ---: | ---: | ---: | ---: |
+| LocalDatabaseTest | 17 | 0 | 0 | 0 |
+| AmountsTest | 2 | 0 | 0 | 0 |
+| LocalDataScreenTest | 1 | 0 | 0 | 0 |
+| DemoDataTest | 4 | 0 | 0 | 0 |
+| NavigationTest | 10 | 0 | 0 | 0 |
+| ScreenRenderTest | 2 | 0 | 0 | 0 |
+| **Gesamt** | **36** | **0** | **0** | **0** |
+
+APK-Erstellung, exakter Vergleich des generierten mit dem versionierten Room-Schema und Lint erfolgreich. CI-Lint enthält 11 nicht fatale Hinweise, keine Fehler. Die heruntergeladene APK weist Version `0.2.0-foundation` / Code 2 / minSdk 26 / targetSdk 35 auf; `apksigner verify` bestätigt ihre v2-Signatur. Es handelt sich um eine Debug-APK, keinen Store-Release.
 
 Lint: 0 Fehler, 10 Hinweise auf neuere Bibliotheksversionen. Keine Fachprüfung wurde deaktiviert, keine Assertion entfernt. Die alten Icon-Deprecation-Warnungen bestehen weiter; Bibliotheks-Upgrades sind kein Bestandteil dieses Meilensteins.
 
@@ -49,4 +65,4 @@ Android-Tests laufen mit Robolectric und SQLite, nicht auf einem angeschlossenen
 
 Die bestehenden Renderprüfungen erzeugten 68 Bilder für 34 Routen in zwei Bildschirm-/Schriftkonfigurationen. M03 wurde in beiden Größen visuell nachgeprüft; die übrigen Bilder wurden nicht erneut vollständig visuell geprüft. Diese Renderbilder ersetzen keine Tests des späteren Produktivbetriebs.
 
-GitHub Actions erzeugt die APK und lädt HTML-/JUnit-XML-Berichte hoch. Der Workflow prüft zusätzlich, dass das regenerierte Room-Schema genau den eingecheckten Dateien entspricht. Das Ergebnis dieses frischen CI-Laufs wird in `DEVELOPMENT.md` festgehalten.
+GitHub Actions erzeugt die APK und lädt HTML-/JUnit-XML-Berichte hoch. Der Workflow prüft zusätzlich, dass das regenerierte Room-Schema genau den eingecheckten Dateien entspricht. Ergebnis und APK-Link stehen auch in `DEVELOPMENT.md`. Dieser Nachweis gilt für den oben genannten Code-Commit; spätere Änderungen brauchen ihre eigenen relevanten Prüfungen.
