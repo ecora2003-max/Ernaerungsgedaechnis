@@ -8,6 +8,8 @@ Die vorhandene Android-App schrittweise nach `product/Gesamtplanung-2026-10-30.t
 
 Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebenen Migration produktiv verbindlich. Keine neue Sheets-Datenbank, kein eigener Server, keine verpflichtende kostenpflichtige KI-API. GitHub speichert Code und Dokumentation, niemals persönliche App-Daten, Datenbankdateien oder Geheimnisse. Cloud-Umgebung nicht eigenständig veröffentlichen.
 
+**Neue dauerhafte Nutzerpräferenz:** APKs nur für bewusst ausgewählte Meilensteine, nicht nach jedem „weiter“. Automatische Push-/PR-Läufe prüfen weiterhin alle Tests, Lint und versioniertes Schema, ohne APK-Verpackung/Upload. Manuell unter **Android checks and optional APK → Run workflow → `build_apk=true`** eine APK anfordern; Standard ist false. Lokale Routineprüfungen ohne `assembleDebug`. Tests tatsächlich ausführen und aktuelle XML-Ergebnisse prüfen; nie für APK-Ersparnis abschwächen. App-Code/Ressourcen werden für Tests weiterhin kompiliert. Die lokale APK 0.7 wurde bereits vor dieser Präferenz gebaut/geprüft; keine zusätzliche 0.7-Download-APK erzeugen.
+
 ## Aktueller Meilenstein: Einkaufsvorschläge und Budgetrahmen (0.7)
 
 Branch `development/shopping-proposals`, Version **0.7.0-shopping**, versionCode 7, Schema **5** mit 29 Tabellen. Vollständig lokal geprüft; frischer CI-Nachweis vor Abschluss noch offen. Isolierter Testbetrieb, keine persönlichen Daten oder produktiven Sheets-Buchungen.
@@ -23,7 +25,7 @@ Lokaler Abschluss: **122 Tests bestanden, 0 Fehlschläge/Fehler/Skips**, alle 15
 
 12 neue Datenbank-/Integrationsfälle, vier Geld-/Rundungsfälle, vier Dateimigrationen und zehn Bedienprüfungen tatsächlich ausgeführt. Großer-Schrift-/Kleindisplay-Test: 350 g Fehlmenge → 2×200 g, 50 g Überschuss, 3,98 €; 3-€-Budget um 0,98 € überschritten; Abhaken ohne Kaufwirkung. Preisänderung erhält Historie und verlangt neue Auswahl. Reaktiver Ist-/Planabgleich und Dateiwiederöffnung geprüft. Die Migrationstests fanden einen falschen Selbstbezug beim Preistabellenumbau, korrigiert und alle vier Wege erhaltend bestanden. Frischen Listenausschnitt visuell geprüft. Kein Geräte-/Emulatortest. Details: `TEST_REPORT_SHOPPING.md`, Regeln/Bedienung: `SHOPPING.md`.
 
-**Vor Abschluss:** Stand auf Entwicklungsbranch und `main` sichern, frischen Actions-Lauf verfolgen, genaue Code-SHA und aktuelle XML-Zahlen bestätigen, GitHub-APK herunterladen/signaturprüfen und Link ergänzen. Workflow-Cache aus 0.6 kann genutzt werden; keinen zusätzlichen Lauf nur zur Geschwindigkeitsmessung starten.
+Geprüfter App-Code auf `development/shopping-proposals` und `main` gesichert: `89d658c2835c82d77b88687ef2b9abc3f578cc91`. Der bisherige [Actions-Lauf 41063947663](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41063947663) wurde auf neue Nutzerpräferenz bewusst abgebrochen, kein Prüfnachweis. Neuer automatischer Prüflauf ohne APK folgt auf der Workflow-Änderung. Dessen tatsächliches Ergebnis und aktuelle XML-Zahlen vor Abschluss ergänzen; für 0.7 keinen weiteren APK-Lauf auslösen.
 
 ## Bisherige Ernährung und Buchungen
 
@@ -38,7 +40,7 @@ Vier Dateitests aus den veröffentlichten Schemaexporten, alle 22/25/26/28 alten
 Lokale Werkzeuge (außerhalb des Repositories): SDK `/workspace/tooling/android`, Gradle-Cache `/workspace/tooling/gradle`, Helper:
 
 ```sh
-python /workspace/tooling/run-gradle.py :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
+python /workspace/tooling/run-gradle.py :app:lintDebug :app:testDebugUnitTest
 ```
 
 Der Helper verwendet den geerbten Proxy nur für Build-/Testprozesse und `-PtestHome=/workspace/tooling/test-home`. TLS-/Checksum-Prüfungen bleiben aktiv. Falls diese Werkzeuge nach Wiederaufnahme fehlen, normale Android-Studio-/Gradle-Einrichtung oder vorhandenen Actions-Workflow verwenden. JDK 17+, SDK 35, Build Tools 34.0.0, Gradle 8.9/AGP 8.7.3/Kotlin 2.0.21/Room 2.7.2. Keine Zugangsdaten in Skripte übernehmen.

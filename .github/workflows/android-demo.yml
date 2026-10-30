@@ -1,6 +1,12 @@
-name: Android demo APK
+name: Android checks and optional APK
 on:
   workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'APK für einen ausgewählten Meilenstein bauen und zum Download bereitstellen'
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main]
     paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml']
@@ -36,23 +42,25 @@ jobs:
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
-      - name: Build debug APK
+      - name: Run lint and unit tests
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
+          ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest
       - name: Verify versioned Room schema
         run: |
           git diff --exit-code -- app/schemas/
           test -z "$(git status --porcelain -- app/schemas/)"
-      - name: Upload demo APK
+      - name: Build milestone APK
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.build_apk }}
+        run: ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
+      - name: Upload milestone APK
+        if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.build_apk }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Ernaehrungsgedaechtnis-Demo-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 1
-      - name: Run lint and unit tests
-        run: ./gradlew --no-daemon --max-workers=2 :app:lintDebug :app:testDebugUnitTest
       - name: Upload test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

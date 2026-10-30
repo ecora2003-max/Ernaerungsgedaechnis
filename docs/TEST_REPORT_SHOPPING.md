@@ -62,7 +62,11 @@ Frischen Ausschnitt `local-shopping-small-large-text.png` visuell geprüft: 350-
 
 ## Frischer CI-Nachweis
 
-Nach Sicherung auf Entwicklungsbranch und `main` den frischen Actions-Lauf auf genauer Code-SHA prüfen, aktuelle XML-Zahlen bestätigen und GitHub-APK herunterladen/prüfen. Bis dahin ist ausschließlich der oben beschriebene lokale Abschluss nachgewiesen. Kein früherer Lauf ist ein Nachweis für 0.7.
+Geprüfter App-Code auf `main` und `development/shopping-proposals`: `89d658c2835c82d77b88687ef2b9abc3f578cc91`. Der [ursprüngliche APK-Lauf 41063947663](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41063947663) wurde auf neue Nutzerpräferenz bewusst abgebrochen und ist kein Prüfnachweis.
+
+Die Nutzerpräferenz lautet ab jetzt: automatisierte Tests, Lint und Schema-Prüfung beibehalten, herunterladbare APKs nur bei ausgewählten Meilensteinen. Workflow entsprechend umgestellt: automatischer Prüflauf ohne APK, `workflow_dispatch` mit optionalem `build_apk` (Standard false) für bewusste APK-Meilensteine. Tests kommen vor optionalem APK-Bau; Testberichte werden weiterhin auch bei Fehlern hochgeladen. Die oben beschriebene lokale APK entstand vor dieser Präferenz; kein weiterer 0.7-APK-Lauf wird zur Prüfung der Umstellung gestartet.
+
+Vor Abschluss den frischen Prüflauf auf genauer SHA prüfen: alle aktuellen XML-Zahlen bestätigen, erfolgreiche Schema-/Lint-Prüfung und ausgelassene APK-Schritte/fehlendes APK-Artefakt nachweisen. Ein neuer frischer CI-Nachweis ist bis dahin offen.
 
 ## Grenzen
 

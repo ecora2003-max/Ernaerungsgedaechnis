@@ -22,10 +22,10 @@ Projektordner in Android Studio öffnen und Gradle synchronisieren. Benötigt we
 
 ```bash
 chmod +x gradlew
-./gradlew :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
+./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest
 ```
 
-Die installierbare Debug-APK entsteht unter `app/build/outputs/apk/debug/app-debug.apk`. Mindestversion: Android 8.0 (API 26), Zielversion: API 35. Paketname: `de.ernaehrung.demo`.
+Für ausgewählte APK-Meilensteine zusätzlich `./gradlew :app:assembleDebug` ausführen. Die installierbare Debug-APK entsteht unter `app/build/outputs/apk/debug/app-debug.apk`. Mindestversion: Android 8.0 (API 26), Zielversion: API 35. Paketname: `de.ernaehrung.demo`.
 
 Installation über Android Studio oder `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Beim manuellen Öffnen einer APK kann Android eine Freigabe für die installierende App verlangen. Diese Demo ist kein Play-Store-Release.
 
@@ -62,7 +62,11 @@ Vorgesehenes Repository: https://github.com/ecora2003-max/Ern-hrungsged-chtnis-
 
 Das Repository wurde vom Nutzer erstellt; Quellcode-Uploads und Actions-Builds sind eingerichtet. Der aktuelle Repositoryname ist `ecora2003-max/Ernaerungsgedaechnis`; der ursprüngliche Link wird von GitHub weitergeleitet.
 
-Der Workflow verwendet einen Standard-Linux-Runner, läuft unabhängig von der Sichtbarkeit und hat ein 20-Minuten-Zeitlimit. Private Builds verwenden das Actions-Kontingent des GitHub-Kontos. Aktuelle Actions sind per Commit gepinnt; ein Gradle-Abhängigkeitscache ist eingerichtet, dessen erster Lauf den Cache aufwärmt. Artefakte werden einen Tag aufbewahrt; keine größeren Runner oder verpflichtenden externen Dienste. Unter Actions → Android demo APK → erfolgreicher Lauf → Artifacts liegt die Debug-APK als ZIP. APK-Erstellung und Lint-/Testresultate sind getrennte Schritte.
+Der Workflow **Android checks and optional APK** prüft bei Code-Push/PR automatisch Tests, Lint und versioniertes Room-Schema. Es wird dabei keine herunterladbare APK erzeugt. Tests kompilieren weiterhin den benötigten App-Code und Ressourcen; ihre Aussagekraft wird nicht reduziert.
+
+Eine APK entsteht nur für bewusst ausgewählte Meilensteine: **Actions → Android checks and optional APK → Run workflow → `build_apk` aktivieren**. Der manuelle Lauf führt die Prüfungen aus und baut/lädt erst nach Erfolg die APK hoch. Ohne aktivierte Option bleibt auch ein manueller Lauf ein reiner Prüflauf. Unter dem erfolgreichen APK-Lauf → Artifacts liegt die Debug-APK als ZIP. Die Workflow-Datei bleibt `.github/workflows/android-demo.yml`.
+
+Standard-Linux-Runner, unabhängig von Repositorysichtbarkeit, 20-Minuten-Grenze und ein Tag Artefaktaufbewahrung. Private Läufe verwenden das Actions-Kontingent des GitHub-Kontos. Actions per Commit gepinnt und Gradle-Abhängigkeitscache eingerichtet; keine größeren Runner oder verpflichtenden externen Dienste. Testberichte werden auch bei fehlgeschlagenen Prüfungen hochgeladen.
 
 GitHub ist ausschließlich die Entwicklungsablage. Es ist keine Ernährungsdatenbank. Google Sheets und persönliche Daten wurden für diese Demo nicht gelesen oder geändert.
 
