@@ -6,7 +6,7 @@ Datum: 30.10.2026. Geprüfte Entwicklungsversion: 0.2.0-foundation, Datenbanksch
 
 Lokaler abschließender Lauf: `:app:assembleDebug :app:lintDebug :app:testDebugUnitTest`, Gradle 8.9, JDK 21 (Bytecode-Ziel 17), Android SDK 35 / Build Tools 34.0.0. `BUILD SUCCESSFUL` nach 45 Sekunden mit bereits installierten Abhängigkeiten. Cloud-spezifisch wurde `-PtestHome=/workspace/tooling/test-home` und der geerbte HTTPS-Proxy verwendet; keine TLS-/Checksum-Prüfung deaktiviert. GitHub verwendet separat JDK 17.
 
-Die aktuellen JUnit-XML-Dateien wurden nach Ende dieses vollständigen Laufs ausgewertet, nicht die Dateien vorheriger fehlgeschlagener/gezielter Läufe:
+Die JUnit-XML-Dateien wurden unmittelbar nach Ende dieses vollständigen Laufs ausgewertet, nicht die Dateien vorheriger fehlgeschlagener/gezielter Läufe. Die folgende Tabelle hält diese Auswertung vor dem ergänzenden Uhren-Regressionsfall fest:
 
 | Testsuite | Ausgeführt | Fehlgeschlagen | Fehler | Übersprungen |
 | --- | ---: | ---: | ---: | ---: |
@@ -17,6 +17,8 @@ Die aktuellen JUnit-XML-Dateien wurden nach Ende dieses vollständigen Laufs aus
 | NavigationTest | 10 | 0 | 0 | 0 |
 | ScreenRenderTest | 2 | 0 | 0 | 0 |
 | **Gesamt** | **35** | **0** | **0** | **0** |
+
+Anschließend wurde ein zusätzlicher Regressionstest für eine nachträglich verstellte Geräteuhr ergänzt und gezielt mit der gesamten Datenbanksuite ausgeführt: **17 Tests, 0 Fehler, 0 Fehlschläge, 0 Skips**, erfolgreicher Gradle-Lauf nach 26 Sekunden. Bereits gebuchte Zugänge/Verzehre müssen bei gleichem Schlüssel erfolgreich wiedererkannt werden, auch wenn die Uhr zurückgestellt wurde. Neue zukünftige Ereignisse bleiben abgewiesen. Dafür erfolgt die dynamische Datumsprüfung erst nach dem Abgleich vorhandener Vorgangs-IDs. Die Testsuite umfasst nun insgesamt 36 Testfälle; ein frischer vollständiger CI-Lauf folgt.
 
 Lint: 0 Fehler, 10 Hinweise auf neuere Bibliotheksversionen. Keine Fachprüfung wurde deaktiviert, keine Assertion entfernt. Die alten Icon-Deprecation-Warnungen bestehen weiter; Bibliotheks-Upgrades sind kein Bestandteil dieses Meilensteins.
 

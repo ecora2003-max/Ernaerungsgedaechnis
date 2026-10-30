@@ -67,6 +67,17 @@ class LocalDatabaseTest {
         assertEquals(1, dao.operationCount())
     }
 
+    @Test fun alreadyCommittedRetriesRemainSuccessfulEvenWhenDeviceClockChanges() = runBlocking {
+        val v = product(); val l = location(); val b = received(v, l)
+        val meal = store.consume("meal", consumption(v, b), true)
+        store = FoodStore(db) { 0L } // Device clock reset after restart, not a new real-world event.
+        assertEquals(b, received(v, l))
+        assertEquals(meal, store.consume("meal", consumption(v, b), true))
+        rejects { received(v, l, "new-future-receipt") }
+        assertEquals(150_000L, dao.balance(b))
+        assertEquals(1, dao.consumptionCount())
+    }
+
     @Test fun separateIdenticalMealsRemainSeparateAndRetriesAreHarmless() = runBlocking {
         val v = product(); val b = received(v, location())
         val c = consumption(v, b)

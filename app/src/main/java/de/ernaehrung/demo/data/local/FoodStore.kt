@@ -68,10 +68,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(confirmed) { "Zugang muss ausdrücklich bestätigt werden." }
         Amounts.positive(input.amount)
         listOf(input.acquiredOn, input.bestBefore, input.useBy).forEach { it?.let(::date) }
-        input.acquiredOn?.let(::actualDate)
         val fingerprint = fingerprint("RECEIPT", input.versionId, input.locationId, input.amount,
             input.acquiredOn, input.bestBefore, input.useBy, input.release, input.safetyNote)
         replay(operationId, fingerprint)?.let { return@withTransaction it }
+        input.acquiredOn?.let(::actualDate)
         requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
         val location = requireNotNull(dao.location(input.locationId)) { "Lagerort nicht gefunden." }
         require(location.confirmed) { "Lagerort ist nicht als vorhanden bestätigt." }
@@ -88,7 +88,6 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun consume(operationId: String, input: ConsumptionInput, confirmed: Boolean): String = db.withTransaction {
         require(confirmed) { "Tatsächlichen Verzehr bestätigen." }
         date(input.date)
-        actualDate(input.date)
         require(input.meal.isNotBlank()) { "Mahlzeitenbezeichnung fehlt." }
         input.amount?.let(Amounts::positive)
         require(input.allocations.map { it.batchId }.distinct().size == input.allocations.size) { "Charge doppelt zugeordnet." }
@@ -98,6 +97,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val fingerprint = fingerprint("CONSUMPTION", input.versionId, input.date, input.meal, input.amount,
             input.occurredAt, input.quality, input.note, input.allocations.sortedBy { it.batchId }.map { listOf(it.batchId, it.amount) })
         replay(operationId, fingerprint)?.let { return@withTransaction it }
+        actualDate(input.date)
         requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
         val consumptionId = id()
         dao.insertOperation(OperationEntity(operationId, "CONSUMPTION", fingerprint, now(), consumptionId))
