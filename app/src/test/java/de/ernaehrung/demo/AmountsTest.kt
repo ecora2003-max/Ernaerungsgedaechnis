@@ -5,6 +5,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AmountsTest {
+    @Test fun zeroCanRepresentCountedEmptyStockButNeverAnEventQuantity() {
+        assertEquals(0L, Amounts.parseCount("0"))
+        assertEquals(0L, Amounts.parseCount("0,000"))
+        assertEquals(1250L, Amounts.parseCount("1,25"))
+        assertEquals(Amounts.MAX, Amounts.parseCount("1000000000"))
+        for (text in listOf("", "-1", "1.0001", "NaN", "1000000001")) {
+            assertThrows(IllegalArgumentException::class.java) { Amounts.parseCount(text) }
+        }
+        assertThrows(IllegalArgumentException::class.java) { Amounts.parse("0") }
+    }
     @Test fun decimalQuantitiesAndConversionsStayExact() {
         assertEquals(1234L, Amounts.parse("1,234"))
         assertEquals(1L, Amounts.parse("0.001"))

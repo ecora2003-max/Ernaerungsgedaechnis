@@ -64,10 +64,16 @@ class DatabaseMigrationTest {
             assertNull(dao.movements("old-buy").single().occurredOn)
             assertNull(dao.version("pv1")!!.energyKcal); assertEquals(0.0, dao.version("pv2")!!.energyKcal!!, 0.0)
             val store = FoodStore(upgraded) { 1_800_000_000_000L }
-            assertEquals("batch", store.receive("old-buy", BatchInput("pv1", "loc", 200_000, "2026-10-30", release = ReleaseStatus.RELEASED), true))
+            assertEquals("batch", store.receive("old-buy", BatchInput("pv1", "loc", 200_000, "2026-10-29", release = ReleaseStatus.RELEASED), true))
             assertEquals("meal", store.consume("old-eat", ConsumptionInput("pv1", "2026-10-30", "Mittag", 50_000, listOf(Allocation("batch", 50_000))), true))
             assertEquals(150_000L, dao.balance("batch")); assertEquals(1, dao.activeConsumptionCount())
+            assertEquals("Legacy consumption dates must protect the chronology without inventing new movement dates", "2026-10-30", dao.latestMovementDate("batch"))
             val target = store.addLocation("new-location", "Vorrat", true)
+            try {
+                store.transfer("backdated", TransferInput("batch", target, 100_000, "2026-10-29", "Vor altem Verzehr"), true)
+                fail("Known later v1 consumption must block backdating")
+            } catch (_: IllegalArgumentException) { }
+            assertNull(dao.operation("backdated")); assertEquals(150_000L, dao.balance("batch"))
             val moved = store.transfer("new-move", TransferInput("batch", target, 100_000, "2026-10-30", "Nach Upgrade"), true)
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
@@ -96,9 +102,9 @@ class DatabaseMigrationTest {
             "energyKcal" to energy, "proteinGrams" to 13.5, "source" to "USER", "quality" to "UNKNOWN", "recordedAt" to 1L, "changeReason" to "Altstand")
         insert("product_aliases", "id" to "alias", "productId" to "p1", "versionId" to "pv1", "text" to "TOFU", "quality" to "CONFIRMED", "source" to "USER", "recordedAt" to 1L)
         insert("storage_locations", "id" to "loc", "name" to "Kühlschrank", "confirmed" to 1)
-        insert("operations", "id" to "old-buy", "kind" to "RECEIPT", "fingerprint" to "cc2e88dc37aa586106bbb9598b53177629b4f6ac93dc05afb67c3cc8f82979c6", "recordedAt" to 1L, "resultId" to "batch")
+        insert("operations", "id" to "old-buy", "kind" to "RECEIPT", "fingerprint" to "8d02a7ebb9a01eef4183bb6168845e78c389713bfde5b3d856ef93b193d7fab9", "recordedAt" to 1L, "resultId" to "batch")
         insert("operations", "id" to "old-eat", "kind" to "CONSUMPTION", "fingerprint" to "ae40d962afac4f1511084d620def75019df0968b8c57dd2d52478e1710bce3cd", "recordedAt" to 2L, "resultId" to "meal")
-        insert("batches", "id" to "batch", "versionId" to "pv1", "locationId" to "loc", "originOperationId" to "old-buy", "acquiredOn" to "2026-10-30", "release" to "RELEASED")
+        insert("batches", "id" to "batch", "versionId" to "pv1", "locationId" to "loc", "originOperationId" to "old-buy", "acquiredOn" to "2026-10-29", "release" to "RELEASED")
         for ((id, delta) in listOf("old-buy" to 200_000L, "old-eat" to -50_000L)) insert("stock_movements", "id" to "movement-$id", "batchId" to "batch", "operationId" to id,
             "delta" to delta, "kind" to if (delta > 0) "RECEIPT" else "CONSUMPTION", "source" to "USER", "reason" to "Altstand", "recordedAt" to 1L)
         insert("consumption_events", "id" to "meal", "operationId" to "old-eat", "productVersionId" to "pv1", "date" to "2026-10-30", "meal" to "Mittag", "amount" to 50_000L, "source" to "USER", "quality" to "UNKNOWN")

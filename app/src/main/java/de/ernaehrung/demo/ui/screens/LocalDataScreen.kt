@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,7 +49,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
         operationId = UUID.randomUUID().toString()
         model.newOperation()
     }
-    Choices(listOf("Katalog", "Lager", "Küche", "Chronik"), mode) { mode = it }
+    LocalSections(mode) { mode = it }
 
     when (mode) {
         "Katalog" -> {
@@ -100,6 +102,18 @@ fun LocalDataContent(model: LocalDataViewModel) {
                 Text("Vorgang: ${row.movement.operationId}\nCharge: ${row.movement.batchId}", style = MaterialTheme.typography.labelSmall)
                 Text(row.movement.reason)
             } }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LocalSections(selected: String, onSelect: (String) -> Unit) {
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("Katalog", "Lager", "Küche", "Chronik").forEach { section ->
+            FilterChip(selected == section, { onSelect(section) }, label = { Text(section) },
+                modifier = Modifier.heightIn(min = 48.dp).testTag("local_section_$section"),
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Forest, selectedLabelColor = Color.White))
         }
     }
 }

@@ -2,7 +2,9 @@
 
 Native Android-Oberflächendemo mit Kotlin, Jetpack Compose und Material 3. Alle Daten sind fiktiv. Enthalten sind die 33 vorgesehenen Ansichten und eine zusätzliche Mehr-Übersicht.
 
-Version 0.2 ergänzt einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produktversionen, Lagerorte, Zugänge und Verzehr aus Chargen speichern. Die übrigen Ansichten bleiben unveränderliche Beispiele. Keine persönlichen Daten übernehmen; sichere Backups und eine kontrollierte Migration sind noch nicht umgesetzt.
+Version **0.3.0-transactions** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produktversionen, Lagerorte, Zugänge und Verzehr speichern sowie Chargen umlagern, entsorgen oder nach einer Istzählung korrigieren. Rezepte werden versioniert; bestätigtes Kochen entnimmt Zutaten und erzeugt Fertigportionen atomar. Stornos ergänzen verknüpfte Gegenbuchungen, ohne die Historie zu löschen.
+
+Schema 2 migriert bestehende lokale Schema-1-Testdaten ohne Löschung. Die übrigen Ansichten bleiben unveränderliche Beispiele; Fertigportionen haben noch keine berechneten Nährwerte. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
 
 Entwicklungsstand und Fortsetzung: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Bedienung, Datenmodell und Grenzen: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md). Der vollständige Produktplan liegt unter [docs/product/](docs/product/).
 

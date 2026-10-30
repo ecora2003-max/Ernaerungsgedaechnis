@@ -31,8 +31,8 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
     var portions by rememberSaveable { mutableStateOf("") }
     var steps by rememberSaveable { mutableStateOf("") }
     var reason by rememberSaveable { mutableStateOf("") }
-    var versions by rememberSaveable { mutableStateOf(arrayListOf("")) }
-    var quantities by rememberSaveable { mutableStateOf(arrayListOf("")) }
+    var versions by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
+    var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     Fold("Rezept speichern / neue Version") {
         IdPicker("Rezept bearbeiten", listOf("" to "Neues Rezept") + state.recipes.map { it.recipeId to "${it.name} · v${it.revision}" }, recipeId) { chosen ->
             recipeId = chosen
@@ -73,8 +73,8 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
 @Composable
 private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
     var selected by rememberSaveable { mutableStateOf("") }
-    var batches by rememberSaveable { mutableStateOf(arrayListOf("")) }
-    var quantities by rememberSaveable { mutableStateOf(arrayListOf("")) }
+    var batches by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
+    var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var portions by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }

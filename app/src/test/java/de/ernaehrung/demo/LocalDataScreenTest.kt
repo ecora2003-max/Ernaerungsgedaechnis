@@ -120,7 +120,9 @@ class LocalDataScreenTest {
             assertEquals(75_000L, database.foodDao().balance(row.operation.resultId))
             row.operation
         }
-        tap("Neuen Vorgang beginnen"); tap("Chronik"); tap("Vorgang prüfen und stornieren")
+        tap("Neuen Vorgang beginnen"); tap("Chronik")
+        rule.onNodeWithTag("local_section_Chronik").assertIsSelected()
+        tap("Vorgang prüfen und stornieren")
         choose("Ursprungsvorgang · letzte 30", transfer.id)
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Vorgesehene Gegenbuchungen").fetchSemanticsNodes().isNotEmpty() }
         field("Stornodatum JJJJ-MM-TT", "2026-10-30"); field("Stornogrund", "Falsches Ziellager")
