@@ -1,3 +1,8 @@
+# Historischer Prüfbericht der ursprünglichen UI-Demo
+
+Dieser Bericht beschreibt die frühere Demo. Für den aktuellen Entwicklungs- und Prüfstand siehe [DEVELOPMENT.md](DEVELOPMENT.md) und [LOCAL_DATABASE.md](LOCAL_DATABASE.md).
+
+
 # Prüfstand – 30. Oktober 2026
 
 Diese ZIP ist der vollständige gesicherte Quellstand der UI-Demo. Sie ist keine produktive Ernährungs-App.

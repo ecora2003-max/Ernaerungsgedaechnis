@@ -1,6 +1,10 @@
-# Ernährungsgedächtnis · Android-Demo
+# Ernährungsgedächtnis · Android-Entwicklung
 
 Native Android-Oberflächendemo mit Kotlin, Jetpack Compose und Material 3. Alle Daten sind fiktiv. Enthalten sind die 33 vorgesehenen Ansichten und eine zusätzliche Mehr-Übersicht.
+
+Version 0.2 ergänzt einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produktversionen, Lagerorte, Zugänge und Verzehr aus Chargen speichern. Die übrigen Ansichten bleiben unveränderliche Beispiele. Keine persönlichen Daten übernehmen; sichere Backups und eine kontrollierte Migration sind noch nicht umgesetzt.
+
+Entwicklungsstand und Fortsetzung: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Bedienung, Datenmodell und Grenzen: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md). Der vollständige Produktplan liegt unter [docs/product/](docs/product/).
 
 ## Schnellstart
 
@@ -28,9 +32,9 @@ Unten stehen Start, Bestände, Scan, Planung und Mehr. Unter Mehr → Demo-Rundg
 
 ## Umfang und Grenzen
 
-Funktioniert: Navigation, Such- und Filterfelder, aufklappbare Bereiche, Eingabevorschauen, Einkaufslisten-Häkchen und Diagrammauswahl. Buchungs-, Import-, Export- und Sicherungsaktionen zeigen Demo-Hinweise. Eingaben verändern keine dauerhaften Daten.
+In den bisherigen Demoansichten funktionieren Navigation, Such- und Filterfelder, aufklappbare Bereiche, Eingabevorschauen, Einkaufslisten-Häkchen und Diagrammauswahl. Dort zeigen Buchungs-, Import-, Export- und Sicherungsaktionen Demo-Hinweise und verändern keine dauerhaften Daten. Der neue lokale Testbereich speichert dagegen ausdrücklich bestätigte Testeingaben.
 
-Keine Kamera, OCR, Barcodeerkennung, KI-API, Aktivitätsintegration, Datenbank, Netzverbindung oder produktive Buchungslogik. Keine Internet-, Kamera-, Gesundheits- oder Dateizugriffsberechtigung. App-Backups sind deaktiviert. Originalfotos wurden durch lokal gezeichnete Produktillustrationen ersetzt.
+Außerhalb des lokalen Testbereichs sind Buchungs-, Import-, Export- und Sicherungsaktionen weiterhin Vorschauen. Keine Kamera, OCR, Barcodeerkennung, KI-API oder Aktivitätsintegration. Keine Internet-, Kamera-, Gesundheits- oder Dateizugriffsberechtigung. App-Backups sind deaktiviert. Originalfotos wurden durch lokal gezeichnete Produktillustrationen ersetzt.
 
 Produktinformationen sind unabhängig vom fiktiven Vorratsstand verfügbar. Unbekannte Nährwerte werden als unbekannt angezeigt. Geplante Mahlzeiten zählen nicht zur tatsächlichen Tagesbilanz. Die Vorschau für 50 g Naturtofu ist fest vorbereitet; andere Mengen erzeugen keine scheinbar berechneten Werte.
 
@@ -40,20 +44,20 @@ Der Bedarfsabgleich ist ein erklärter Auszug für vier Produkte. Der Monatsplan
 
 `data/DemoRepository.kt` enthält die unveränderlichen Fixtures. `navigation/Screen.kt` definiert Ansichten und Hauptbereiche. `MainActivity.kt` enthält Navigation und Grundgerüst. `ui/screens/` enthält die Ansichten; `ui/Components.kt` gemeinsame Komponenten. Die Tests liegen in `app/src/test/`.
 
-Abhängigkeiten: AGP 8.7.3, Gradle 8.9, Kotlin/Compose-Compiler 2.0.21, Compose BOM 2024.12.01, Navigation 2.8.5. Der Wrapper prüft die Gradle-Distribution per SHA-256.
+Abhängigkeiten: AGP 8.7.3, Gradle 8.9, Kotlin/Compose-Compiler 2.0.21, Compose BOM 2024.12.01, Navigation 2.8.5, Room 2.7.2 und KSP 2.0.21-1.0.28. Der Wrapper prüft die Gradle-Distribution per SHA-256. Auf eingeschränkten Build-Rechnern kann mit `-PtestHome=/beschreibbarer/pfad` ein eigenes JVM-Testverzeichnis für Robolectric verwendet werden.
 
 ## GitHub
 
 Vorgesehenes Repository: https://github.com/ecora2003-max/Ern-hrungsged-chtnis-
 
-Das Repository wurde vom Nutzer erstellt und ist öffentlich. Der Nutzer hat den Upload dorthin ausdrücklich freigegeben. Am 30.10.2026 wurde der erste Schreibversuch jedoch mit HTTP 403 „Resource not accessible by integration“ abgewiesen. Noch kein Code wurde über diese Verbindung hochgeladen und noch kein Actions-Build ausgeführt.
+Das Repository wurde vom Nutzer erstellt; Quellcode-Uploads und Actions-Builds sind eingerichtet. Der aktuelle Repositoryname ist `ecora2003-max/Ernaerungsgedaechnis`; der ursprüngliche Link wird von GitHub weitergeleitet.
 
-Der vorbereitete Workflow verwendet ausschließlich einen Standard-Linux-Runner und läuft nur in öffentlichen Repositories. Bei Umstellung auf privat wird der Job automatisch übersprungen; für private Nutzung müssen Freikontingent und Kostenbegrenzung vorher geprüft werden. Artefakte werden einen Tag aufbewahrt; kein Gradle-Cache, keine größeren Runner, kein kostenpflichtiger Dienst.
+Der Workflow verwendet einen Standard-Linux-Runner, läuft unabhängig von der Sichtbarkeit und hat ein 20-Minuten-Zeitlimit. Private Builds verwenden das Actions-Kontingent des GitHub-Kontos. Artefakte werden einen Tag aufbewahrt; keine größeren Runner oder verpflichtenden externen Dienste. Unter Actions → Android demo APK → erfolgreicher Lauf → Artifacts liegt die Debug-APK als ZIP. APK-Erstellung und Lint-/Testresultate sind getrennte Schritte.
 
 GitHub ist ausschließlich die Entwicklungsablage. Es ist keine Ernährungsdatenbank. Google Sheets und persönliche Daten wurden für diese Demo nicht gelesen oder geändert.
 
 ## Sicherung der Entwicklung
 
-Die ZIP enthält zusätzlich `Ernaehrungsgedaechtnis-Android.git.bundle`. Mit `git clone Ernaehrungsgedaechtnis-Android.git.bundle Demo` kann die Commit-Historie wiederhergestellt werden. SDK, JDK, Gradle-Cache, lokale Pfade, Zugangsdaten und private Signierschlüssel werden nicht mitgeliefert.
+Die ursprüngliche Quellprojekt-ZIP enthielt zusätzlich ein Git-Bundle als historische Sicherung. Für den aktuellen Entwicklungsstand ist das GitHub-Repository maßgeblich. SDK, JDK, Gradle-Cache, lokale Pfade, Zugangsdaten, App-Datenbanken und private Signierschlüssel gehören nicht ins Repository.
 
-Den tatsächlichen Prüfstand beschreibt `docs/Pruefbericht.md`.
+Den aktuellen Prüfstand beschreibt `docs/DEVELOPMENT.md`; `docs/Pruefbericht.md` ist der historische Bericht der ursprünglichen Demo.

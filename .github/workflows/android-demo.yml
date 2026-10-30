@@ -35,6 +35,10 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
+      - name: Verify versioned Room schema
+        run: |
+          git diff --exit-code -- app/schemas/
+          test -z "$(git status --porcelain -- app/schemas/)"
       - name: Upload demo APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -52,5 +56,6 @@ jobs:
           path: |
             app/build/reports/tests/
             app/build/reports/lint-results-debug.*
+            app/build/test-results/testDebugUnitTest/*.xml
           if-no-files-found: ignore
           retention-days: 1

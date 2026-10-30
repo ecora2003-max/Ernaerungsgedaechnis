@@ -58,6 +58,15 @@ class LocalDatabaseTest {
         assertEquals(200_000L, dao.balance(batch))
     }
 
+    @Test fun operationKeysRejectDifferentKindsAndDelimiterContainingProductFields() = runBlocking {
+        val v = store.rememberProduct("same-key", ProductInput("A, brand=B", brand = "C"))
+        rejects { store.rememberProduct("same-key", ProductInput("A", brand = "B, brand=C")) }
+        rejects { store.addLocation("same-key", "Kühlschrank", true) }
+        assertEquals(v, store.catalog().first().single().version.id)
+        assertTrue(store.locations().first().isEmpty())
+        assertEquals(1, dao.operationCount())
+    }
+
     @Test fun separateIdenticalMealsRemainSeparateAndRetriesAreHarmless() = runBlocking {
         val v = product(); val b = received(v, location())
         val c = consumption(v, b)
@@ -119,6 +128,18 @@ class LocalDatabaseTest {
         assertEquals(count, dao.consumptionCount())
         assertTrue(store.batches().first().isEmpty())
         assertTrue(store.movements().first().isEmpty())
+    }
+
+    @Test fun newConsumptionInvalidatesCompletenessAndFutureFactsAreRejected() = runBlocking {
+        val v = product(); val l = location()
+        dao.saveDay(DiaryDayEntity("2026-10-30", DayStatus.COMPLETE, 42))
+        store.consume("extra-meal", ConsumptionInput(v, "2026-10-30", "Nachtrag", null), true)
+        assertEquals(DayStatus.PARTIAL, dao.day("2026-10-30")!!.status)
+        assertNull(dao.day("2026-10-30")!!.confirmedAt)
+        rejects { store.consume("future-meal", ConsumptionInput(v, "2099-01-01", "Geplant", 1000), true) }
+        rejects { store.receive("future-stock", BatchInput(v, l, 1000, acquiredOn = "2099-01-01"), true) }
+        assertEquals(1, dao.consumptionCount())
+        assertTrue(store.batches().first().isEmpty())
     }
 
     @Test fun laterVersionsNeverRewriteHistoricalConsumptionOrRecipes() = runBlocking {

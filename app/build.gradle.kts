@@ -46,6 +46,12 @@ dependencies {
 }
 tasks.withType<Test>().configureEach {
     maxHeapSize="2g"
+    // Optional writable JVM home for sandboxed build hosts; normal Android Studio/CI is unchanged.
+    providers.gradleProperty("testHome").orNull?.let { path ->
+        val directory = file(path)
+        check(directory.isDirectory || directory.mkdirs()) { "Cannot create testHome: $directory" }
+        systemProperty("user.home", directory.absolutePath)
+    }
     // Optional build-host proxy, never embedded into the application.
     listOf("https.proxyHost","https.proxyPort","http.proxyHost","http.proxyPort","javax.net.ssl.trustStore").forEach { key->
         System.getProperty(key)?.let {systemProperty(key,it)}

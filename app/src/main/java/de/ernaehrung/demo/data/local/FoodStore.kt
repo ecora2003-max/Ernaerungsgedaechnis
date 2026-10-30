@@ -3,6 +3,8 @@ package de.ernaehrung.demo.data.local
 import androidx.room.withTransaction
 import java.security.MessageDigest
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
 data class ProductInput(
@@ -66,6 +68,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(confirmed) { "Zugang muss ausdrücklich bestätigt werden." }
         Amounts.positive(input.amount)
         listOf(input.acquiredOn, input.bestBefore, input.useBy).forEach { it?.let(::date) }
+        input.acquiredOn?.let(::actualDate)
         val fingerprint = fingerprint("RECEIPT", input.versionId, input.locationId, input.amount,
             input.acquiredOn, input.bestBefore, input.useBy, input.release, input.safetyNote)
         replay(operationId, fingerprint)?.let { return@withTransaction it }
@@ -85,6 +88,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun consume(operationId: String, input: ConsumptionInput, confirmed: Boolean): String = db.withTransaction {
         require(confirmed) { "Tatsächlichen Verzehr bestätigen." }
         date(input.date)
+        actualDate(input.date)
         require(input.meal.isNotBlank()) { "Mahlzeitenbezeichnung fehlt." }
         input.amount?.let(Amounts::positive)
         require(input.allocations.map { it.batchId }.distinct().size == input.allocations.size) { "Charge doppelt zugeordnet." }
@@ -133,6 +137,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
 
     private fun date(value: String) {
         require(runCatching { LocalDate.parse(value).toString() == value }.getOrDefault(false)) { "Datum im Format JJJJ-MM-TT angeben." }
+    }
+    private fun actualDate(value: String) {
+        val today = Instant.ofEpochMilli(now()).atZone(ZoneId.systemDefault()).toLocalDate()
+        require(LocalDate.parse(value) <= today) { "Ein tatsächliches Ereignis darf nicht in der Zukunft liegen. Dafür die Planung verwenden." }
     }
     private fun id(): String = UUID.randomUUID().toString()
     private fun fingerprint(vararg parts: Any?): String {

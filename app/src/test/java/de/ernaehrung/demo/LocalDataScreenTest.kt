@@ -10,6 +10,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.room.Room
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.DemoTheme
@@ -19,6 +21,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,8 +41,10 @@ class LocalDataScreenTest {
     @Test fun productFormPersistsUnknownValuesAndPreventsRepeatedSave() {
         val database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
         db = database
-        val model = LocalDataViewModel(FoodStore(database))
-        models.put("local", model)
+        val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(database)) as T
+        })[LocalDataViewModel::class.java]
         rule.runOnUiThread {
             rule.activity.setContent {
                 DemoTheme { Column(Modifier.verticalScroll(rememberScrollState())) { LocalDataContent(model) } }
@@ -50,7 +55,12 @@ class LocalDataScreenTest {
         rule.onNodeWithText("Produktname · lokal").performScrollTo().performTextInput("Testtofu")
         rule.onNodeWithText("Änderungsgrund").performScrollTo().performTextInput("Erster Test")
         rule.onNodeWithTag("Produkt lokal speichern").performScrollTo().performClick()
-        rule.waitUntil(15_000) { model.saveState.value.succeeded }
+        rule.waitUntil(15_000) {
+            // Synchronize the paused Android looper as well as Room's background executor.
+            rule.waitForIdle()
+            model.saveState.value.message != null
+        }
+        assertTrue(model.saveState.value.message, model.saveState.value.succeeded)
         rule.onNodeWithTag("Produkt lokal speichern").assertIsNotEnabled()
         runBlocking {
             val rows = database.foodDao().observeCatalog().first()
