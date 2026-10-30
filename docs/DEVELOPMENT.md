@@ -10,6 +10,8 @@ Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebene
 
 ## Aktueller Meilenstein: Buchungen und Meal Prep
 
+**Neuer Meilenstein in Arbeit: Ernährung/Nährwerte (0.4).** Der Rechenkern und seine ersten 13 gezielten Tests wurden erfolgreich ausgeführt (`NutritionMathTest` 4 + `NutritionDatabaseTest` 9). Berechnung liest innerhalb einer Room-Transaktion unveränderliche Artikelversionen, tatsächliche Produktionsbewegungen und tatsächliche Ausbeute; keine Schemaänderung und kein zweiter gespeicherter Summenstand. Unbekannt/0/Teilsumme bleiben unterscheidbar pro Nährstoff. Verschachtelte/umgelagerte Fertigportionen, Stornos, Datenlücken und sichere Tagesbestätigungen mit Snapshotprüfung sind im Service implementiert. Oberflächenintegration und Gesamtprüfung stehen noch aus. Zusätzlich ergänzt, noch im nächsten Lauf zu prüfen: alter Produkt-Fingerprint und Auswertung migrierter v1-Nährwerte. Neues Produkt-API unterstützt zusätzliche Nährstoffe, behält alte Produkt-Retry-Hashes ohne diese Zusatzfelder bei. Dies ist noch keine Freigabe von 0.4; die unten dokumentierte Version 0.3 bleibt letzter vollständig geprüfter Hauptstand.
+
 Version **0.3.0-transactions**, versionCode 3, Datenbankschema **2** (25 Tabellen).
 
 - Umlagerung mit neuer Zielcharge, Quellbezug, erhaltenen Datums-/Versionsangaben und zwei atomaren Bewegungen. Bestehende Freigabe am Ziel nur nach ausdrücklicher Prüfung beibehalten; gesperrte/ungeklärte Ware wird nicht freigegeben.

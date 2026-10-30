@@ -7,8 +7,25 @@ data class ProductInput(
     val packageAmount: Long? = null, val nutritionBasis: Long = 100_000,
     val energyKcal: Double? = null, val proteinGrams: Double? = null, val fatGrams: Double? = null,
     val carbsGrams: Double? = null, val source: Source = Source.USER,
-    val quality: Quality = Quality.UNKNOWN, val sourceDetail: String? = null
-)
+    val quality: Quality = Quality.UNKNOWN, val sourceDetail: String? = null,
+    val fiberGrams: Double? = null, val sugarGrams: Double? = null, val saturatedFatGrams: Double? = null,
+    val saltGrams: Double? = null, val calciumMg: Double? = null, val ironMg: Double? = null,
+    val magnesiumMg: Double? = null, val iodineMicrograms: Double? = null, val vitaminB12Micrograms: Double? = null,
+    val vitaminDMicrograms: Double? = null
+) {
+    internal fun extras() = listOf(fiberGrams, sugarGrams, saturatedFatGrams, saltGrams, calciumMg, ironMg,
+        magnesiumMg, iodineMicrograms, vitaminB12Micrograms, vitaminDMicrograms)
+    fun withNutrients(values: Map<Nutrient, Double?>) = copy(energyKcal = values[Nutrient.ENERGY], proteinGrams = values[Nutrient.PROTEIN],
+        fatGrams = values[Nutrient.FAT], carbsGrams = values[Nutrient.CARBS], fiberGrams = values[Nutrient.FIBRE],
+        sugarGrams = values[Nutrient.SUGAR], saturatedFatGrams = values[Nutrient.SATURATED], saltGrams = values[Nutrient.SALT],
+        calciumMg = values[Nutrient.CALCIUM], ironMg = values[Nutrient.IRON], magnesiumMg = values[Nutrient.MAGNESIUM],
+        iodineMicrograms = values[Nutrient.IODINE], vitaminB12Micrograms = values[Nutrient.B12], vitaminDMicrograms = values[Nutrient.VITAMIN_D])
+    companion object {
+        fun from(version: ProductVersionEntity) = ProductInput(version.name, version.brand, version.baseUnit,
+            version.packageAmount, version.nutritionBasis, source = version.source, quality = version.quality, sourceDetail = version.sourceDetail)
+            .withNutrients(Nutrient.entries.associateWith(version::nutrient))
+    }
+}
 data class BatchInput(val versionId: String, val locationId: String, val amount: Long,
     val acquiredOn: String? = null, val bestBefore: String? = null, val useBy: String? = null,
     val release: ReleaseStatus = ReleaseStatus.UNCHECKED, val safetyNote: String? = null)
@@ -22,6 +39,23 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val dao = db.foodDao()
     private val stock = StockOperations(db, now)
     private val kitchen = KitchenOperations(db, now)
+    private val nutrition = NutritionReader(db)
+    fun watchDay(date: String) = nutrition.watchDay(date)
+    fun watchRecipeNutrition(id: String) = nutrition.watchRecipe(id)
+    suspend fun dayNutrition(date: String) = nutrition.day(date)
+    suspend fun recipeNutrition(id: String) = nutrition.recipe(id)
+    suspend fun setDayStatus(key: String, date: String, status: DayStatus, expectedSnapshot: String, confirmed: Boolean): String = db.withTransaction {
+        require(confirmed) { "Erfassungsstatus ausdrücklich bestätigen." }
+        WriteRules.date(date)
+        val hash = fingerprint("DAY_STATUS", date, status, expectedSnapshot)
+        replay(key, hash)?.let { return@withTransaction it }
+        actualDate(date)
+        val current = nutrition.day(date)
+        require(current.snapshot == expectedSnapshot) { "Tag wurde inzwischen verändert. Aktuelle Einträge und Datenlücken erneut prüfen." }
+        dao.saveDay(DiaryDayEntity(date, status, if (status == DayStatus.COMPLETE) now() else null))
+        dao.insertOperation(OperationEntity(key, "DAY_${status.name}", hash, now(), date))
+        date
+    }
     fun operations() = dao.observeOperations()
     fun recipes() = dao.observeRecipes()
     fun recipeIngredients() = dao.observeIngredients()
@@ -46,9 +80,11 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         reason: String = "Manuell erfasst"): String = db.withTransaction {
         validate(input)
         require(reason.isNotBlank()) { "Änderungsgrund fehlt." }
-        val fingerprint = fingerprint("PRODUCT", listOf(input.name, input.brand, input.unit, input.packageAmount,
+        val legacyFingerprint = fingerprint("PRODUCT", listOf(input.name, input.brand, input.unit, input.packageAmount,
             input.nutritionBasis, input.energyKcal, input.proteinGrams, input.fatGrams, input.carbsGrams,
             input.source, input.quality, input.sourceDetail), productId, reason)
+        // Existing 0.2/0.3 product retry keys remain valid when no additional nutrients were supplied.
+        val fingerprint = if (input.extras().all { it == null }) legacyFingerprint else fingerprint("PRODUCT_NUTRIENTS", legacyFingerprint, input.extras())
         replay(operationId, fingerprint)?.let { return@withTransaction it }
         val previous = productId?.let { requireNotNull(dao.latestVersion(it)) { "Produkt nicht gefunden." } }
         require(previous == null || previous.baseUnit == input.unit) { "Basiseinheit einer Produktidentität darf nicht geändert werden." }
@@ -56,9 +92,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         if (previous == null) dao.insertProduct(ProductEntity(identity, now()))
         val version = id()
         dao.insertVersion(ProductVersionEntity(version, identity, (previous?.revision ?: 0) + 1,
-            input.name.trim(), input.brand?.trim()?.takeIf { it.isNotEmpty() }, null, null,
+            input.name.trim(), input.brand?.trim()?.takeIf { it.isNotEmpty() }, previous?.category, previous?.barcode,
             input.unit, input.packageAmount, input.nutritionBasis, input.energyKcal, input.proteinGrams,
-            input.fatGrams, input.carbsGrams, source = input.source, sourceDetail = input.sourceDetail,
+            input.fatGrams, input.carbsGrams, fiberGrams = input.fiberGrams, sugarGrams = input.sugarGrams,
+            saturatedFatGrams = input.saturatedFatGrams, saltGrams = input.saltGrams, calciumMg = input.calciumMg,
+            ironMg = input.ironMg, magnesiumMg = input.magnesiumMg, iodineMicrograms = input.iodineMicrograms,
+            vitaminB12Micrograms = input.vitaminB12Micrograms, vitaminDMicrograms = input.vitaminDMicrograms,
+            ingredients = previous?.ingredients, allergens = previous?.allergens, source = input.source, sourceDetail = input.sourceDetail,
             quality = input.quality, recordedAt = now(), changeReason = reason))
         dao.insertOperation(OperationEntity(operationId, "PRODUCT", fingerprint, now(), version))
         version
@@ -132,7 +172,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(input.name.isNotBlank()) { "Produktname fehlt." }
         Amounts.positive(input.nutritionBasis)
         input.packageAmount?.let(Amounts::positive)
-        listOf(input.energyKcal, input.proteinGrams, input.fatGrams, input.carbsGrams).forEach {
+        (listOf(input.energyKcal, input.proteinGrams, input.fatGrams, input.carbsGrams) + input.extras()).forEach {
             require(it == null || it.isFinite() && it >= 0) { "Nährwerte müssen bekannte, nichtnegative Zahlen sein; leere Felder bleiben unbekannt." }
         }
     }

@@ -40,6 +40,14 @@ internal interface FoodDao {
     @Query("SELECT * FROM recipe_versions WHERE recipeId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestRecipeVersion(id: String): RecipeVersionEntity?
     @Query("SELECT * FROM recipe_output_products WHERE recipeId = :id") suspend fun outputProduct(id: String): RecipeOutputProductEntity?
     @Query("SELECT * FROM productions WHERE operationId = :id") suspend fun production(id: String): ProductionEntity?
+    @Query("""SELECT p.* FROM productions p JOIN batches b ON b.id = p.outputBatchId
+        WHERE b.versionId = :versionId""") suspend fun productionsForVersion(versionId: String): List<ProductionEntity>
+    @Query("""SELECT c.* FROM consumption_events c JOIN operations o ON o.id = c.operationId
+        LEFT JOIN operation_reversals r ON r.originalOperationId = c.operationId
+        WHERE c.date = :date AND r.originalOperationId IS NULL ORDER BY COALESCE(c.occurredAt,o.recordedAt),c.id""")
+    suspend fun activeMeals(date: String): List<ConsumptionEntity>
+    @Query("""SELECT * FROM operations WHERE resultId = :date AND kind IN ('DAY_OPEN','DAY_PARTIAL','DAY_COMPLETE') ORDER BY id""")
+    suspend fun dayStatusEvents(date: String): List<OperationEntity>
     @Query("SELECT * FROM consumption_events WHERE operationId = :id") suspend fun consumptionForOperation(id: String): ConsumptionEntity?
     @Query("""SELECT COUNT(*) FROM consumption_events c LEFT JOIN operation_reversals r
         ON r.originalOperationId = c.operationId WHERE r.originalOperationId IS NULL""") suspend fun activeConsumptionCount(): Int

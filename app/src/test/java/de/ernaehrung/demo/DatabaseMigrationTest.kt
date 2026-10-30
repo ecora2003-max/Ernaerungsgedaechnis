@@ -64,6 +64,11 @@ class DatabaseMigrationTest {
             assertNull(dao.movements("old-buy").single().occurredOn)
             assertNull(dao.version("pv1")!!.energyKcal); assertEquals(0.0, dao.version("pv2")!!.energyKcal!!, 0.0)
             val store = FoodStore(upgraded) { 1_800_000_000_000L }
+            val nutrition = store.dayNutrition("2026-10-30")
+            assertEquals(DayStatus.COMPLETE, nutrition.status)
+            assertNull(nutrition.totals[Nutrient.ENERGY].knownAmount)
+            assertEquals(0, java.math.BigDecimal("6.75").compareTo(nutrition.totals[Nutrient.PROTEIN].knownAmount))
+            assertTrue(nutrition.totals.hasGaps)
             assertEquals("batch", store.receive("old-buy", BatchInput("pv1", "loc", 200_000, "2026-10-29", release = ReleaseStatus.RELEASED), true))
             assertEquals("meal", store.consume("old-eat", ConsumptionInput("pv1", "2026-10-30", "Mittag", 50_000, listOf(Allocation("batch", 50_000))), true))
             assertEquals(150_000L, dao.balance("batch")); assertEquals(1, dao.activeConsumptionCount())
