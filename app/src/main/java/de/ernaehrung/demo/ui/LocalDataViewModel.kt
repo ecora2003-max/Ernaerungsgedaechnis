@@ -17,9 +17,20 @@ data class RecipeNutritionUiState(val report: NutritionResult? = null, val error
 data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
 data class ExecutionUiState(val view: PlanExecutionView? = null, val error: String? = null)
 data class ShoppingUiState(val report: ShoppingReport? = null, val error: String? = null)
+data class ExpenseUiState(val report: ExpenseReport? = null, val error: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalDataViewModel(private val store: FoodStore) : ViewModel() {
+    private val expenseQuery = MutableStateFlow(java.time.LocalDate.now().let {
+        ExpenseScope(it.withDayOfMonth(1).toString(), it.toString()) to 0L
+    })
+    val expenses: StateFlow<ExpenseUiState> = expenseQuery.flatMapLatest { (scope, _) ->
+        store.watchExpenses(scope).map { ExpenseUiState(it) }.onStart { emit(ExpenseUiState()) }
+            .catch { emit(ExpenseUiState(error = "Ausgaben konnten nicht gelesen werden: ${it.message}")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpenseUiState())
+    fun showExpenses(start: String, end: String) {
+        expenseQuery.value = ExpenseScope(start.trim(), end.trim()) to expenseQuery.value.second + 1
+    }
     private val shoppingQuery = MutableStateFlow(java.time.LocalDate.now().let {
         ShoppingScope(it.toString(), it.plusDays(6).toString(), it.toString()) to 0L
     })

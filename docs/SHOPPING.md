@@ -1,4 +1,4 @@
-# Einkaufsvorschläge, Packungen, Preisfassungen und Budgetrahmen (0.7)
+# Einkaufsvorschläge, Packungen, Preisfassungen und Budgetrahmen (seit 0.7, Budgetabgleich 0.8)
 
 ## Einstieg und Bedienung
 
@@ -36,18 +36,18 @@ Ersetzt eine neue Preisfassung die gewählte alte, wird die neue nicht stillschw
 
 Die aktuelle Umsetzung benutzt einen konservativen globalen Datenstand für diese Prüfung: Auch eine Änderung an anderer Stelle kann Markierungen veralten lassen. Reine Listenmarkierungen sind davon ausgenommen, damit Abhaken einer Position die anderen nicht ungültig macht. Ein veralteter Speicherversuch wird abgewiesen; nichts wird als Kauf gebucht.
 
-## Budget ist noch kein verfügbarer Geldbestand
+## Budgetobergrenze und tatsächliche Ausgaben
 
 Unter **Budgetobergrenze speichern** Zeitraum, Namen, Betrag in EUR, ausdrückliche Bestätigung und Grund erfassen. Ein leerer Betrag bleibt ungeklärt; ein bewusstes 0-€-Budget bleibt 0. Überlappende Budgets werden nicht addiert. Für den Vergleich wird genau die ausgewählte aktuelle Fassung verwendet, und der Einkaufstag muss in deren Zeitraum liegen.
 
-Die App vergleicht bekannte Einkaufskosten mit dieser Obergrenze. Schon bekannte Teilkosten können eine Überschreitung belegen. Ein Unterschreiten beweist dagegen keinen freien Spielraum: **tatsächliche bezahlte Ausgaben und deren Vollständigkeit sind noch nicht abgeglichen**. Deshalb bleibt das verbleibende Budget ausdrücklich ungeklärt. Preisbeobachtungen, Listenhäkchen und Vorratsbewegungen werden nicht als Zahlungen gezählt. Bestätigte Einkaufs-/Ausgabenereignisse folgen als nächster Meilenstein.
+Seit 0.8 kommen ausdrücklich bestätigte tatsächliche Einkäufe hinzu. Bekannte Ausgaben und bekannte offene Einkaufskosten können bereits eine Überschreitung belegen. Ein Unterschreiten allein beweist keinen freien Spielraum: Der Budgetrest erscheint erst nach vollständigem Ausgabenabgleich unter **Käufe**, für Budgetbeginn bis heute (höchstens Budgetende). Unbekannte Beträge/Kaufdaten und unbestätigte Altbelege verhindern die vollständige Summe. Preisbeobachtungen, Listenhäkchen und Vorratsbewegungen zählen nicht als zusätzliche Zahlungen. Nach vollständigem Abgleich: Rest = Obergrenze minus tatsächliche Ausgaben, danach gegebenenfalls zusätzlicher Spielraum nach geschätztem offenem Einkauf. Bedienung, Berechnungsgrenzen und Stornos: `PURCHASES.md`.
 
 ## Architektur und Migration
 
-Schema **5**, 29 Tabellen. `price_observations` erhält nullable Mengen/Preise und zusätzliche Bestätigungs-/Gültigkeits-/Währungs-/Versionsmetadaten; `budgets` erhält begründete Fassungen. Die neue `shopping_marks` speichert ausschließlich Listenentscheidungen mit Vorgänger, Revision und geprüftem Inhaltsstand. Eine eindeutige Kette je Artikelversion, Bedarfsausschnitt und Einkaufstag verhindert parallele Überschreibung.
+Schema **5** führte die 29 Tabellen ein; aktuelles Schema **6** ergänzt drei Tabellen für echte Käufe und Ausgabenabgleich. `price_observations` hat nullable Mengen/Preise und zusätzliche Bestätigungs-/Gültigkeits-/Währungs-/Versionsmetadaten; `budgets` hat begründete Fassungen. `shopping_marks` speichert ausschließlich Listenentscheidungen mit Vorgänger, Revision und geprüftem Inhaltsstand. Eine eindeutige Kette je Artikelversion, Bedarfsausschnitt und Einkaufstag verhindert parallele Überschreibung.
 
 Migration 4→5 übernimmt sämtliche alten Werte der Preistabelle beim erhaltenden Tabellenumbau. Alte Währung, Packungsbezug, Bestätigungen und Gültigkeit bleiben NULL, keine erfundene Freigabe. Vorhandene Pläne, Positionsidentitäten, Ist-Zuordnungen und bisherige Retry-Schlüssel bleiben erhalten. Migrationen 1→2→3→4→5 registriert, keine destruktive Fallback-Migration. Alte Schemaexporte unverändert.
 
 `ShoppingReader` liest Restbedarf, Preise, Budgets und Markierungen in derselben Room-Transaktion. `ShoppingMath` ist die gemeinsame Berechnung für Vorschau und gespeicherte Auswahl; keine unabhängige zweite Mengen-/Preissummenwahrheit. `ShoppingOperations` schreibt atomar und idempotent über `FoodStore`. App-Ereignisse werden über IDs statt nur Uhrzeiten in den Prüfstand einbezogen; reine Einkaufslistenmarkierungen verändern diesen Datenstand nicht selbst. Rechenversion `shopping-1`.
 
-Prüfnachweis: `TEST_REPORT_SHOPPING.md`. Grenzen: noch keine tatsächliche Einkaufserfassung, Ausgaben-/Budgetvollständigkeit, echte Einkaufs-Bestands-Verknüpfung, Händler-/Packungsoptimierung, Produktalternativen oder automatische Bestellung. Große Historien nicht lastgetestet. Backups, stabile Release-Signierung, Gerätetests, komplexe Vergangenheitskorrekturen und kontrollierte produktive Migration stehen weiter aus.
+Prüfnachweis der Einkaufsgrundlagen: `TEST_REPORT_SHOPPING.md`; aktueller Kauf-/Ausgabenabgleich: `TEST_REPORT_PURCHASES.md`. Grenzen: keine Händler-/Packungsoptimierung, Produktalternativen oder automatische Bestellung. Große Historien nicht lastgetestet. Belegkorrekturfassungen/Erstattungen, Backups, stabile Release-Signierung, Gerätetests, komplexe Vergangenheitskorrekturen und kontrollierte produktive Migration stehen weiter aus.

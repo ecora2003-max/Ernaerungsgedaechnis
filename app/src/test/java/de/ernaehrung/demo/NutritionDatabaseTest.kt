@@ -180,7 +180,7 @@ class NutritionDatabaseTest {
             val before = store.dayNutrition(day); db.close()
             db = Room.databaseBuilder(context, FoodDatabase::class.java, filename).build(); store = FoodStore(db)
             assertEquals(before, store.dayNutrition(day)); equal("132", store.dayNutrition(day).totals[Nutrient.ENERGY])
-            assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(6, db.openHelper.readableDatabase.version)
         } finally { db.close(); context.deleteDatabase(filename) }
     }
 }

@@ -4,6 +4,28 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // No old receipt, line, price, checklist or movement is silently declared paid.
+            db.execSQL("""CREATE TABLE purchase_events (operationId TEXT NOT NULL, receiptId TEXT NOT NULL,
+                currency TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(operationId),
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(receiptId) REFERENCES receipts(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_purchase_events_receiptId ON purchase_events(receiptId)")
+            db.execSQL("""CREATE TABLE receipt_stock_bookings (lineId TEXT NOT NULL, operationId TEXT NOT NULL,
+                basisDescription TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(lineId),
+                FOREIGN KEY(lineId) REFERENCES receipt_lines(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_receipt_stock_bookings_operationId ON receipt_stock_bookings(operationId)")
+            db.execSQL("""CREATE TABLE expense_status_events (operationId TEXT NOT NULL, startsOn TEXT NOT NULL,
+                endsOn TEXT NOT NULL, revision INTEGER NOT NULL, previousId TEXT, complete INTEGER NOT NULL,
+                dataToken TEXT NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(operationId),
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(previousId) REFERENCES expense_status_events(operationId) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_expense_status_events_startsOn_endsOn_revision ON expense_status_events(startsOn,endsOn,revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_expense_status_events_previousId ON expense_status_events(previousId)")
+        }
+    }
     val MIGRATION_4_5 = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // Preserve every old value. Nullability now permits genuinely unknown quantities/prices.

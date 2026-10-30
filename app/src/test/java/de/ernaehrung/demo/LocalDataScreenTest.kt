@@ -528,6 +528,104 @@ class LocalDataScreenTest {
         }
     }
 
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun manualPurchaseUiKeepsUnresolvedLinesAndBooksOnlyOneExplicitlyConfirmedUsableQuantity() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val ids = runBlocking {
+            val store = FoodStore(database) { clock }
+            store.rememberProduct("p", ProductInput("Testtofu")) to store.addLocation("loc", "Testlager", true)
+        }
+        val model = mount(database, fontScale = 1.3f, now = clock)
+        tap("Käufe"); tap("Bezahlten Einkauf erfassen")
+        field("Händler · optional", "Testmarkt")
+        field("Tatsächliches Kaufdatum JJJJ-MM-TT · optional", "2026-10-30")
+        field("Tatsächlich bezahlt in EUR · optional", "3,98")
+        field("Originalbontext 1 · nur wenn lesbar", "TOFU 2x1,99")
+        field("Eigene Bezeichnung 1 · optional", "Testtofu")
+        field("Positionsbetrag 1 in EUR · optional", "3,98")
+        tap("Weitere Belegposition"); field("Eigene Bezeichnung 2 · optional", "Ungeklärt")
+        field("Grund / Herkunft der Kauferfassung", "Manuell vom Testbon")
+        tap("Bezahlten Einkauf speichern")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.saveState.value.message != null }
+        assertTrue(!model.saveState.value.succeeded)
+        runBlocking { assertTrue(database.foodDao().receipts().isEmpty()) }
+        tap("Tatsächlich bezahlten Einkauf mit diesen Angaben bestätigen · noch kein Lagerzugang")
+        tap("Bezahlten Einkauf speichern"); saved(model)
+        val line = runBlocking {
+            val dao = database.foodDao(); val receipt = dao.receipts().single()
+            assertEquals(398L, receipt.totalCents); assertEquals(2, dao.receiptLines(receipt.id).size)
+            assertTrue(dao.planningBatches().isEmpty()); assertEquals(0, dao.consumptionCount())
+            assertEquals(null, dao.receiptLines(receipt.id).single { it.interpretedName == "Ungeklärt" }.originalText)
+            dao.receiptLines(receipt.id).single { it.interpretedName == "Testtofu" }
+        }
+        tap("Neuen Vorgang beginnen")
+        field("Ausgaben ab JJJJ-MM-TT", "2026-10-01"); field("Ausgaben bis JJJJ-MM-TT", "2026-10-30"); tap("Ausgabenzeitraum anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.purchases?.size == 1 }
+        tap("Position ins Lager buchen ${line.id.take(8)}")
+        choose("Kauf-Produktversion ${line.id.take(8)}", ids.first); choose("Kauf-Lagerort ${line.id.take(8)}", ids.second)
+        field("Nutzbarer Zugang in g ${line.id.take(8)}", "200")
+        field("Mengenbasis der Position ${line.id.take(8)}", "200 g nach Abtropfen")
+        tap("Nutzbare Menge und Einheit dieser Position geprüft ${line.id.take(8)}")
+        field("Grund des Positionszugangs ${line.id.take(8)}", "Tatsächlichen Inhalt geprüft")
+        tap("Diesen tatsächlichen Lagerzugang bestätigen ${line.id.take(8)}")
+        tap("Kaufposition buchen ${line.id.take(8)}"); saved(model)
+        runBlocking {
+            val dao = database.foodDao(); val batch = dao.planningBatches().single()
+            assertEquals(200_000L, batch.stockAmount); assertEquals(ReleaseStatus.UNCHECKED, batch.batch.release)
+            assertEquals(1, dao.purchases().size); assertEquals(398L, FoodStore(database) { clock }.expenseReport(ExpenseScope("2026-10-01", "2026-10-30")).knownSubtotalCents)
+            assertEquals(0, dao.consumptionCount())
+        }
+        tap("Neuen Vorgang beginnen"); tap("Ausgaben vollständig abgleichen / wieder öffnen")
+        tap("Alle Ausgaben im angezeigten Zeitraum vollständig erfasst und geprüft")
+        field("Grund des Ausgabenabgleichs", "Alle Testausgaben geprüft")
+        tap("Diesen Erfassungsstatus ausdrücklich bestätigen"); tap("Ausgabenstatus speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.complete == true }
+        rule.onNodeWithTag("expense_total").assertTextEquals("Vollständig abgeglichene Ausgaben: 3,98 €")
+        rule.onNodeWithTag("expense_total").performScrollTo(); capture("local-purchases-small-large-text")
+    }
+
+    @Test fun expenseUiCancellationInvalidatesBudgetAndFreshExplicitZeroRestoresRemainingLimit() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val budget = runBlocking {
+            val store = FoodStore(database) { clock }
+            store.savePurchase("paid", PurchaseInput("Testmarkt", "2026-10-30", 800, emptyList(), "Testzahlung"), true)
+            store.saveBudget("budget", BudgetInput("Monat", "2026-10-01", "2026-10-31", 1000, true, "Testobergrenze"))
+        }
+        val model = mount(database, now = clock)
+        tap("Käufe")
+        field("Ausgaben ab JJJJ-MM-TT", "2026-10-01"); field("Ausgaben bis JJJJ-MM-TT", "2026-10-30"); tap("Ausgabenzeitraum anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.knownSubtotalCents == 800L }
+        tap("Ausgaben vollständig abgleichen / wieder öffnen")
+        tap("Alle Ausgaben im angezeigten Zeitraum vollständig erfasst und geprüft")
+        field("Grund des Ausgabenabgleichs", "Vollständig geprüft")
+        tap("Diesen Erfassungsstatus ausdrücklich bestätigen"); tap("Ausgabenstatus speichern"); saved(model)
+        tap("Einkauf"); rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report != null }
+        field("Bedarf ab JJJJ-MM-TT", "2026-10-30"); field("Geplanter Einkaufstag JJJJ-MM-TT", "2026-10-30")
+        choose("Budget für Einkaufsvergleich", budget); tap("Einkaufsliste anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.budget?.remainingBudgetCents == 200L }
+        rule.onNodeWithTag("shopping_budget_remaining").assertTextEquals("Verbleibendes Budget: 2,00 €")
+        tap("Neuen Vorgang beginnen"); tap("Käufe")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.purchases?.size == 1 }
+        tap("Fehlerhafte Buchung prüfen · Kaufbuchung paid")
+        field("Stornodatum paid", "2026-10-30"); field("Stornogrund paid", "Falsche Testzahlung")
+        tap("Fehlerhafte Buchung ausdrücklich stornieren paid"); tap("Kaufbuchung stornieren paid"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.staleConfirmation == true }
+        rule.onNodeWithTag("expense_total").assertTextEquals("Vollständig abgeglichene Ausgaben: Ungeklärt")
+        tap("Neuen Vorgang beginnen"); tap("Ausgaben vollständig abgleichen / wieder öffnen")
+        tap("Alle Ausgaben im angezeigten Zeitraum vollständig erfasst und geprüft")
+        field("Grund des Ausgabenabgleichs", "Nach Testkorrektur vollständig geprüft")
+        tap("Diesen Erfassungsstatus ausdrücklich bestätigen"); tap("Ausgabenstatus speichern"); saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.complete == true }
+        tap("Einkauf"); rule.waitUntil(15_000) { rule.waitForIdle(); model.shopping.value.report?.budget?.remainingBudgetCents == 1000L }
+        rule.onNodeWithTag("shopping_budget_remaining").assertTextEquals("Verbleibendes Budget: 10,00 €")
+        runBlocking {
+            assertEquals(1, database.foodDao().purchases().size); assertTrue(database.foodDao().planningBatches().isEmpty())
+            assertTrue(database.foodDao().reversal("paid") != null)
+        }
+    }
+
     private fun capture(name: String) = rule.runOnUiThread {
         val view = rule.activity.window.decorView
         val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)

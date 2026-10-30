@@ -14,7 +14,8 @@ internal class ShoppingReader(private val db: FoodDatabase, private val now: () 
     private val dao = db.foodDao()
     fun watch(scope: ShoppingScope) = db.invalidationTracker.createFlow("price_observations", "budgets", "shopping_marks",
         "operations", "plans", "planned_entries", "plan_executions", "plan_positions", "product_versions", "recipe_versions",
-        "recipe_ingredients", "batches", "stock_movements", "operation_reversals", "storage_locations", "consumption_events", "productions")
+        "recipe_ingredients", "batches", "stock_movements", "operation_reversals", "storage_locations", "consumption_events", "productions",
+        "purchase_events", "receipts", "expense_status_events")
         .map { report(scope) }.distinctUntilChanged()
 
     suspend fun report(scope: ShoppingScope, choiceOverrides: Map<String, String?> = emptyMap()): ShoppingReport = db.withTransaction {
@@ -65,8 +66,18 @@ internal class ShoppingReader(private val db: FoodDatabase, private val now: () 
             else -> null
         }
         val limit = selectedBudget?.amountCents?.takeIf { budgetIssue == null }
+        val through = selectedBudget?.endsOn?.let { minOf(it, today) }
+        val expenses = if (limit != null && through != null && selectedBudget.startsOn <= through &&
+            ChronoUnit.DAYS.between(LocalDate.parse(selectedBudget.startsOn), LocalDate.parse(through)) <= 365)
+            ExpenseReader(db, now).report(ExpenseScope(selectedBudget.startsOn, through)) else null
+        val remaining = if (limit != null && expenses?.totalCents != null) limit - expenses.totalCents else null
+        val knownPaid = expenses?.knownSubtotalCents
         ShoppingReport(scope, today, items, prices, budgets, subtotal, total, incomplete,
-            ShoppingBudget(selectedBudget, limit, if (limit != null && subtotal != null) (subtotal - limit).coerceAtLeast(0) else null, budgetIssue))
+            ShoppingBudget(selectedBudget, limit,
+                if (limit != null && subtotal != null && (expenses == null || knownPaid != null))
+                    (subtotal + (knownPaid ?: 0L) - limit).coerceAtLeast(0) else null,
+                budgetIssue, remaining, knownPaid, expenses?.totalCents, expenses?.scope?.endsOn,
+                if (remaining != null && total != null) remaining - total else null))
     }
 
     private fun quote(need: ShoppingNeed, offer: PriceObservationEntity?, obsolete: Boolean, firstNeeded: String?, purchaseOn: String): ShoppingQuote {

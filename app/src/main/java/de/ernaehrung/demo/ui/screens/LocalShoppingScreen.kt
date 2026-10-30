@@ -47,8 +47,10 @@ internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operati
         KV("Bestätigte Budgetobergrenze", report.budget.usableLimitCents?.let(Money::format) ?: "Ungeklärt")
         report.budget.issue?.let { Text(it) }
         val excess = report.budget.knownCostsOverLimitCents
-        if (excess != null && excess > 0) Hint("Schon die bekannten Einkaufskosten überschreiten die Budgetobergrenze um ${Money.format(excess)}.")
-        Text("Verbleibendes Budget: ungeklärt. Tatsächliche bezahlte Ausgaben und deren vollständiger Abgleich folgen gesondert.", Modifier.testTag("shopping_budget_remaining"))
+        if (excess != null && excess > 0) Hint("Bekannte Einkaufskosten und erfasste Ausgaben überschreiten die Budgetobergrenze um ${Money.format(excess)}.")
+        KV("Erfasste Ausgaben im Budgetzeitraum bis ${report.budget.expensesThroughOn ?: "ungeklärt"}", report.budget.knownPaidCents?.let(Money::format) ?: "Ungeklärt")
+        Text("Verbleibendes Budget: ${report.budget.remainingBudgetCents?.let(Money::format) ?: "ungeklärt. Ausgaben unter Käufe für den Budgetzeitraum bis heute vollständig abgleichen."}", Modifier.testTag("shopping_budget_remaining"))
+        KV("Nach offenem geplantem Einkauf", report.budget.afterPlannedCents?.let(Money::format) ?: "Ungeklärt")
     }
     if (report.items.isEmpty()) Text("Keine aktuelle Produktfehlmenge in diesem Ausschnitt. Das bestätigt keine vollständig geplante Ernährung.")
     report.items.forEach { line ->

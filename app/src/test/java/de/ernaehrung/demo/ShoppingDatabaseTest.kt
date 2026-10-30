@@ -229,7 +229,7 @@ class ShoppingDatabaseTest {
             } finally { job.cancelAndJoin(); channel.close() }
             val before = report(); db.close()
             db = Room.databaseBuilder(context, FoodDatabase::class.java, name).build(); store = FoodStore(db) { clock }
-            assertEquals(before, report()); assertEquals(5, db.openHelper.readableDatabase.version)
+            assertEquals(before, report()); assertEquals(6, db.openHelper.readableDatabase.version)
         } finally { db.close(); context.deleteDatabase(name) }
     }
 }

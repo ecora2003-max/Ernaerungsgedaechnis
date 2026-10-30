@@ -40,6 +40,21 @@ internal interface FoodDao {
     @Insert suspend fun insertPriceObservation(value: PriceObservationEntity)
     @Insert suspend fun insertBudget(value: BudgetEntity)
     @Insert suspend fun insertShoppingMark(value: ShoppingMarkEntity)
+    @Insert suspend fun insertReceipt(value: ReceiptEntity)
+    @Insert suspend fun insertReceiptLine(value: ReceiptLineEntity)
+    @Insert suspend fun insertPurchase(value: PurchaseEventEntity)
+    @Insert suspend fun insertReceiptBooking(value: ReceiptStockBookingEntity)
+    @Insert suspend fun insertExpenseStatus(value: ExpenseStatusEntity)
+    @Query("SELECT * FROM receipts ORDER BY id") suspend fun receipts(): List<ReceiptEntity>
+    @Query("SELECT * FROM receipts WHERE id=:id") suspend fun receipt(id: String): ReceiptEntity?
+    @Query("SELECT * FROM receipt_lines WHERE receiptId=:id ORDER BY id") suspend fun receiptLines(id: String): List<ReceiptLineEntity>
+    @Query("SELECT * FROM receipt_lines WHERE id=:id") suspend fun receiptLine(id: String): ReceiptLineEntity?
+    @Query("SELECT * FROM purchase_events ORDER BY operationId") suspend fun purchases(): List<PurchaseEventEntity>
+    @Query("SELECT * FROM purchase_events WHERE receiptId=:id") suspend fun purchaseForReceipt(id: String): PurchaseEventEntity?
+    @Query("SELECT * FROM purchase_events WHERE operationId=:id") suspend fun purchase(id: String): PurchaseEventEntity?
+    @Query("SELECT * FROM receipt_stock_bookings WHERE lineId=:id") suspend fun receiptBooking(id: String): ReceiptStockBookingEntity?
+    @Query("SELECT * FROM expense_status_events WHERE startsOn=:start AND endsOn=:end ORDER BY revision DESC LIMIT 1")
+    suspend fun expenseStatus(start: String, end: String): ExpenseStatusEntity?
     @Query("SELECT * FROM price_observations ORDER BY id") suspend fun prices(): List<PriceObservationEntity>
     @Query("SELECT * FROM budgets ORDER BY id") suspend fun budgets(): List<BudgetEntity>
     @Query("SELECT * FROM shopping_marks WHERE startsOn=:start AND endsOn=:end AND purchaseOn=:purchase ORDER BY versionId,revision")
@@ -144,7 +159,8 @@ internal interface FoodDao {
     PriceObservationEntity::class, BudgetEntity::class, BodyMeasurementEntity::class,
     TrainingEventEntity::class, TrainingSetEntity::class, OperationReversalEntity::class,
     RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
-    PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class], version = 5, exportSchema = true)
+    PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class, PurchaseEventEntity::class,
+    ReceiptStockBookingEntity::class, ExpenseStatusEntity::class], version = 6, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -155,7 +171,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

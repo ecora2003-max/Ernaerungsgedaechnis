@@ -57,7 +57,8 @@ data class ShoppingLine(val need: ShoppingNeed, val offer: PriceObservationEntit
     val checked: Boolean, val staleCheck: Boolean, val snapshot: String, val contentToken: String,
     val quotes: List<ShoppingQuote> = emptyList())
 data class ShoppingBudget(val record: BudgetEntity?, val usableLimitCents: Long?, val knownCostsOverLimitCents: Long?,
-    val issue: String?, val remainingBudgetCents: Long? = null)
+    val issue: String?, val remainingBudgetCents: Long? = null, val knownPaidCents: Long? = null,
+    val paidTotalCents: Long? = null, val expensesThroughOn: String? = null, val afterPlannedCents: Long? = null)
 data class ShoppingReport(val scope: ShoppingScope, val asOf: String, val items: List<ShoppingLine>,
     val prices: List<PriceObservationEntity>, val budgets: List<BudgetEntity>, val knownSubtotalCents: Long?,
     val estimatedTotalCents: Long?, val incomplete: Boolean, val budget: ShoppingBudget) {
