@@ -1,6 +1,6 @@
 # Prüfung des Phasenabschlusses 1–5
 
-Version `0.9.0-recognition`, versionCode 9, Schema 7 (35 Tabellen), 30.10.2026. Nur synthetische Testdaten. APK zum Phasenabschluss auf ausdrücklichen Nutzerwunsch über den manuellen Actions-Lauf angefordert; Status/Artefakt im Lauf prüfen.
+Version `0.9.0-recognition`, versionCode 9, Schema 7 (35 Tabellen), 30.10.2026. Nur synthetische Testdaten. APK zum Phasenabschluss auf ausdrücklichen Nutzerwunsch erfolgreich gebaut und separat geprüft; Download/Hash/Ablauf im Übergabeprotokoll.
 
 Prüfbefehl mit SDK 35/Build Tools 34, Gradle 8.9, JDK 21/Java-17-Bytecode:
 
@@ -24,3 +24,5 @@ Die Prüfungen decken insbesondere ab:
 Gefundene und korrigierte Fehler: gedrehte Barcodequellen konnten nicht zugeschnitten werden; `RUECKGELD` wurde als Ware gelesen; unsichere OCR-Preise gingen als Position verloren; alte asynchrone Fehler konnten neuere Abfragen ersetzen. Die zusätzliche Content-URI-Prüfung fand außerdem einen zwischen Robolectric-Testanwendungen verbliebenen FileProvider-Pfadcache. Der Testprovider wird nun pro Test über die öffentliche Android-API korrekt neu angebunden; die vollständigen Freigabe-/Pfadassertions bleiben erhalten. Keine Assertions abgeschwächt und keine Tests deaktiviert.
 
 **Abgrenzung:** Native Kamera/ML Kit hier ohne Android-Gerät/Emulator nicht ausgeführt. Zwei zusätzliche Instrumentationstests für OCR-Testbon und echten URI-Barcodepfad wurden erfolgreich kompiliert; ausdrücklich kein Ausführungsnachweis. Host-OCR mit Tesseract ist ein Test für realistische OCR-Eingaben des Parsers, kein Ersatznachweis für ML Kit auf Android. Große Historien, reale Händler-/Allergendaten, Produktionsmigration, Backups und Signierung bleiben spätere Aufgaben.
+
+GitHub-Abschluss: [41080374241](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241), SHA `4bb5b0f957e4d936a711e045f57431bef4ca0f90`, JDK 17, **success**. Alle 21 aktuellen heruntergeladenen XML-Dateien (15:31:57–15:32:56 UTC) ausgewertet: **183 Tests, 0 Fehlschläge/Fehler/Skips**. Lint 14 Hinweise/keine Fehler; Schema und Kompilierung der zwei Gerätetests erfolgreich. APK 0.9.0/code 9, minSdk 26/targetSdk 35, v2-Signatur nach Download überprüft. APK und Berichte bis 06.11.2026 verfügbar. Details: `UEBERGABE_2026-10-30_PHASE5.md`. Nachfolgende reine Dokumentationsänderung benötigt keine erneute App-Prüfung.

@@ -24,7 +24,15 @@ Maßgeblicher manueller Lauf mit `build_apk=true`:
 
 https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241
 
-Bei Anlage dieses Protokolls läuft die Prüfung noch. Das endgültige Ergebnis steht im Lauf; ein erfolgreicher Start ist noch kein erfolgreicher APK-Build. Eine nachfolgende Abschlussnotiz kann das überprüfte Ergebnis ergänzen.
+**Abschluss überprüft: SUCCESS.** JDK 17, Job 30.10.2026 15:24:12–15:36:10 UTC (11 Minuten 58 Sekunden), exakt auf `4bb5b0f957e4d936a711e045f57431bef4ca0f90`. Alle 21 heruntergeladenen aktuellen XML-Berichte (15:31:57–15:32:56 UTC) ausgewertet: **183 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Lint 14 Hinweise (13 Bibliotheksupdates, einmal OldTargetApi), keine Fehler. Versionierter Schemaabgleich und Gerätetest-Kompilierung erfolgreich; APK-Build und beide Artefakt-Uploads erfolgreich.
+
+APK selbst heruntergeladen und geprüft: `de.ernaehrung.demo`, **0.9.0-recognition / code 9**, minSdk 26, targetSdk 35, **APK-v2-Signatur gültig**. Dies ersetzt keine physische Geräte-/OCR-Prüfung.
+
+- [APK-ZIP direkt öffnen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241/artifacts/12990056668), Artefakt **12990056668**, ZIP 38.225.380 Bytes. Ablauf laut GitHub **06.11.2026, 16:35:51 Uhr Europe/Berlin** (15:35:51 UTC).
+- [Prüfberichte](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241/artifacts/12989672099), Artefakt **12989672099**, Ablauf 06.11.2026, 16:35:55 Uhr Europe/Berlin.
+- SHA-256 der entpackten `app-debug.apk`: `d3aa431b5dc05a42a0fb2ed93006522dc3278eb2528265c11ae9e5e2d6f05379`.
+- Lokale Prüfkopien in dieser Umgebung: `/tmp/phase5-verified-apk/app-debug.apk` und `/tmp/phase5-verified-ci-reports`. Sie sind keine dauerhaften GitHub-Dateien; bei neuer Umgebung über den Lauf herunterladen.
+- Nachfolgende Übergabe-/Dokumentationscommits ändern keinen App-/Schema-/Testcode und benötigen keinen weiteren APK-Lauf.
 
 - Der frühere Lauf **41080103685** wurde bewusst abgebrochen, um die Aufbewahrung rechtzeitig zu verlängern. Er ist kein Prüfnachweis.
 - APK und Prüfberichte werden jetzt **7 Tage** aufgehoben, damit sie die fünftägige Pause überstehen. Ablaufdatum nach Upload im tatsächlichen Artefakt prüfen.

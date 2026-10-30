@@ -24,6 +24,8 @@ UI: **Scan** oder Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereic
 
 ## Aktuelle Prüfung
 
+Manueller [APK-/Prüflauf 41080374241](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241) auf `4bb5b0f957e4d936a711e045f57431bef4ca0f90` **erfolgreich**: 21 heruntergeladene aktuelle XML-Berichte ausgewertet, **183 Tests, 0 Fehlschläge/Fehler/Skips**; Schema/Lint/Gerätetest-Kompilierung und APK erfolgreich. APK-Version 0.9.0/code 9 und v2-Signatur geprüft. [APK-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41080374241/artifacts/12990056668) bis 06.11.2026, 16:35 Uhr Europe/Berlin verfügbar. Vollständige Metadaten/Hash im ausführlichen Übergabeprotokoll. App-Code gegenüber `cc062ef` unverändert; Folgecommits betreffen nur Workflow-Aufbewahrung/Dokumentation. Keinen neuen Build für diese Ergebnisnotiz starten.
+
 Vollständiger lokaler Abschluss: **183 Tests, 0 Fehlschläge/Fehler/Skips**, 21 aktuelle XML-Berichte (15:16:23–15:16:44 UTC) ausgewertet. Lint 13 Updatehinweise, keine Fehler. Routine einschließlich Gerätetest-Kompilierung erfolgreich in 44 Sekunden mit vorbereiteten Abhängigkeiten. Kein Test abgeschwächt. Bericht: `TEST_REPORT_PHASE5.md`.
 
 Tatsächliche Barcode-Pixel, Drehung/mehrere Codes, EXIF und Content-URI-Pfad geprüft. Reale Host-OCR eines synthetischen Testbons prüft Parserverhalten bei verlorenem Dezimalkomma; kein Ersatz für Android-OCR. Alias-/Bontransaktionen einschließlich SQLite-Abbruch, Parallelität, Stornos/alte Retries, veraltete Netzantworten, Wiederöffnung und Bedienung geprüft. Kleindisplay/Schriftfaktor 1,3 visuell geprüft. Alle bestehenden Phasen-1–4-Tests weiterhin aktiv.
