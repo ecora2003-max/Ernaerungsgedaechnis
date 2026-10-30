@@ -4,6 +4,28 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE alias_decisions (aliasId TEXT NOT NULL, operationId TEXT NOT NULL, kind TEXT NOT NULL,
+                supersedesId TEXT, active INTEGER NOT NULL, reason TEXT NOT NULL, PRIMARY KEY(aliasId),
+                FOREIGN KEY(aliasId) REFERENCES product_aliases(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(supersedesId) REFERENCES product_aliases(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_alias_decisions_operationId ON alias_decisions(operationId)")
+            db.execSQL("CREATE UNIQUE INDEX index_alias_decisions_supersedesId ON alias_decisions(supersedesId)")
+            db.execSQL("""CREATE TABLE receipt_scans (operationId TEXT NOT NULL, rawText TEXT NOT NULL, method TEXT NOT NULL,
+                parserVersion TEXT NOT NULL, imageHash TEXT, PRIMARY KEY(operationId),
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_receipt_scans_imageHash ON receipt_scans(imageHash)")
+            db.execSQL("""CREATE TABLE receipt_scan_resolutions (scanId TEXT NOT NULL, operationId TEXT NOT NULL,
+                receiptId TEXT, reason TEXT NOT NULL, PRIMARY KEY(scanId),
+                FOREIGN KEY(scanId) REFERENCES receipt_scans(operationId) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(receiptId) REFERENCES receipts(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_receipt_scan_resolutions_operationId ON receipt_scan_resolutions(operationId)")
+            db.execSQL("CREATE UNIQUE INDEX index_receipt_scan_resolutions_receiptId ON receipt_scan_resolutions(receiptId)")
+        }
+    }
     val MIGRATION_5_6 = object : Migration(5, 6) {
         override fun migrate(db: SupportSQLiteDatabase) {
             // No old receipt, line, price, checklist or movement is silently declared paid.

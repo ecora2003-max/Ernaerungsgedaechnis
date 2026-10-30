@@ -45,7 +45,7 @@ jobs:
       - name: Run lint and unit tests
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest
+          ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
       - name: Verify versioned Room schema
         run: |
           git diff --exit-code -- app/schemas/

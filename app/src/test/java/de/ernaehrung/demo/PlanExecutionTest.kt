@@ -292,7 +292,7 @@ class PlanExecutionTest {
             val before = report(); val execution = store.planExecution(e.id); db.close()
             db = Room.databaseBuilder(context, FoodDatabase::class.java, name).build(); store = FoodStore(db) { clock }
             assertEquals(before, report()); assertEquals(execution, store.planExecution(e.id)); assertEquals(150_000L, dao.balance(batch))
-            assertEquals(6, db.openHelper.readableDatabase.version)
+            assertEquals(7, db.openHelper.readableDatabase.version)
         } finally { db.close(); context.deleteDatabase(name) }
     }
 }

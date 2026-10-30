@@ -3,8 +3,11 @@ package de.ernaehrung.demo.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.ernaehrung.demo.data.local.*
+import de.ernaehrung.demo.data.recognition.*
+import android.net.Uri
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 data class LocalDataState(val loading: Boolean = true, val catalog: List<CatalogRow> = emptyList(),
     val batches: List<BatchRow> = emptyList(), val locations: List<StorageLocationEntity> = emptyList(),
@@ -18,9 +21,82 @@ data class PlanningUiState(val report: PlanningReport? = null, val error: String
 data class ExecutionUiState(val view: PlanExecutionView? = null, val error: String? = null)
 data class ShoppingUiState(val report: ShoppingReport? = null, val error: String? = null)
 data class ExpenseUiState(val report: ExpenseReport? = null, val error: String? = null)
+data class RecognitionUiState(val data: RecognitionData? = null, val error: String? = null)
+data class AliasUiState(val busy: Boolean = false, val match: AliasMatch? = null, val error: String? = null, val queryText: String = "")
+data class LookupUiState(val busy: Boolean = false, val result: ProductLookup? = null, val error: String? = null)
+data class ReceiptReviewUiState(val review: ReceiptReview? = null, val resolved: Boolean = false, val error: String? = null)
+data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emptyList(), val text: PhotoText? = null,
+    val method: String? = null, val message: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class LocalDataViewModel(private val store: FoodStore) : ViewModel() {
+class LocalDataViewModel(private val store: FoodStore, private val productLookup: ProductLookupGateway = OpenFoodFactsClient()) : ViewModel() {
+    val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
+        .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())
+    private val selectedScan = MutableStateFlow("")
+    val selectedReceiptScan = selectedScan.asStateFlow()
+    val receiptReview: StateFlow<ReceiptReviewUiState> = selectedScan.flatMapLatest { id ->
+        if (id.isBlank()) flowOf(ReceiptReviewUiState()) else store.watchRecognition().map { data ->
+            if (data.scans.find { it.scan.operationId == id }?.resolution != null) ReceiptReviewUiState(resolved = true)
+            else ReceiptReviewUiState(store.reviewReceiptScan(id))
+        }.onStart { emit(ReceiptReviewUiState()) }.catch { emit(ReceiptReviewUiState(error = "Bonprüfung konnte nicht gelesen werden: ${it.message}")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReceiptReviewUiState())
+    fun showReceiptReview(id: String) { selectedScan.value = id }
+    private val aliasResult = MutableStateFlow(AliasUiState())
+    val aliasLookup = aliasResult.asStateFlow()
+    private var aliasJob: kotlinx.coroutines.Job? = null
+    fun checkAlias(text: String, merchant: String?, kind: AliasKind) {
+        aliasJob?.cancel(); aliasResult.value = AliasUiState(busy = true, queryText = text.trim())
+        aliasJob = viewModelScope.launch {
+            try {
+                val result = store.matchAlias(text, merchant, kind)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                aliasResult.value = AliasUiState(match = result, queryText = text.trim())
+            }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                aliasResult.value = AliasUiState(error = e.message ?: "Zuordnung fehlgeschlagen.")
+            }
+        }
+    }
+    fun clearAliasResult() { aliasJob?.cancel(); aliasResult.value = AliasUiState() }
+    private val lookupResult = MutableStateFlow(LookupUiState())
+    val externalLookup = lookupResult.asStateFlow()
+    private var lookupJob: kotlinx.coroutines.Job? = null
+    fun lookupProduct(code: String) {
+        lookupJob?.cancel(); lookupResult.value = LookupUiState(busy = true)
+        lookupJob = viewModelScope.launch {
+            try {
+                val result = productLookup.lookup(Gtin.parse(code).printed)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                lookupResult.value = LookupUiState(result = result)
+            }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                lookupResult.value = LookupUiState(error = "Produktabfrage: ${e.message ?: "Keine Verbindung."}")
+            }
+        }
+    }
+    fun clearProductLookup() { lookupJob?.cancel(); lookupResult.value = LookupUiState() }
+    private val photoResult = MutableStateFlow(PhotoUiState())
+    val photo = photoResult.asStateFlow()
+    fun photoError(message: String) { photoResult.value = PhotoUiState(message = message) }
+    fun analyzePhoto(uri: Uri, forReceipt: Boolean, method: String, gateway: PhotoRecognitionGateway, cleanup: () -> Unit = {}) {
+        if (photoResult.value.busy) { cleanup(); return }
+        photoResult.value = PhotoUiState(busy = true)
+        viewModelScope.launch {
+            try {
+                photoResult.value = if (forReceipt) PhotoUiState(text = gateway.receiptText(uri), method = method)
+                else gateway.barcodes(uri).let { codes -> PhotoUiState(codes = codes,
+                    message = if (codes.isEmpty()) "Kein gültiger Produktbarcode lesbar. Näher und schärfer fotografieren oder Ziffern eingeben." else "Barcode auswählen und im Katalog prüfen.") }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) { photoResult.value = PhotoUiState(message = "Bilderkennung: ${e.message ?: "Bild nicht lesbar."}") }
+            finally { cleanup() }
+        }
+    }
     private val expenseQuery = MutableStateFlow(java.time.LocalDate.now().let {
         ExpenseScope(it.withDayOfMonth(1).toString(), it.toString()) to 0L
     })

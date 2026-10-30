@@ -11,7 +11,7 @@ data class ProductInput(
     val fiberGrams: Double? = null, val sugarGrams: Double? = null, val saturatedFatGrams: Double? = null,
     val saltGrams: Double? = null, val calciumMg: Double? = null, val ironMg: Double? = null,
     val magnesiumMg: Double? = null, val iodineMicrograms: Double? = null, val vitaminB12Micrograms: Double? = null,
-    val vitaminDMicrograms: Double? = null
+    val vitaminDMicrograms: Double? = null, val metadata: ProductMetadataInput? = null
 ) {
     internal fun extras() = listOf(fiberGrams, sugarGrams, saturatedFatGrams, saltGrams, calciumMg, ironMg,
         magnesiumMg, iodineMicrograms, vitaminB12Micrograms, vitaminDMicrograms)
@@ -46,6 +46,36 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val shoppingWriter = ShoppingOperations(db, now)
     private val purchaseWriter = PurchaseOperations(db, now)
     private val expenseReader = ExpenseReader(db, now)
+    private val recognitionReader = RecognitionReader(db)
+    private val recognitionWriter = RecognitionOperations(db, now)
+    fun watchRecognition() = recognitionReader.watch()
+    suspend fun recognitionData() = recognitionReader.data()
+    suspend fun matchAlias(text: String, merchant: String?, kind: AliasKind) = recognitionReader.match(text, merchant, kind)
+    suspend fun saveAlias(key: String, input: AliasInput, previousId: String? = null, confirmed: Boolean, active: Boolean = true) = recognitionWriter.alias(key, input, previousId, confirmed, active)
+    suspend fun saveReceiptScan(key: String, rawText: String, method: String, imageHash: String? = null) = recognitionWriter.scan(key, rawText, method, imageHash)
+    suspend fun discardReceiptScan(key: String, scanId: String, reason: String, confirmed: Boolean) = recognitionWriter.discard(key, scanId, reason, confirmed)
+    suspend fun reviewReceiptScan(scanId: String) = recognitionReader.review(scanId)
+    suspend fun acceptReceiptScan(key: String, scanId: String, input: PurchaseInput, expectedCatalog: String, confirmed: Boolean, distinctPurchaseConfirmed: Boolean = false) =
+        purchaseWriter.save(key, input, confirmed, scanId, expectedCatalog, distinctPurchaseConfirmed)
+    suspend fun rememberRecognizedProduct(key: String, input: RecognizedProductInput, confirmed: Boolean): String = db.withTransaction {
+        require(confirmed && input.basisConfirmed && input.reason.isNotBlank()) { "Produktvariante, Nährwertbasis/Einheit und Speichern ausdrücklich bestätigen." }
+        val p = input.product; val m = p.metadata
+        val hash = fingerprint("RECOGNIZED_PRODUCT_1", listOf(p.name, p.brand, p.unit, p.packageAmount, p.nutritionBasis,
+            p.energyKcal, p.proteinGrams, p.fatGrams, p.carbsGrams, p.source, p.quality, p.sourceDetail), p.extras(),
+            m?.let { listOf(it.barcode, it.category, it.ingredients, it.allergens) }, input.productId, input.expectedVersionId,
+            input.basisConfirmed, input.barcodeConfirmed, input.reason)
+        replay(key, hash)?.let { return@withTransaction it }
+        require(if (input.productId == null) input.expectedVersionId == null else dao.latestVersion(input.productId)?.id == input.expectedVersionId) {
+            "Produktversion inzwischen geändert. Aktuelle Angaben neu prüfen."
+        }
+        val version = rememberProduct(id(), p, input.productId, input.reason)
+        if (input.barcodeConfirmed) {
+            val code = requireNotNull(m?.barcode) { "Bestätigter Barcode fehlt." }
+            recognitionWriter.alias(id(), AliasInput(version, code, null, AliasKind.BARCODE, reason = input.reason), null, true)
+        }
+        dao.insertOperation(OperationEntity(key, "RECOGNIZED_PRODUCT", hash, now(), version))
+        version
+    }
     suspend fun savePurchase(key: String, input: PurchaseInput, confirmed: Boolean) = purchaseWriter.save(key, input, confirmed)
     suspend fun confirmReceiptPayment(key: String, receiptId: String, reason: String, confirmed: Boolean) = purchaseWriter.confirmReceipt(key, receiptId, reason, confirmed)
     suspend fun bookPurchaseLine(key: String, input: PurchaseStockInput, confirmed: Boolean) = purchaseWriter.bookLine(key, input, confirmed)
@@ -112,7 +142,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             input.nutritionBasis, input.energyKcal, input.proteinGrams, input.fatGrams, input.carbsGrams,
             input.source, input.quality, input.sourceDetail), productId, reason)
         // Existing 0.2/0.3 product retry keys remain valid when no additional nutrients were supplied.
-        val fingerprint = if (input.extras().all { it == null }) legacyFingerprint else fingerprint("PRODUCT_NUTRIENTS", legacyFingerprint, input.extras())
+        val nutrientsFingerprint = if (input.extras().all { it == null }) legacyFingerprint else fingerprint("PRODUCT_NUTRIENTS", legacyFingerprint, input.extras())
+        val fingerprint = input.metadata?.let { fingerprint("PRODUCT_METADATA_1", nutrientsFingerprint, it.barcode, it.category, it.ingredients, it.allergens) } ?: nutrientsFingerprint
         replay(operationId, fingerprint)?.let { return@withTransaction it }
         val previous = productId?.let { requireNotNull(dao.latestVersion(it)) { "Produkt nicht gefunden." } }
         require(previous == null || previous.baseUnit == input.unit) { "Basiseinheit einer Produktidentität darf nicht geändert werden." }
@@ -120,13 +151,15 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         if (previous == null) dao.insertProduct(ProductEntity(identity, now()))
         val version = id()
         dao.insertVersion(ProductVersionEntity(version, identity, (previous?.revision ?: 0) + 1,
-            input.name.trim(), input.brand?.trim()?.takeIf { it.isNotEmpty() }, previous?.category, previous?.barcode,
+            input.name.trim(), input.brand?.trim()?.takeIf { it.isNotEmpty() }, if (input.metadata != null) input.metadata.category else previous?.category,
+            if (input.metadata != null) input.metadata.barcode else previous?.barcode,
             input.unit, input.packageAmount, input.nutritionBasis, input.energyKcal, input.proteinGrams,
             input.fatGrams, input.carbsGrams, fiberGrams = input.fiberGrams, sugarGrams = input.sugarGrams,
             saturatedFatGrams = input.saturatedFatGrams, saltGrams = input.saltGrams, calciumMg = input.calciumMg,
             ironMg = input.ironMg, magnesiumMg = input.magnesiumMg, iodineMicrograms = input.iodineMicrograms,
             vitaminB12Micrograms = input.vitaminB12Micrograms, vitaminDMicrograms = input.vitaminDMicrograms,
-            ingredients = previous?.ingredients, allergens = previous?.allergens, source = input.source, sourceDetail = input.sourceDetail,
+            ingredients = if (input.metadata != null) input.metadata.ingredients else previous?.ingredients,
+            allergens = if (input.metadata != null) input.metadata.allergens else previous?.allergens, source = input.source, sourceDetail = input.sourceDetail,
             quality = input.quality, recordedAt = now(), changeReason = reason))
         dao.insertOperation(OperationEntity(operationId, "PRODUCT", fingerprint, now(), version))
         version
@@ -200,6 +233,11 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(input.name.isNotBlank()) { "Produktname fehlt." }
         Amounts.positive(input.nutritionBasis)
         input.packageAmount?.let(Amounts::positive)
+        input.metadata?.let { metadata ->
+            metadata.barcode?.let(de.ernaehrung.demo.data.recognition.Gtin::parse)
+            require((metadata.ingredients?.length ?: 0) <= 20_000 && (metadata.allergens?.length ?: 0) <= 5000 &&
+                (metadata.category?.length ?: 0) <= 1000) { "Produktmetadaten sind zu lang." }
+        }
         (listOf(input.energyKcal, input.proteinGrams, input.fatGrams, input.carbsGrams) + input.extras()).forEach {
             require(it == null || it.isFinite() && it >= 0) { "Nährwerte müssen bekannte, nichtnegative Zahlen sein; leere Felder bleiben unbekannt." }
         }

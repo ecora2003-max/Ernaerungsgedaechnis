@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
-    <!-- No internet, camera, file or health permissions. -->
+    <!-- Product lookup is explicit. Photos use the system camera/picker, without broad media/camera access. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" tools:targetApi="31"
         android:label="Ernährung · Demo" android:icon="@drawable/ic_leaf" android:roundIcon="@drawable/ic_leaf"
         android:supportsRtl="true" android:theme="@style/Theme.Demo" android:usesCleartextTraffic="false">
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.recognition-files"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/recognition_file_paths" />
+        </provider>
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>

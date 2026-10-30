@@ -10,13 +10,26 @@ import de.ernaehrung.demo.data.local.WriteRules.replay
 internal class PurchaseOperations(private val db: FoodDatabase, private val now: () -> Long) {
     private val dao = db.foodDao()
 
-    suspend fun save(key: String, input: PurchaseInput, confirmed: Boolean): String = db.withTransaction {
+    suspend fun save(key: String, input: PurchaseInput, confirmed: Boolean, scanId: String? = null, expectedCatalog: String? = null,
+        distinctPurchaseConfirmed: Boolean = false): String = db.withTransaction {
         confirmation(confirmed, input.reason)
         input.purchasedOn?.let(::date); input.paidCents?.let(Money::valid)
         require(input.lines.size <= 200) { "Höchstens 200 Positionen je manuellem Einkauf." }
-        val hash = fingerprint("PURCHASE_1", input.merchant, input.purchasedOn, input.paidCents, input.reason, input.source,
+        val baseHash = fingerprint("PURCHASE_1", input.merchant, input.purchasedOn, input.paidCents, input.reason, input.source,
             input.lines.map { listOf(it.originalText, it.interpretedName, it.versionId, it.amount, it.unit, it.totalCents) })
+        val hash = if (scanId == null) baseHash else fingerprint("PURCHASE_FROM_SCAN_1", baseHash, scanId, expectedCatalog, distinctPurchaseConfirmed)
         replay(dao, key, hash)?.let { return@withTransaction it }
+        if (scanId != null) {
+            requireNotNull(dao.receiptScan(scanId)) { "Bonentwurf fehlt." }
+            require(dao.scanResolution(scanId) == null) { "Dieser Bonentwurf wurde bereits übernommen oder verworfen." }
+            require(RecognitionReader(db).snapshot() == expectedCatalog) { "Produkt-/Aliasdaten geändert. Bonpositionen erneut prüfen." }
+            val matching = if (input.purchasedOn != null && input.paidCents != null && !input.merchant.isNullOrBlank())
+                dao.receipts().filter { receipt -> receipt.purchasedOn == input.purchasedOn && receipt.totalCents == input.paidCents &&
+                    de.ernaehrung.demo.data.recognition.AliasText.merchant(receipt.merchant) == de.ernaehrung.demo.data.recognition.AliasText.merchant(input.merchant) }
+                    .any { receipt -> dao.purchaseForReceipt(receipt.id)?.let { dao.reversal(it.operationId) == null } == true }
+                else false
+            require(!matching || distinctPurchaseConfirmed) { "Passender bezahlter Einkauf mit gleichem Händler, Datum und Betrag existiert. Beleg prüfen; einen wirklich weiteren Einkauf gesondert bestätigen." }
+        }
         input.purchasedOn?.let { actualDate(it, now()) }
         for (line in input.lines) {
             line.amount?.let(Amounts::positive); line.totalCents?.let(Money::valid)
@@ -34,6 +47,8 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
         for (line in input.lines) dao.insertReceiptLine(ReceiptLineEntity(id(), receiptId, line.originalText, line.interpretedName,
             line.versionId, line.amount, line.unit, line.totalCents, Quality.UNKNOWN, null))
         dao.insertPurchase(PurchaseEventEntity(key, receiptId, "EUR", input.reason))
+        if (scanId != null) dao.insertScanResolution(ReceiptScanResolutionEntity(scanId, key, receiptId,
+            if (distinctPurchaseConfirmed) "Eigenständiger weiterer Einkauf ausdrücklich bestätigt: ${input.reason}" else input.reason))
         receiptId
     }
 

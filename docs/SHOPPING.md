@@ -44,7 +44,7 @@ Seit 0.8 kommen ausdrücklich bestätigte tatsächliche Einkäufe hinzu. Bekannt
 
 ## Architektur und Migration
 
-Schema **5** führte die 29 Tabellen ein; aktuelles Schema **6** ergänzt drei Tabellen für echte Käufe und Ausgabenabgleich. `price_observations` hat nullable Mengen/Preise und zusätzliche Bestätigungs-/Gültigkeits-/Währungs-/Versionsmetadaten; `budgets` hat begründete Fassungen. `shopping_marks` speichert ausschließlich Listenentscheidungen mit Vorgänger, Revision und geprüftem Inhaltsstand. Eine eindeutige Kette je Artikelversion, Bedarfsausschnitt und Einkaufstag verhindert parallele Überschreibung.
+Schema **5** führte die 29 Tabellen ein; Schema **6** ergänzte drei Tabellen für echte Käufe und Ausgabenabgleich. Aktuelles Schema **7** ergänzt Erkennungsentwürfe und Aliasentscheidungen; siehe `RECOGNITION.md`. `price_observations` hat nullable Mengen/Preise und zusätzliche Bestätigungs-/Gültigkeits-/Währungs-/Versionsmetadaten; `budgets` hat begründete Fassungen. `shopping_marks` speichert ausschließlich Listenentscheidungen mit Vorgänger, Revision und geprüftem Inhaltsstand. Eine eindeutige Kette je Artikelversion, Bedarfsausschnitt und Einkaufstag verhindert parallele Überschreibung.
 
 Migration 4→5 übernimmt sämtliche alten Werte der Preistabelle beim erhaltenden Tabellenumbau. Alte Währung, Packungsbezug, Bestätigungen und Gültigkeit bleiben NULL, keine erfundene Freigabe. Vorhandene Pläne, Positionsidentitäten, Ist-Zuordnungen und bisherige Retry-Schlüssel bleiben erhalten. Migrationen 1→2→3→4→5 registriert, keine destruktive Fallback-Migration. Alte Schemaexporte unverändert.
 

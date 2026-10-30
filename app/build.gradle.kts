@@ -11,8 +11,9 @@ android {
         applicationId="de.ernaehrung.demo"
         minSdk=26
         targetSdk=35
-        versionCode=8
-        versionName="0.8.0-purchases"
+        versionCode=9
+        versionName="0.9.0-recognition"
+        testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget="17" }
@@ -34,6 +35,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.8.5")
+    implementation("com.google.zxing:core:3.5.3")
+    // Bundled Latin OCR model: photo processing works offline; no cloud OCR/API key.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation(bom)
@@ -44,6 +49,8 @@ dependencies {
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("androidx.room:room-testing:2.7.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }
 tasks.withType<Test>().configureEach {
     maxHeapSize="2g"

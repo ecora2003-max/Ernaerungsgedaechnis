@@ -1,22 +1,16 @@
 # Ernährungsgedächtnis · Android-Entwicklung
 
-Native Android-Oberflächendemo mit Kotlin, Jetpack Compose und Material 3. Alle Daten sind fiktiv. Enthalten sind die 33 vorgesehenen Ansichten und eine zusätzliche Mehr-Übersicht.
+Android-App mit Kotlin, Jetpack Compose und Material 3. Version **0.9.0-recognition** implementiert den funktionalen Kern bis einschließlich **Phase 5** der Gesamtplanung: lokale Daten, tatsächliche Buchungen, Ernährung/Rezepte, Planung/Einkauf und Erkennung. Weiterhin isolierter Testbetrieb; nur Testdaten verwenden.
 
-Version **0.8.0-purchases** enthält einen **persistenten lokalen Testbereich**: Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Dort lassen sich Produkte, Bestände, Rezepte, tatsächliches Kochen, Verzehr und Käufe verwalten. Stornos ergänzen Gegenbuchungen, ohne Historie zu löschen.
+**Scan** öffnet jetzt die lokale Erkennung: Barcode fotografieren/Bild wählen/manuell eingeben, offline im Katalog prüfen, optional Open Food Facts abfragen und bearbeitbare Produktangaben bestätigen. EAN-/GTIN-Prüfziffern, konkrete Artikelversionen, Quellen und unbekannte Werte bleiben erhalten. Produktanlage bucht keinen Vorrat. Unter **Bon & OCR** Kamera/System-Fotoauswahl oder mehrzeiligen Text verwenden, einen Entwurf speichern und Vorschläge prüfen. Erst eine ausdrückliche Zahlungsbestätigung erzeugt einen Einkauf; geklärte Lagerzugänge werden separat bestätigt. Händleraliase lassen sich ausdrücklich lernen, korrigieren und zurücknehmen. Anleitung/Grenzen: [docs/RECOGNITION.md](docs/RECOGNITION.md).
 
-Neu unter **Käufe**: tatsächlich bezahlte Einkäufe mit mehreren Belegpositionen erfassen, einzelne geklärte Positionen ausdrücklich ins Lager buchen und Ausgaben vollständig abgleichen. Jeder Einkauf zählt einmal als Ausgabe. Nach bestätigtem Abgleich zeigt der Budgetvergleich den verbleibenden Spielraum; offene Beträge/Daten bleiben ungeklärt. Bedienung und Grenzen: [docs/PURCHASES.md](docs/PURCHASES.md).
+Alle gespeicherten Funktionen sind auch unter **Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen** erreichbar: **Katalog / Lager / Ernährung / Küche / Planung / Einkauf / Käufe / Erkennung / Chronik**. Der Katalog ist durchsuchbar und unabhängig vom Bestand. Die übrigen Hauptansichten enthalten weiterhin vorbereitete Demobeispiele; die Datenbereiche bleiben getrennt. Persönliche Sheets-Daten wurden nicht übernommen.
 
-Unter **Einkauf**: offene Restbedarfe in ganze Packungen umrechnen, Preisfassungen mit bestätigter nutzbarer Mengenbasis und Gültigkeit erfassen, Kosten/Überschuss vergleichen und Listenmarkierungen speichern. Unbekannt bleibt ungeklärt; veraltete Markierungen verlangen erneute Prüfung. Abhaken bucht weder Kauf, Ausgabe noch Lagerzugang. Grundlagen: [docs/SHOPPING.md](docs/SHOPPING.md).
+Tatsächliche Zugänge, Verbrauch, Umlagerung, Zählkorrektur, Entsorgung und Herstellung sind atomar und idempotent. Stornos ergänzen Gegenbuchungen und bewahren Historie. Ernährung und Portionsnährwerte verwenden konkrete damalige Versionen/Ansätze; fehlende Mengen oder Werte bleiben Lücken. Regeln: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md), [docs/NUTRITION.md](docs/NUTRITION.md).
 
-Unter **Planung** lassen sich bereits gebuchter tatsächlicher Verzehr und Herstellung ausdrücklich zuordnen. Teilmengen reduzieren nur den noch offenen Bedarf; Zuordnungsrücknahme und echtes Storno bleiben getrennt. Dauerhafte Positionsidentitäten erhalten die Zusammenhänge über neue Planfassungen. Bedienung: [docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md).
+Gemeinsame Tages-/Wochen-/56-Tage-Planung mit expliziter Ist-Zuordnung berechnet offenen Restbedarf. Einkaufsvorschläge berücksichtigen geeigneten Bestand, bestätigte Kaufpackungen, Preise und Überschüsse. Listenhäkchen sind kein Kauf. Verfügbares Budget erscheint erst nach explizit vollständigem Ausgabenabgleich. Regeln: [docs/PLANNING.md](docs/PLANNING.md), [docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md), [docs/SHOPPING.md](docs/SHOPPING.md), [docs/PURCHASES.md](docs/PURCHASES.md).
 
-Die gemeinsamen Einträge für einen, sieben und 56 Tage, Planversionen und Bedarfsrechnung aus 0.5 bleiben erhalten. Passende freigegebene Chargen werden einmalig angerechnet, geplante Portionen erzeugen keinen Bestand. Ausgeführte Herstellung und vorhandene Portionen werden mit dem Restplan abgeglichen. Planungsgrundlagen: [docs/PLANNING.md](docs/PLANNING.md).
-
-Unter **Ernährung**: tatsächliche Verzehre mit oder ohne Lagerbezug, bekannte Nährwertsummen und ausdrücklich gekennzeichnete Datenlücken, Tagesbestätigung und Storno. Fertigportionen werden aus tatsächlichen Zutaten und Ausbeuten berechnet. Rezeptvorschauen bleiben von diesen Ist-Werten getrennt. Im Katalog sind auch weitere Nährstoffe manuell erfassbar; leer bleibt unbekannt, 0 bleibt eine bekannte Null.
-
-Schema 6 ergänzt bestätigte Einkaufsereignisse, eindeutige Positionszugänge und Ausgabenstatus-Historie; Testdaten aus Schema 1 bis 5 werden ohne Löschung migriert. Alte Belege werden nicht automatisch als bezahlt bestätigt. Alte Preis-Mengenangaben werden nicht automatisch zu bestätigten Kaufpackungen oder gültigen EUR-Angeboten erklärt. Die bisherigen 33 Fachansichten bleiben Demoansichten. Keine persönlichen Daten übernehmen: sichere Backups und die kontrollierte Übernahme aus Sheets fehlen noch.
-
-Entwicklungsstand und Fortsetzung: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Bedienung, Datenmodell und Grenzen: [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md). Der vollständige Produktplan liegt unter [docs/product/](docs/product/).
+Schema **7** mit 35 Tabellen; Testdaten aus Schema 1–6 werden ohne Löschung/Umdeutung migriert. Sichere Backups, Produktionsmigration und Release-Signierung folgen später. Noch keine persönlichen Daten übernehmen. Aktueller Prüfstand und nächste Phase: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); Produktplan unter [docs/product/](docs/product/).
 
 ## Schnellstart
 
@@ -24,8 +18,10 @@ Projektordner in Android Studio öffnen und Gradle synchronisieren. Benötigt we
 
 ```bash
 chmod +x gradlew
-./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest
+./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
 ```
+
+Das letzte Prüftask kompiliert die zwei zusätzlichen Gerätetests; es führt sie nicht aus. Auf einem angeschlossenen Android-Gerät/Emulator mit `./gradlew :app:connectedDebugAndroidTest` separat ausführen. Native Kamera/OCR wurden in der Cloud ohne Android-Gerät nicht ausgeführt.
 
 Für ausgewählte APK-Meilensteine zusätzlich `./gradlew :app:assembleDebug` ausführen. Die installierbare Debug-APK entsteht unter `app/build/outputs/apk/debug/app-debug.apk`. Mindestversion: Android 8.0 (API 26), Zielversion: API 35. Paketname: `de.ernaehrung.demo`.
 
@@ -46,7 +42,7 @@ Unten stehen Start, Bestände, Scan, Planung und Mehr. Unter Mehr → Demo-Rundg
 
 In den bisherigen Demoansichten funktionieren Navigation, Such- und Filterfelder, aufklappbare Bereiche, Eingabevorschauen, Einkaufslisten-Häkchen und Diagrammauswahl. Dort zeigen Buchungs-, Import-, Export- und Sicherungsaktionen Demo-Hinweise und verändern keine dauerhaften Daten. Der neue lokale Testbereich speichert dagegen ausdrücklich bestätigte Testeingaben.
 
-Außerhalb des lokalen Testbereichs sind Buchungs-, Import-, Export- und Sicherungsaktionen weiterhin Vorschauen. Keine Kamera, OCR, Barcodeerkennung, KI-API oder Aktivitätsintegration. Keine Internet-, Kamera-, Gesundheits- oder Dateizugriffsberechtigung. App-Backups sind deaktiviert. Originalfotos wurden durch lokal gezeichnete Produktillustrationen ersetzt.
+Scan und lokale Erkennung sind funktionsfähig: Barcodeverarbeitung mit ZXing, gebündelte lokale ML-Kit-Texterkennung und ausdrücklicher HTTPS-Produktabruf bei Open Food Facts. Systemkamera und Fotoauswahl verwenden einzelne freigegebene Bild-URIs; keine breite Kamera-/Medien-Leseberechtigung. App/SDK deklarieren Internet und Netzwerkstatus. Der Produktabruf braucht eine Verbindung; Bildauswertung und gespeicherte Daten funktionieren offline. Keine KI-API, Aktivitäts-/Gesundheitsintegration oder Anmeldung. App-Backups bleiben deaktiviert. Die übrigen Demo-Buchungs-, Import-, Export- und Sicherungsaktionen bleiben Vorschauen; die lokalen Produktillustrationen sind unverändert.
 
 Produktinformationen sind unabhängig vom fiktiven Vorratsstand verfügbar. Unbekannte Nährwerte werden als unbekannt angezeigt. Geplante Mahlzeiten zählen nicht zur tatsächlichen Tagesbilanz. Die Vorschau für 50 g Naturtofu ist fest vorbereitet; andere Mengen erzeugen keine scheinbar berechneten Werte.
 
@@ -56,7 +52,7 @@ Der Bedarfsabgleich in den bisherigen Hauptansichten ist ein erklärter Auszug f
 
 `data/DemoRepository.kt` enthält die unveränderlichen Fixtures. `navigation/Screen.kt` definiert Ansichten und Hauptbereiche. `MainActivity.kt` enthält Navigation und Grundgerüst. `ui/screens/` enthält die Ansichten; `ui/Components.kt` gemeinsame Komponenten. Die Tests liegen in `app/src/test/`.
 
-Abhängigkeiten: AGP 8.7.3, Gradle 8.9, Kotlin/Compose-Compiler 2.0.21, Compose BOM 2024.12.01, Navigation 2.8.5, Room 2.7.2 und KSP 2.0.21-1.0.28. Der Wrapper prüft die Gradle-Distribution per SHA-256. Auf eingeschränkten Build-Rechnern kann mit `-PtestHome=/beschreibbarer/pfad` ein eigenes JVM-Testverzeichnis für Robolectric verwendet werden.
+Abhängigkeiten: AGP 8.7.3, Gradle 8.9, Kotlin/Compose-Compiler 2.0.21, Compose BOM 2024.12.01, Navigation 2.8.5, Room 2.7.2, KSP 2.0.21-1.0.28, ZXing 3.5.3, ML Kit Text Recognition 16.0.1 und ExifInterface 1.3.7. Der Wrapper prüft die Gradle-Distribution per SHA-256. Auf eingeschränkten Build-Rechnern kann mit `-PtestHome=/beschreibbarer/pfad` ein eigenes JVM-Testverzeichnis für Robolectric verwendet werden.
 
 ## GitHub
 

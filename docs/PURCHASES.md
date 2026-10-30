@@ -2,6 +2,8 @@
 
 Im isolierten Testbereich **Käufe** öffnen. Nur Testdaten verwenden. Die bisherigen 33 Fachansichten bleiben Demoansichten; keine Anbindung an Sheets oder persönliche Daten.
 
+Seit 0.9 lassen sich unter Scan → Bon & OCR ungeprüfte Erkennungsentwürfe speichern und anschließend ausdrücklich übernehmen. Sie zählen bis zur Zahlungsbestätigung nicht als Ausgabe; derselbe Entwurf wird höchstens einmal übernommen. Anleitung: [RECOGNITION.md](RECOGNITION.md).
+
 ## Bezahlten Einkauf erfassen
 
 Händler, tatsächliches Kaufdatum und tatsächlich bezahlten Betrag in EUR eingeben. Unbekannte Angaben leer lassen. Das Datum wird nicht aus dem heutigen Tag erfunden. Ein bestätigter Nullbetrag ist von einem unbekannten Betrag verschieden. Quelle/Grund angeben und den tatsächlich bezahlten Einkauf ausdrücklich bestätigen. Der Betrag bezieht sich auf den erfassten Ausgabenbereich; keine automatische Aufteilung gemischter Käufe.

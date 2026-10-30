@@ -21,26 +21,27 @@ import java.time.LocalDate
 import java.util.UUID
 
 @Composable
-fun LocalDataScreen() {
+fun LocalDataScreen(initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt") {
     val context = LocalContext.current.applicationContext
     val factory = remember(context) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(FoodDatabase.localSandbox(context))) as T
     } }
     val model: LocalDataViewModel = viewModel(factory = factory)
-    LocalDataContent(model)
+    LocalDataContent(model, initialSection, initialRecognitionMode)
 }
 
 /** Lives inside the existing scroll container on M03, without adding a main navigation tab. */
 @Composable
-fun LocalDataContent(model: LocalDataViewModel) {
+fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt") {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
-    var mode by rememberSaveable { mutableStateOf("Katalog") }
+    var mode by rememberSaveable { mutableStateOf(initialSection) }
+    var catalogQuery by rememberSaveable { mutableStateOf("") }
     var operationId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     val blocked = save.busy || save.succeeded
 
-    Heading("Lokaler Testbereich", "Datenfundament · Room / SQLite")
+    Heading("Lokaler Testbereich", "Produkte und tatsächliche Ereignisse lokal speichern")
     Hint("Nur Testdaten eingeben. Diese Daten bleiben auf diesem Gerät und nach App-Neustart erhalten. Die übrigen Ansichten zeigen weiterhin feste Demodaten. Keine Verbindung zu Sheets oder persönlichen Daten.", Sage)
     state.error?.let { Hint(it); return }
     if (state.loading) { CircularProgressIndicator(); return }
@@ -54,15 +55,25 @@ fun LocalDataContent(model: LocalDataViewModel) {
     when (mode) {
         "Katalog" -> {
             Text("${state.catalog.size} gespeicherte Produkte · unabhängig vom Bestand")
+            Field("Lokalen Produktkatalog durchsuchen", catalogQuery, { catalogQuery = it })
             ProductEditor(state, blocked, operationId, model)
             if (state.catalog.isEmpty()) Hint("Noch keine Produkte gespeichert. Der Katalog startet bewusst leer.", Sage)
-            state.catalog.forEach { row ->
+            val filtered = state.catalog.filter { row -> listOfNotNull(row.version.name, row.version.brand, row.version.barcode,
+                row.version.category, row.version.productId).joinToString(" ").contains(catalogQuery.trim(), ignoreCase = true) }
+            if (catalogQuery.isNotBlank() && filtered.isEmpty()) Text("Keine passenden Produkte im lokalen Katalog.")
+            filtered.forEach { row ->
                 Panel {
                     Section(row.version.name, "Version ${row.version.revision} · ${row.version.brand ?: "Marke unbekannt"}")
                     KV("Physischer Bestand", "${Amounts.format(row.stockAmount)} ${row.version.baseUnit.label}")
                     KV("Energie", row.version.energyKcal?.let { "$it kcal" } ?: "Unbekannt")
                     KV("Nährwertbasis", "${Amounts.format(row.version.nutritionBasis)} ${row.version.baseUnit.label}")
-                    KV("Qualität / Quelle", "${row.version.quality} / ${row.version.source}")
+                    KV("Qualität / Quelle", "${row.version.quality.label} / ${row.version.source.label}")
+                    row.version.barcode?.let { KV("Produktbarcode", it) }
+                    if (row.version.ingredients != null || row.version.allergens != null) Fold("Zutaten / Allergene ${row.version.id.take(8)}") {
+                        KV("Zutaten laut Quelle", row.version.ingredients ?: "Unbekannt")
+                        KV("Allergene laut Quelle", row.version.allergens ?: "Unbekannt")
+                        Text("Keine automatische Allergie- oder Lebensmittelfreigabe.")
+                    }
                     Text("Produkt: ${row.version.productId}\nVersion: ${row.version.id}", style = MaterialTheme.typography.labelSmall)
                     Text("Speichern oder Korrigieren erzeugt keinen Zugang.", style = MaterialTheme.typography.bodySmall)
                 }
@@ -94,6 +105,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
         "Planung" -> LocalPlanningScreen(state, blocked, operationId, model)
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
+        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode)
         "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
@@ -112,7 +124,7 @@ fun LocalDataContent(model: LocalDataViewModel) {
 
 @Composable
 private fun LocalSections(selected: String, onSelect: (String) -> Unit) =
-    WrappingChoices(listOf("Katalog", "Lager", "Ernährung", "Küche", "Planung", "Einkauf", "Käufe", "Chronik"), selected, "local_section_", onSelect)
+    WrappingChoices(listOf("Katalog", "Lager", "Ernährung", "Küche", "Planung", "Einkauf", "Käufe", "Erkennung", "Chronik"), selected, "local_section_", onSelect)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

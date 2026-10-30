@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,21 +18,10 @@ import de.ernaehrung.demo.ui.*
 
 @Composable fun ProductsReceipts(screen:Screen,s:Selection,ui:UiActions){val d=DemoRepository;val p=d.product(s.productId)
     when(screen){
-        Screen.P01->{var manual by remember{mutableStateOf(false)}
-            Heading(screen.title,"Einmal kennen. Immer wiederfinden.")
-            Surface(color=Color(0xFF253E32),shape=RoundedCornerShape(22.dp)){
-                Column(Modifier.fillMaxWidth().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
-                    Badge("Kamera nicht aktiv")
-                    Surface(color=Color.Transparent,shape=RoundedCornerShape(18.dp),border=BorderStroke(2.dp,Color(0xFFAFC595))){Box(Modifier.size(184.dp),contentAlignment=Alignment.Center){FoodArt("tofu",Modifier.size(140.dp))}}
-                    Text("${d.tofu.name} · ${d.tofu.pack}",style=MaterialTheme.typography.titleMedium,color=Color.White)
-                    Text("${d.tofu.id} · kein echter Barcode",style=MaterialTheme.typography.bodyMedium,color=Color(0xFFDCE6D7))
-                }
-            }
-            Action("Demo-Produkt ansehen",tag="go_P02"){ui.product(d.tofu.id,Screen.P02)}
-            Go("Produkt suchen",Screen.L01,ui,true);Action("Manuell anlegen",true){manual=true}
-            Route("Kassenbon erfassen","Zum simulierten Einkaufsablauf",Icons.Outlined.ReceiptLong,Screen.E01,ui,Amber)
-            Hint("Das Scanfenster ist eine Gestaltungsvorschau. Es öffnet keine Kamera und erkennt keine Codes.",Sage)
-            if(manual)FormDialog("Produkt anlegen · Vorschau",listOf("Produktname" to "","Marke" to "","Packungsgröße" to ""),{manual=false},{manual=false;ui.demo("Es wurde kein neues Produkt gespeichert. Die ausgefüllte Beispielmaske ist separat erreichbar.",Screen.P03,"Beispielmaske ansehen")})
+        Screen.P01->{
+            Heading(screen.title,"Scannen, prüfen und im eigenen Testkatalog merken.")
+            Action("Demo-Produkt ansehen",true,tag="go_P02"){ui.product(d.tofu.id,Screen.P02)}
+            LocalDataScreen(initialSection="Erkennung")
         }
         Screen.P02->{
             Heading(screen.title,"Herkunft und offene Angaben im Blick behalten.")
@@ -79,11 +69,18 @@ import de.ernaehrung.demo.ui.*
             Action("Korrigieren",true){ui.demo("Keine Korrekturbewegung erzeugt. ${p.amount} bleiben unverändert.")};Go("Produktinformationen",Screen.P02,ui,true)
         }
         Screen.E01->{
+            var recognition by rememberSaveable { mutableStateOf(false) }
+            if(recognition){
+                Action("Zurück zur Beleg-Demo",true){recognition=false}
+                LocalDataScreen(initialSection="Erkennung",initialRecognitionMode="Bon & OCR")
+            }else{
+            Action("Bonfoto und OCR · lokale Erkennung"){recognition=true}
             Heading(screen.title,"Ein Beleg. Alle Positionen im Blick.")
             Panel(color=Amber.copy(alpha=.6f)){Section("DEMO-MARKT","MUSTERBELEG · ${d.shortDate}");HorizontalDivider();d.receipt.forEach{KV(it.original,money(it.price))};HorizontalDivider();KV("Summe",money(d.receipt.sumOf{it.price}),true);Text(d.receiptId,style=MaterialTheme.typography.labelSmall,color=Muted)}
-            Action("Bon fotografieren"){ui.demo("Keine Kamera und keine Texterkennung aktiv. Du kannst den vorbereiteten Musterbeleg prüfen.",Screen.E02,"Musterbeleg prüfen")}
+            Action("Bon fotografieren · Demo",tag="Bon fotografieren"){ui.demo("Keine Kamera und keine Texterkennung aktiv. Du kannst den vorbereiteten Musterbeleg prüfen.",Screen.E02,"Musterbeleg prüfen")}
             Action("Position manuell hinzufügen",true){ui.demo("Die nächste Ansicht zeigt bearbeitbare Vorschauzeilen. Es werden keine Positionen angelegt.",Screen.E02,"Eingabemaske ansehen")}
-            Go("Demo-Beleg prüfen",Screen.E02,ui);Hint("Texterkennung würde später nur Vorschläge liefern. Jede Zuordnung müsste geprüft werden.")
+            Go("Demo-Beleg prüfen",Screen.E02,ui);Hint("Dieser Musterbon bleibt eine Demo. Echte Bonfotos lassen sich über die lokale Erkennung prüfen.")
+            }
         }
         Screen.E02->{
             Heading(screen.title,"2 Positionen vorbereitet · 1 Position offen")

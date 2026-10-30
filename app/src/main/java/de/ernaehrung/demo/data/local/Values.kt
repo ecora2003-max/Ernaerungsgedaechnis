@@ -5,8 +5,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 enum class BaseUnit(val label: String) { GRAM("g"), MILLILITRE("ml"), PORTION("Portion") }
-enum class Quality { UNKNOWN, ESTIMATED, SOURCED, CONFIRMED }
-enum class Source { USER, LABEL, MANUFACTURER, RETAILER, OPEN_FOOD_FACTS, DEMO }
+enum class Quality(val label: String) { UNKNOWN("Unbekannt"), ESTIMATED("Geschätzt"), SOURCED("Aus Quelle übernommen"), CONFIRMED("Ausdrücklich bestätigt") }
+enum class Source(val label: String) { USER("Nutzerangabe"), LABEL("Etikett"), MANUFACTURER("Hersteller"), RETAILER("Händler"), OPEN_FOOD_FACTS("Open Food Facts"), DEMO("Demodaten") }
 enum class ReleaseStatus { UNCHECKED, RELEASED, BLOCKED }
 enum class MovementKind { RECEIPT, CONSUMPTION, WASTE, PRODUCTION_INPUT, PRODUCTION_OUTPUT, TRANSFER, CORRECTION }
 enum class DayStatus { OPEN, PARTIAL, COMPLETE }
