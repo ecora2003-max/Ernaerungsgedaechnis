@@ -55,4 +55,10 @@ Alle Android-Tests hier sind Robolectric-/Room-/SQLite-Prüfungen, keine Smartph
 
 Portionsnährwerte sind bewusst noch unbekannt; es wird keine fertige Tagesbilanz oder vollständige Produktiv-App behauptet. Sichere Backups, stabile Release-Signierung und persönliche Datenmigration folgen später. Die bestehenden Fachansichten bleiben getrennte Demoansichten.
 
-Frischer GitHub-Actions-Lauf auf JDK 17, genaue Code-SHA, CI-Zahlen und APK-Link werden nach seinem Abschluss in `DEVELOPMENT.md` festgehalten. Die lokale Freigabe allein gilt noch nicht als erfolgreicher CI-Lauf.
+## Abschließender frischer GitHub-Lauf
+
+[Lauf 41039703367](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367), Code `68c80ba911517b0a90a974af2834f198d13d47c7`, JDK 17: erfolgreich nach 9 min 8 s. Die neun zugehörigen JUnit-XML-Dateien wurden heruntergeladen, ihre Zeitstempel gegen den Laufbeginn geprüft und die Code-SHA abgeglichen. Dieselben Tests wie in der obigen Tabelle: **54 ausgeführt, 0 Fehlschläge, 0 Fehler, 0 Skips**. Kein Null-Test- oder nur teilweiser Lauf.
+
+APK-Erstellung und exakter Abgleich der generierten Room-Schemata mit den eingecheckten Dateien erfolgreich. CI-Lint ohne Fehler, 11 nicht fatale Hinweise. Die heruntergeladene APK ist Version 0.3.0-transactions, Code 3, minSdk 26, targetSdk 35; aapt-Metadaten und APK-v2-Signatur erfolgreich geprüft. [APK-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367/artifacts/12970112194) und [Prüfberichte](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367/artifacts/12969214561) werden einen Tag aufbewahrt.
+
+Diese Freigabe gilt für den angegebenen Code-Commit. Die nachfolgende reine Dokumentationssicherung ändert die geprüfte Anwendung nicht. Neue Funktionsänderungen benötigen ihre eigenen relevanten Prüfungen.

@@ -29,7 +29,11 @@ Eine weitere Regression wurde vor der Korrektur nachgewiesen: die Rückdatierung
 
 Vollständiger lokaler Lauf: **54 Tests bestanden, 0 Fehlschläge, 0 Fehler, 0 Skips**, APK-Build und Lint erfolgreich. Die aktuellen neun XML-Dateien wurden ausgewertet. Die vier Formularzustände in `KitchenEditor` sind als schreibgeschützte Listen typisiert (weiterhin nur Kopien ersetzen); der abschließende vollständige Lauf dieses Stands war nach 50 Sekunden erfolgreich. Lint meldet nur zehn Bibliotheks-Updatehinweise, keine Collection-State-Warnungen. Kein Smartphone-/Emulatortest. Detaillierter Prüfbericht: `TEST_REPORT_TRANSACTIONS.md`.
 
-**Noch vor Abschluss:** lokal geprüften Stand und Dokumentation auf dem Entwicklungsbranch sichern, danach nach main übernehmen und frischen GitHub-Actions-Lauf prüfen. CI-Link, genaue Testzahlen und APK-Link hier ergänzen. Der aktuelle main-Stand ist bis zur Übernahme noch Version 0.2.0; keine Fertigmeldung für CI aus alten Resultaten ableiten.
+**Meilenstein abgeschlossen und auf main gesichert.** Geprüfter Code-Commit: `68c80ba911517b0a90a974af2834f198d13d47c7` (auch auf `development/stock-events`). Frischer [GitHub-Actions-Lauf 41039703367](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367) auf JDK 17 erfolgreich nach 9 min 8 s: APK, Schema-Abgleich, Lint und **54 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Die neun heruntergeladenen aktuellen XML-Dateien wurden mit Code-SHA und Laufzeitstempeln abgeglichen. CI-Lint: 11 nicht fatale Hinweise, keine Fehler.
+
+[APK 0.3.0 herunterladen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41039703367/artifacts/12970112194) (ein Tag verfügbar). ZIP entpacken, `app-debug.apk` verwenden. APK-Metadaten mit aapt geprüft: versionCode 3, minSdk 26, targetSdk 35. `apksigner verify` erfolgreich. Debug-/Testversion, noch kein Produktivbetrieb und kein Gerätetest. Bei abgelaufenem Artefakt unter Actions → Android demo APK → Run workflow neu bauen.
+
+Der frühere Kontingent-Zwischenstand und der offene UI-Test sind damit erledigt. Nicht erneut implementieren oder alte fehlgeschlagene Läufe als aktuellen Status behandeln. Nächster sinnvoller Entwicklungsschritt ist die unten beschriebene Nährwertrechnung/Tagesbilanz.
 
 ## Migration und Wiederaufnahme
 
