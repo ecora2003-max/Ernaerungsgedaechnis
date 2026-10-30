@@ -1,0 +1,1086 @@
+PROJEKTSPEZIFIKATION
+
+
+
+
+Ernährungs-
+gedächtnis
+Produkt- und Architekturplanung
+
+
+
+30. Oktober 2026 · Android · 33 Planungsabschnitte
+
+Vereinbarter Zielzustand, fachliche Regeln, technische Leitlinien und Entwicklungsphasen
+
+
+
+
+  Kein neues Google-Sheets-System: Die bisherige Tabellenlösung ist eine fachliche Referenz. Die
+  Android-App erhält langfristig eine lokale Room-/SQLite-Datenbasis. Ein produktiver Wechsel erfolgt
+  erst nach kontrollierter Migration.
+ERNÄHRUNGSGEDÄCHTNIS                                                                           Konsolidierte Produkt- und Architekturplanung
+
+
+
+
+Inhaltsverzeichnis
+Alle 33 Kapitel und die abschließende Zielbeschreibung. Die Einträge sind anklickbar.
+
+
+
+1. Projektvision und übergeordnetes Ziel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+
+2. Technische Gesamtarchitektur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+
+3. Benutzeroberfläche und Navigation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+4. Dauerhaftes Produktgedächtnis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+5. Barcode-Scan und Produktaufnahme . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+6. Lagerverwaltung und tatsächliche Vorräte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+7. Buchungslogik und Bewegungsprotokoll . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+8. Kassenbonerfassung und tatsächliche Einkäufe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+
+9. Preise, Ausgaben und Budget . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+
+10. Rezepte und Rezeptgedächtnis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+
+11. Meal Prep als tatsächlicher Produktionsvorgang . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+
+12. Tatsächliche Ernährung und Ernährungstagebuch . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+13. Ernährungsplanung über mehrere Zeithorizonte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+14. Intelligenter Bedarfsabgleich . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+15. Intelligente Einkaufsliste . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+16. Persönliches Profil und Ernährungsziele . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+17. Körpermessungen . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+
+18. Sport- und Aktivitätstagebuch . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+19. Körperentwicklung, Trends und Auswertung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+20. Energiebedarf und langfristige Kalibrierung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+21. ChatGPT als Beratungs- und Planungspartner . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+22. Datenqualität, Herkunft und Unsicherheit . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+23. Einheitensystem und Mengenverarbeitung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+24. Datensicherung und Wiederherstellung . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+
+25. Übernahme aus dem bestehenden Google-Sheets-System . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+
+26. Technische Sicherheits- und Konsistenzregeln . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+27. Arbeitsteilung App und ChatGPT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+28. Entwicklungsinfrastruktur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+29. Bestehender Entwicklungsstand . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+30. Sinnvolle Reihenfolge der Integration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+31. Nicht Teil der vereinbarten Kernarchitektur . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+32. Bewusst offene technische Einzelentscheidungen . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+33. Verbindliche fachliche Leitlinien . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+Abschließendes Produktziel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+
+
+
+
+Projektstand · 30.10.2026                                                                                                                      2
+ERNÄHRUNGSGEDÄCHTNIS                                                         Konsolidierte Produkt- und Architekturplanung
+
+
+
+1. Projektvision und übergeordnetes Ziel
+Das Ernährungsgedächtnis soll eine langfristig nutzbare Android-Anwendung werden, die Ernährung,
+Lebensmittelvorräte, Einkäufe, Rezepte, Meal Prep, Körperentwicklung, sportliche Aktivität und persönliche
+Ernährungsplanung in einem zusammenhängenden System verwaltet.
+
+Das System verfolgt zwei ergänzende Ziele:
+
+1. Zuverlässige Dokumentation der Wirklichkeit: Welche Produkte sind bekannt? Welche Lebensmittel sind
+    tatsächlich vorhanden? Was wurde eingekauft, gekocht und gegessen? Welche Körperwerte und
+    Trainingsaktivitäten wurden tatsächlich erfasst?
+2. Intelligente Unterstützung zukünftiger Entscheidungen: Was sollte in den nächsten Tagen gegessen werden?
+    Welche Rezepte passen zu Vorräten, Zielen, Zeit und Budget? Was muss gekauft werden? Wie entwickeln sich
+    Ernährung, Körpergewicht und Training über längere Zeiträume?
+
+Die Anwendung soll nicht nur ein Ernährungstagebuch oder eine Einkaufsliste sein, sondern ein dauerhaftes
+persönliches Informationssystem, das einmal erfasste Informationen wiederverwendet.
+
+Die langfristige Zielsetzung ist Body Recomposition mit Schwerpunkt Muskelaufbau. Das System soll zugleich
+alltagstaugliche Ernährung, sportliche Leistungsfähigkeit, Regeneration, Lebensmittelsicherheit und finanzielle
+Grenzen berücksichtigen. Persönliche Ziele, Ernährungsgewohnheiten, körperliche Messmethoden,
+Trainingsumfang und Lebensumstände können sich im Lauf der Zeit verändern.
+
+1.1 Grundprinzipien
+ • Tatsächliche Ereignisse, Planungen, Schätzungen und Vorschläge werden konsequent getrennt.
+ • Produktinformationen bleiben dauerhaft erhalten, auch wenn ein Produkt aufgebraucht ist.
+ • Daten werden möglichst einmal erfasst und anschließend in mehreren Funktionen wiederverwendet.
+ • Bekannte Angaben können gespeichert werden, ohne alle unbekannten Angaben zuerst zu klären.
+ • Fehlende Informationen bleiben ausdrücklich unbekannt und werden nicht stillschweigend als null interpretiert.
+ • Informationen behalten Herkunft, Erfassungszeitpunkt, Qualitätsstatus und gegebenenfalls Version.
+ • Die Bedienung soll möglichst wenige wiederholte Eingaben und Rückfragen erfordern.
+ • Fehlerhafte oder unsichere Zustände müssen erkennbar bleiben und dürfen nicht durch scheinbar exakte
+   Ergebnisse verdeckt werden.
+ • Keine verpflichtende kostenpflichtige KI-API, kein dauerhaft betriebener eigener Server.
+ • ChatGPT unterstützt Auswertung und Beratung, ohne eigenständig verbindliche Ist-Daten zu verändern.
+
+
+
+
+2. Technische Gesamtarchitektur
+2.1 Native Android-App
+Die Anwendung wird nativ für Android entwickelt. Die vorhandene Demo verwendet Kotlin, Jetpack Compose,
+Material 3, Navigation Compose, eine zentrale Navigation mit fünf Hauptbereichen, wiederverwendbare
+Oberflächenkomponenten und bislang überwiegend fest hinterlegte fiktive Demodaten.
+
+Diese Anwendung ist die Grundlage der weiteren Entwicklung; ein unnötiger vollständiger Neubau ist nicht
+vorgesehen. Die vorhandenen Screens, Navigationswege und Designentscheidungen sollen möglichst erhalten
+bleiben. Die bisherige Demodatenebene wird schrittweise durch persistente Datenmodelle und echte
+Fachfunktionen ersetzt.
+
+
+
+
+Projektstand · 30.10.2026                                                                                               3
+ERNÄHRUNGSGEDÄCHTNIS                                                        Konsolidierte Produkt- und Architekturplanung
+
+
+
+2.2 Lokale SQLite-/Room-Datenbank
+Die langfristig vorgesehene Datenbasis ist lokales SQLite, vorzugsweise mit Android Room. Sie verwaltet
+insbesondere:
+
+ • persönliche Einstellungen, Zielbereiche und Präferenzen;
+ • dauerhafte Produktidentitäten, Aliase, Artikel- und Nährwertversionen;
+ • Lagerorte, tatsächliche Chargen und historische Bestandsbewegungen;
+ • Einkäufe, Belege, Belegpositionen, Preisbeobachtungen und Ausgaben;
+ • Rezepte, Zutaten, Rezeptversionen und hergestellte Portionen;
+ • tatsächliche Verzehrereignisse und Ernährungsstatus;
+ • Ernährungs-, Einkaufs- und Meal-Prep-Pläne;
+ • Budgetinformationen, Körpermessungen, Training und Aktivitäten;
+ • Auswertungen, Kalibrierungsentscheidungen, Quellen, Unsicherheiten und Konflikte.
+
+Die Tabellenstruktur wird nicht mechanisch aus den Google-Sheets-Spalten kopiert. Codex soll die fachlichen
+Beziehungen analysieren und ein geeignetes relationales Datenmodell mit stabilen Identitäten, eindeutigen
+Referenzen, Transaktionen, konsistenten Änderungsabläufen und Schema-Migrationen entwerfen.
+
+2.3 Eine einzige verbindliche Datenbasis
+Es darf nicht zwei unabhängig beschreibbare Wahrheiten für tatsächliche Daten geben. Gegenwärtig ist die
+bestehende Google-Sheets-Datei verbindlich. Während der Entwicklung verwendet die neue App zunächst isolierte
+Demo- und Testdaten.
+
+Erst nach einer gesondert geplanten, geprüften und ausdrücklich freigegebenen Migration kann die lokale
+App-Datenbank die Rolle der produktiven Datenquelle übernehmen. Danach soll die App eigenständig die
+tatsächlichen Daten verwalten. Google Drive ist allenfalls Speicher für Sicherungen oder Exporte, nicht zweite
+parallel beschreibbare Bestandsdatenbank. Eine laufende automatische Zwei-Wege-Synchronisierung mit Google
+Sheets ist nicht vorgesehen.
+
+2.4 Offline-Nutzung
+Kernfunktionen sollen grundsätzlich offline nutzbar sein: bekannte Produkte nachschlagen, Vorräte und Mahlzeiten
+erfassen, Rezepte verwalten, planen und lokale Auswertungen betrachten. Externe Produktrecherche darf eine
+Internetverbindung benötigen, darf die übrige App jedoch nicht unbenutzbar machen. Dauerhafte Anmeldung,
+Cloudserver oder kostenpflichtiges Backend sind keine Voraussetzung.
+
+
+
+3. Benutzeroberfläche und Navigation
+3.1 Gestaltungsprinzip
+Vereinbart ist ein hochwertiges, ruhiges und gut lesbares Android-Design: warmweißer Hintergrund, Salbeigrün für
+ruhige Karten, dunkles Waldgrün für Aktionen, dezente Grau-/Blau-/Violettakzente, abgerundete Karten,
+großzügige Abstände, klare deutsche Beschriftungen, gut erreichbare Bedienelemente und wenige gezielt
+eingesetzte Produktbilder. Modern und funktional, ohne überladene Dashboards.
+
+3.2 Fünf Hauptbereiche
+Die Hauptnavigation lautet Start | Bestände | Scan | Planung | Mehr. Für jedes neue Modul soll nicht automatisch
+ein neuer Haupttab entstehen. Ernährung, Rezepte, Einkauf, Körper, Sport, Datenqualität und ChatGPT werden
+über die vorhandene Navigation erschlossen. Körper & Training ist über „Mehr“ und über einen Schnellzugriff auf
+der Startseite erreichbar.
+
+
+Projektstand · 30.10.2026                                                                                              4
+ERNÄHRUNGSGEDÄCHTNIS                                                           Konsolidierte Produkt- und Architekturplanung
+
+
+
+3.3 Vereinbarte Bildschirmstruktur
+Die Demo umfasst 33 Fachansichten in elf Gruppen; eine zusätzliche Übersicht für „Mehr“ führt durch die
+Funktionen:
+
+  Bereich                        Ansichten           Schwerpunkt
+
+  Start                          S01–S03             Dashboard, Tagesübersicht, Hinweise
+
+  Produkterfassung               P01–P03             Barcode, Produktprüfung, Korrektur
+
+  Produktkatalog und Lager       L01–L03             Produktgedächtnis, Bestände, Chargenhistorie
+
+  Einkauf und Kassenbon          E01–E03             Beleg erfassen, Positionen prüfen, Kauf bestätigen
+
+  Ernährung                      T01–T03             Tagesernährung, Verzehr, Nährwertbilanz
+
+  Rezepte und Meal Prep          R01–R03             Rezepte, Rezeptdetails, tatsächliche Zubereitung
+
+  Planung                        G01–G03             Woche, Monat, geplanter Tag
+
+  Einkauf und Budget             H01–H03             Bedarf, Einkaufsliste, Preise, Budget
+
+  ChatGPT-Austausch              I01–I03             Export, Planimport, Importprüfung
+
+  Profil und System              M01–M03             Profil, Datenqualität, Sicherungen
+
+  Körper und Sport               K01–K03             Messwerte, Training, Entwicklung
+
+
+Die vorhandenen Bildtafeln 00–11 bilden die visuelle Referenz.
+
+3.4 Startbereich
+Die Startseite gibt eine kompakte Übersicht über Vorräte, vorhandene Meal-Prep-Portionen, offene Aufgaben,
+Tagesernährung, anstehende Einkäufe, Planungsinformationen und Körper-/Trainingsdaten. „Heute“ trennt
+Planungen von tatsächlich gegessenen Mahlzeiten. Hinweise führen direkt zu passenden Funktionen, etwa einer
+ungeklärten Produktzuordnung, einer Zubereitung oder einer Messung.
+
+
+
+4. Dauerhaftes Produktgedächtnis
+Grundgedanke: Das System lernt Produkte langfristig kennen. Ein Produkt soll nicht bei jedem Einkauf vollständig
+erneut erfasst oder recherchiert werden müssen.
+
+4.1 Produktidentität und Produktversion
+Produktidentität, Nährwertinformationen und realer Lagerbestand sind unterschiedliche Dinge. Ein Produkt kann
+über Jahre bekannt bleiben, während sich seine Zusammensetzung oder Verpackung verändert. Das Modell
+unterscheidet eine dauerhafte Produktidentität, mehrere mögliche Artikel-/Nährwertversionen, alternative
+Bezeichnungen und reale Vorratschargen.
+
+Ein bestimmter Tofu bleibt im Katalog, auch wenn er derzeit nicht vorrätig ist. Ändert sich die Rezeptur, kann eine
+neue Produktversion gespeichert werden. Historische Verzehrereignisse referenzieren weiter die damals gültige
+Version.
+
+
+
+
+Projektstand · 30.10.2026                                                                                                 5
+ERNÄHRUNGSGEDÄCHTNIS                                                          Konsolidierte Produkt- und Architekturplanung
+
+
+
+4.2 Produktinformationen
+Der Katalog soll nach Möglichkeit speichern: Name, Hersteller/Marke, Kategorie, EAN, Verpackungsgröße, Bezugs-
+und Basiseinheit, Energie, Protein, Fett, Kohlenhydrate, Ballaststoffe, Zucker, gesättigte Fettsäuren, Salz, verfügbare
+Mikronährstoffe, Zutatenliste, Allergene, Datenquelle, Abrufdatum, Qualitäts-/Bestätigungsstatus und
+Versionshistorie. Als zusätzliche Mikronährstoffe wurden insbesondere Calcium, Eisen, Magnesium, Jod, Vitamin
+B12 und Vitamin D berücksichtigt. Fehlende Werte bleiben unbekannt.
+
+4.3 Datenherkunft und Bestätigung
+Mögliche Quellen sind Etikett, Hersteller, Händler, externe Produktdatenbank, Nutzerangabe und ausdrücklich
+gekennzeichnete Schätzung. Die Zuverlässigkeit hängt von der konkreten Produktvariante ab. Ähnlicher Name
+bedeutet nicht bestätigte Nährwerte. Rohgewicht, gegartes Gewicht und Abtropfgewicht sind auseinanderzuhalten.
+Ein bekanntes Produkt hat nicht automatisch vollständig bestätigte Nährwerte.
+
+4.4 Produktaliase
+Unterschiedliche Bon- und Händlerbezeichnungen können dieselbe Produktidentität meinen. Ein Alias kann
+Händler, Bezeichnung, Aliasart, Packungsgröße, EAN, Produktidentität, Artikelversion, Status und Quelle
+verknüpfen. Nur eindeutig bestätigte Zuordnungen sollen automatisch wiederverwendet werden; Mehrdeutigkeiten
+bleiben offen.
+
+4.5 Bestand ist keine Produkteigenschaft
+Ein Produkt im Katalog zu speichern erhöht niemals den tatsächlichen Vorrat. „Produkt merken“, „Produktdaten
+korrigieren“ und „Einkauf buchen“ sind getrennte Funktionen.
+
+
+
+5. Barcode-Scan und Produktaufnahme
+5.1 Vorgesehener Ablauf
+1. Barcode scannen oder manuell nach dem Produkt suchen.
+2. Eigenen Katalog auf bestehende Zuordnung prüfen.
+3. Gegebenenfalls passende externe Produktinformationen abrufen.
+4. Variante, Nährwerte, Quelle und Unsicherheit anzeigen.
+5. Falsche oder fehlende Angaben korrigierbar machen.
+6. Geprüfte Produktinformationen dauerhaft speichern.
+7. Optional zur separaten Einkaufserfassung wechseln.
+
+So werden zweifelhafte Daten nicht stillschweigend zur Grundlage von Ernährungsauswertungen.
+
+5.2 Open Food Facts
+Open Food Facts wurde als geeignete kostenlose externe Produktdatenquelle ausgewählt. Die Datenbank ist eine
+Informationsquelle, keine verbindliche Instanz für jede Angabe. Die konkrete Variante muss überprüft werden
+können. Bereits gespeicherte Produkte bleiben offline nutzbar.
+
+5.3 Manuelle Alternative
+Suche und manuelle Produktanlage bleiben vollwertige Alternativen, auch wenn kein Barcode vorhanden oder die
+Erkennung erfolglos ist.
+
+
+
+
+Projektstand · 30.10.2026                                                                                                6
+ERNÄHRUNGSGEDÄCHTNIS                                                        Konsolidierte Produkt- und Architekturplanung
+
+
+
+6. Lagerverwaltung und tatsächliche Vorräte
+6.1 Chargenorientierte Bestandsführung
+Ein Produkt kann gleichzeitig in mehreren realen Chargen vorliegen, mit unterschiedlichen Kauf-/Herstellungsdaten,
+Ausgangs-/Restmengen, Lagerorten, Mindesthaltbarkeits- oder Verbrauchsdaten, Öffnungs-/Auftauzeitpunkten,
+Freigaben, Quellen und zugehörigen Vorgängen. Gesamtbestand und Chargendetails sind beide zugänglich.
+
+6.2 Lagerorte
+Frei verwaltbare Lagerorte wie Kühlschrank, Vorratsschrank, Gefrierfach und Gefrierschrank haben
+nachvollziehbaren Status. Geplante Lageranschaffungen dürfen keine reale Kapazität erzeugen.
+
+6.3 Lagerkapazität
+Für Meal Prep zählen bestätigte nutzbare Kapazität, belegter Platz, zusätzliche Portionen und Behälter, tatsächliche
+Lagerbedingungen und Restplatz. Dabei kann das Außenvolumen der Behälter relevant sein, nicht allein das
+Speisevolumen. Unbekannte Kapazität darf nicht als sicher verfügbar ausgegeben werden.
+
+6.4 Haltbarkeit und Lebensmittelsicherheit
+MHD, Verbrauchsdatum, Öffnungsdatum, Auftauen, Lagerbedingungen und Kühlkette werden unterschieden.
+Überschrittenes MHD bedeutet nicht automatisch ungenießbar; das Verbrauchsdatum ist sicherheitskritisch.
+Haltbarkeit vorbereiteter Speisen hängt von Rezept, Temperatur und tatsächlicher Behandlung ab. Unbestätigte
+Werte sind keine sicheren Freigaben. Lebensmittelsicherheit geht vor Preisvorteil und Resteverwertung.
+
+6.5 Nutzbarer statt bloß vorhandener Bestand
+Für Planungen unterscheiden wir physisch vorhandene Mengen, freigegebene nutzbare Chargen,
+gesperrte/ungeklärte Chargen und solche, die für den geplanten Verwendungszeitpunkt nicht ausreichend geeignet
+sind. Ein physisch vorhandenes Lebensmittel ist nicht automatisch für jeden zukünftigen Plan nutzbar.
+
+
+
+7. Buchungslogik und Bewegungsprotokoll
+7.1 Tatsächliche Bestandsereignisse
+Bestandsänderungen entstehen nur aus bestätigten realen Ereignissen wie Einkauf, Verbrauch, Produktion,
+Umlagerung, nachvollziehbarer Korrektur oder Entsorgung. Planung, Scan, Rezeptvorschlag und Einkaufsliste
+verändern keine Ist-Bestände.
+
+7.2 Bewegungsprotokoll
+Jede wirksame Bewegung soll eine stabile ID, Vorgangsbezug, Zeitpunkt, Charge, Menge, Einheit, Richtung, Grund,
+Herkunft und gegebenenfalls Korrekturbezug haben. Gesamtbestände dürfen nicht durch unkontrolliertes
+Überschreiben einer Zahl entstehen. Codex kann zwischen Berechnung aus der Historie und konsistenter
+Zwischenspeicherung entscheiden; beide müssen fachlich übereinstimmen.
+
+7.3 Atomare Transaktionen
+Zusammengehörige Änderungen sind konsistent auszuführen. Werden sechs Portionen gekocht, darf kein Zustand
+entstehen, in dem Zutaten abgebucht, die Fertigportionen aber nicht eingebucht sind. Ein Vorgang wird vollständig
+abgeschlossen oder bleibt ohne teilweise wirksame Änderung.
+
+
+
+
+Projektstand · 30.10.2026                                                                                              7
+ERNÄHRUNGSGEDÄCHTNIS                                                          Konsolidierte Produkt- und Architekturplanung
+
+
+
+7.4 Idempotenz und Doppelbuchungen
+Wiederholte Klicks, erneute Importe oder Retries dürfen denselben realen Vorgang nicht mehrfach buchen.
+Dauerhafte Vorgangs-IDs und geeignete Eindeutigkeits-/Idempotenzregeln sind erforderlich. Das bisherige System
+nutzt zusätzlich Ereignis-Fingerprints; eine bessere relationale Lösung ist zulässig. Zwei real getrennte, identische
+Mahlzeiten sind nicht automatisch Duplikate.
+
+7.5 Nachvollziehbare Korrektur
+Wirksame Buchungen sollen historisch nachvollziehbar bleiben. Korrekturen können über Gegenbuchungen und
+korrekte Neubuchungen erfolgen. Bei Messungen oder Produktangaben müssen Ursprung, Änderung und
+Begründung erkennbar bleiben.
+
+
+
+8. Kassenbonerfassung und tatsächliche Einkäufe
+8.1 Bon fotografieren und auslesen
+Kamera und OCR sollen Vorschläge für Händler, gegebenenfalls Kaufdatum, Positionen, Bezeichnungen, Mengen,
+Packungsgrößen, Einzel- und Positionspreise sowie Gesamtbetrag liefern. Ergebnisse bleiben editierbar. Die
+konkrete OCR-Bibliothek ist noch nicht starr festgelegt.
+
+8.2 Intelligente Positionszuordnung
+Erkannte Positionen werden zuerst gegen Produktgedächtnis und bestätigte Aliase geprüft. Mögliche Zustände:
+eindeutig bekannt; wahrscheinlich, aber prüfpflichtig; mehrdeutig; unbekannt; Mengenbasis unklar. Ungeklärte
+Einzelpositionen dürfen die Speicherung anderer bekannter Angaben nicht unnötig verhindern.
+
+8.3 Beleg und Lagerbuchung trennen
+Das Speichern eines Belegs ist nicht dasselbe wie die Lagerbuchung. Händler und Preis können bekannt sein,
+während Lagerort oder Mengenbasis noch fehlen. Nur ausreichend geklärte, bestätigte Positionen erzeugen
+tatsächliche Zugänge. Bereits gebuchte Positionen dürfen nicht erneut als Einkauf wirksam werden.
+
+8.4 Originalangaben bewahren
+Originalbontext nur speichern, wenn tatsächlich lesbar; interpretierte Nutzer-/Systembezeichnungen davon
+unterscheiden. Kaufdatum, EAN oder Packungsinformationen dürfen nicht erfunden werden.
+
+
+
+9. Preise, Ausgaben und Budget
+9.1 Preisgedächtnis
+Historische Preisangaben können Händler, Datum, Packungsgröße, Menge, Einheit, Gesamtpreis, Grundpreis,
+Quelle, Angebotsgültigkeit und Qualitätsstatus enthalten. Das ermöglicht spätere Vergleiche.
+
+9.2 Tatsächliche Ausgaben
+Trennung von bezahlten Ausgaben, beobachteten Preisen, geschätzten Einkaufskosten und lediglich geplanten
+Käufen. Ein Einkauf darf nicht durch Bonposition und Lagerbewegung doppelt als Ausgabe gezählt werden.
+Verbindliche Ausgaben stammen aus bestätigten Ereignissen.
+
+
+
+
+Projektstand · 30.10.2026                                                                                                8
+ERNÄHRUNGSGEDÄCHTNIS                                                      Konsolidierte Produkt- und Architekturplanung
+
+
+
+9.3 Budgetplanung
+Zeitbezogene Budgets mit Verbindlichkeitsstatus, bestätigten Ausgaben, erwarteten Kosten offener Einkäufe und
+verbleibendem Spielraum. Fehlendes Budget ist nicht 0 Euro. Fehlende Einzelpreise dürfen keine scheinbar
+vollständige Gesamtsumme ergeben.
+
+9.4 Wirtschaftlicher Einkauf
+Bedarf, Bestände, Haltbarkeit, Packungsgrößen, Grundpreise, Angebote, Lagerkapazität und Budget werden
+gemeinsam bewertet. Größere Packungen sind nicht automatisch vorteilhaft, wenn Lagerplatz und realer Verbrauch
+nicht ausreichen.
+
+
+
+10. Rezepte und Rezeptgedächtnis
+10.1 Rezeptdaten
+Zu Rezepten gehören Name, konkrete Zutaten/Artikelversionen, Mengen und Einheiten, Schritte, aktive und
+gesamte Zubereitungszeit, Portionsausbeute, gegebenenfalls Portionsgewicht, Energie-/Nährwerte, Kosten,
+Meal-Prep-Eignung, Lagerbedingungen, Quellen zur Haltbarkeit sowie Qualitäts-/Freigabestatus.
+
+10.2 Rezeptversionierung
+Änderungen an Zutaten, Mengen oder Ausbeute dürfen die Vergangenheit nicht umdeuten. Frühere Zubereitungen
+und Verzehrereignisse referenzieren weiterhin die verwendete Rezeptversion.
+
+10.3 Nährwertberechnung
+Nährwerte ergeben sich aus den Zutaten und ihren Mengen, mit korrekten Artikelversionen und Mengenbasen.
+Portionenwerte hängen von der definierten beziehungsweise tatsächlichen Ausbeute ab. Kochwasser oder
+Gewichtsverlust verändern nicht automatisch Energie und Nährstoffmenge. Unvollständige Zutatenwerte ergeben
+eine als unvollständig gekennzeichnete Bilanz.
+
+10.4 Suche und Filter
+Vorgesehen sind alle Rezepte, mit vorhandenem Vorrat kochbare Rezepte, Meal-Prep-Rezepte und Favoriten.
+Rezeptdetails verknüpfen bei Bedarf zur Planung und Einkaufsliste.
+
+
+
+11. Meal Prep als tatsächlicher Produktionsvorgang
+11.1 Zubereitung planen
+Vorbereitung für einen zukünftigen Kochtermin mit Portionszahl, Zeitpunkt, Zutaten und Lageridee. Eine Planung
+verändert keine Rohwaren- oder Fertigportionenbestände.
+
+11.2 Tatsächlich kochen
+Erfassung des wirklich verwendeten Rezepts, tatsächlicher Zutatenmengen, entnommener Chargen, hergestellter
+Portionen, etwaiger Abweichungen, Produktionsdatums, Lagerorts und Bedingungen. Tatsächliche Ausbeute und
+Plan können voneinander abweichen; relevante Änderungen müssen nachvollziehbar sein.
+
+11.3 Rohwaren zu Fertigportionen
+Eine bestätigte Herstellung verbindet negative Rohwarenbewegungen mit positiven
+Fertigwaren-/Portionszugängen zu einem fachlich zusammengehörigen, atomaren Ereignis.
+
+
+
+
+Projektstand · 30.10.2026                                                                                            9
+ERNÄHRUNGSGEDÄCHTNIS                                                         Konsolidierte Produkt- und Architekturplanung
+
+
+
+11.4 Kochen ist nicht Essen
+Die Herstellung eines Gerichts zählt noch nicht zur Ernährungsbilanz. Erst tatsächlicher Verzehr zählt. Wird
+unmittelbar beim Kochen gegessen, muss dies separat als Verzehr dokumentiert werden. Zutaten dürfen nicht beim
+Kochen und beim späteren Essen derselben Portion doppelt aus Rohwaren ausgebucht werden.
+
+11.5 Lebensmittel sicher einlagern
+Vor Einlagerung: verfügbare Kühl-/Gefrierkapazität, tatsächliche Behälterzahl, geeigneter Ort, bekannte
+Kühlbedingungen, Haltbarkeit und Freigaben. Ungeklärte Bedingungen bleiben sichtbar.
+
+
+
+12. Tatsächliche Ernährung und Ernährungstagebuch
+12.1 Verzehrereignisse
+Ein Eintrag umfasst nach Verfügbarkeit Datum/Uhrzeit, Mahlzeit, Produkt oder Rezeptportion,
+Artikel-/Rezeptversion, tatsächliche Menge, Einheit, gegebenenfalls Lagercharge, Quelle/Erfassungsqualität,
+Nährwerte und Korrekturbezug. Bevorzugte Basiseinheiten sind g, ml und Portion. Stück und Packung werden nur
+mit bestätigter Mengenbasis zuverlässig umgerechnet.
+
+12.2 Geplant versus tatsächlich gegessen
+Geplante Mahlzeiten sind Absichten. Nur bestätigte, tatsächlich gegessene Mahlzeiten zählen zur realen
+Ernährungsbilanz. Das Erreichen eines geplanten Zeitpunkts bewirkt keine automatische Verzehrbuchung.
+
+12.3 Mit oder ohne Lagerbezug
+Verzehr eigener Vorräte kann mit einer realen Lagerbewegung verknüpft sein. Restaurantessen oder unterwegs
+erworbene Lebensmittel müssen aber ebenfalls dokumentierbar sein, ohne fiktive Entnahmen aus dem heimischen
+Lager zu erzeugen.
+
+12.4 Unvollständige Angaben
+Wenn eine Mahlzeit berichtet wird, aber die genaue Menge fehlt, sollen vorhandene Angaben trotzdem gespeichert
+werden. Unklare Menge, unvollständige Nährwerte und Unsicherheiten müssen sichtbar bleiben. Lücken werden
+nicht mit Nullen gefüllt.
+
+12.5 Tagesvollständigkeit
+Die fachliche Planung unterscheidet OFFEN, TEILWEISE und VOLLSTAENDIG. Ein Tag darf nur bei ausdrücklich
+bestätigter oder fachlich nachgewiesener Vollständigkeit als vollständig gelten. Ein lückenhaft dokumentierter Tag
+ist nicht mit einem nachweislich kalorienarmen Tag gleichzusetzen.
+
+12.6 Tagesbilanz
+Darstellung tatsächlich erfasster Energie, Protein, Fett, Kohlenhydrate, Ballaststoffe und verfügbarer weiterer
+Nährstoffe, der einzelnen Mahlzeiten, Vollständigkeit und fehlender Angaben. Fortschrittsanzeigen müssen
+Datenlücken offenlegen und dürfen keine Scheingenauigkeit vermitteln.
+
+
+
+13. Ernährungsplanung über mehrere Zeithorizonte
+Die Planung soll Tag, sieben Tage und rollierend vier bis acht Wochen miteinander verbinden.
+
+
+
+
+Projektstand · 30.10.2026                                                                                              10
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+
+13.1 Tagesplanung
+Konkrete vorgesehene Mahlzeiten, Snacks, Zubereitungen, gegebenenfalls Zeiten, Portionen, Zutaten,
+Plan-Nährwerte und vorhandene/fehlende Produkte. Die bestätigte bevorzugte Alltagsstruktur lautet flexibel drei
+Hauptmahlzeiten und zwei Snacks; sie ist keine starre Pflicht.
+
+13.2 Sieben-Tage-Planung
+Wochenübersicht mit Mahlzeiten, gemeinsamen Zutaten, Kochterminen, vorbereiteten Portionen,
+Resteverwertung, Lagerkapazität, Einkaufsbedarf, Kosten, Abwechslung und persönlichen Zielen. Die Tage sind
+einzeln bearbeitbar.
+
+13.3 Rollierende Vier-bis-Acht-Wochen-Planung
+Strategische Abstimmung von Ernährung, Rezeptvielfalt, Vorratsnutzung, Einkauf, Meal Prep, Lagerraum, Budget
+und sportlicher Belastung. Keine starre Pflicht zur vollständigen Vorfestlegung aller Mahlzeiten. Die Monatsdemo
+zeigt kompakte Wochenkarten.
+
+13.4 Zusammenhang und Planversionierung
+Tages-, Wochen- und Langfristplanung sollen miteinander verknüpft sein, ohne gleiche Mengen mehrfach zu zählen.
+Strategische Wochen- und Langfristziele dürfen nicht noch einmal zu konkreten Tagesmengen addiert werden.
+Übergeordnete Planidentitäten und nachvollziehbare Planversionen sind vorgesehen.
+
+13.5 Unterschiedliche Planarten
+Zu unterscheiden sind geplanter Verzehr fertiger Portionen, geplante Zubereitung und geplanter direkter
+Rohwaren-/Produktverzehr. Wenn sonntags sechs Portionen gekocht werden, dürfen die Zutaten nicht für jede
+spätere Portion erneut als Einkaufsbedarf auftreten.
+
+13.6 Änderbarkeit
+Pläne können ersetzt, verändert oder verworfen werden. Tatsächlich ausgeführte Ereignisse bleiben von der
+ursprünglichen Planung unterscheidbar. Ein durchgeführter Plan ist keine automatische historische
+Bestandsbuchung.
+
+
+
+14. Intelligenter Bedarfsabgleich
+14.1 Soll-Ist-Vergleich
+Ermittlung von benötigter Menge, tatsächlich nutzbarem Bestand, vorhandenen passenden Fertigportionen,
+Fehlmenge und Verfügbarkeit zum vorgesehenen Termin. Anzeige als vorhanden, teilweise vorhanden oder fehlend.
+
+14.2 Richtige Bestandsanrechnung
+Die Berechnung berücksichtigt Chargenfreigabe, Mengen, Haltbarkeit, Verwendungszeitpunkt und soweit möglich
+konkurrierende Planverwendungen. Derselbe Vorrat darf nicht mehrfach für verschiedene Pläne angerechnet
+werden, wenn die Gesamtmenge nicht reicht.
+
+14.3 Resteverwertung
+Produkte mit früher relevant werdender Haltbarkeitsgrenze werden bei geeigneten Rezepten bevorzugt genutzt,
+ohne gesperrte oder fragwürdige Lebensmittel automatisch freizugeben.
+
+
+
+
+Projektstand · 30.10.2026                                                                                            11
+ERNÄHRUNGSGEDÄCHTNIS                                                         Konsolidierte Produkt- und Architekturplanung
+
+
+
+15. Intelligente Einkaufsliste
+15.1 Aus tatsächlichen Fehlmengen
+Die Einkaufsliste soll nicht alle Rezeptzutaten pauschal aufführen. Sie berücksichtigt bereits nutzbare Produkte und
+berechnet die verbleibenden Fehlmengen. Daraus entstehen praktikable Kaufvorschläge.
+
+15.2 Packungsrundung
+Verfügbare Packungsgrößen und ganze Verkaufseinheiten werden berücksichtigt. Mengenbasis, insbesondere
+Abtropfgewicht, Stückgewicht und tatsächlicher Packungsinhalt, muss korrekt sein.
+
+15.3 Bedienung
+Liste nach Produkten, mit Mengen, Packungszahlen, Preisen und gegebenenfalls Händlerinformationen. Positionen
+sind abhackbar und führen zur eigentlichen Einkaufserfassung. Abhaken allein ist keine bestätigte Lagerbuchung.
+
+15.4 Bedarfsgerechter Einkauf
+Vermeidung unnötiger Käufe, insbesondere verderblicher Produkte. Einkäufe richten sich nach geplantem
+tatsächlichem Verbrauch, Haltbarkeit, Budget und Platz. KI-Vorschläge sind keine automatischen Bestellungen.
+
+
+
+16. Persönliches Profil und Ernährungsziele
+Das persönliche Profil verwaltet körperliche Basisdaten, langfristige Ziele, Ernährungsweise,
+Vorlieben/Abneigungen, ausdrücklich mitgeteilte Allergien oder Unverträglichkeiten und freiwillige
+Einschränkungen, Mahlzeitenstruktur, Standardgerichte/Standardshake, Trainingsalltag, Kochzeit und
+Küchenausstattung, Budget, Lagerkapazitäten sowie Ziel- und Bestätigungsstatus.
+
+16.1 Bestätigtes und Vorschläge trennen
+Body Recomposition mit Schwerpunkt Muskelaufbau ist das übergeordnete Ziel. Werte wie 150–170 g
+Protein/Tag und rund 3.000 kcal/Tag stehen im aktuellen Profil jedoch als noch unbestätigte Vorschläge. Sie
+dürfen nicht stillschweigend als verbindliche Tagesziele übernommen werden.
+
+16.2 Sinnvolle Zielbereiche
+Bewertet werden fachlich passende Bereiche und langfristige Entwicklung statt nur eine starre Tageskalorienzahl.
+Proteinversorgung, Energieverfügbarkeit, Aktivität, Regeneration und Körperentwicklung gehören zusammen. Neue
+Zielentscheidungen müssen nachvollziehbar sein und früheren Festlegungen nicht rückwirkend eine andere
+Bedeutung geben.
+
+
+
+17. Körpermessungen
+17.1 Zunächst manuell
+Körper- und Trainingsdaten werden in der ersten Ausbaustufe manuell erfasst. Automatische
+Smartwatch-/Health-Datenübernahme ist keine Voraussetzung.
+
+17.2 Messbare Größen
+Körpergewicht, Taille, gegebenenfalls KFA, geschätzte Skelettmuskel-/Muskelmasse, Körperwasser sowie Datum,
+Zeit, Gerät, Methode, Bedingungen, Herkunft und Qualität. Unterschiedliche Geräte und Messmethoden bleiben
+getrennt.
+
+
+
+Projektstand · 30.10.2026                                                                                              12
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+
+17.3 Messung versus Geräteschätzung
+Eine Uhr misst das vom Nutzer eingegebene Körpergewicht nicht unabhängig selbst. BIA-Schätzungen sind geräte-
+und flüssigkeitsabhängig. Werte verschiedener Hersteller oder Messprinzipien dürfen nicht ohne Kennzeichnung
+gleichgesetzt werden.
+
+17.4 Messprotokoll
+Gewicht möglichst morgens nach Toilette und vor Essen/Trinken, gleiche Waage und vergleichbare Bedingungen.
+Taille regelmäßig an einer definierten Stelle; BIA unter ähnlichen Bedingungen mit demselben Gerät. Diese
+Konventionen verbessern Vergleichbarkeit, machen Einzelmessungen aber nicht exakt.
+
+17.5 Historie und Korrektur
+Rohmesswerte bleiben nachvollziehbar. Fehlerhafte Messungen können aus Trendberechnungen ausgeschlossen
+und durch dokumentierte Korrekturen ergänzt werden, ohne die ursprüngliche Information spurlos zu
+überschreiben.
+
+
+
+18. Sport- und Aktivitätstagebuch
+18.1 Trainingsereignisse
+Erfassbar sind Sportart, Datum, Dauer, Intensität, bei Krafttraining Übungen/Sätze/Wiederholungen/Lasten,
+Belastungsempfinden, gegebenenfalls Schritte, geschätzte Energiewerte samt Quelle, Notizen und Regeneration.
+Geplantes Training ist kein absolviertes Training.
+
+18.2 Leistungsentwicklung
+Neben Gewicht und Körperzusammensetzung werden Kraft, Ausdauer und weitere Fähigkeiten im Zeitverlauf
+betrachtet. Eine reine Gewichtsbetrachtung genügt für die Bewertung von Body Recomposition nicht.
+
+18.3 Energieverbrauch durch Aktivität
+Smartwatch-Kalorien sind Schätzungen. Doppelzählungen von Schritten, Alltagsbewegung, Sport und
+gegebenenfalls enthaltenem Ruheumsatz sollen vermieden werden.
+
+18.4 Spätere Integrationen
+Health Connect und Smartwatch-Anbindungen sind optionale spätere Erweiterungen. Automatischer Import darf
+Qualität und Nachvollziehbarkeit nicht verschlechtern.
+
+
+
+19. Körperentwicklung, Trends und Auswertung
+19.1 Diagramme
+Gewicht, KFA/Fettmasse, Muskelmasse und gegebenenfalls weitere Messgrößen über 7, 30 und 90 Tage sowie ein
+Jahr. Rohmesswerte und geglättete Verläufe müssen unterscheidbar sein.
+
+19.2 Datenqualität
+Trends hängen von Messhäufigkeit, Verteilung, Streuung, Gerätevergleichbarkeit und Bedingungen ab. Einzelne
+BIA-Schwankungen sollen nicht automatisch als tatsächliche Körperveränderung interpretiert werden.
+
+
+
+
+Projektstand · 30.10.2026                                                                                            13
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+
+19.3 Verfahren
+Einfache Glättung und robuste Methoden für längere Reihen wurden besprochen; LOESS als mögliche Methode,
+aber nicht unabhängig von Datenlage verpflichtend festgelegt. Codex kann fachlich geeignete, nachvollziehbare
+Verfahren auswählen.
+
+
+
+20. Energiebedarf und langfristige Kalibrierung
+20.1 Ausgangsmodell
+Das bisherige Konzept betrachtet modellierten Ruheumsatz, Alltagsbewegung/NEAT, Sport, thermischen Effekt der
+Nahrung und damit verbundene Unsicherheiten. Doppelt gezählte Energiekomponenten müssen vermieden
+werden.
+
+20.2 Bedarf als Bereich
+Energiebedarf wird als begründeter Schätzbereich verstanden, nicht als täglich exakte Zahl. Sport- und Ruhetage
+können sich unterscheiden.
+
+20.3 Kalibrierung aus Beobachtungen
+Später können über Wochen dokumentierte Energiezufuhr, Gewichtstrend, Körpermaße, Aktivitäten, Leistung,
+Regeneration und Messqualität gemeinsam ausgewertet werden. Kurzfristige Wasser-, Salz- und
+Glykogenschwankungen sind zu berücksichtigen.
+
+20.4 Nicht aus Datenlücken extrapolieren
+In der Sheets-Fachplanung wurden Qualitätskriterien für Bewertungen nach mindestens 14 beziehungsweise 28
+Tagen mit zusätzlicher Mindestabdeckung an Gewichtsdaten dokumentiert. Dies sind technische
+Projektkonventionen, keine klinisch validierten Konstanten. Bei lückenhafter Ernährungserfassung darf keine
+scheinbar sichere individuelle Energiebedarfs-Kalibrierung ausgegeben werden. Codex darf die Umsetzung fachlich
+begründet verbessern.
+
+20.5 Keine automatische Zieländerung
+Neue Ziele oder Schätzbereiche werden begründet und nachvollziehbar vorgeschlagen; persönliche Zielwerte
+dürfen nicht unbemerkt geändert werden. Vollständige Kalibrierungsalgorithmen sind nicht Voraussetzung der
+ersten Datenbankphase.
+
+
+
+21. ChatGPT als Beratungs- und Planungspartner
+ChatGPT soll bei komplexer Analyse, individueller Beratung, Rezept- und Ernährungsplanung helfen. Die App
+übernimmt dauerhafte Datenverwaltung und Prüfung tatsächlicher Änderungen.
+
+21.1 Keine verpflichtende kostenpflichtige API
+Eine kostenpflichtige OpenAI-API ist nicht Voraussetzung. Vereinbart ist ein strukturierter JSON-Austausch
+zwischen App und ChatGPT.
+
+21.2 Gezielter Export
+Je nach Auftrag können Profil, bestätigte Ziele, Präferenzen, Vorräte/Chargen, Produkt-/Rezeptversionen,
+Ernährungshistorie, Messwerte, Training, Kapazitäten, Preise, Budget, Planung, Schema-/Datenstand, Quellen und
+Unsicherheiten exportiert werden. Es müssen nicht unnötig alle persönlichen Informationen übertragen werden.
+
+
+
+
+Projektstand · 30.10.2026                                                                                            14
+ERNÄHRUNGSGEDÄCHTNIS                                                         Konsolidierte Produkt- und Architekturplanung
+
+
+
+21.3 Strukturierte Rückgaben
+ChatGPT gibt Planungen im vereinbarten JSON-Datenvertrag zurück. JSON dient dem Datenaustausch, ist kein
+ausführbarer Code und begründet keine direkte Buchungsberechtigung.
+
+21.4 Validierung vor Import
+Die App prüft Schema-Version, Struktur, Pflichtfelder, Identitäten, Produkt-/Rezeptversionen, Mengen/Einheiten,
+Aktualität der Vorräte, Haltbarkeit, Lagerkapazität, Budget und weitere Konflikte. Ein Vorschlag kann gültig,
+teilweise ungeklärt oder unzulässig sein; Gründe werden sichtbar gemacht.
+
+21.5 Import ist keine tatsächliche Buchung
+Ein importierter ChatGPT-Plan darf niemals automatisch Einkäufe, Verzehr oder Ist-Bestandsbewegungen buchen.
+Die reale Ausführung ist jeweils ein separater, entsprechend bestätigter Vorgang.
+
+21.6 Datenaktualität
+Ein Plan auf Basis eines alten Exports kann unpassend geworden sein. Die App prüft, ob vorhandene Chargen,
+Mengen, Platz und weitere Voraussetzungen noch zum Importzeitpunkt stimmen.
+
+
+
+22. Datenqualität, Herkunft und Unsicherheit
+22.1 Unbekannt ist nicht null
+Die App unterscheidet bekannte Nullwerte, unbekannte Werte, Schätzungen, aus Quellen übernommene Werte,
+bestätigte Informationen und widersprüchliche Angaben. Das gilt für Nährstoffe, Mengen, Preise, Training,
+Körperdaten und Lagerung.
+
+22.2 Teilwissen darf bestehen
+Ein ungeklärter Bestandteil muss nicht verhindern, andere bestätigte Informationen zu speichern. Beispiel: Kaufpreis
+und Händler sind bekannt, die genaue Artikelversion noch offen.
+
+22.3 Metadaten
+Relevante Daten können Quelle, Zeitpunkt, Gültigkeitsdatum, Qualitäts-/Bestätigungsstatus, Schätzmethode,
+Version sowie Änderungs-/Korrekturhistorie erhalten.
+
+22.4 Datenqualitätsansicht
+Eigener Bereich für Produkte ohne Nährwerte, uneindeutige Aliase, offene Bonpositionen, fehlende Lagerangaben,
+ungeklärte Haltbarkeit, unvollständige Tage, Mengen-/Einheitenkonflikte und passende Korrekturmöglichkeiten.
+
+
+
+23. Einheitensystem und Mengenverarbeitung
+23.1 Basiseinheiten
+Bevorzugt g, ml und Portion. kg und Liter werden korrekt umgerechnet. Stück und Packungen benötigen eine
+bekannte Stück-/Packungsbasis.
+
+23.2 Mengentypen
+Nettofüllmenge, Abtropfgewicht, Rohgewicht, gegartes Gewicht, Stückgewicht, Portionsgewicht und
+Packungsgröße werden unterschieden. Eine Konservendose kann eine andere verwertbare Menge als das
+Gesamtgewicht aufweisen. Unbestätigte Umrechnungen werden nicht als exakte Tatsachen gespeichert.
+
+
+Projektstand · 30.10.2026                                                                                              15
+ERNÄHRUNGSGEDÄCHTNIS                                                        Konsolidierte Produkt- und Architekturplanung
+
+
+
+23.3 Unterschiedliche fachliche Größen
+Rezeptzutatmenge, Chargenbestand, Speisegesamtgewicht und fertige Portion sind unterschiedliche Größen; nötige
+Umrechnungen sind nachvollziehbar.
+
+
+
+24. Datensicherung und Wiederherstellung
+24.1 Lokale Datenhaltung
+Die produktiven Daten sollen langfristig primär auf dem Android-Gerät liegen und ohne permanent verfügbaren
+externen Dienst nutzbar sein.
+
+24.2 Sicherungen
+Eine geeignete verschlüsselte Sicherung und Wiederherstellung soll vor Datenverlust durch Gerätewechsel, Defekt
+oder Neuinstallation schützen. Konkretes Format, Schlüsselverwaltung und Wiederherstellungsverfahren wählt
+Codex nach Sicherheit und Wartbarkeit.
+
+24.3 Google Drive optional
+Google Drive kann Backups beziehungsweise Exporte speichern, nicht aber eine zweite unabhängige produktive
+Datenbank bilden. Eine Wiederherstellung darf nicht unbemerkt doppelte Bestandsereignisse erzeugen.
+
+24.4 Datenbankmigrationen
+App-Updates benötigen kontrollierte Schema-Migrationen, die IDs, historische Ereignisse, Versionen und
+Nutzerinformationen bewahren. Keine unbeabsichtigten Löschungen, Verdoppelungen oder
+Bedeutungsänderungen.
+
+
+
+25. Übernahme aus dem bestehenden Google-Sheets-System
+25.1 Fachlicher Stand
+Die verbindliche zentrale Google-Sheets-Datei verwendet schema_version 1.1.0 mit 23 Tabellenblättern.
+Fachblätter: Profil, Tage, Gewicht, Aktivitaet, Verzehr, Artikel, Rezepte, Zutaten, Chargen, Bewegungen, Lager, Plan,
+Bedarf, Einkauf, Preise, Budget, Kalibrierung, Vorgaenge, Produktalias und Bonpositionen. Dashboard, Anleitung
+und Tests ergänzen das System.
+
+Die bisherigen Beziehungen, Prüfregeln, historischen Korrekturen und Qualitätsfälle sind Referenzen für die
+Android-App.
+
+25.2 Übernehmbare Fachprinzipien
+Produkt versus Artikelversion versus Charge; stabile Identitäten; unveränderliche historische Versionen;
+Vorgangs-IDs; echte versus geplante Ereignisse; getrennte Verzehr-/Bestandsbewegungen; Rezeptproduktion;
+Teilbestätigung; Quellen-/Qualitätsstatus; Einheiten; Bedarf; Preise/Budgets; Korrekturhistorie;
+Doppelbuchungsschutz; datenqualitätsabhängige Kalibrierung.
+
+25.3 Nicht mechanisch zu übernehmen
+Google-Sheets-Formeln als primäre Geschäftslogik, vorgefüllte Formelzeilen, begrenzte Referenzbereiche,
+Zellvalidierung als einzige Schutzmaßnahme und mehrstufige Chat-Schreibvorgänge als Ersatz für echte
+Datenbanktransaktionen. Relationale Datenbankfunktionen sollen die bisherige Umsetzung technisch verbessern.
+
+
+
+
+Projektstand · 30.10.2026                                                                                             16
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+
+25.4 Keine neue Sheets-Datei
+Codex soll ausdrücklich keine weitere Google-Sheets-Datenbank anlegen, weder parallel produktiv noch als
+automatische Zwei-Wege-Synchronisierung.
+
+25.5 Spätere kontrollierte Datenmigration
+Die tatsächliche Übernahme persönlicher Vorrats-, Ernährungs-, Preis- und Körperdaten ist eine eigenständige
+Phase mit Export, Validierung, Identitätszuordnung, Integritätsprüfung und bestätigtem Wechsel der Datenhoheit.
+Bis dahin bleiben reale Sheets-Daten von der App-Demo/Testdaten getrennt.
+
+
+
+26. Technische Sicherheits- und Konsistenzregeln
+26.1 Datenbankintegrität
+Eindeutige IDs, geeignete Fremdschlüssel, Pflicht-/optionale Felder, Versionierung, atomare Transaktionen,
+überprüfbare Mengenänderungen, Idempotenz, konsistente Zustandswechsel und kontrollierte Migrationen.
+
+26.2 Keine negativen Bestände
+Normale Verbrauchs- und Produktionsbuchungen dürfen keine unzulässigen negativen Chargenbestände
+verursachen. Technische Korrekturen brauchen eine explizite Fachregel, keine beiläufige Ausnahme.
+
+26.3 Keine fiktiven Tatsachen
+Planung oder Berechnung darf nicht als Durchführung gespeichert werden: Einkäufe, Training, Mahlzeiten, Meal
+Prep, Lageranschaffungen und geschätzte Körperwerte bleiben korrekt gekennzeichnet.
+
+26.4 Ereignisstatus
+Das fachliche Konzept unterscheidet Zustände wie Entwurf, gebucht, abgebrochen. Codex kann sie anders
+modellieren, muss die fachliche Unterscheidung jedoch erhalten.
+
+26.5 Fehlerbehandlung
+Nach einem Fehler muss erkennbar sein, was versucht und was tatsächlich gespeichert wurde, was offen ist und wie
+korrigiert werden kann. Es dürfen keine nicht verifizierten Buchungserfolge behauptet werden.
+
+
+
+27. Arbeitsteilung App und ChatGPT
+Die App weiß, was tatsächlich gespeichert ist. ChatGPT hilft zu entscheiden, was sinnvoll wäre.
+
+ChatGPT unterstützt Interpretation der Ernährung/Körperentwicklung, Wochenpläne, Rezeptkombinationen,
+Einkaufsalternativen, Meal-Prep-Strategien, Training/Regeneration und Vorschläge für Zielbereiche.
+
+Die App übernimmt Dauerhaftigkeit, Darstellung/Bearbeitung, Ereigniserfassung, Bestands- und
+Nährwertrechnung, Datenprüfungen, Transaktionen, Doppelbuchungsschutz, validierte Planimporte, Backups und
+Wiederherstellung. ChatGPT muss dann nicht jede Alltagsbuchung selbst über externe Werkzeuge ausführen.
+
+
+
+
+Projektstand · 30.10.2026                                                                                            17
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+
+28. Entwicklungsinfrastruktur
+28.1 GitHub
+Privates Repository für Android-Quellcode, nachvollziehbare Commits, Wiederherstellung früherer
+Entwicklungsstände, automatisierte Tests und APK-Builds mit GitHub Actions. GitHub ist keine Datenbank
+persönlicher Ernährungs-/Vorratsdaten.
+
+28.2 Codex
+Die technische Entwicklung soll überwiegend mit Codex und GPT-6.1 Sol erfolgen; Astra ist nicht für jede Phase
+nötig. Codex soll Code und zugängliche Spezifikationen analysieren, geeignete Architekturentscheidungen treffen
+und implementieren. Fachliche Ziele und Invarianten sind verbindlich; unnötig enge
+Bibliotheks-/Implementierungsvorgaben werden vermieden.
+
+28.3 Qualitätssicherung
+Jede wesentliche Phase wird im Repository dokumentiert, kompiliert erfolgreich, besitzt geeignete automatisierte
+Tests, erhält bestehende Funktionen möglichst und dokumentiert bekannte Grenzen. APK erfolgreich gebaut allein
+beweist noch keine fachlich korrekte Geschäftslogik.
+
+
+
+29. Bestehender Entwicklungsstand
+Die erste navigierbare Android-Demo mit den vorgesehenen Bildschirmen, Navigation und fiktiven Beispieldaten
+wurde erstellt. Sie wurde bewusst ohne produktive Datenbank, echte Barcode-/Bonerkennung, wirksame
+Bestandsbuchungen, vollständige Planungs- und Kalibrierungsalgorithmen gebaut. Diese Funktionen waren stets als
+spätere technische Integrationsphasen vorgesehen.
+
+Das Entwicklungsziel lautet daher Weiterentwicklung der vorhandenen Demo zu einer tatsächlich nutzbaren App,
+nicht unnötiger Neubau. Zuerst: lokales Room-/SQLite-Datenbankfundament.
+
+
+
+30. Sinnvolle Reihenfolge der Integration
+Phase 1 – Datenfundament. Room/SQLite-Modelle für Produkte, Versionen, Aliase, Chargen, Lagerorte,
+Bewegungen, Rezepte, Verzehr, Messwerte, Training und weitere Kerndaten; Relationen, Migrationen,
+Transaktionen, Tests.
+
+Phase 2 – Tatsächliche Ereignisse. Sichere Einkauf-, Zugangs-, Verbrauchs-, Umlagerungs-, Korrektur- und
+Meal-Prep-Buchungen.
+
+Phase 3 – Ernährung und Rezepte. Rezeptverwaltung, Nährwertberechnung, tatsächlicher Verzehr und Tagesbilanz
+einschließlich Lücken.
+
+Phase 4 – Planung und Einkauf. Verknüpfte Tages-/Wochen-/Langfristplanung, Bedarfsermittlung, Einkaufsliste,
+Preise, Budget.
+
+Phase 5 – Erkennung. Barcode, Produktdatenabfrage, Bonfotografie, OCR und Aliaszuordnung.
+
+Phase 6 – ChatGPT-Datenaustausch. Versionierter JSON-Export, validierter Import, Konflikte, kontrollierte
+Planübernahme.
+
+Phase 7 – Körper und Training. Persistente Messungen und Aktivitäten, Diagramme, Trends und gegebenenfalls
+später datenbasierte Energiebedarfsbewertungen.
+
+Phase 8 – Backups, Migration und Produktionsreife. Sichere Sicherung/Wiederherstellung, Kontrollmigration realer
+Daten, erweiterte Qualitätstests und Wechsel zur produktiven lokalen Datenbasis.
+
+
+Projektstand · 30.10.2026                                                                                            18
+ERNÄHRUNGSGEDÄCHTNIS                                                       Konsolidierte Produkt- und Architekturplanung
+
+
+Diese Reihenfolge beschreibt Abhängigkeiten, keine starre Vorschrift gegen sinnvoll kombinierte
+Implementierungsschritte.
+
+
+
+31. Nicht Teil der vereinbarten Kernarchitektur
+Keine Voraussetzung der ersten produktiven Android-Version sind:
+
+ • neue Google-Sheets-Datei oder automatische bidirektionale Sheets-Synchronisierung;
+ • verpflichtende kostenpflichtige OpenAI-API;
+ • eigener dauerhaft betriebener Backendserver;
+ • Supabase als zwingende App-Datenbank;
+ • GitHub als Speicher persönlicher Anwendungsdaten;
+ • automatische Health-Connect-/Samsung-Health-Integration;
+ • automatisch aus Uhrdaten verbindlich abgeleitete Kalorienziele;
+ • autonom durchgeführte Einkäufe;
+ • automatisch als gegessen markierte Planmahlzeiten;
+ • automatischer realer Verbrauch allein durch KI-Vorschläge;
+ • Optimierungsalgorithmen, die ungeklärte Daten als sichere Fakten behandeln.
+
+Diese Abgrenzungen sollen Kosten, Wartungsaufwand und riskante Automatisierung begrenzen.
+
+
+
+32. Bewusst offene technische Einzelentscheidungen
+Die bisherige Fachplanung lässt technische Auswahlmöglichkeiten offen: genaue Room-Entitäten/DAOs,
+Repository-/Service-Struktur, Barcode-/OCR-Bibliotheken, Backupformat und Verschlüsselungsdetails, exaktes
+JSON-Schema, Diagramm-/Trendverfahren, spätere Gesundheitsschnittstellen, Strategie für große Datenmengen,
+Migration aus Google Sheets und lokale Optimierungsalgorithmen.
+
+Diese Entscheidungen sollen nicht künstlich vorweggenommen werden. Codex soll eine geeignete, sichere,
+wartbare und einfache Implementierung wählen, solange die fachlichen Regeln erhalten bleiben.
+
+
+
+33. Verbindliche fachliche Leitlinien
+1. Produktwissen bleibt dauerhaft erhalten. Der Katalog ist unabhängig vom aktuellen Lagerbestand.
+2. Ist-Daten entstehen aus Ist-Ereignissen. Scan, Planung oder KI-Import buchen nichts automatisch.
+3. Vorräte sind chargenbezogen und historisch nachvollziehbar. Herkunft, Menge, Lagerort, Haltbarkeit und
+    Bewegungen bleiben unterscheidbar.
+4. Meal Prep wandelt Lebensmittel tatsächlich um. Rohwaren werden bei bestätigter Herstellung verbraucht,
+    fertige Portionen entstehen als neue Bestände; erst Verzehr zählt zur Ernährung.
+5. Ernährung und Planung sind getrennt. Nur tatsächlicher Verzehr zählt zur realen Bilanz.
+6. Unbekannte Werte bleiben unbekannt. Fehlendes Wissen erzeugt keine falsche Genauigkeit.
+7. Drei Planungshorizonte gehören zusammen. Zubereitung, Fertigportionen, Rohwarenbedarf und Einkäufe
+    werden nicht doppelt gezählt.
+8. Lebensmittelsicherheit und reale Kapazität gehen vor. Ungeeignete oder unbekannte Bedingungen bedeuten
+    keine automatische Freigabe.
+9. Einkauf ist bedarfsorientiert. Preis, Packung, Vorrat, Haltbarkeit und Budget werden gemeinsam betrachtet.
+
+
+
+Projektstand · 30.10.2026                                                                                            19
+ERNÄHRUNGSGEDÄCHTNIS                                                             Konsolidierte Produkt- und Architekturplanung
+
+
+10. Körper-/Trainingsdaten sind methodengerecht. Rohmessung, Geräteschätzung, Trend und Interpretation
+    bleiben unterscheidbar.
+11. Kalibrierung braucht belastbare Daten. Keine willkürliche tägliche Neuberechnung bei Lücken.
+12. ChatGPT berät, die App kontrolliert Buchungen. JSON wird vor Übernahme validiert.
+13. Die Android-App erhält später genau eine lokale Datenwahrheit. Sheets bleibt bis zur bestätigten Migration
+    verbindlich.
+14. Backups, Versionen und Korrekturen gehören zum Kern. Historische Zusammenhänge dürfen nicht verloren
+    gehen.
+15. Technische Umsetzung bleibt flexibel. Fachregeln gelten, Kotlin-/Room-Architektur darf Codex optimieren.
+
+
+
+
+Abschließendes Produktziel
+Das Ernährungsgedächtnis soll eine eigenständig nutzbare, zuverlässige Android-Anwendung sein, die persönliche
+Ernährung, Vorräte, Einkäufe, Rezepte, Meal Prep, Fitness und Körperentwicklung langfristig zusammenführt.
+
+Das System behält Wissen, dokumentiert reale Ereignisse sicher, ermöglicht nachvollziehbare Auswertungen und
+unterstützt durch strukturierte Planung zukünftige Entscheidungen. Die Oberfläche bleibt einfach; die Technik
+dahinter bildet komplexe Zusammenhänge korrekt ab.
+
+Ein dauerhaftes, verlässliches Gedächtnis für Ernährung, Vorräte und körperliche Entwicklung – mit ChatGPT als
+intelligentem Beratungspartner und der lokalen Android-Datenbank als späterer verbindlicher Datenbasis.
+
+
+Einordnung: Dies ist die fachliche Gesamtspezifikation, nicht die Anweisung, alles gleichzeitig zu programmieren. Der
+nächste Codex-Auftrag betrifft zunächst das Room-/SQLite-Fundament. Die Darstellung konsolidiert den verfügbaren
+vereinbarten Projektstand und die Sheets-Fachregeln; nicht ausdrücklich dokumentierte technische Einzelentscheidungen
+bleiben offen.
+
+
+
+
+Projektstand · 30.10.2026                                                                                                  20
+
