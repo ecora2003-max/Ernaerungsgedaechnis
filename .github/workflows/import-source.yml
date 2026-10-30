@@ -1,64 +1,67 @@
-name: Import Android source and build demo APK
+name: Import source ZIP and build Android APK
 on:
   push:
     branches: [main]
-    paths: ['.github/import-ready.txt']
+    paths: ['Ernaehrungsgedaechtnis-Android-Quellprojekt.zip']
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: source-import-${{ github.ref }}
+  group: import-android-source-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   import-and-build:
+    if: github.repository == 'ecora2003-max/Ern-hrungsged-chtnis-'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout private repository
         uses: actions/checkout@v4
-      - name: Restore provided Android source
+      - name: Verify and import supplied source archive
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/source-parts/part-*.txt | base64 -d | tar -xz -C .
-          rm -rf .github/source-parts .github/import-ready.txt
-          sed -i '/if: ${{ github.event.repository.private == false }}/d' .github/workflows/android-demo.yml
+          archive='Ernaehrungsgedaechtnis-Android-Quellprojekt.zip'
+          test -s "$archive"
+          unzip -tq "$archive"
+          mkdir -p "$RUNNER_TEMP/android-src"
+          unzip -q "$archive" -d "$RUNNER_TEMP/android-src"
+          test -f "$RUNNER_TEMP/android-src/ErnaehrungsgedaechtnisDemo/settings.gradle.kts"
+          test -f "$RUNNER_TEMP/android-src/ErnaehrungsgedaechtnisDemo/gradle/wrapper/gradle-wrapper.jar"
+          cp -a "$RUNNER_TEMP/android-src/ErnaehrungsgedaechtnisDemo/." .
+          rm -f "$archive"
+          sed -i '/^[[:space:]]*if: .*github.event.repository.private == false/d' .github/workflows/android-demo.yml
+          sed -i '/Standard GitHub-hosted runners are free for public repositories\./d; /Stop automatically if the repository becomes private\./d' .github/workflows/android-demo.yml
           chmod +x gradlew
-      - name: Configure Java 17
+          echo "Source files imported"
+      - name: Save source code to GitHub
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'Import complete Android demo project and enable private CI'
+            git push origin HEAD:main
+          fi
+      - name: Install JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;34.0.0' 'platform-tools'
-      - name: Install Gradle 8.9
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-      - name: Restore original Gradle wrapper
-        shell: bash
-        run: |
-          gradle wrapper --gradle-version 8.9 --distribution-type bin
-          git checkout -- gradle/wrapper/gradle-wrapper.properties
-      - name: Commit project files
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Import full Android demo source from user archive"
-          git push origin HEAD:main
-      - name: Build installable debug APK
+      - name: Assemble Android debug APK
         run: ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
-      - name: Upload APK
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
           name: Ernaehrungsgedaechtnis-Demo-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 1
-      - name: Run Android lint and unit tests
+      - name: Run lint and unit tests
         run: ./gradlew --no-daemon --max-workers=2 :app:lintDebug :app:testDebugUnitTest
       - name: Upload test reports
         if: always()
