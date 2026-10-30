@@ -15,6 +15,10 @@ Die vorhandene Android-Demo schrittweise nach `product/Gesamtplanung-2026-10-30.
 
 ## Aktueller Meilenstein: erstes lokales Datenfundament
 
+**Fortsetzung in Arbeit: Buchungen und Meal Prep (0.3.0, Schema 2).** Implementiert: Umlagerung mit Herkunftsbezug, Entsorgung, begründete Istzählung mit Schutz gegen veraltete Formulare, verknüpfte vollständige Stornos, Rezeptversionen und atomare tatsächliche Herstellung. Erste 12 Fachtests und die separate Migration 1→2 erfolgreich ausgeführt. Der Migrationstest vergleicht alle bisherigen Daten aus 22 befüllten Tabellen und prüft alte Retry-Schlüssel sowie neue Buchungen nach Upgrade. Ergänzte Parallelitäts-/Chroniktests laufen; Oberflächenintegration und abschließender Build/Lint/Gesamttest/CI stehen noch aus. Dieser Absatz ist ein Zwischenstand, keine Fertigmeldung für 0.3.0.
+
+Schema 1 unverändert lassen. Schema 2 ergänzt `batches.parentBatchId`, `stock_movements.occurredOn` sowie `operation_reversals`, `recipe_output_products`, `productions`. `FoodMigrations.MIGRATION_1_2` ist in der App registriert. Unbekannte alte Angaben bleiben NULL, keine destruktive Migration. Fachentscheidungen: Stornos entfernen keine Historie; aktive Verzehre schließen stornierte Vorgänge aus. Erst abhängige Ereignisse stornieren. Umlagerung übernimmt keine neue Freigabe automatisch; bei geänderten Bedingungen bleibt sie ungeklärt. Produktion benötigt ausdrücklich geprüfte Lagerbedingungen/Behälter/Platz plus Notiz; Abweichungen von Rezeptmengen/Ausbeute benötigen eine Begründung. Nährwerte fertiger Portionen bleiben bis zur fachlichen Berechnung unbekannt.
+
 1. Room-Schema für Produktidentitäten/-versionen, Aliase, Lagerorte/Chargen/Bewegungen, Vorgänge, Rezepte, Verzehr, Tagesstatus, Planung, Belege/Preise, Körper/Training.
 2. Transaktionsschicht mit wiederholbaren Vorgangs-IDs, Konfliktprüfung und Schutz vor negativen Beständen.
 3. Persistenten, deutlich isolierten lokalen Testbereich in der bestehenden Navigation anbieten; keine stillschweigende Übernahme der bisherigen Fixtures.

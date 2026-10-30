@@ -8,6 +8,8 @@ data class CatalogRow(@Embedded val version: ProductVersionEntity, val stockAmou
 data class BatchRow(@Embedded val batch: BatchEntity, val productName: String, val unit: BaseUnit,
     val locationName: String, val stockAmount: Long)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
+data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
+data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
 
 /** Internal write API: application callers must use FoodStore's validated transactions. No replace/upsert of history. */
 @Dao
@@ -27,6 +29,32 @@ internal interface FoodDao {
     @Insert suspend fun insertRecipe(value: RecipeEntity)
     @Insert suspend fun insertRecipeVersion(value: RecipeVersionEntity)
     @Insert suspend fun insertIngredient(value: RecipeIngredientEntity)
+    @Insert suspend fun insertReversal(value: OperationReversalEntity)
+    @Insert suspend fun insertOutputProduct(value: RecipeOutputProductEntity)
+    @Insert suspend fun insertProduction(value: ProductionEntity)
+
+    @Query("SELECT * FROM operation_reversals WHERE originalOperationId = :id") suspend fun reversal(id: String): OperationReversalEntity?
+    @Query("SELECT * FROM recipe_versions WHERE id = :id") suspend fun recipeVersion(id: String): RecipeVersionEntity?
+    @Query("SELECT * FROM recipe_versions WHERE recipeId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestRecipeVersion(id: String): RecipeVersionEntity?
+    @Query("SELECT * FROM recipe_output_products WHERE recipeId = :id") suspend fun outputProduct(id: String): RecipeOutputProductEntity?
+    @Query("SELECT * FROM productions WHERE operationId = :id") suspend fun production(id: String): ProductionEntity?
+    @Query("SELECT * FROM consumption_events WHERE operationId = :id") suspend fun consumptionForOperation(id: String): ConsumptionEntity?
+    @Query("""SELECT COUNT(*) FROM consumption_events c LEFT JOIN operation_reversals r
+        ON r.originalOperationId = c.operationId WHERE r.originalOperationId IS NULL""") suspend fun activeConsumptionCount(): Int
+    @Query("""SELECT EXISTS(SELECT 1 FROM stock_movements m
+        WHERE m.batchId = :batchId AND m.operationId != :original
+        AND NOT EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = m.operationId OR r.reversalOperationId = m.operationId))""")
+    suspend fun hasActiveDependentMovement(batchId: String, original: String): Boolean
+
+    @Query("""SELECT o.*, r.reversalOperationId AS reversedBy FROM operations o
+        LEFT JOIN operation_reversals r ON r.originalOperationId = o.id
+        WHERE o.kind IN ('RECEIPT', 'CONSUMPTION', 'TRANSFER', 'WASTE', 'STOCK_COUNT', 'PRODUCTION', 'REVERSAL')
+        ORDER BY o.recordedAt DESC, o.id LIMIT 30""") fun observeOperations(): Flow<List<OperationRow>>
+    @Query("SELECT * FROM recipe_versions r WHERE r.revision = (SELECT MAX(revision) FROM recipe_versions WHERE recipeId = r.recipeId) ORDER BY r.name")
+    fun observeRecipes(): Flow<List<RecipeVersionEntity>>
+    @Query("SELECT i.*, v.name AS productName FROM recipe_ingredients i JOIN product_versions v ON v.id = i.productVersionId ORDER BY i.position")
+    fun observeIngredients(): Flow<List<IngredientRow>>
+    @Query("SELECT * FROM product_versions ORDER BY name, revision DESC") fun observeVersions(): Flow<List<ProductVersionEntity>>
 
     @Query("SELECT * FROM operations WHERE id = :id") suspend fun operation(id: String): OperationEntity?
     @Query("SELECT * FROM product_versions WHERE id = :id") suspend fun version(id: String): ProductVersionEntity?
@@ -35,6 +63,7 @@ internal interface FoodDao {
     @Query("SELECT * FROM storage_locations WHERE id = :id") suspend fun location(id: String): StorageLocationEntity?
     @Query("SELECT * FROM batches WHERE id = :id") suspend fun batch(id: String): BatchEntity?
     @Query("SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = :id") suspend fun balance(id: String): Long
+    @Query("SELECT MAX(occurredOn) FROM stock_movements WHERE batchId = :id") suspend fun latestMovementDate(id: String): String?
     @Query("SELECT * FROM stock_movements WHERE operationId = :id ORDER BY id") suspend fun movements(id: String): List<StockMovementEntity>
     @Query("SELECT * FROM consumption_events WHERE id = :id") suspend fun consumption(id: String): ConsumptionEntity?
     @Query("SELECT COUNT(*) FROM consumption_events") suspend fun consumptionCount(): Int
@@ -68,7 +97,8 @@ internal interface FoodDao {
     ConsumptionEntity::class, ConsumptionAllocationEntity::class, DiaryDayEntity::class,
     PlanEntity::class, PlannedEntryEntity::class, ReceiptEntity::class, ReceiptLineEntity::class,
     PriceObservationEntity::class, BudgetEntity::class, BodyMeasurementEntity::class,
-    TrainingEventEntity::class, TrainingSetEntity::class], version = 1, exportSchema = true)
+    TrainingEventEntity::class, TrainingSetEntity::class, OperationReversalEntity::class,
+    RecipeOutputProductEntity::class, ProductionEntity::class], version = 2, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -79,6 +109,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
+                .addMigrations(FoodMigrations.MIGRATION_1_2)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

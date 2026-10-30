@@ -1,0 +1,121 @@
+package de.ernaehrung.demo
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import de.ernaehrung.demo.data.local.*
+import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.util.UUID
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class DatabaseMigrationTest {
+    @Test fun upgradeFromPublishedV1PreservesEveryOldRowAndRetryKeyThenSupportsNewEvents() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val name = "migration-${UUID.randomUUID()}.db"
+        val file = context.getDatabasePath(name).also { it.parentFile!!.mkdirs() }
+        val schema = javaClass.classLoader!!.getResourceAsStream("de.ernaehrung.demo.data.local.FoodDatabase/1.json")!!
+            .bufferedReader().use { JSONObject(it.readText()).getJSONObject("database") }
+        val tables = schema.getJSONArray("entities")
+        val columns = (0 until tables.length()).associate { i ->
+            val entity = tables.getJSONObject(i); val fields = entity.getJSONArray("fields")
+            entity.getString("tableName") to (0 until fields.length()).map { fields.getJSONObject(it).getString("columnName") }
+        }
+        fun snapshot(query: (String) -> android.database.Cursor): Map<String, List<Map<String, String?>>> = columns.mapValues { (table, names) ->
+            query("SELECT ${names.joinToString { "`$it`" }} FROM `$table`").use { cursor ->
+                buildList { while (cursor.moveToNext()) add(names.associateWith { n -> cursor.getString(cursor.getColumnIndexOrThrow(n)) }) }
+                    .sortedBy { it.toString() }
+            }
+        }
+        var upgraded: FoodDatabase? = null
+        try {
+            val before = SQLiteDatabase.openOrCreateDatabase(file, null).use { old ->
+                old.setForeignKeyConstraintsEnabled(true)
+                for (i in 0 until tables.length()) {
+                    val entity = tables.getJSONObject(i); val table = entity.getString("tableName")
+                    old.execSQL(entity.getString("createSql").replace('$'.toString() + "{TABLE_NAME}", table))
+                    entity.optJSONArray("indices")?.let { indices ->
+                        for (j in 0 until indices.length()) old.execSQL(indices.getJSONObject(j).getString("createSql").replace('$'.toString() + "{TABLE_NAME}", table))
+                    }
+                }
+                val setup = schema.getJSONArray("setupQueries")
+                for (i in 0 until setup.length()) old.execSQL(setup.getString(i))
+                seedV1(old)
+                old.version = 1
+                snapshot { old.rawQuery(it, null) }
+            }
+            assertEquals(22, before.size)
+            assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
+            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name).addMigrations(FoodMigrations.MIGRATION_1_2).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the migrated schema against v2.
+            assertEquals(before, snapshot { sql.query(it) })
+            sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
+            assertEquals(2, sql.version)
+            val dao = upgraded.foodDao()
+            assertEquals(150_000L, dao.balance("batch")); assertNull(dao.batch("batch")!!.parentBatchId)
+            assertNull(dao.movements("old-buy").single().occurredOn)
+            assertNull(dao.version("pv1")!!.energyKcal); assertEquals(0.0, dao.version("pv2")!!.energyKcal!!, 0.0)
+            val store = FoodStore(upgraded) { 1_800_000_000_000L }
+            assertEquals("batch", store.receive("old-buy", BatchInput("pv1", "loc", 200_000, "2026-10-30", release = ReleaseStatus.RELEASED), true))
+            assertEquals("meal", store.consume("old-eat", ConsumptionInput("pv1", "2026-10-30", "Mittag", 50_000, listOf(Allocation("batch", 50_000))), true))
+            assertEquals(150_000L, dao.balance("batch")); assertEquals(1, dao.activeConsumptionCount())
+            val target = store.addLocation("new-location", "Vorrat", true)
+            val moved = store.transfer("new-move", TransferInput("batch", target, 100_000, "2026-10-30", "Nach Upgrade"), true)
+            assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
+            upgraded.close()
+            upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name).addMigrations(FoodMigrations.MIGRATION_1_2).build()
+            assertEquals(100_000L, upgraded.foodDao().balance(moved))
+            assertEquals(4, upgraded.foodDao().operationCount()) // 2 old + location + transfer
+        } finally { upgraded?.close(); context.deleteDatabase(name) }
+    }
+
+    private fun seedV1(db: SQLiteDatabase) {
+        fun insert(table: String, vararg fields: Pair<String, Any?>) {
+            val values = ContentValues()
+            fields.forEach { (key, value) -> when (value) {
+                null -> values.putNull(key)
+                is String -> values.put(key, value)
+                is Int -> values.put(key, value)
+                is Long -> values.put(key, value)
+                is Double -> values.put(key, value)
+                else -> error("Unsupported fixture type")
+            } }
+            db.insertOrThrow(table, null, values)
+        }
+        for (id in listOf("p1", "p2")) insert("products", "id" to id, "createdAt" to 1L)
+        for ((index, energy) in listOf(null, 0.0).withIndex()) insert("product_versions", "id" to "pv${index+1}", "productId" to "p${index+1}",
+            "revision" to 1, "name" to "Altprodukt ${index+1}", "baseUnit" to "GRAM", "nutritionBasis" to 100_000L,
+            "energyKcal" to energy, "proteinGrams" to 13.5, "source" to "USER", "quality" to "UNKNOWN", "recordedAt" to 1L, "changeReason" to "Altstand")
+        insert("product_aliases", "id" to "alias", "productId" to "p1", "versionId" to "pv1", "text" to "TOFU", "quality" to "CONFIRMED", "source" to "USER", "recordedAt" to 1L)
+        insert("storage_locations", "id" to "loc", "name" to "Kühlschrank", "confirmed" to 1)
+        insert("operations", "id" to "old-buy", "kind" to "RECEIPT", "fingerprint" to "cc2e88dc37aa586106bbb9598b53177629b4f6ac93dc05afb67c3cc8f82979c6", "recordedAt" to 1L, "resultId" to "batch")
+        insert("operations", "id" to "old-eat", "kind" to "CONSUMPTION", "fingerprint" to "ae40d962afac4f1511084d620def75019df0968b8c57dd2d52478e1710bce3cd", "recordedAt" to 2L, "resultId" to "meal")
+        insert("batches", "id" to "batch", "versionId" to "pv1", "locationId" to "loc", "originOperationId" to "old-buy", "acquiredOn" to "2026-10-30", "release" to "RELEASED")
+        for ((id, delta) in listOf("old-buy" to 200_000L, "old-eat" to -50_000L)) insert("stock_movements", "id" to "movement-$id", "batchId" to "batch", "operationId" to id,
+            "delta" to delta, "kind" to if (delta > 0) "RECEIPT" else "CONSUMPTION", "source" to "USER", "reason" to "Altstand", "recordedAt" to 1L)
+        insert("consumption_events", "id" to "meal", "operationId" to "old-eat", "productVersionId" to "pv1", "date" to "2026-10-30", "meal" to "Mittag", "amount" to 50_000L, "source" to "USER", "quality" to "UNKNOWN")
+        insert("consumption_allocations", "consumptionId" to "meal", "batchId" to "batch", "amount" to 50_000L)
+        insert("diary_days", "date" to "2026-10-30", "status" to "COMPLETE", "confirmedAt" to 3L)
+        insert("recipes", "id" to "r", "createdAt" to 1L)
+        insert("recipe_versions", "id" to "rv", "recipeId" to "r", "revision" to 1, "name" to "Altrezept", "yieldPortions" to 1000L,
+            "steps" to "Garen", "mealPrep" to 1, "quality" to "UNKNOWN", "recordedAt" to 1L, "changeReason" to "Altstand")
+        insert("recipe_ingredients", "recipeVersionId" to "rv", "position" to 0, "productVersionId" to "pv1", "amount" to 100_000L, "unit" to "GRAM")
+        insert("plans", "id" to "plan", "revision" to 1, "startsOn" to "2026-10-31", "endsOn" to "2026-11-06", "status" to "DRAFT", "source" to "USER", "recordedAt" to 1L)
+        insert("planned_entries", "id" to "planned", "planId" to "plan", "date" to "2026-10-31", "kind" to "DIRECT_CONSUMPTION", "productVersionId" to "pv1", "amount" to 10_000L, "unit" to "GRAM")
+        insert("receipts", "id" to "receipt", "merchant" to "Testmarkt", "totalCents" to 249L, "source" to "USER", "quality" to "SOURCED", "recordedAt" to 1L)
+        insert("receipt_lines", "id" to "line", "receiptId" to "receipt", "originalText" to "Ungeklärt", "totalCents" to 249L, "quality" to "UNKNOWN")
+        insert("price_observations", "id" to "price", "versionId" to "pv1", "observedOn" to "2026-10-30", "amount" to 200_000L, "totalCents" to 249L, "source" to "USER", "quality" to "SOURCED")
+        insert("budgets", "id" to "budget", "startsOn" to "2026-10-01", "endsOn" to "2026-10-31", "quality" to "UNKNOWN")
+        insert("body_measurements", "id" to "measure", "measuredAt" to 1L, "weightKg" to 80.5, "method" to "Waage", "source" to "USER", "quality" to "SOURCED", "excludedFromTrend" to 0, "recordedAt" to 1L)
+        insert("training_events", "id" to "training", "occurredAt" to 1L, "sport" to "Kraft", "source" to "USER", "quality" to "SOURCED", "recordedAt" to 1L)
+        insert("training_sets", "id" to "set", "trainingId" to "training", "exercise" to "Kniebeuge", "position" to 0, "repetitions" to 8, "loadKg" to 40.0)
+    }
+}

@@ -1,11 +1,6 @@
 package de.ernaehrung.demo.data.local
 
 import androidx.room.withTransaction
-import java.security.MessageDigest
-import java.time.LocalDate
-import java.time.Instant
-import java.time.ZoneId
-import java.util.UUID
 
 data class ProductInput(
     val name: String, val brand: String? = null, val unit: BaseUnit = BaseUnit.GRAM,
@@ -25,6 +20,18 @@ data class ConsumptionInput(val versionId: String, val date: String, val meal: S
 /** Single application write boundary. Exceptions roll back every effect, including operation IDs. */
 class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis) {
     private val dao = db.foodDao()
+    private val stock = StockOperations(db, now)
+    private val kitchen = KitchenOperations(db, now)
+    fun operations() = dao.observeOperations()
+    fun recipes() = dao.observeRecipes()
+    fun recipeIngredients() = dao.observeIngredients()
+    fun versions() = dao.observeVersions()
+    suspend fun transfer(key: String, input: TransferInput, confirmed: Boolean) = stock.transfer(key, input, confirmed)
+    suspend fun waste(key: String, input: WasteInput, confirmed: Boolean) = stock.waste(key, input, confirmed)
+    suspend fun correctStock(key: String, input: StockCountInput, confirmed: Boolean) = stock.correctStock(key, input, confirmed)
+    suspend fun reverse(key: String, input: ReversalInput, confirmed: Boolean) = stock.reverse(key, input, confirmed)
+    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String? = null, reason: String = "Erste Fassung") = kitchen.saveRecipe(key, input, recipeId, reason)
+    suspend fun produce(key: String, input: ProductionInput, confirmed: Boolean) = kitchen.produce(key, input, confirmed)
     fun catalog() = dao.observeCatalog()
     fun batches() = dao.observeBatches()
     fun locations() = dao.observeLocations()
@@ -80,7 +87,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         dao.insertBatch(BatchEntity(batchId, input.versionId, input.locationId, operationId,
             input.acquiredOn, input.bestBefore, input.useBy, release = input.release, safetyNote = input.safetyNote))
         dao.insertMovement(StockMovementEntity(id(), batchId, operationId, input.amount, MovementKind.RECEIPT,
-            null, Source.USER, "Bestätigter Zugang im lokalen Testbereich", recordedAt = now()))
+            null, Source.USER, "Bestätigter Zugang im lokalen Testbereich", recordedAt = now(), occurredOn = input.acquiredOn))
         batchId
     }
 
@@ -104,27 +111,18 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         dao.insertConsumption(ConsumptionEntity(consumptionId, operationId, input.versionId, input.date,
             input.occurredAt, input.meal.trim(), input.amount, Source.USER, input.quality, input.note))
         for (allocation in input.allocations) {
-            val batch = requireNotNull(dao.batch(allocation.batchId)) { "Charge nicht gefunden." }
+            val batch = WriteRules.available(dao, allocation.batchId, allocation.amount, input.date, true)
             require(batch.versionId == input.versionId) { "Charge gehört zu einer anderen Produktversion." }
-            require(batch.release == ReleaseStatus.RELEASED) { "Charge ist gesperrt oder ungeklärt." }
-            require(batch.acquiredOn == null || batch.acquiredOn <= input.date) { "Verzehr liegt vor dem Zugang." }
-            require(batch.useBy == null || batch.useBy >= input.date) { "Verbrauchsdatum überschritten." }
-            require(dao.balance(batch.id) >= allocation.amount) { "Nicht genügend Bestand. Es wurde nichts gebucht." }
             dao.insertAllocation(ConsumptionAllocationEntity(consumptionId, batch.id, allocation.amount))
             dao.insertMovement(StockMovementEntity(id(), batch.id, operationId, -allocation.amount,
-                MovementKind.CONSUMPTION, input.occurredAt, Source.USER, "Bestätigter Verzehr", recordedAt = now()))
+                MovementKind.CONSUMPTION, input.occurredAt, Source.USER, "Bestätigter Verzehr", recordedAt = now(), occurredOn = input.date))
         }
         // A new entry invalidates a prior completeness assertion. No automatic COMPLETE status.
         dao.saveDay(DiaryDayEntity(input.date, DayStatus.PARTIAL, null))
         consumptionId
     }
 
-    private suspend fun replay(operationId: String, fingerprint: String): String? {
-        require(operationId.isNotBlank()) { "Vorgangs-ID fehlt." }
-        val existing = dao.operation(operationId) ?: return null
-        require(existing.fingerprint == fingerprint) { "Vorgangs-ID wurde bereits mit anderen Angaben verwendet. Bitte Vorgang prüfen." }
-        return existing.resultId
-    }
+    private suspend fun replay(operationId: String, fingerprint: String): String? = WriteRules.replay(dao, operationId, fingerprint)
 
     private fun validate(input: ProductInput) {
         require(input.name.isNotBlank()) { "Produktname fehlt." }
@@ -135,22 +133,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
     }
 
-    private fun date(value: String) {
-        require(runCatching { LocalDate.parse(value).toString() == value }.getOrDefault(false)) { "Datum im Format JJJJ-MM-TT angeben." }
-    }
-    private fun actualDate(value: String) {
-        val today = Instant.ofEpochMilli(now()).atZone(ZoneId.systemDefault()).toLocalDate()
-        require(LocalDate.parse(value) <= today) { "Ein tatsächliches Ereignis darf nicht in der Zukunft liegen. Dafür die Planung verwenden." }
-    }
-    private fun id(): String = UUID.randomUUID().toString()
-    private fun fingerprint(vararg parts: Any?): String {
-        // Length prefixes distinguish null, empty and separator-containing input.
-        fun encode(value: Any?): String = when (value) {
-            null -> "N"
-            is List<*> -> "L${value.size}[${value.joinToString("") { encode(it) }}]"
-            else -> value.toString().let { "S${it.length}:$it" }
-        }
-        val text = encode(parts.toList())
-        return MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-    }
+    private fun date(value: String) = WriteRules.date(value)
+    private fun actualDate(value: String) = WriteRules.actualDate(value, now())
+    private fun id(): String = WriteRules.id()
+    private fun fingerprint(vararg parts: Any?): String = WriteRules.fingerprint(*parts)
 }

@@ -45,11 +45,13 @@ data class OperationEntity(@PrimaryKey val id: String, val kind: String, val fin
     ForeignKey(entity = StorageLocationEntity::class, parentColumns = ["id"], childColumns = ["locationId"], onDelete = ForeignKey.RESTRICT),
     ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["originOperationId"], onDelete = ForeignKey.RESTRICT),
     ForeignKey(entity = RecipeVersionEntity::class, parentColumns = ["id"], childColumns = ["recipeVersionId"], onDelete = ForeignKey.RESTRICT)
-], indices = [Index("versionId"), Index("locationId"), Index("originOperationId"), Index("recipeVersionId")])
+    , ForeignKey(entity = BatchEntity::class, parentColumns = ["id"], childColumns = ["parentBatchId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("versionId"), Index("locationId"), Index("originOperationId"), Index("recipeVersionId"), Index("parentBatchId")])
 data class BatchEntity(@PrimaryKey val id: String, val versionId: String, val locationId: String,
     val originOperationId: String, val acquiredOn: String?, val bestBefore: String?, val useBy: String?,
     val openedAt: Long? = null, val thawedAt: Long? = null,
-    val release: ReleaseStatus = ReleaseStatus.UNCHECKED, val safetyNote: String? = null, val recipeVersionId: String? = null)
+    val release: ReleaseStatus = ReleaseStatus.UNCHECKED, val safetyNote: String? = null, val recipeVersionId: String? = null,
+    val parentBatchId: String? = null)
 
 @Entity(tableName = "stock_movements", foreignKeys = [
     ForeignKey(entity = BatchEntity::class, parentColumns = ["id"], childColumns = ["batchId"], onDelete = ForeignKey.RESTRICT),
@@ -58,7 +60,28 @@ data class BatchEntity(@PrimaryKey val id: String, val versionId: String, val lo
 ], indices = [Index("batchId"), Index("operationId"), Index(value = ["reversesId"], unique = true)])
 data class StockMovementEntity(@PrimaryKey val id: String, val batchId: String, val operationId: String,
     val delta: Long, val kind: MovementKind, val occurredAt: Long?, val source: Source,
-    val reason: String, val recordedAt: Long, val reversesId: String? = null)
+    val reason: String, val recordedAt: Long, val reversesId: String? = null, val occurredOn: String? = null)
+
+@Entity(tableName = "operation_reversals", foreignKeys = [
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["originalOperationId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["reversalOperationId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["reversalOperationId"], unique = true)])
+data class OperationReversalEntity(@PrimaryKey val originalOperationId: String, val reversalOperationId: String,
+    val date: String, val reason: String)
+
+@Entity(tableName = "recipe_output_products", foreignKeys = [
+    ForeignKey(entity = RecipeEntity::class, parentColumns = ["id"], childColumns = ["recipeId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = ProductEntity::class, parentColumns = ["id"], childColumns = ["productId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index(value = ["productId"], unique = true)])
+data class RecipeOutputProductEntity(@PrimaryKey val recipeId: String, val productId: String)
+
+@Entity(tableName = "productions", foreignKeys = [
+    ForeignKey(entity = OperationEntity::class, parentColumns = ["id"], childColumns = ["operationId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = RecipeVersionEntity::class, parentColumns = ["id"], childColumns = ["recipeVersionId"], onDelete = ForeignKey.RESTRICT),
+    ForeignKey(entity = BatchEntity::class, parentColumns = ["id"], childColumns = ["outputBatchId"], onDelete = ForeignKey.RESTRICT)
+], indices = [Index("recipeVersionId"), Index(value = ["outputBatchId"], unique = true)])
+data class ProductionEntity(@PrimaryKey val operationId: String, val recipeVersionId: String, val outputBatchId: String,
+    val actualPortions: Long, val producedOn: String, val storageNote: String, val deviationNote: String?)
 
 @Entity(tableName = "recipes")
 data class RecipeEntity(@PrimaryKey val id: String, val createdAt: Long)
