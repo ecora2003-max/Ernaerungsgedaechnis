@@ -66,7 +66,13 @@ Geprüfter App-Code auf `main` und `development/shopping-proposals`: `89d658c283
 
 Die Nutzerpräferenz lautet ab jetzt: automatisierte Tests, Lint und Schema-Prüfung beibehalten, herunterladbare APKs nur bei ausgewählten Meilensteinen. Workflow entsprechend umgestellt: automatischer Prüflauf ohne APK, `workflow_dispatch` mit optionalem `build_apk` (Standard false) für bewusste APK-Meilensteine. Tests kommen vor optionalem APK-Bau; Testberichte werden weiterhin auch bei Fehlern hochgeladen. Die oben beschriebene lokale APK entstand vor dieser Präferenz; kein weiterer 0.7-APK-Lauf wird zur Prüfung der Umstellung gestartet.
 
-Vor Abschluss den frischen Prüflauf auf genauer SHA prüfen: alle aktuellen XML-Zahlen bestätigen, erfolgreiche Schema-/Lint-Prüfung und ausgelassene APK-Schritte/fehlendes APK-Artefakt nachweisen. Ein neuer frischer CI-Nachweis ist bis dahin offen.
+Frischer [Prüflauf 41064824153](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41064824153) auf `73f98c69d1726a26a6fd74b1c1e300d6fde58733` erfolgreich, JDK 17, abgeschlossen 30.10.2026 13:45:23 UTC, Job 7 Minuten 37 Sekunden. Gegenüber dem lokal geprüften App-Code `89d658c…` änderten sich ausschließlich Workflow, Arbeitsregeln und Dokumentation; keine App-/Schema-/Teständerungen.
+
+Das [aktuelle Testbericht-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41064824153/artifacts/12980759665) heruntergeladen und alle 15 aktuellen XML-Dateien ausgewertet, Zeitstempel 13:44:17–13:45:09 UTC innerhalb dieses Laufs. Suite-Zahlen stimmen mit der lokalen Tabelle überein: **122 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Exakte Code-SHA und erfolgreiches Laufresultat per API bestätigt. Lint elf Warnungen (`GradleDependency`, `OldTargetApi`), keine Fehler/Fatal-Befunde. Schema-Abgleich erfolgreich.
+
+Die API bestätigt beide APK-Schritte **skipped** und genau ein Artefakt `Android-demo-test-reports`, **kein APK-Artefakt**. Der Gradle-Routine-Aufgabenplan wurde zusätzlich geprüft: Test-/Lint-/App-Kompilierung und Schemaerzeugung enthalten, keine `assembleDebug`-/`packageDebug`-Aufgabe. Workflow-YAML, standardmäßig falsche boolesche Option, bedingte APK-Schritte nach erfolgreichen Prüfungen und weiterhin bedingungsloser Testbericht-Upload geprüft. Der optionale manuelle APK-Pfad wurde bewusst nicht erneut ausgeführt.
+
+Nach dieser geprüften SHA werden ausschließlich Abschlussdokumentation und Wiederaufnahmehinweise gesichert; keine ungeprüfte App-/Schema-/Teständerung. Kein alter oder abgebrochener Lauf als frischer Nachweis verwendet.
 
 ## Grenzen
 

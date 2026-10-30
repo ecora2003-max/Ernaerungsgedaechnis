@@ -12,7 +12,7 @@ Demo-/Testdaten bleiben isoliert. Sheets ist bis zu einer gesondert freigegebene
 
 ## Aktueller Meilenstein: Einkaufsvorschläge und Budgetrahmen (0.7)
 
-Branch `development/shopping-proposals`, Version **0.7.0-shopping**, versionCode 7, Schema **5** mit 29 Tabellen. Vollständig lokal geprüft; frischer CI-Nachweis vor Abschluss noch offen. Isolierter Testbetrieb, keine persönlichen Daten oder produktiven Sheets-Buchungen.
+Gesicherter Stand auf `development/shopping-proposals` und `main`, Version **0.7.0-shopping**, versionCode 7, Schema **5** mit 29 Tabellen. Lokal und im frischen GitHub-Prüflauf vollständig geprüft. Isolierter Testbetrieb, keine persönlichen Daten oder produktiven Sheets-Buchungen.
 
 - `ShoppingReader` leitet Angebote/Kaufmengen aus offenem `PlanningReader`-Restbedarf in derselben Transaktion ab, einschließlich tatsächlichem Bestand, Ist-Erfüllung und konkurrierenden Plänen. Keine automatische Auswahl eines größeren/nominal billigeren Angebots.
 - Bestätigte nutzbare Menge je ganzer Kaufpackung, konkrete Artikelversion, Mengenbasisbeschreibung, EUR-Preis, Qualität und Gültigkeit zum Einkaufstag. Alte Mengen/Katalog-Packungsgrößen beweisen keine Kaufpackung. Fehlende Mengen/Preise/Währung/Gültigkeit bleiben ungeklärt. Bekannte Nullpreise bleiben 0. Ganze Packungen aufrunden, Überschuss zeigen, Mengen/Produkte mit BigInteger und Geld als ganze Cents.
@@ -25,7 +25,9 @@ Lokaler Abschluss: **122 Tests bestanden, 0 Fehlschläge/Fehler/Skips**, alle 15
 
 12 neue Datenbank-/Integrationsfälle, vier Geld-/Rundungsfälle, vier Dateimigrationen und zehn Bedienprüfungen tatsächlich ausgeführt. Großer-Schrift-/Kleindisplay-Test: 350 g Fehlmenge → 2×200 g, 50 g Überschuss, 3,98 €; 3-€-Budget um 0,98 € überschritten; Abhaken ohne Kaufwirkung. Preisänderung erhält Historie und verlangt neue Auswahl. Reaktiver Ist-/Planabgleich und Dateiwiederöffnung geprüft. Die Migrationstests fanden einen falschen Selbstbezug beim Preistabellenumbau, korrigiert und alle vier Wege erhaltend bestanden. Frischen Listenausschnitt visuell geprüft. Kein Geräte-/Emulatortest. Details: `TEST_REPORT_SHOPPING.md`, Regeln/Bedienung: `SHOPPING.md`.
 
-Geprüfter App-Code auf `development/shopping-proposals` und `main` gesichert: `89d658c2835c82d77b88687ef2b9abc3f578cc91`. Der bisherige [Actions-Lauf 41063947663](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41063947663) wurde auf neue Nutzerpräferenz bewusst abgebrochen, kein Prüfnachweis. Neuer automatischer Prüflauf ohne APK folgt auf der Workflow-Änderung. Dessen tatsächliches Ergebnis und aktuelle XML-Zahlen vor Abschluss ergänzen; für 0.7 keinen weiteren APK-Lauf auslösen.
+App-Code gesichert: `89d658c2835c82d77b88687ef2b9abc3f578cc91`. Workflow-/Regeländerung ohne App-/Schema-/Teständerung: `73f98c69d1726a26a6fd74b1c1e300d6fde58733`. Der frühere [APK-Lauf 41063947663](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41063947663) wurde auf Nutzerpräferenz bewusst abgebrochen, kein Prüfnachweis.
+
+Frischer [automatischer Prüflauf 41064824153](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41064824153) auf genau der Workflow-SHA erfolgreich, JDK 17, Job 7 Minuten 37 Sekunden. Alle 15 heruntergeladenen aktuellen XML-Dateien (13:44:17–13:45:09 UTC) ausgewertet: **122 Tests, 0 Fehlschläge/Fehler/Skips**. Lint elf Bibliotheks-/`OldTargetApi`-Warnungen, keine Fehler; Schema-Abgleich erfolgreich. Beide APK-Schritte durch API als **skipped** bestätigt; genau ein Testbericht-Artefakt und kein APK-Artefakt. Gradle-Routine-Aufgabenplan ohne APK-Tasks und Workflow-Schaltbedingungen geprüft. Optionalen manuellen APK-Pfad nicht nochmals ausgeführt. Abschlusscommit ergänzt nur Dokumentation; für 0.7 keinen weiteren APK-Lauf auslösen.
 
 ## Bisherige Ernährung und Buchungen
 
@@ -40,7 +42,7 @@ Vier Dateitests aus den veröffentlichten Schemaexporten, alle 22/25/26/28 alten
 Lokale Werkzeuge (außerhalb des Repositories): SDK `/workspace/tooling/android`, Gradle-Cache `/workspace/tooling/gradle`, Helper:
 
 ```sh
-python /workspace/tooling/run-gradle.py :app:lintDebug :app:testDebugUnitTest
+python /workspace/tooling/run-gradle.py --continue :app:lintDebug :app:testDebugUnitTest
 ```
 
 Der Helper verwendet den geerbten Proxy nur für Build-/Testprozesse und `-PtestHome=/workspace/tooling/test-home`. TLS-/Checksum-Prüfungen bleiben aktiv. Falls diese Werkzeuge nach Wiederaufnahme fehlen, normale Android-Studio-/Gradle-Einrichtung oder vorhandenen Actions-Workflow verwenden. JDK 17+, SDK 35, Build Tools 34.0.0, Gradle 8.9/AGP 8.7.3/Kotlin 2.0.21/Room 2.7.2. Keine Zugangsdaten in Skripte übernehmen.
