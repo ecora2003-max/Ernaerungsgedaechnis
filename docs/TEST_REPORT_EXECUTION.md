@@ -66,7 +66,15 @@ Die neuen Tests verwenden normale Formularaktionen und prüfen danach die gespei
 
 Actions anhand ihrer öffentlichen Release-Tags und tatsächlichen `action.yml`-Runtimes geprüft und per Commit gepinnt (alle Node 24). Gradle-Abhängigkeitscache eingerichtet; erster Lauf wärmt ihn auf. Standard-Linux-Runner, JDK 17, 20-Minuten-Grenze und Artefaktaufbewahrung ein Tag bleiben erhalten. Kein zusätzlicher Lauf nur zur Cache-Messung geplant.
 
-Vor Abschluss den neuen Actions-Lauf auf dem gesicherten App-Code verfolgen, tatsächliche aktuelle XML-Zahlen und Code-SHA vergleichen sowie GitHub-APK herunterladen und prüfen. Bis dahin ist ausschließlich der lokale Abschluss nachgewiesen. Frühere CI-Läufe sind kein Nachweis für 0.6.
+Geprüfter App-Code auf `main` und `development/plan-execution`: `a66a4ead514d82d64d38fd3aa63e628535e56838`. Frischer [Actions-Lauf 41057076313](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41057076313) auf JDK 17, erfolgreich abgeschlossen am 30.10.2026 um 12:49:52 UTC, Build-Job **9 Minuten 37 Sekunden**. APK-Build, Schema-Abgleich, Lint, Tests und aktualisierte Actions erfolgreich.
+
+Das [aktuelle Testbericht-Artefakt](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41057076313/artifacts/12977168801) wurde heruntergeladen und ausgewertet. Alle 13 JUnit-XML-Dateien tragen Zeitstempel innerhalb genau dieses Laufs (12:48:45–12:49:34 UTC), die Suite-Zahlen stimmen mit der lokalen Tabelle überein: **103 Tests, 0 Fehlschläge, 0 Fehler, 0 Skips**. Die Code-SHA des Laufs stimmt exakt mit dem genannten geprüften App-Code überein. Lint-XML: elf Warnungen (`GradleDependency`, `OldTargetApi`), keine Fehler/Fatal-Befunde. Kein früherer CI-Lauf als neuer Nachweis verwendet.
+
+CI-Log bestätigt erfolgreiche erstmalige Speicherung von Gradle-Wrapper und Gradle-Abhängigkeitscache im Nachbereitungsschritt. Ein Geschwindigkeitsgewinn durch Cache-Treffer ist damit noch nicht gemessen; kein zusätzlicher Build nur zu diesem Zweck ausgelöst.
+
+Die [GitHub-APK 0.6](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41057076313/artifacts/12977696884) wurde heruntergeladen und geprüft: `de.ernaehrung.demo`, Version 0.6.0-execution/code 6, minSdk 26/targetSdk 35. `apksigner verify --verbose` erfolgreich, v2 mit einem Signierer. Debug-APK, kein Geräte-/Emulatortest. Artefakte werden einen Tag aufbewahrt; nach Ablauf den vorhandenen Workflow manuell neu starten.
+
+Nach der geprüften Code-SHA wurden nur Abschlussdokumentation und Wiederaufnahmehinweise ergänzt; keine App-/Schema-/Test-/Workflowänderung ohne neuen Nachweis.
 
 ## Grenzen
 
