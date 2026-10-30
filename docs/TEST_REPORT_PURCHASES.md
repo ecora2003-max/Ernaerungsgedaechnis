@@ -49,4 +49,6 @@ Der erste gezielte Lauf fand einen echten Rückgabe-/Retry-Fehler beim Kaufstorn
 
 ## Grenzen
 
-Room/SQLite und Compose unter Robolectric, kein Geräte-/Emulatortest. Große Historien, echte Händler-/Bankdaten, OCR, Erstattungen, Belegkorrekturfassungen, Backups, Release-Signierung und produktive Migration nicht geprüft. Die bestehende Grenze komplexer bestandsgebundener Vergangenheitskorrekturen bleibt offen. GitHub-Prüfung wird nach Sicherung des Codes separat dokumentiert; ältere Läufe sind kein Nachweis für 0.8.
+Room/SQLite und Compose unter Robolectric, kein Geräte-/Emulatortest. Große Historien, echte Händler-/Bankdaten, OCR, Erstattungen, Belegkorrekturfassungen, Backups, Release-Signierung und produktive Migration nicht geprüft. Die bestehende Grenze komplexer bestandsgebundener Vergangenheitskorrekturen bleibt offen.
+
+Frischer [GitHub-Prüflauf 41069171574](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41069171574) auf App-Code `2be226e02d1883ee6ed374cd7911ede597acf200` erfolgreich, JDK 17, Job 8 Minuten 39 Sekunden. Alle 16 heruntergeladenen XML-Berichte (14:15:36–14:16:35 UTC) tatsächlich ausgewertet: **140 Tests, 0 Fehlschläge/Fehler/Skips**. Lint elf Hinweise (`OldTargetApi`/`GradleDependency`), keine Fehler; versionierter Schema-Abgleich erfolgreich. Build- und Upload-Schritt der APK jeweils **skipped**. Genau ein Testbericht-Artefakt (12985120878), kein APK-Artefakt. Anschließender Abschlusscommit ändert nur Dokumentation/Arbeitsregeln, App-/Schema-/Testcode unverändert; keinen zusätzlichen Prüflauf auslösen.

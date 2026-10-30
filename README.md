@@ -74,6 +74,8 @@ GitHub ist ausschließlich die Entwicklungsablage. Es ist keine Ernährungsdaten
 
 ## Sicherung der Entwicklung
 
+Entwicklungsstände werden an fachlichen Phasengrenzen oder auf ausdrücklichen Wunsch auf GitHub gesichert. Zusammengehörige Änderungen und CI-Läufe werden gebündelt; gezielte Tests laufen weiterhin während der Entwicklung. Übergabenotizen bleiben kurz und dienen der Wiederaufnahme.
+
 Die ursprüngliche Quellprojekt-ZIP enthielt zusätzlich ein Git-Bundle als historische Sicherung. Für den aktuellen Entwicklungsstand ist das GitHub-Repository maßgeblich. SDK, JDK, Gradle-Cache, lokale Pfade, Zugangsdaten, App-Datenbanken und private Signierschlüssel gehören nicht ins Repository.
 
 Den aktuellen Prüfstand beschreibt `docs/DEVELOPMENT.md`; `docs/Pruefbericht.md` ist der historische Bericht der ursprünglichen Demo.
