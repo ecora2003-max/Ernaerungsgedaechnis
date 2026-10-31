@@ -4,6 +4,27 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Purely additive. Legacy paid receipts do not prove line-level merchandise basis. */
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS paid_price_observations (
+                id TEXT NOT NULL, operationId TEXT NOT NULL, purchaseOperationId TEXT NOT NULL,
+                receiptLineId TEXT NOT NULL, versionId TEXT NOT NULL, retailerId TEXT NOT NULL,
+                storeId TEXT, purchasedOn TEXT NOT NULL, purchaseUnits INTEGER NOT NULL,
+                unitPriceCents INTEGER NOT NULL, linePaidCents INTEGER NOT NULL,
+                allocatedDiscountCents INTEGER NOT NULL, depositPerUnitCents INTEGER,
+                basisReason TEXT NOT NULL, recordedAt INTEGER NOT NULL, PRIMARY KEY(id),
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(purchaseOperationId) REFERENCES purchase_events(operationId) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(receiptLineId) REFERENCES receipt_lines(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(versionId) REFERENCES product_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_paid_price_observations_operationId ON paid_price_observations(operationId)")
+            db.execSQL("CREATE INDEX index_paid_price_observations_purchaseOperationId ON paid_price_observations(purchaseOperationId)")
+            db.execSQL("CREATE UNIQUE INDEX index_paid_price_observations_receiptLineId ON paid_price_observations(receiptLineId)")
+            db.execSQL("CREATE INDEX index_paid_price_observations_versionId ON paid_price_observations(versionId)")
+        }
+    }
+
     val MIGRATION_6_7 = object : Migration(6, 7) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""CREATE TABLE alias_decisions (aliasId TEXT NOT NULL, operationId TEXT NOT NULL, kind TEXT NOT NULL,

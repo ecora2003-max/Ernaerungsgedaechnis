@@ -21,7 +21,8 @@ data class PaidPriceBasisReview(
     val discountReconciled: Boolean,
     val amountExcludesDeposit: Boolean,
     val unitsConfirmed: Boolean,
-    val foodAndProductConfirmed: Boolean
+    val foodAndProductConfirmed: Boolean,
+    val basisReason: String? = null
 )
 
 /** No price in this result is a currently valid offer or a future shopping quote. */

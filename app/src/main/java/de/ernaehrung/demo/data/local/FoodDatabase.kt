@@ -44,6 +44,7 @@ internal interface FoodDao {
     @Insert suspend fun insertReceiptLine(value: ReceiptLineEntity)
     @Insert suspend fun insertPurchase(value: PurchaseEventEntity)
     @Insert suspend fun insertReceiptBooking(value: ReceiptStockBookingEntity)
+    @Insert suspend fun insertPaidPrice(value: PaidPriceObservationEntity)
     @Insert suspend fun insertExpenseStatus(value: ExpenseStatusEntity)
     @Insert suspend fun insertAliasDecision(value: AliasDecisionEntity)
     @Insert suspend fun insertReceiptScan(value: ReceiptScanEntity)
@@ -66,6 +67,12 @@ internal interface FoodDao {
     @Query("SELECT * FROM receipt_stock_bookings WHERE lineId=:id") suspend fun receiptBooking(id: String): ReceiptStockBookingEntity?
     @Query("SELECT * FROM expense_status_events WHERE startsOn=:start AND endsOn=:end ORDER BY revision DESC LIMIT 1")
     suspend fun expenseStatus(start: String, end: String): ExpenseStatusEntity?
+    @Query("SELECT * FROM paid_price_observations WHERE receiptLineId=:id") suspend fun paidPriceForLine(id: String): PaidPriceObservationEntity?
+    @Query("SELECT * FROM paid_price_observations ORDER BY purchasedOn, id") suspend fun allPaidPrices(): List<PaidPriceObservationEntity>
+    @Query("""SELECT p.* FROM paid_price_observations p
+        LEFT JOIN operation_reversals r ON r.originalOperationId = p.purchaseOperationId
+        WHERE r.originalOperationId IS NULL ORDER BY p.purchasedOn, p.id""")
+    suspend fun activePaidPrices(): List<PaidPriceObservationEntity>
     @Query("SELECT * FROM price_observations ORDER BY id") suspend fun prices(): List<PriceObservationEntity>
     @Query("SELECT * FROM budgets ORDER BY id") suspend fun budgets(): List<BudgetEntity>
     @Query("SELECT * FROM shopping_marks WHERE startsOn=:start AND endsOn=:end AND purchaseOn=:purchase ORDER BY versionId,revision")
@@ -172,7 +179,7 @@ internal interface FoodDao {
     RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
     PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class, PurchaseEventEntity::class,
     ReceiptStockBookingEntity::class, ExpenseStatusEntity::class, AliasDecisionEntity::class,
-    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class], version = 7, exportSchema = true)
+    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class], version = 8, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -183,7 +190,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

@@ -25,6 +25,7 @@ class DatabaseMigrationTest {
     @Test fun upgradeFromPublishedV5Preserves29TablesAndNeverInfersPaymentOrCompleteness() = upgradeFromPublishedVersion(5)
 
     @Test fun upgradeFromPublishedV6Preserves32TablesPaidReceiptsBookingsAndExpenseHistory() = upgradeFromPublishedVersion(6)
+    @Test fun upgradeFromPublishedV7Preserves35TablesScansAndAliasesWithoutInventingPaidPrices() = upgradeFromPublishedVersion(7)
 
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -62,21 +63,23 @@ class DatabaseMigrationTest {
                 if (fromVersion >= 4) seedV4(old)
                 if (fromVersion >= 5) seedV5(old)
                 if (fromVersion >= 6) seedV6(old)
+                if (fromVersion >= 7) seedV7(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; else -> 32 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; else -> 35 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v7.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v8.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(7, sql.version)
+            assertEquals(8, sql.version)
+            assertTrue("Old receipts cannot create paid price evidence automatically", upgraded.foodDao().allPaidPrices().isEmpty())
             val dao = upgraded.foodDao()
             assertEquals(if (fromVersion < 6) 0 else 1, dao.purchases().size)
-            assertTrue(dao.receiptScans().isEmpty())
-            assertTrue(dao.aliasDecisions().isEmpty())
+            assertEquals(if (fromVersion == 7) 1 else 0, dao.receiptScans().size)
+            assertEquals(if (fromVersion == 7) 1 else 0, dao.aliasDecisions().size)
             val expenses = FoodStore(upgraded).expenseReport(ExpenseScope("2026-10-01", "2026-10-30"))
             assertEquals(if (fromVersion < 6) 0L else 398L, expenses.knownSubtotalCents); assertNull(expenses.totalCents)
             assertEquals(1, expenses.unconfirmedReceipts.size); assertFalse(expenses.complete)
@@ -131,9 +134,9 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; else -> 16 }, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; else -> 19 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -151,6 +154,15 @@ class DatabaseMigrationTest {
             assertNull(purchaseStore.expenseReport(ExpenseScope("2026-10-01", "2026-10-30")).totalCents)
             upgraded.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
         } finally { upgraded?.close(); context.deleteDatabase(name) }
+    }
+
+    private fun seedV7(db: SQLiteDatabase) {
+        db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('v7-alias','ALIAS','synthetic-alias',1,'alias')")
+        db.execSQL("INSERT INTO alias_decisions(aliasId,operationId,kind,active,reason) VALUES('alias','v7-alias','CONFIRM',1,'Bestätigt')")
+        db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('v7-scan','SCAN','synthetic-scan',1,'v7-scan')")
+        db.execSQL("INSERT INTO receipt_scans(operationId,rawText,method,parserVersion,imageHash) VALUES('v7-scan','TESTMARKT','MANUAL_TEXT','1','synthetic-v7')")
+        db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('v7-resolution','SCAN_RESOLUTION','synthetic-resolution',1,'v6-receipt')")
+        db.execSQL("INSERT INTO receipt_scan_resolutions(scanId,operationId,receiptId,reason) VALUES('v7-scan','v7-resolution','v6-receipt','Ausdrücklich bestätigt')")
     }
 
     private fun seedV6(db: SQLiteDatabase) {

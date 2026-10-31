@@ -81,6 +81,36 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun confirmReceiptPayment(key: String, receiptId: String, reason: String, confirmed: Boolean) = purchaseWriter.confirmReceipt(key, receiptId, reason, confirmed)
     /** Review-only: verified paid evidence, not a price_observations write or a current offer. */
     suspend fun previewHistoricalPaidPrice(input: PaidPriceBasisReview): PaidPricePreview = paidPriceReader.preview(input)
+    /**
+     * The sole new write boundary: one immutable, private, explicitly reviewed historical
+     * price per real paid receipt line. A cancelled purchase remains auditable but is
+     * excluded from activePaidPrices; nothing is inserted into current price_observations.
+     */
+    suspend fun saveHistoricalPaidPrice(key: String, input: PaidPriceBasisReview, confirmed: Boolean): String = db.withTransaction {
+        require(confirmed && !input.basisReason.isNullOrBlank()) { "Positionspreis und Mengen-/Rabattbasis ausdrücklich mit Begründung bestätigen." }
+        val hash = fingerprint("HISTORICAL_PAID_1", input.purchaseOperationId, input.receiptLineId,
+            input.expectedProductVersionId, input.purchaseUnits, input.allocatedDiscountCents,
+            input.depositPerUnitCents, input.discountReconciled, input.amountExcludesDeposit,
+            input.unitsConfirmed, input.foodAndProductConfirmed, input.basisReason)
+        replay(key, hash)?.let { return@withTransaction it }
+        val preview = paidPriceReader.preview(input)
+        require(preview.eligible) { "Unbelegter historischer Positionspreis: ${preview.rejectionReason}" }
+        require(dao.paidPriceForLine(input.receiptLineId) == null) { "Belegposition hat bereits einen unveränderlichen historischen Preisbeleg." }
+        val line = requireNotNull(dao.receiptLine(input.receiptLineId))
+        val receipt = requireNotNull(dao.receipt(line.receiptId))
+        val observationId = requireNotNull(preview.observationId)
+        dao.insertOperation(OperationEntity(key, "HISTORICAL_PAID", hash, now(), observationId))
+        dao.insertPaidPrice(PaidPriceObservationEntity(observationId, key, input.purchaseOperationId,
+            line.id, requireNotNull(preview.productVersionId), requireNotNull(receipt.merchant),
+            null, requireNotNull(preview.purchasedOn), requireNotNull(input.purchaseUnits),
+            requireNotNull(preview.unitPriceCents), requireNotNull(preview.linePaidCents),
+            requireNotNull(input.allocatedDiscountCents), preview.depositPerUnitCents,
+            requireNotNull(input.basisReason), now()))
+        observationId
+    }
+    /** Private historical evidence only, not current retailer offers. */
+    suspend fun activeHistoricalPaidPrices(): List<PaidPriceObservationEntity> = db.withTransaction { dao.activePaidPrices() }
+    suspend fun historicalPaidPriceAudit(): List<PaidPriceObservationEntity> = db.withTransaction { dao.allPaidPrices() }
     suspend fun bookPurchaseLine(key: String, input: PurchaseStockInput, confirmed: Boolean) = purchaseWriter.bookLine(key, input, confirmed)
     suspend fun cancelPurchase(key: String, input: ReversalInput, confirmed: Boolean) = purchaseWriter.cancel(key, input, confirmed)
     suspend fun expenseReport(scope: ExpenseScope) = expenseReader.report(scope)

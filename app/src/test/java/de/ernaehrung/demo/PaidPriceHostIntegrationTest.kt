@@ -101,4 +101,60 @@ class PaidPriceHostIntegrationTest {
         assertEquals("PURCHASE_NOT_CONFIRMED",
             store.previewHistoricalPaidPrice(review("not-a-payment", id, v)).rejectionReason)
     }
+    @Test fun explicitHistoricalPriceWriteIsAtomicIdempotentAndPurchaseReversalIsTombstone() = runBlocking {
+        val v = tofu()
+        val first = store.savePurchase("paid-one", purchase(v), true)
+        val second = store.savePurchase("paid-two", purchase(v, "2026-10-29"), true)
+        val request1 = review("paid-one", dao.receiptLines(first).single().id, v)
+            .copy(basisReason = "Zwei Stück, Warenbetrag und Rabatte manuell geprüft")
+        val request2 = review("paid-two", dao.receiptLines(second).single().id, v)
+            .copy(basisReason = "Zweiter eigenständiger Kassenbon geprüft")
+        try {
+            store.saveHistoricalPaidPrice("price-unconfirmed", request1, false)
+            fail("An unconfirmed review cannot create an observation")
+        } catch (_: IllegalArgumentException) { }
+        assertNull(dao.operation("price-unconfirmed"))
+        assertTrue(dao.allPaidPrices().isEmpty())
+        val id1 = store.saveHistoricalPaidPrice("price-one", request1, true)
+        assertEquals(id1, store.saveHistoricalPaidPrice("price-one", request1, true))
+        assertEquals(199L, dao.allPaidPrices().single().unitPriceCents)
+        assertEquals(1, dao.activePaidPrices().size)
+        try {
+            store.saveHistoricalPaidPrice("price-duplicate", request1.copy(basisReason = "Andere Deutung"), true)
+            fail("No second historical price for the same receipt line")
+        } catch (_: IllegalArgumentException) { }
+        assertNull(dao.operation("price-duplicate"))
+        assertEquals(1, dao.allPaidPrices().size)
+        val id2 = store.saveHistoricalPaidPrice("price-two", request2, true)
+        assertNotEquals(id1, id2)
+        assertEquals(2, dao.activePaidPrices().size)
+        assertTrue(dao.prices().isEmpty()) // No historical price is silently a current offer.
+        assertEquals(0, dao.consumptionCount())
+        store.cancelPurchase("undo-one", ReversalInput("paid-one", day, "Testkauf zurückgenommen"), true)
+        assertEquals(listOf(id2), store.activeHistoricalPaidPrices().map { it.id })
+        assertEquals(2, store.historicalPaidPriceAudit().size)
+        assertEquals(id1, store.saveHistoricalPaidPrice("price-one", request1, true)) // replay of immutable fact
+        assertEquals(2, dao.allPaidPrices().size)
+    }
+
+    @Test fun invalidHistoricalPriceReviewRollsBackOperationAndNeverCreatesObservation() = runBlocking {
+        val v = tofu()
+        val receipt = store.savePurchase("paid-invalid", purchase(v), true)
+        val lineId = dao.receiptLines(receipt).single().id
+        val base = review("paid-invalid", lineId, v).copy(basisReason = "Mengenbasis geprüft")
+        for ((index, bad) in listOf(
+            base.copy(purchaseUnits = null), base.copy(allocatedDiscountCents = null),
+            base.copy(amountExcludesDeposit = false), base.copy(foodAndProductConfirmed = false),
+            base.copy(basisReason = ""), base.copy(purchaseUnits = 3)
+        ).withIndex()) {
+            val key = "bad-price-$index"
+            try {
+                store.saveHistoricalPaidPrice(key, bad, true)
+                fail("Unsafe price review must fail: $index")
+            } catch (_: IllegalArgumentException) { }
+            assertNull(dao.operation(key))
+            assertTrue(dao.allPaidPrices().isEmpty())
+        }
+    }
+
 }
