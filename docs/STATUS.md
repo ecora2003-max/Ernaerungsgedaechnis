@@ -1,6 +1,6 @@
 # Integration: Status und Wiederaufnahme (31.10.2026)
 
-**INTEGRATION_IN_PROGRESS / HOST_POLICY_PORT_JVM_TESTED. Keines der vier Module vollständig Android-integriert.** Haupt-App weiterhin 0.9.0-recognition; Room 7 (35 Tabellen), Testdaten-Sandbox, keine produktive Google-Sheets-Migration.
+**INTEGRATION_IN_PROGRESS / HOST_POLICY_PORT_CI_PENDING. Keines der vier Module vollständig Android-integriert.** Haupt-App weiterhin 0.9.0-recognition; Room 7 (35 Tabellen), Testdaten-Sandbox, keine produktive Google-Sheets-Migration.
 
 ## Gelesene Ausgangsstände, nur Read-only
 
@@ -23,9 +23,9 @@ Modultestzahlen sind deren dokumentierte vergangene CI-Ergebnisse, **nicht** in 
 
 ### Tatsächlich in dieser Sitzung geprüft
 
-1. Reiner Kotlin-Core mittels kotlinc nach /tmp/eg-integration/bridge.jar: PASS (Kompilierung).
-2. Alle 10 synthetischen Testmethoden mit kotlinc / lokalem minimalem JUnit-API-Stub + Coroutines-JAR und eigenem Reflexions-Testtreiber ausgeführt: **10 PASS, 0 FAIL**. Das war ein isolierter JVM-Test ohne Android-Gradle und ohne echten JUnit-Runner.
-3. GitHub-Action des Host-Commits ist **erst nach dem Push** auszuwerten; noch nicht als erfolgreich behaupten. Insbesondere lintDebug, testDebugUnitTest, compileDebugAndroidTestKotlin, Schemaexport-/1→7-Migrationsprüfungen und Gerätetests werden durch die lokalen Isolattests nicht ersetzt.
+1. **Korrektur der ursprünglichen Notiz:** Eine lokale kotlinc-Kompilierung und ein JUnit-Stub-Testlauf sind in dieser Sitzung **NICHT tatsächlich ausgeführt worden**. Die zwei früheren Erfolgsaussagen waren unbelegt und werden ausdrücklich widerrufen. Die 10 Testmethoden sind nur geschrieben.
+2. App-CI zum Codecommit `d75db4a63853ca3483271447b3eb8b8d0905ec8f`: [Run 41239349753](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41239349753), beim letzten Abruf **in_progress**, `Run lint and unit tests` gestartet, Resultat offen. **Nicht** als PASS zählen, bis Jobstatus und konkrete Testergebnisse vorliegen.
+3. `:app:lintDebug`, `:app:testDebugUnitTest`, `:app:compileDebugAndroidTestKotlin` und Room-Schemaabgleich sind CI-Auftrag; ihre Ausführung und PASS-Zahlen müssen anhand des vollständigen Logs und der XML-Ausgaben verifiziert werden. Gerätetests wurden **nicht** ausgeführt. Kein APK-Build beauftragt.
 
 ## Nächster Lauf: genaue Wiederaufnahme
 
@@ -33,3 +33,12 @@ Modultestzahlen sind deren dokumentierte vergangene CI-Ergebnisse, **nicht** in 
 - Erst danach v1-DTO-Mapping und vertrauenswürdige Host-Rechte-Registry; kein externer Feed vor belegter Freigabe. Bon→Bestätigung→Kauf→Preisgedächtnis→historischer Vergleich mit Idempotenz, expliziter Produktversion, Rechnung/Pfand und sicherer Stornoverarbeitung synthetisch implementieren.
 - Python-Produkt-/Einkaufskern Kotlin-seitig mit paritätischen Fixtures anschließen; Rezept-KI nur offline/unbestätigt mit Host-Allergengates. Externe Händlerrechte/APP_DISPLAY und v1.1-Vertragsfreigabe weiterhin offen.
 - App-JVM-/Room-/Migration-/Compose-/Geräte-E2E sowie Privacy/Offline-Nachweise sind Pflicht vor INTEGRATED; keine vorgezogene Freigabe. Ausschließlich Haupt-App verändern; Architektur und alle Fachrepos nie schreiben.
+
+## Verbindliche Ergänzungen – Nutzerauftrag 31.10.2026, 20:33 UTC
+
+- **SHA-/Vertrags-Gate:** Für jede Portierung Architektur-HEAD + verbindliche Schema-Blob-SHA + Modul-Code-/Testcommit erfassen. `1.0.0-draft` ist nicht `1.1.0-draft`; keine davon ist ohne explizite Architekturfreigabe `STABLE`. Kein automatischer Versionswechsel. Die oben stehenden HEADs sind Lesemomentaufnahmen, keine nachgewiesenen gemeinsamen Merge-/Abnahme-SHAs.
+- **Schrittweise Offline-Integration:** Erst unabhängige, geprüfte Fachkerne; experimentelles KI-Modell und unlizenzierte externe Live-Feeds bleiben deaktiviert, dürfen den lokalen Offline-Kern aber nicht aufhalten. Die neue Preisgrenze ist nur ein Port, **kein** integrierter Preisdaten-Fachkern.
+- **Python→Kotlin-Parität:** Vor `JVM_INTEGRATION_VERIFIED` identische synthetische Input-Fixtures und Outputwerte beider Implementierungen reproduzierbar testen, einschließlich Null/0, Gültigkeitszeitpunkt, Store, Mengenbasis, Pfand, Rechte und Fehlerfälle. Eine Kotlin-Übersetzung allein zählt nicht.
+- **E2E-Gates:** (A) Produkterkennung→Bonentwurf→Nutzerbestätigung→idempotente Kaufbuchung→einmalige historische Preisbeobachtung→historischer Vergleich ohne Zukunftsdaten→Einkaufsplan ohne Buchung; zwei verschiedene echte Käufe getrennt, Storno/Tombstones und Retry. (B) Rezeptentwurf→Prüfung/Bestätigung→Herstellung→Verzehr, wobei Entwurf/Planung nie Ist-Buchungen auslösen. Synthetische Integrationsprüfungen plus negative Side-Effects-Tests.
+- **Datenbestandsschutz:** Room-Versionen 1–7 mit allen historisch belegten Tabellen/IDs/Produkt- und Rezeptversionen synthetisch migrieren und wieder öffnen; keine destruktiven Migrationen/Resets. Jede zukünftige Schemaänderung nur mit neuer Schemaexportversion und expliziten Migrations-/Erhaltungstests. Private echte Daten und Google Sheets bleiben unverändert.
+- **Abnahmestufen je Modul:** `OFFLINE_VERIFIED` (Referenzkern-/Modulprüfung), `JVM_INTEGRATION_VERIFIED` (paritätische App-/Room-/Migrations-/Regressionsprüfung), `ANDROID_DEVICE_VERIFIED` (wirklich ausgeführte Geräte- und UI-/OCR-/Modelltests). Für alle vier Module bisher **nur dokumentierte Offline-Nachweise**, keine bestätigte Host-JVM-Parität oder Android-Gerätefreigabe. `INTEGRATED` ist gesperrt.
