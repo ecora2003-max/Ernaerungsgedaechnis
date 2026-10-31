@@ -22,7 +22,7 @@ internal object ShoppingUnitRateKernel {
         init { require(denominator > BigInteger.ZERO && numerator >= BigInteger.ZERO) }
         fun milliCents(): BigInteger =
             (numerator * BigInteger.valueOf(2000) + denominator) /
-                (denominator * BigInteger.TWO)
+                (denominator * BigInteger.valueOf(2))
     }
 
     fun confirmedQuantity(value: Quantity?): ConfirmedQuantity? {
