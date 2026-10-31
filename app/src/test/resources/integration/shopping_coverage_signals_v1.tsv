@@ -1,0 +1,25 @@
+id	complete	coverageGaps	alternatives	upstreamGaps	expectedCoverageGaps	expectedGaps	expectedSignals
+missing	-	-	-	-	comparison coverage not supplied	comparison coverage not supplied	GREY_MAY_BE_CHEAPER
+incomplete	false	-	-	-	comparison coverage incomplete	comparison coverage incomplete	GREY_MAY_BE_CHEAPER
+complete	true	-	-	-	-	-	-
+unknown-completeness	unknown	-	-	-	comparison coverage incomplete	comparison coverage incomplete	GREY_MAY_BE_CHEAPER
+explicit-gap	true	Lidl missing	-	-	Lidl missing	Lidl missing	GREY_MAY_BE_CHEAPER
+red	true	-	r:SAME:SAME_FOOD_VARIANT	-	-	-	RED_SAME_BIO_CHEAPER
+orange	true	-	o:DIFFERENT:SAME_FOOD_VARIANT	-	-	-	ORANGE_DIFFERENT_BIO_CHEAPER
+unknown-bio	true	-	u:UNKNOWN:EXACT_SKU	-	-	u: unknown organic status	GREY_MAY_BE_CHEAPER
+substitute-same	true	-	s:SAME:FUNCTIONAL_SUBSTITUTE	-	-	-	-
+substitute-different	true	-	s:DIFFERENT:FUNCTIONAL_SUBSTITUTE	-	-	-	-
+substitute-unknown	true	-	s:UNKNOWN:FUNCTIONAL_SUBSTITUTE	-	-	s: unknown organic status	GREY_MAY_BE_CHEAPER
+red-incomplete	false	-	r:SAME:EXACT_SKU	-	comparison coverage incomplete	comparison coverage incomplete	RED_SAME_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+orange-incomplete	false	-	o:DIFFERENT:EXACT_SKU	-	comparison coverage incomplete	comparison coverage incomplete	ORANGE_DIFFERENT_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+red-orange	true	-	r:SAME:EXACT_SKU;o:DIFFERENT:SAME_FOOD_VARIANT	-	-	-	RED_SAME_BIO_CHEAPER|ORANGE_DIFFERENT_BIO_CHEAPER
+all-signals	true	-	r:SAME:EXACT_SKU;o:DIFFERENT:SAME_FOOD_VARIANT;u:UNKNOWN:EXACT_SKU	-	-	u: unknown organic status	RED_SAME_BIO_CHEAPER|ORANGE_DIFFERENT_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+red-extra-gap	true	-	r:SAME:EXACT_SKU	missing confirmed store	-	missing confirmed store	RED_SAME_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+duplicate-gap	true	no REWE|no REWE	r:SAME:EXACT_SKU	-	no REWE	no REWE	RED_SAME_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+red-unknown	true	-	r:SAME:EXACT_SKU;u:UNKNOWN:SAME_FOOD_VARIANT	-	-	u: unknown organic status	RED_SAME_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+two-unknown	true	-	a:UNKNOWN:EXACT_SKU;b:UNKNOWN:SAME_FOOD_VARIANT	-	-	a: unknown organic status|b: unknown organic status	GREY_MAY_BE_CHEAPER
+substitute-incomplete	false	-	s:SAME:FUNCTIONAL_SUBSTITUTE	-	comparison coverage incomplete	comparison coverage incomplete	GREY_MAY_BE_CHEAPER
+extra-only	true	-	-	source rights unknown	-	source rights unknown	GREY_MAY_BE_CHEAPER
+multiple-coverage	false	No Aldi|No Edeka	-	-	No Aldi|No Edeka|comparison coverage incomplete	No Aldi|No Edeka|comparison coverage incomplete	GREY_MAY_BE_CHEAPER
+multi-coverage-and-extra	true	Penny missing|Aldi missing	r:SAME:EXACT_SKU	store unknown	Aldi missing|Penny missing	Aldi missing|Penny missing|store unknown	RED_SAME_BIO_CHEAPER|GREY_MAY_BE_CHEAPER
+red-orange-substitute	true	-	s:SAME:FUNCTIONAL_SUBSTITUTE;r:SAME:EXACT_SKU;o:DIFFERENT:EXACT_SKU	-	-	-	RED_SAME_BIO_CHEAPER|ORANGE_DIFFERENT_BIO_CHEAPER

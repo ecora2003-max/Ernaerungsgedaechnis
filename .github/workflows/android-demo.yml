@@ -79,6 +79,13 @@ jobs:
             -o "$RUNNER_TEMP/eg-shopping-comparability-engine.py"
           python3 tools/check_shopping_comparability_reference.py "$RUNNER_TEMP/eg-shopping-comparability-engine.py" \
             app/src/test/resources/integration/shopping_comparability_v1.tsv
+      - name: Verify pinned shopping coverage Python reference parity
+        run: |
+          curl --fail --location --silent --show-error --retry 2 --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Einkaufsintelligenz/a3e13b147124ad7c25698a695e2ab42d7299a58a/eg_shopping/engine.py \
+            -o "$RUNNER_TEMP/eg-shopping-coverage-engine.py"
+          python3 tools/check_shopping_coverage_reference.py "$RUNNER_TEMP/eg-shopping-coverage-engine.py" \
+            app/src/test/resources/integration/shopping_coverage_signals_v1.tsv
       - name: Verify versioned Room schema
         run: |
           git diff --exit-code -- app/schemas/
