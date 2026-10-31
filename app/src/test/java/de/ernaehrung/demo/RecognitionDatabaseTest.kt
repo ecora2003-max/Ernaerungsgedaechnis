@@ -241,7 +241,7 @@ class RecognitionDatabaseTest {
         } finally { db.close(); context.deleteDatabase(name) }
     }
     @Test fun originalReceiptClassifierJoinsReadOnlyReviewWithoutBookingNonFoodAsFood() = runBlocking {
-        val rawWithMixedLines = "TESTMARKT\\n30.10.2026\\nBIO TOFU 200 g 1,99 A\\nTASCHE 0,39 A\\nSUMME 2,38\\nPFAND 0,25\\nRABATT -0,50"
+        val rawWithMixedLines = "TESTMARKT\n30.10.2026\nBIO TOFU 200 g 1,99 A\nTASCHE 0,39 A\nSUMME 2,38\nPFAND 0,25\nRABATT -0,50"
         val id = store.saveReceiptScan("classifier-scan", rawWithMixedLines, "MANUAL_TEXT")
         val review = store.reviewReceiptScan(id)
         assertEquals(listOf("BIO TOFU 200 g 1,99 A", "TASCHE 0,39 A"), review.parsed.lines.map { it.originalText })
@@ -257,7 +257,7 @@ class RecognitionDatabaseTest {
 
     @Test fun excessivelyLongReceiptLineDoesNotBreakExistingEditableReviewOrCausePayment() = runBlocking {
         val longName = "TOFU " + "X".repeat(4_100)
-        val id = store.saveReceiptScan("long-line", "TESTMARKT\\n30.10.2026\\n$longName 1,99 A\\nSUMME 1,99",
+        val id = store.saveReceiptScan("long-line", "TESTMARKT\n30.10.2026\n$longName 1,99 A\nSUMME 1,99",
             "MANUAL_TEXT")
         val review = store.reviewReceiptScan(id)
         assertEquals(1, review.parsed.lines.size)
