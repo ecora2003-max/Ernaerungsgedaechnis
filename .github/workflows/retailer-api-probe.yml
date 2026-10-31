@@ -1,0 +1,123 @@
+name: One-shot public offer API research
+on:
+  push:
+    branches: [research/retailer-offer-probe-20261031]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check public retailer endpoints without bypassing access controls
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, re, time
+          from datetime import datetime, timezone
+          from urllib.parse import urlparse, urlencode
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.robotparser import RobotFileParser
+          
+          UA="Ernaehrungsgedaechtnis-Research/0.1 (read-only; one-shot)"
+          MAX_BYTES=4_000_000
+          robots_cache={}
+          results=[]
+          def get(url, label, post=None):
+              origin=f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+              if origin not in robots_cache:
+                  try:
+                      r=urlopen(Request(origin+"/robots.txt",headers={"User-Agent":UA}),timeout=12)
+                      body=r.read(300_000).decode("utf-8","replace")
+                      parser=RobotFileParser()
+                      parser.parse(body.splitlines())
+                      robots_cache[origin]=parser
+                  except Exception as e:
+                      robots_cache[origin]=str(type(e).__name__)+": "+str(e)[:110]
+              rp=robots_cache[origin]
+              item={"label":label,"url":url,"method":"POST" if post is not None else "GET"}
+              if isinstance(rp,str):
+                  item["result"]="SKIPPED robots unavailable";item["detail"]=rp
+                  results.append(item);return None
+              if not rp.can_fetch(UA,url):
+                  item["result"]="SKIPPED robots disallows";results.append(item);return None
+              try:
+                  headers={"User-Agent":UA,"Accept":"application/json,text/html;q=0.9,*/*;q=0.5"}
+                  if post is not None:headers["Content-Type"]="application/x-www-form-urlencoded"
+                  req=Request(url,data=urlencode(post).encode() if post is not None else None,headers=headers)
+                  with urlopen(req,timeout=20) as resp:
+                      item["status"]=resp.status
+                      item["content_type"]=resp.headers.get("Content-Type","")[:90]
+                      if urlparse(resp.url).netloc != urlparse(url).netloc:
+                          item["result"]="REDIRECT other host; stopped";results.append(item);return None
+                      data=resp.read(MAX_BYTES+1)
+                  item["bytes_read"]=len(data)
+                  if len(data)>MAX_BYTES:
+                      item["result"]="TRUNCATED >4MB";results.append(item);return None
+                  try:
+                      payload=json.loads(data)
+                      item["result"]="JSON"
+                      if isinstance(payload,dict):
+                          item["root_keys"]=list(payload.keys())[:24]
+                          for key in ("docs","data","offers","markets","store_items","items","results"):
+                              if isinstance(payload.get(key),list):
+                                  item["array_path"]=key
+                                  arr=payload[key]
+                                  item["item_count_in_response"]=len(arr)
+                                  if arr and isinstance(arr[0],dict):
+                                      item["first_item_keys"]=list(arr[0].keys())[:40]
+                                      item["examples"]=[{k: e[k] for k in ("titel","title","name","preis","price","packaging","sellingSize","startValidityDate","endValidityDate","gueltig_von","gueltig_bis","validFrom","validUntil","basicPrice","sellingRegion","nextWeekSellingRegion","wwIdent") if k in e} for e in arr[:2] if isinstance(e,dict)]
+                      elif isinstance(payload,list):
+                          item["array_items"]=len(payload)
+                          if payload and isinstance(payload[0],dict):item["first_item_keys"]=list(payload[0])[:32]
+                      else:item["root_type"]=type(payload).__name__
+                      raw=data.decode("utf-8","replace")
+                      item["future_start_marker"]="2026-11-02" in raw or "02.11.2026" in raw
+                  except (ValueError,UnicodeError):
+                      text=data.decode("utf-8","replace")
+                      item["result"]="HTML_OR_OTHER"
+                      item["has_next_data"]="__NEXT_DATA__" in text
+                      item["has_next_week_date"]=bool(re.search(r"02[.]11[.]2026|02/11/2026|2026-11-02",text))
+                      item["price_marker_count"]=text.count("€")
+                  results.append(item)
+                  time.sleep(1)
+                  return payload if item["result"]=="JSON" else None
+              except HTTPError as e:
+                  item["result"]="HTTP ERROR";item["status"]=e.code;results.append(item)
+              except Exception as e:
+                  item["result"]="ERROR";item["detail"]=type(e).__name__+": "+str(e)[:160];results.append(item)
+              return None
+          
+          markets=get("https://www.edeka.de/api/marketsearch/markets?searchstring=10405&size=5","EDEKA market search")
+          mid=None
+          if isinstance(markets,dict):
+              docs=markets.get("markets") or markets.get("docs") or []
+              if isinstance(docs,list):
+                  for market in docs:
+                      if isinstance(market,dict):
+                          mid=market.get("id") or market.get("marketId") or market.get("wwIdent")
+                          if mid:break
+          if mid:
+              get("https://www.edeka.de/eh/service/eh/offers?"+urlencode({"marketId":str(mid),"limit":10}),"EDEKA market offers")
+          get("https://www.netto-online.de/angebote/","Netto Marken-Discount public offers")
+          get("https://www.netto-online.de/INTERSHOP/web/WFS/Plus-NettoDE-Site/de_DE/-/EUR/ViewMMPStoreFinder-GetStoreItems","Netto Marken-Discount store API",post={"s":"52.45","n":"52.57","w":"13.30","e":"13.50","netto":"true","city":"true","service":"true","beverage":"true","nonfood":"true"})
+          stores=get("https://stores.lidlplus.com/api/v4/DE","Lidl stores")
+          if isinstance(stores,list):
+              for s in stores:
+                  if isinstance(s,dict) and str(s.get("locality","")).lower()=="berlin" and s.get("storeKey"):
+                      get("https://offers.lidlplus.com/app/api/v4/DE/"+str(s["storeKey"])+"/offers","Lidl Berlin offers");break
+          get("https://www.rewe.de/angebote/nationale-angebote/","REWE official offers")
+          penny=get("https://www.penny.de/.rest/market","PENNY store catalogue")
+          if isinstance(penny,list):
+              matches=[s for s in penny if isinstance(s,dict) and str(s.get("city","")).lower()=="berlin"]
+              if matches:
+                  s=matches[0]
+                  results.append({"label":"PENNY Berlin market fields","result":"DERIVED FROM JSON","sample":{k:s.get(k) for k in ("wwIdent","city","zipCode","sellingRegion","nextWeekSellingRegion","nextWeekFlippingBookURL")}})
+          get("https://www.aldi-nord.de/angebote-vorschau.html","ALDI Nord next week")
+          get("https://api.aldi-sued.de/v3/product-search?serviceType=walk-in&servicePoint=B384&currency=EUR&limit=12&offset=0&sort=relevance&promotionKey=2026-11-02","ALDI Sued 02 November promotions")
+          get("https://filiale.kaufland.de/angebote/naechste-woche.html","Kaufland next week")
+          print("OFFER_PROBE_JSON_START")
+          print(json.dumps({"date_utc":datetime.now(timezone.utc).isoformat(),"robots":{k:("parsed" if not isinstance(v,str) else v) for k,v in robots_cache.items()},"tests":results},ensure_ascii=False,indent=2,default=str))
+          print("OFFER_PROBE_JSON_END")
+          PY
