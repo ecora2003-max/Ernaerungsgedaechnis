@@ -186,11 +186,20 @@ internal object ShoppingPriceComparisonGate {
                 target.organic == candidate.organic -> "SAME"
                 else -> "DIFFERENT"
             }
+            if (candidate.candidate.depositCents == null)
+                gaps.add("$id: deposit/checkout cost UNKNOWN")
             accepted.add(Cheaper(
                 id, comparability.level, organicDifference, checked.rate,
                 ShoppingUnitRateKernel.targetEquivalentDifferenceCents(
                     targetRate, checked.rate, target.article.quantity)
             ))
+        }
+        // The pinned Python compare_prices orders alternatives by exact rate,
+        // then observation ID, never by the nominal pack price or input order.
+        accepted.sortWith { left, right ->
+            val byRate = ShoppingUnitRateKernel.compare(
+                left.candidateRate, right.candidateRate) ?: 0
+            if (byRate != 0) byRate else left.observationId.compareTo(right.observationId)
         }
         val verifiedCoverage = coverage?.takeIf { it.verifiedByHost }?.coverage
         val signals = ShoppingCoverageSignalKernel.project(
