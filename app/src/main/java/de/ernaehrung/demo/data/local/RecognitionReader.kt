@@ -1,6 +1,7 @@
 package de.ernaehrung.demo.data.local
 
 import androidx.room.withTransaction
+import de.ernaehrung.demo.data.integration.ProductReceiptClassifier
 import de.ernaehrung.demo.data.recognition.AliasText
 import de.ernaehrung.demo.data.recognition.Gtin
 import de.ernaehrung.demo.data.recognition.ReceiptParser
@@ -61,7 +62,15 @@ internal class RecognitionReader(private val db: FoodDatabase) {
         val scan = requireNotNull(dao.receiptScan(scanId)) { "Bonentwurf fehlt." }
         require(dao.scanResolution(scanId) == null) { "Bonentwurf wurde bereits übernommen oder verworfen." }
         val parsed = ReceiptParser.parse(scan.rawText)
+        // Added module output is advisory only. A malformed/long OCR line must not make the
+        // existing receipt review unavailable; neither a classifier nor a match confirms payment.
+        val proposals = parsed.lines.map { line ->
+            runCatching { ProductReceiptClassifier.propose(line.originalText) }.getOrElse {
+                ProductReceiptClassifier.Proposal(line.originalText, ProductReceiptClassifier.Kind.UNKNOWN,
+                    null, listOf("receipt_line_unclassifiable"), false)
+            }
+        }
         ReceiptReview(ReceiptScanView(scan, null), parsed,
-            parsed.lines.map { match(it.name, parsed.merchant, AliasKind.RECEIPT) }, snapshot())
+            parsed.lines.map { match(it.name, parsed.merchant, AliasKind.RECEIPT) }, snapshot(), proposals)
     }
 }

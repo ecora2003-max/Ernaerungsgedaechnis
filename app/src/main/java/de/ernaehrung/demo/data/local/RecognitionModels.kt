@@ -12,7 +12,8 @@ data class AliasHistory(val alias: ProductAliasEntity, val decision: AliasDecisi
 data class ReceiptScanView(val scan: ReceiptScanEntity, val resolution: ReceiptScanResolutionEntity?)
 data class RecognitionData(val aliases: List<AliasHistory>, val scans: List<ReceiptScanView>, val snapshot: String)
 data class ReceiptReview(val draft: ReceiptScanView, val parsed: de.ernaehrung.demo.data.recognition.ReceiptSuggestion,
-    val matches: List<AliasMatch>, val snapshot: String)
+    val matches: List<AliasMatch>, val snapshot: String,
+    val lineClassifications: List<de.ernaehrung.demo.data.integration.ProductReceiptClassifier.Proposal> = emptyList())
 data class ProductMetadataInput(val barcode: String?, val category: String?, val ingredients: String?, val allergens: String?)
 data class RecognizedProductInput(val product: ProductInput, val productId: String?, val expectedVersionId: String?,
     val basisConfirmed: Boolean, val barcodeConfirmed: Boolean, val reason: String)

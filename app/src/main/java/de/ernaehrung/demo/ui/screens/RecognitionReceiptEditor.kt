@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.ernaehrung.demo.data.integration.ProductReceiptClassifier
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.recognition.*
 import de.ernaehrung.demo.ui.*
@@ -82,6 +83,15 @@ private fun ReceiptReviewEditor(report: ReceiptReview, data: LocalDataState, blo
             val match = current.value.matches.getOrNull(index)
             Fold("Bonposition ${index + 1} prüfen") {
                 Check("Position ${index + 1} übernehmen", include[index]) { enabled -> include = include.toMutableList().apply { this[index] = enabled }; confirmed = false }
+                current.value.lineClassifications.getOrNull(index)?.let { proposal ->
+                    when (proposal.kind) {
+                        ProductReceiptClassifier.Kind.NON_FOOD -> Hint("Automatische Prüfung: möglicherweise Non-Food; vor Übernahme als Lebensmittel gesondert prüfen.")
+                        ProductReceiptClassifier.Kind.DEPOSIT -> Hint("Automatische Prüfung: Pfand ist kein Warenpreis. Position und Zahlungsbetrag gesondert prüfen.")
+                        ProductReceiptClassifier.Kind.DISCOUNT -> Hint("Automatische Prüfung: Rabatt nicht als eigenständiges Lebensmittel übernehmen.")
+                        ProductReceiptClassifier.Kind.RETURN -> Hint("Automatische Prüfung: Retoure/Storno nicht als neuer Einkauf übernehmen.")
+                        ProductReceiptClassifier.Kind.FOOD, ProductReceiptClassifier.Kind.UNKNOWN -> Unit
+                    }
+                }
                 Text(if (AliasText.merchant(merchant) != AliasText.merchant(current.value.parsed.merchant) || names[index] != current.value.parsed.lines.getOrNull(index)?.name)
                     "Aliasgrundlage geändert · Produktzuordnung neu prüfen" else match?.let { matchLabel(it.status) } ?: "Manuell ergänzte Position")
                 Field("Gelesener Originaltext ${index + 1} · optional", originals[index], { text ->

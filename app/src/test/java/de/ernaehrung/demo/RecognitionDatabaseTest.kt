@@ -240,4 +240,33 @@ class RecognitionDatabaseTest {
             db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
         } finally { db.close(); context.deleteDatabase(name) }
     }
+    @Test fun originalReceiptClassifierJoinsReadOnlyReviewWithoutBookingNonFoodAsFood() = runBlocking {
+        val rawWithMixedLines = "TESTMARKT\\n30.10.2026\\nBIO TOFU 200 g 1,99 A\\nTASCHE 0,39 A\\nSUMME 2,38\\nPFAND 0,25\\nRABATT -0,50"
+        val id = store.saveReceiptScan("classifier-scan", rawWithMixedLines, "MANUAL_TEXT")
+        val review = store.reviewReceiptScan(id)
+        assertEquals(listOf("BIO TOFU 200 g 1,99 A", "TASCHE 0,39 A"), review.parsed.lines.map { it.originalText })
+        assertEquals(review.parsed.lines.size, review.lineClassifications.size)
+        assertEquals(de.ernaehrung.demo.data.integration.ProductReceiptClassifier.Kind.UNKNOWN, review.lineClassifications[0].kind)
+        assertEquals(de.ernaehrung.demo.data.integration.ProductReceiptClassifier.Kind.NON_FOOD, review.lineClassifications[1].kind)
+        assertEquals(39L, review.lineClassifications[1].amountCents)
+        assertTrue(review.lineClassifications.all { !it.confirmed && "unconfirmed_ocr" in it.warnings })
+        assertTrue(dao.receipts().isEmpty()); assertTrue(dao.purchases().isEmpty())
+        assertEquals(0, dao.consumptionCount()); assertTrue(dao.planningBatches().isEmpty())
+        assertEquals(id, store.saveReceiptScan("classifier-scan", rawWithMixedLines, "MANUAL_TEXT"))
+    }
+
+    @Test fun excessivelyLongReceiptLineDoesNotBreakExistingEditableReviewOrCausePayment() = runBlocking {
+        val longName = "TOFU " + "X".repeat(4_100)
+        val id = store.saveReceiptScan("long-line", "TESTMARKT\\n30.10.2026\\n$longName 1,99 A\\nSUMME 1,99",
+            "MANUAL_TEXT")
+        val review = store.reviewReceiptScan(id)
+        assertEquals(1, review.parsed.lines.size)
+        assertEquals(longName + " 1,99 A", review.parsed.lines.single().originalText)
+        assertEquals(de.ernaehrung.demo.data.integration.ProductReceiptClassifier.Kind.UNKNOWN, review.lineClassifications.single().kind)
+        assertEquals(null, review.lineClassifications.single().amountCents)
+        assertTrue("receipt_line_unclassifiable" in review.lineClassifications.single().warnings)
+        assertNull(dao.operation("accept-unreviewed"))
+        assertTrue(dao.receipts().isEmpty()); assertTrue(dao.purchases().isEmpty())
+    }
+
 }
