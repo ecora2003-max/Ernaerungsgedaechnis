@@ -45,6 +45,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val shoppingReader = ShoppingReader(db, now)
     private val shoppingWriter = ShoppingOperations(db, now)
     private val purchaseWriter = PurchaseOperations(db, now)
+    private val paidPriceReader = PaidReceiptPriceReader(db)
     private val expenseReader = ExpenseReader(db, now)
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
@@ -78,6 +79,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     }
     suspend fun savePurchase(key: String, input: PurchaseInput, confirmed: Boolean) = purchaseWriter.save(key, input, confirmed)
     suspend fun confirmReceiptPayment(key: String, receiptId: String, reason: String, confirmed: Boolean) = purchaseWriter.confirmReceipt(key, receiptId, reason, confirmed)
+    /** Review-only: verified paid evidence, not a price_observations write or a current offer. */
+    suspend fun previewHistoricalPaidPrice(input: PaidPriceBasisReview): PaidPricePreview = paidPriceReader.preview(input)
     suspend fun bookPurchaseLine(key: String, input: PurchaseStockInput, confirmed: Boolean) = purchaseWriter.bookLine(key, input, confirmed)
     suspend fun cancelPurchase(key: String, input: ReversalInput, confirmed: Boolean) = purchaseWriter.cancel(key, input, confirmed)
     suspend fun expenseReport(scope: ExpenseScope) = expenseReader.report(scope)
