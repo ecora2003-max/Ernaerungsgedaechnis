@@ -46,7 +46,8 @@ internal object HistoricalPaidComparisonKernel {
     fun project(scope: HistoricalPaidComparisonScope, evidence: List<HistoricalPaidEvidence>): HistoricalPaidComparison {
         require(scope.productVersionId.isNotBlank()) { "Concrete product version required." }
         require(scope.knownAtMillis >= 0L) { "Invalid knowledge instant." }
-        val date = LocalDate.parse(scope.targetPurchaseOn)
+        val date = try { LocalDate.parse(scope.targetPurchaseOn) }
+            catch (_: java.time.DateTimeException) { throw IllegalArgumentException("ISO purchase date required.") }
         require(date.toString() == scope.targetPurchaseOn) { "ISO purchase date required." }
         val references = evidence.asSequence()
             .filter { it.versionId == scope.productVersionId }
