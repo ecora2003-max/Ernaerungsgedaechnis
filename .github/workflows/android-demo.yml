@@ -46,6 +46,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
+      - name: Verify pinned product-data historical price parity fixtures
+        run: |
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/eg-product-history-core.py" \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Produktdaten/1f85b17ad5a112e8aa9cc91c13b0dff4064f5f37/eg_productdaten/core.py
+          python3 tools/check_product_price_memory_reference.py "$RUNNER_TEMP/eg-product-history-core.py" app/src/test/resources/integration/historical_paid_v1.tsv
       - name: Verify pinned product-data Python reference parity fixtures
         run: |
           curl --fail --location --silent --show-error --retry 2 --max-time 30 \

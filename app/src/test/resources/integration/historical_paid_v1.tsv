@@ -1,0 +1,36 @@
+case	receipt	line	article	reason	unitCents	paidCents	storeId
+base				OK	249	498	filiale-1
+same-sku-other-line		lineId=position-2		OK	249	498	filiale-1
+zero-paid		amountCents=0;allocatedDiscountCents=0		OK	0	0	filiale-1
+no-store	storeId=~	storeId=~		OK	249	498	-
+no-purchase-time	purchaseAt=~			OK	249	498	filiale-1
+no-barcode		gtin=~		OK	249	498	filiale-1
+line-not-confirmed		confirmed=false		UNCONFIRMED_PURCHASE_OR_LINE	-	-	-
+purchase-not-confirmed	purchaseConfirmed=false			UNCONFIRMED_PURCHASE_OR_LINE	-	-	-
+purchase-reversed	purchaseReversed=true			REVERSED_PURCHASE_OR_LINE	-	-	-
+line-reversed		lineReversed=true		REVERSED_PURCHASE_OR_LINE	-	-	-
+product-unconfirmed		productConfirmed=false		UNCONFIRMED_PRODUCT_LINK	-	-	-
+discount-line		lineKind=DISCOUNT		NON_FOOD_DISCOUNT_DEPOSIT_OR_RETURN	-	-	-
+missing-purchase-id	purchaseId=~			MISSING_PURCHASEID	-	-	-
+missing-purchase-date	purchaseAt=~;purchasedOn=~			MISSING_PURCHASE_DATE	-	-	-
+receipt-line-mismatch		receiptId=other		INVALID_LINE_IDENTITY	-	-	-
+merchant-mismatch		retailerId=LIDL		MERCHANT_MISMATCH	-	-	-
+invalid-date	purchasedOn=2026-02-30			INVALID_DATE_OR_ARTICLE	-	-	-
+conflicting-purchase-date	purchasedOn=2026-10-29			PURCHASE_DATE_CONFLICT	-	-	-
+early-confirmation	confirmedAt=2026-10-29T12:00:00+00:00			CONFIRMATION_PRECEDES_PURCHASE	-	-	-
+wrong-product-version		versionId=v2		PRODUCT_VERSION_MISMATCH	-	-	-
+bad-gtin		gtin=123		INVALID_BARCODE	-	-	-
+different-gtin		gtin=4006381333931		BARCODE_CONFLICT	-	-	-
+unknown-cents		amountCents=~		UNKNOWN_OR_INVALID_PRICE	-	-	-
+unconfirmed-units		unitsConfirmed=false		UNKNOWN_PURCHASE_UNITS	-	-	-
+unreconciled-discount		discountReconciled=false		DISCOUNT_ACCOUNTING_UNKNOWN	-	-	-
+unallocated-discount		unallocatedDiscount=true		UNALLOCATED_DISCOUNT	-	-	-
+discount-greater-than-price		allocatedDiscountCents=500		INVALID_DISCOUNT	-	-	-
+discount-not-booked		allocatedDiscountCents=!		UNALLOCATED_DISCOUNT	-	-	-
+deposit-unknown		amountExcludesDeposit=false		DEPOSIT_ACCOUNTING_UNKNOWN	-	-	-
+fractional-price		purchaseUnits=3		NONINTEGRAL_UNIT_PRICE	-	-	-
+store-mismatch		storeId=other		STORE_MISMATCH	-	-	-
+invalid-deposit		depositPerUnitCents=-1		INVALID_DEPOSIT	-	-	-
+invalid-article			label=~	INVALID_DATE_OR_ARTICLE	-	-	-
+invalid-article-barcode			gtin=123	INVALID_DATE_OR_ARTICLE	-	-	-
+no-discount-field		amountCents=500;allocatedDiscountCents=!;discountApplied=false		OK	250	500	filiale-1
