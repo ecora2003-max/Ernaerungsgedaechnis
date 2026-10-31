@@ -13,7 +13,14 @@ class ProductReceiptClassifierParityTest {
         for (row in rows) {
             val parts = row.split('|')
             assertEquals("Malformed synthetic vector: $row", 8, parts.size)
-            val (id, rawText, provided, rawAmount, rawConfirmed, expectedKind, expectedAmount, expectedWarnings) = parts
+            val id = parts[0]
+            val rawText = parts[1]
+            val provided = parts[2]
+            val rawAmount = parts[3]
+            val rawConfirmed = parts[4]
+            val expectedKind = parts[5]
+            val expectedAmount = parts[6]
+            val expectedWarnings = parts[7]
             val result = ProductReceiptClassifier.propose(
                 rawText, ProductReceiptClassifier.Kind.valueOf(provided),
                 rawAmount.takeUnless { it == "null" }?.toLong(), rawConfirmed.toBooleanStrict()
