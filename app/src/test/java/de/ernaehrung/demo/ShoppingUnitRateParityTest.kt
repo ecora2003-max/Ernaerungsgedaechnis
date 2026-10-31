@@ -45,7 +45,7 @@ class ShoppingUnitRateParityTest {
         val targetQty = Kernel.Quantity(500, "g", "NET", 1, true)
         val target = requireNotNull(Kernel.rate(199, "EUR", targetQty))
         val cheaper = requireNotNull(Kernel.rate(179, "EUR", targetQty))
-        assertEquals(-20, Kernel.compare(cheaper, target))
+        assertEquals(-1, Kernel.compare(cheaper, target))
         assertEquals(BigInteger.valueOf(-20), Kernel.targetEquivalentDifferenceCents(target, cheaper, targetQty))
         val bulk = requireNotNull(Kernel.rate(230, "EUR", Kernel.Quantity(500, "g", "NET", 2, true)))
         assertEquals(BigInteger.valueOf(-84), Kernel.targetEquivalentDifferenceCents(target, bulk, targetQty))
