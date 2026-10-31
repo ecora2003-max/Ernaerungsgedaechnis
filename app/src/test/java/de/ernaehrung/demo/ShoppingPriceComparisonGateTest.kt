@@ -128,6 +128,25 @@ class ShoppingPriceComparisonGateTest {
         assertFalse(noArticle.targetEligible)
     }
 
+    @Test fun candidateCannotMoveDecisionCutoffToImportFuturePrices() {
+        val later = asOf.plusDays(1)
+        val candidate = offer("red", "v-red", 100).let {
+            it.copy(request = it.request.copy(asOf = later),
+                candidate = it.candidate.copy(observedAt = asOf.plusHours(2)))
+        }
+        val result = compare(candidates = listOf(candidate))
+        assertTrue(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals("comparison date/evidence cutoff mismatch", result.excluded["red"])
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+        val otherDay = offer("orange", "v-orange", 100).let {
+            it.copy(request = it.request.copy(purchaseOn = day.plusDays(1)))
+        }
+        val dateResult = compare(candidates = listOf(otherDay))
+        assertTrue(dateResult.cheaper.isEmpty())
+        assertTrue(dateResult.signals.incomplete)
+    }
+
     @Test fun inconsistentBridgeQuantityOrMissingBasisCannotBecomeCheaper() {
         val mismatch = offer("red", "v-red").let {
             it.copy(candidate = it.candidate.copy(quantityMilli = 999_000))
