@@ -36,6 +36,7 @@ class ExternalPriceBridgeTest {
         Policy.Retailer.values().forEach { retailer ->
             assertTrue(Policy.supports(retailer, Policy.Capability.PUBLISHED_OFFER_COLLECTION))
             assertEquals(retailer in both, Policy.supports(retailer, Policy.Capability.TARGETED_PRODUCT_PRICE_QUERY))
+            assertEquals(retailer in both, Policy.supports(retailer, Policy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY))
         }
         val disallowed = Gate.project(request(Policy.Retailer.NETTO_MD, Policy.Capability.TARGETED_PRODUCT_PRICE_QUERY),
             listOf(candidate()), permitted)
@@ -115,4 +116,33 @@ class ExternalPriceBridgeTest {
         val allowed = port.preview(request())
         assertEquals(1, allowed.visible.size); assertEquals(1, calls)
     }
+    @Test fun adr018CatalogDiscoveryIsNotAPriceObservationEvenWithMockRights() {
+        val catalog = Policy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY
+        val permitted = Gate.DisplayPermissionRegistry { _, _, _, _ -> true }
+        val synthetic = candidate().copy(capability = catalog)
+        val allowed = Gate.project(request(Policy.Retailer.REWE, catalog), listOf(synthetic), permitted)
+        assertTrue(allowed.visible.isEmpty())
+        assertTrue(allowed.incomplete)
+        assertEquals(setOf(Gate.Gap.NON_PRICE_CAPABILITY), allowed.gaps)
+        val forbidden = Gate.project(request(Policy.Retailer.PENNY, catalog), listOf(synthetic), permitted)
+        assertEquals(setOf(Gate.Gap.UNSUPPORTED_CAPABILITY), forbidden.gaps)
+        assertTrue(forbidden.visible.isEmpty())
+    }
+
+    @Test fun catalogAndForbiddenTargetedRequestsNeverInvokePriceSupplier() = runBlocking {
+        var calls = 0
+        val port = ReadOnlyExternalPricePort(ExternalPriceCandidateSupplier {
+            calls++
+            listOf(candidate())
+        }, Gate.DisplayPermissionRegistry { _, _, _, _ -> true })
+        val catalog = Policy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY
+        assertEquals(setOf(Gate.Gap.NON_PRICE_CAPABILITY),
+            port.preview(request(Policy.Retailer.LIDL, catalog)).gaps)
+        assertEquals(setOf(Gate.Gap.UNSUPPORTED_CAPABILITY),
+            port.preview(request(Policy.Retailer.EDEKA, catalog)).gaps)
+        assertEquals(setOf(Gate.Gap.UNSUPPORTED_CAPABILITY),
+            port.preview(request(Policy.Retailer.NETTO_MD, Policy.Capability.TARGETED_PRODUCT_PRICE_QUERY)).gaps)
+        assertEquals(0, calls)
+    }
+
 }

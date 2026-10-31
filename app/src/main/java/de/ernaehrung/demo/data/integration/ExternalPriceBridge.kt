@@ -3,14 +3,21 @@ package de.ernaehrung.demo.data.integration
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
-/** ADR-016: development capability is not a licence to fetch, cache or display retailer data. */
+/** ADR-016/018: scope is not a licence to fetch, cache or display retailer data.
+ * Pinned EG-Architecture@18794be978cc324e5366996178d368929a4a0fa4
+ * retailer policy 1.0.3, blob 7ed2ef6918c8fdcdb9c482cb0a38eb38e5f6852c.
+ */
 object RetailerPolicy {
     enum class Retailer { ALDI_NORD, ALDI_SUED, REWE, LIDL, PENNY, KAUFLAND, EDEKA, NETTO_MD }
-    enum class Capability { TARGETED_PRODUCT_PRICE_QUERY, PUBLISHED_OFFER_COLLECTION }
+    enum class Capability { TARGETED_PRODUCT_PRICE_QUERY, PUBLISHED_OFFER_COLLECTION, PUBLISHED_OFFER_CATALOG_DISCOVERY }
 
-    fun supports(retailer: Retailer, capability: Capability): Boolean =
-        capability == Capability.PUBLISHED_OFFER_COLLECTION ||
-            retailer in setOf(Retailer.ALDI_NORD, Retailer.ALDI_SUED, Retailer.REWE, Retailer.LIDL)
+    private val fourCatalogRetailers = setOf(Retailer.ALDI_NORD, Retailer.ALDI_SUED, Retailer.REWE, Retailer.LIDL)
+
+    fun supports(retailer: Retailer, capability: Capability): Boolean = when (capability) {
+        Capability.PUBLISHED_OFFER_COLLECTION -> true
+        Capability.TARGETED_PRODUCT_PRICE_QUERY, Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY ->
+            retailer in fourCatalogRetailers
+    }
 }
 
 /** A pure host boundary: no IO, Room access, implicit product matching or write events. */
@@ -20,7 +27,7 @@ object ExternalPriceBridge {
     enum class Origin { EXTERNAL, USER_CONFIRMED_RECEIPT, SYNTHETIC }
     enum class Unit { GRAM, MILLILITRE, PORTION }
     enum class Gap {
-        UNSUPPORTED_CAPABILITY, NON_DISPLAY_CONTEXT, INVALID_SOURCE, MISSING_RIGHTS,
+        UNSUPPORTED_CAPABILITY, NON_PRICE_CAPABILITY, NON_DISPLAY_CONTEXT, INVALID_SOURCE, MISSING_RIGHTS,
         PRODUCT_IDENTITY, SCOPE_MISMATCH, DATE_INVALID, PRICE_UNKNOWN, QUANTITY_UNKNOWN,
         PRICE_CONDITIONS_UNKNOWN, DUPLICATE_OBSERVATION, LIMIT_EXCEEDED
     }
@@ -99,6 +106,10 @@ object ExternalPriceBridge {
             return Projection(emptyList(), setOf(Gap.NON_DISPLAY_CONTEXT), true)
         if (!RetailerPolicy.supports(request.retailer, request.capability))
             return Projection(emptyList(), setOf(Gap.UNSUPPORTED_CAPABILITY), true)
+        // Catalog discovery is a listing, never a price.observation. This price
+        // display adapter must not reinterpret catalog rights as price rights.
+        if (request.capability == RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY)
+            return Projection(emptyList(), setOf(Gap.NON_PRICE_CAPABILITY), true)
         if (candidates.size > MAX_CANDIDATES)
             return Projection(emptyList(), setOf(Gap.LIMIT_EXCEEDED), true)
 
@@ -171,7 +182,8 @@ class ReadOnlyExternalPricePort(
     suspend fun preview(request: ExternalPriceBridge.Request): ExternalPriceBridge.Projection {
         require(request.productVersionId.isNotBlank()) { "A confirmed host product version is required" }
         if (request.usageContext != ExternalPriceBridge.UsageContext.APP_DISPLAY ||
-            !RetailerPolicy.supports(request.retailer, request.capability)) {
+            !RetailerPolicy.supports(request.retailer, request.capability) ||
+            request.capability == RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY) {
             return ExternalPriceBridge.project(request, emptyList(), permissions)
         }
         return ExternalPriceBridge.project(request, supplier.load(request), permissions)
