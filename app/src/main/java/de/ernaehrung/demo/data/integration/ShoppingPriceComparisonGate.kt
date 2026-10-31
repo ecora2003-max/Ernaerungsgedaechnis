@@ -142,6 +142,15 @@ internal object ShoppingPriceComparisonGate {
         val gaps = mutableListOf<String>()
         for (candidate in candidates.sortedBy { it.candidate.observationId }) {
             val id = candidate.candidate.observationId
+            // Every comparison uses ONE shopping date and ONE evidence cutoff.
+            // A candidate must not choose a later asOf to import future knowledge.
+            if (candidate.request.purchaseOn != target.request.purchaseOn ||
+                candidate.request.asOf.toInstant() != target.request.asOf.toInstant()
+            ) {
+                excluded[id] = "comparison date/evidence cutoff mismatch"
+                gaps.add("$id: comparison date/evidence cutoff mismatch")
+                continue
+            }
             val checked = check(candidate, permissions, stores, articles)
             if (checked.rate == null) {
                 val reason = checked.rejection ?: "offer not eligible"
