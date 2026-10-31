@@ -98,7 +98,16 @@ class LocalDataScreenTest {
         return model
     }
     private fun database() = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
-    private fun tap(text: String) = rule.onNodeWithText(text, substring = false).performScrollTo().performClick()
+    private fun tap(text: String) {
+        // Navigation and scope changes update Compose asynchronously. Wait for the actual
+        // affordance, not just the ViewModel report, before trying to scroll/click it.
+        // Still fail if the expected button never appears; no assertions are skipped.
+        rule.waitUntil(15_000) {
+            rule.waitForIdle()
+            rule.onAllNodesWithText(text, substring = false).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText(text, substring = false).performScrollTo().performClick()
+    }
     private fun choose(label: String, id: String) {
         rule.onNodeWithTag(label).performScrollTo().performClick()
         rule.onNodeWithTag("choose_$id").performScrollTo().performClick()
