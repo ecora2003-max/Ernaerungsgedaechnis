@@ -77,10 +77,10 @@ class ShoppingPriceComparisonGateTest {
             offer("orange", "v-orange", 220, organic = false),
             offer("red", "v-red", 200, organic = true)))
         assertTrue(result.targetEligible)
-        assertEquals(listOf("orange", "red"), result.cheaper.map { it.observationId })
+        assertEquals(listOf("red", "orange"), result.cheaper.map { it.observationId })
         assertEquals(listOf("RED_SAME_BIO_CHEAPER", "ORANGE_DIFFERENT_BIO_CHEAPER"),
             result.signals.signals)
-        assertEquals(BigInteger.valueOf(-100), result.cheaper[1].targetEquivalentDifferenceCents)
+        assertEquals(BigInteger.valueOf(-100), result.cheaper[0].targetEquivalentDifferenceCents)
         assertFalse(result.marketWideBestPriceProven)
     }
 
@@ -178,6 +178,9 @@ class ShoppingPriceComparisonGateTest {
             offer("red", "v-red", cents = 0, deposit = null)))
         assertEquals(BigInteger.valueOf(-300), zero.cheaper.single()
             .targetEquivalentDifferenceCents)
+        assertEquals(listOf("RED_SAME_BIO_CHEAPER", "GREY_MAY_BE_CHEAPER"),
+            zero.signals.signals)
+        assertTrue(zero.signals.gaps.contains("red: deposit/checkout cost UNKNOWN"))
         val unknown = compare(candidates = listOf(
             offer("red", "v-red", cents = null)))
         assertTrue(unknown.cheaper.isEmpty())
