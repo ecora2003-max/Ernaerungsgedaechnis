@@ -1,6 +1,6 @@
 # Integration: Status und Wiederaufnahme (31.10.2026)
 
-**INTEGRATION_IN_PROGRESS / TWO_ISOLATED_HOST_PORTS_JVM_TESTED. Keines der vier Module vollständig Android-integriert.** Haupt-App weiterhin 0.9.0-recognition; Room 7 (35 Tabellen), Testdaten-Sandbox, keine produktive Google-Sheets-Migration.
+**INTEGRATION_IN_PROGRESS / ISOLATED_KOTLIN_HOST_PORTS_JVM_TESTED; keines der vier Module vollständig Android-integriert.** Haupt-App-Version weiterhin 0.9.0-recognition, mittlerweile **Room 8 (36 Tabellen)** mit additivem privatem Bonpreis-Ledger, synthetischen 1→8 bis 7→8-Migrationen, Testdaten-Sandbox und ohne produktive Google-Sheets-Migration. Letzter vollständig grüner Host-Code-SHA vor dem aktuellen Validity-Port: `70e684465e263d55522ab4ccd67112e6f0160e05` (213/213 JVM, 18/18 Shopping-Grundpreis-Python, Produktreferenzen, Lint und Room-Schema PASS). Die folgenden älteren Abschnitte sind historische Prüfprotokolle und dürfen nicht als aktueller Gesamtstatus gelesen werden; neue Änderungen müssen separat CI-geprüft werden.
 
 ## Gelesene Ausgangsstände, nur Read-only
 
