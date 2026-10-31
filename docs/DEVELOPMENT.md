@@ -1,6 +1,8 @@
 # Entwicklungsstand / Fortsetzung
 
-> **Aktueller Integrationsstand (31.10.2026):** Dieses Dokument ist die historische Übergabe der Phase 5 vom 30.10.2026. Die nachfolgenden Angaben zu Room 7, 35 Tabellen und 183 Tests beschreiben den damaligen Stand, nicht den neuesten Host. Die Integration verwendet mittlerweile **Room 8 (36 Tabellen)**; aktueller Code-/Test-/Modulstatus und nächste Schritte stehen verbindlich in [STATUS.md](STATUS.md), Abnahmegrenzen in [ACCEPTANCE.md](ACCEPTANCE.md), Portarchitektur in [INTEGRATION.md](INTEGRATION.md). Keines der vier Fachmodule ist vollständig Android-integriert; Gerätetests bleiben offen.\n\nStand 30.10.2026. Ausführliche Wiederaufnahme: [UEBERGABE_2026-10-30_PHASE5.md](UEBERGABE_2026-10-30_PHASE5.md). Zuerst diese Übergabe und `AGENTS.md` lesen. Fachlicher Produktplan: `product/Gesamtplanung-2026-10-30.txt`.
+> **Aktueller Integrationsstand (31.10.2026):** Dieses Dokument ist die historische Übergabe der Phase 5 vom 30.10.2026. Die nachfolgenden Angaben zu Room 7, 35 Tabellen und 183 Tests beschreiben den damaligen Stand, nicht den neuesten Host. Die Integration verwendet mittlerweile **Room 8 (36 Tabellen)**; aktueller Code-/Test-/Modulstatus und nächste Schritte stehen verbindlich in [STATUS.md](STATUS.md), Abnahmegrenzen in [ACCEPTANCE.md](ACCEPTANCE.md), Portarchitektur in [INTEGRATION.md](INTEGRATION.md). Keines der vier Fachmodule ist vollständig Android-integriert; Gerätetests bleiben offen.
+
+Stand 30.10.2026. Ausführliche Wiederaufnahme: [UEBERGABE_2026-10-30_PHASE5.md](UEBERGABE_2026-10-30_PHASE5.md). Zuerst diese Übergabe und `AGENTS.md` lesen. Fachlicher Produktplan: `product/Gesamtplanung-2026-10-30.txt`.
 
 ## Auftrag und Arbeitsweise
 
