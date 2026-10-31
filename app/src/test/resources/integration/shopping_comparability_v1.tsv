@@ -1,0 +1,41 @@
+id	tType	cType	tAttrs	cAttrs	tGtin	cGtin	tBrandKind	cBrandKind	tBrandName	cBrandName	tAmount	tUnit	tBasis	tCount	tConfirmed	cAmount	cUnit	cBasis	cCount	cConfirmed	matchStatus	matchLevel	matchEvidence	expectedLevel	expectedNotes
+exact	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	EXACT_SKU	same GTIN and package
+same_type_diff_gtin	milk	milk	form=liquid	form=liquid	123	456	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes
+no_target_gtin	milk	milk	form=liquid	form=liquid	-	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes
+no_candidate_gtin	milk	milk	form=liquid	form=liquid	123	-	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes
+brand_diff	milk	milk	form=liquid	form=liquid	123	456	BRAND	BRAND	A	B	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes|brand/private-label difference
+private_label_diff	milk	milk	form=liquid	form=liquid	123	456	BRAND	PRIVATE_LABEL	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes|brand/private-label difference
+brand_null_diff	milk	milk	form=liquid	form=liquid	123	456	BRAND	BRAND	A	-	500	g	NET	1	true	500	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes|brand/private-label difference
+different_type	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	different food types; no confirmed substitution
+different_type_user_confirmed	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	CONFIRMED_BY_USER	FUNCTIONAL_SUBSTITUTE	user approved	FUNCTIONAL_SUBSTITUTE	explicitly confirmed substitution|user approved
+different_type_user_confirmed_empty_evidence	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	CONFIRMED_BY_USER	FUNCTIONAL_SUBSTITUTE	-	FUNCTIONAL_SUBSTITUTE	explicitly confirmed substitution
+different_type_pending	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	PENDING	FUNCTIONAL_SUBSTITUTE	-	UNKNOWN	different food types; no confirmed substitution
+different_type_wrong_level	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	CONFIRMED_BY_USER	EXACT_SKU	-	UNKNOWN	different food types; no confirmed substitution
+different_type_wrong_order	milk	oat	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	CONFIRMED_BY_USER	SAME_FOOD_VARIANT	-	UNKNOWN	different food types; no confirmed substitution
+missing_target_type	-	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	food type not established
+missing_candidate_type	milk	-	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	food type not established
+missing_both_type	-	-	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	food type not established
+missing_critical_target	milk	milk	-	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	critical attribute form missing
+missing_critical_candidate	milk	milk	form=liquid	-	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	critical attribute form missing
+incompatible_form	milk	milk	form=liquid	form=powder	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	incompatible form: 'liquid' vs 'powder'
+incompatible_allergens	milk	milk	form=liquid;allergens=milk	form=liquid;allergens=soy	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	incompatible allergens: 'milk' vs 'soy'
+missing_species	milk	milk	form=liquid;species=cow	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	critical attribute species missing
+different_variety	milk	milk	form=liquid;variety=A	form=liquid;variety=B	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	incompatible variety: 'A' vs 'B'
+unconfirmed_target	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	false	500	g	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unconfirmed_candidate	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	false	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unknown_target_amount	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	-	g	NET	1	true	500	g	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unknown_candidate_amount	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	-	g	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unknown_target_count	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	-	true	500	g	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unknown_candidate_count	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	-	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+different_basis	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	DRAINED	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+different_unit	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	ml	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+unrecognized_unit	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	kg	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+same_gtin_different_qty	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	600	g	NET	1	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes
+same_gtin_equivalent_packages	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	2	true	1000	g	NET	1	true	-	-	-	EXACT_SKU	same GTIN and package
+same_gtin_different_packages	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	2	true	-	-	-	SAME_FOOD_VARIANT	same food type and critical attributes
+piece_exact	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	2	piece	PIECE	1	true	2	piece	PIECE	1	true	-	-	-	EXACT_SKU	same GTIN and package
+piece_wrong_basis	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	piece	PIECE	1	true	500	piece	NET	1	true	-	-	-	UNKNOWN	quantity or unit/basis not comparable
+no_critical_attrs	milk	milk	-	-	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	EXACT_SKU	same GTIN and package
+noncritical_attr_diff	milk	milk	form=liquid;organic=true	form=liquid;organic=false	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	1	true	-	-	-	EXACT_SKU	same GTIN and package
+invalid_zero_amount	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	0	g	NET	1	true	-	-	-	ERROR	-
+invalid_zero_count	milk	milk	form=liquid	form=liquid	123	123	BRAND	BRAND	A	A	500	g	NET	1	true	500	g	NET	0	true	-	-	-	ERROR	-
