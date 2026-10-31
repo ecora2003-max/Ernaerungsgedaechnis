@@ -1,0 +1,18 @@
+# id|rawText|providedKind|amountCents|confirmed|expectedKind|expectedAmountCents|warnings
+food_unconfirmed|BIO TOFU 200g 1,99 A|UNKNOWN|null|false|UNKNOWN|199|unconfirmed_ocr
+food_attested|BIO TOFU 1,99|FOOD|null|true|FOOD|199|-
+pfand|PFAND FLASCHE 0,25|UNKNOWN|null|true|DEPOSIT|25|-
+retoure|RETOURE -1,99|UNKNOWN|null|false|RETURN|-199|unconfirmed_ocr
+rabatt|RABATT -0,50|UNKNOWN|null|false|DISCOUNT|-50|unconfirmed_ocr
+waschmittel|WASCHMITTEL 4,00|UNKNOWN|null|false|NON_FOOD|400|unconfirmed_ocr
+spuelmittel|SPÜLMITTEL 2,99|UNKNOWN|null|true|NON_FOOD|299|-
+kasse|SUMME 4,97|UNKNOWN|null|false|UNKNOWN|497|payment_or_total_row,unconfirmed_ocr
+rueckgeld|RÜCKGELD 1,00|UNKNOWN|null|false|UNKNOWN|100|payment_or_total_row,unconfirmed_ocr
+ocr_damaged|BIO TOFU 200 g 199A|UNKNOWN|null|false|UNKNOWN|null|malformed_ocr_price,unconfirmed_ocr
+negative_unknown|HOSE -1,99|UNKNOWN|null|false|UNKNOWN|-199|negative_non_return_amount,unconfirmed_ocr
+negative_food|TOFU -1,99|FOOD|null|true|UNKNOWN|-199|negative_non_return_amount
+explicit_zero|GRATISWARE|FOOD|0|true|FOOD|0|-
+explicit_unknown|GRATISWARE|UNKNOWN|null|true|UNKNOWN|null|-
+discount_positive|COUPON 1,00|UNKNOWN|null|true|DISCOUNT|100|-
+explicit_override|PFAND 0,25|UNKNOWN|30|true|DEPOSIT|30|-
+negative_nonfood|TASCHE -2,00|UNKNOWN|null|true|UNKNOWN|-200|negative_non_return_amount
