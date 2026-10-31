@@ -46,6 +46,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val shoppingWriter = ShoppingOperations(db, now)
     private val purchaseWriter = PurchaseOperations(db, now)
     private val paidPriceReader = PaidReceiptPriceReader(db)
+    private val historicalPaidComparisonReader = HistoricalPaidComparisonReader(db)
     private val expenseReader = ExpenseReader(db, now)
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
@@ -111,6 +112,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     /** Private historical evidence only, not current retailer offers. */
     suspend fun activeHistoricalPaidPrices(): List<PaidPriceObservationEntity> = db.withTransaction { dao.activePaidPrices() }
     suspend fun historicalPaidPriceAudit(): List<PaidPriceObservationEntity> = db.withTransaction { dao.allPaidPrices() }
+    /** Past-only private evidence, never a current price or an implicit shopping choice. */
+    suspend fun historicalPaidComparison(scope: HistoricalPaidComparisonScope): HistoricalPaidComparison =
+        historicalPaidComparisonReader.compare(scope)
     suspend fun bookPurchaseLine(key: String, input: PurchaseStockInput, confirmed: Boolean) = purchaseWriter.bookLine(key, input, confirmed)
     suspend fun cancelPurchase(key: String, input: ReversalInput, confirmed: Boolean) = purchaseWriter.cancel(key, input, confirmed)
     suspend fun expenseReport(scope: ExpenseScope) = expenseReader.report(scope)
