@@ -291,7 +291,7 @@ class PurchaseDatabaseTest {
             val stock = prepareStock(); val batch = store.bookPurchaseLine("stock", stock, true); complete()
             val before = report(); db.close()
             db = Room.databaseBuilder(context, FoodDatabase::class.java, name).build(); store = FoodStore(db) { clock }
-            assertEquals(before, report()); assertEquals(7, db.openHelper.readableDatabase.version)
+            assertEquals(before, report()); assertEquals(8, db.openHelper.readableDatabase.version)
             assertEquals(batch, store.bookPurchaseLine("stock", stock, true)); assertEquals(200_000L, dao.balance(batch))
             assertEquals(before.purchases.single().receipt.id, store.savePurchase("buy", purchase(), true))
             assertEquals(398L, report().totalCents); assertEquals(1, dao.purchases().size)
