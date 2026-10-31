@@ -1,6 +1,6 @@
 # Integration: Status und Wiederaufnahme (31.10.2026)
 
-**INTEGRATION_IN_PROGRESS / HOST_POLICY_PORT_COMPILED_CI_REGRESSION_FAILED. Keines der vier Module vollständig Android-integriert.** Haupt-App weiterhin 0.9.0-recognition; Room 7 (35 Tabellen), Testdaten-Sandbox, keine produktive Google-Sheets-Migration.
+**INTEGRATION_IN_PROGRESS / HOST_POLICY_PORT_JVM_TESTED_ONLY. Keines der vier Module vollständig Android-integriert.** Haupt-App weiterhin 0.9.0-recognition; Room 7 (35 Tabellen), Testdaten-Sandbox, keine produktive Google-Sheets-Migration.
 
 ## Gelesene Ausgangsstände, nur Read-only
 
@@ -24,7 +24,7 @@ Modultestzahlen sind deren dokumentierte vergangene CI-Ergebnisse, **nicht** in 
 ### Tatsächlich in dieser Sitzung geprüft
 
 1. **Korrektur der ursprünglichen Notiz:** Eine lokale kotlinc-Kompilierung und ein JUnit-Stub-Testlauf sind in dieser Sitzung **NICHT tatsächlich ausgeführt worden**. Die zwei früheren Erfolgsaussagen waren unbelegt und werden ausdrücklich widerrufen. Die 10 Testmethoden sind nur geschrieben.
-2. App-CI zum Codecommit `d75db4a63853ca3483271447b3eb8b8d0905ec8f`: [Run 41239349753](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41239349753), beim letzten Abruf **in_progress**, `Run lint and unit tests` gestartet, Resultat offen. **Nicht** als PASS zählen, bis Jobstatus und konkrete Testergebnisse vorliegen.
+2. Initialer App-CI-Lauf zum Codecommit `d75db4a63853ca3483271447b3eb8b8d0905ec8f` ist [Run 41239349753](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41239349753), **193 Tests / 1 fehlgeschlagen** (bestehender asynchroner Compose-Timingtest); siehe Fehleranalyse unten. Der nachfolgenden erfolgreiche korrigierte App-CI-Lauf wird am Ende dieser Datei exakt protokolliert.
 3. `:app:lintDebug`, `:app:testDebugUnitTest`, `:app:compileDebugAndroidTestKotlin` und Room-Schemaabgleich sind CI-Auftrag; ihre Ausführung und PASS-Zahlen müssen anhand des vollständigen Logs und der XML-Ausgaben verifiziert werden. Gerätetests wurden **nicht** ausgeführt. Kein APK-Build beauftragt.
 
 ## Nächster Lauf: genaue Wiederaufnahme
@@ -52,3 +52,15 @@ Modultestzahlen sind deren dokumentierte vergangene CI-Ergebnisse, **nicht** in 
 - **Vom fehlgeschlagenen CI-Job dennoch nachweislich erfolgreich:** `:app:compileDebugKotlin`, `:app:compileDebugUnitTestKotlin`, `:app:lintDebug`, `:app:compileDebugAndroidTestKotlin`. GitHub-Schritt `Verify versioned Room schema` wurde wegen Testfehlschlag **übersprungen**; kein Schema-CI-PASS. Keine Gerätetests und keine APK.
 - **Separater struktureller JSON-Schema-Audit tatsächlich ausgeführt** (GitHub `fetch_file` + `JSON.parse` + Objekt-/Versionsprüfung): Exportversionen 1–7 gelesen, `database.version` und `identityHash` jeweils vorhanden und konsistent, Tabellenanzahl 22/25/26/28/29/32/35. Dies überprüft **nur versionierte Schema-Metadaten**, keine migrierten Daten, keinen Room-Migrationstest und keinen Exportdiff.
 - **Wiederaufnahme:** zuerst die CI des neuen Testkorrektur-Commits und XML/Schema-Schritt prüfen; bei erneutem UI-Fehler vor Änderung komplette Stacktrace-/Compose-Semantics-/Report-Lage untersuchen. Danach Python/Kotlin-Parität und E2E-Lieferketten bearbeiten.
+
+## Verifizierter korrigierter Host-Code – CI-Abschluss 31.10.2026
+
+**Code- und Testcommit:** [`738e7452a2574148d5c00fc7bcceb4435461ec7f`](https://github.com/ecora2003-max/Ernaerungsgedaechnis/commit/738e7452a2574148d5c00fc7bcceb4435461ec7f). Nachfolgende Dokumentationscommits ändern keine App-/Schema-/Testimplementierung.
+
+**Tatsächlich ausgeführte erfolgreiche GitHub Actions:** [Run 41240038162](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41240038162), Job `build`, `completed/success`, Ubuntu 24.04, Temurin JDK 17, Gradle 8.9. Befehl `./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin`, anschließend `git diff --exit-code -- app/schemas/` und `test -z "$(git status --porcelain -- app/schemas/)"`. **Alle drei Gradle-Tasks sowie der versionierte Room-Schemaabgleich bestanden.** Kein APK gebaut (`build_apk` nicht aktiviert).
+
+**Aus der tatsächlich heruntergeladenen ZIP mit Testberichten:** [Artefakt 13056624359](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41240038162/artifacts/13056624359), exakt 22 aktuelle `TEST-*.xml` eingelesen und numerisch summiert: **193 Tests, 0 Failures, 0 Errors, 0 Skips**. Davon `ExternalPriceBridgeTest`: 10/10; `DatabaseMigrationTest`: 6/6 befüllte Room-1→7 bis Room-6→7 Migrations-Regressionen; `LocalDataScreenTest`: 12/12 einschließlich der zuvor flakigen Planning-Form. Die 183 übrigen Tests decken bestehende Planungs-/Kauf-/Bestands-/Rezept-/OCR-/UI-Domänen ab, **nicht** das vollständige neue modulübergreifende E2E. Der vorherige fehlgeschlagene CI-Lauf bleibt als Fehlergeschichte dokumentiert; seine Resultate werden nicht mit diesen aktuellen vermischt.
+
+**Nachweisgrenze:** Die neue Quell-/Preis-Berechtigungsschicht ist als **isolierter Kotlin-Hostport JVM-kompiliert und mit synthetischen Tests geprüft**; sie ist weiterhin weder an echte Fachmodul-Provider noch an FoodStore, Room-8, Compose-Anzeige oder Android-Geräte angebunden. Kein neuer externer Preis in der App sichtbar, kein Liveabruf und kein neues Kauf-/Lagerereignis. Der Status heißt daher **HOST_POLICY_PORT_JVM_TESTED_ONLY**, nicht `JVM_INTEGRATION_VERIFIED` für ein vollständiges Modul und nicht `INTEGRATED`. Die Kotlin↔Python-Parität der vollständigen Modul-Outputs und die zwei geforderten E2E-Ketten sind noch **nicht** getestet; das darf aus 193 grünen Tests nicht abgeleitet werden.
+
+**Wiederaufnahme nach diesem erfolgreichen Lauf:** 1. Aktuelle Architektur-/Modul-HEADs erneut pinnen. 2. Die sichere, konkrete Produkt-/Bonpositionszuordnung und das private `HISTORICAL_PAID`-Preisgedächtnis als reversible, idempotente App-Transaktion entwerfen/implementieren, inklusive Rabatt/Pfand/Filiale und E2E-Belegen; keine heutigen Preise aus alten Bons. 3. Python-Referenzfixtures und Kotlin-Port mit tatsächlicher Ergebnisparität für Produktdaten/Einkaufsintelligenz nachweisen. 4. Getrennt die kostenlose Offline-Rezept-Kernintegration mit bestätigungsabhängigen `FoodStore`-Operationen und allen 8 Kontextflags. 5. Ein künftiges Room-8-Schema nur mit neuem Export und vollständigen 1→8 bis 7→8 Migrations-/Datenerhaltungstests; externe Rechte-/Android-Geräte-Gates bleiben bis zu echtem Nachweis geschlossen.
