@@ -8,7 +8,7 @@ Dieses Dokument beschreibt die Android-Integrationsgrenzen, keine Produktivfreig
 | --- | --- | --- | --- |
 | Produktdaten | GTIN/SKU/Bonalias und bestätigte Version über RecognitionReader, product.match und receipt.line | FoodStore.rememberRecognizedProduct, saveAlias, acceptReceiptScan; nur explizit bestätigt | Python-Fachkern auf Kotlin/Room portieren, historische Preisposition belegen |
 | Einkaufsintelligenz | Snapshot von Planung, Mengen, Filiale, Angebotsbelegen, Budget, Datum und Historie; v1.1 ausschließlich opt-in | Kauf nur über FoodStore, Einkaufswunsch ist niemals Ist-Ereignis | Vergleichs-/Budget-/FEFO-Kotlin-Parität und App-Regressionsbeleg |
-| Preisdaten | Preisbeobachtung / Angebot mit Quellen-, Rechte-, Mengen-, Regions- und Zeitmetadaten | Keine direkte Buchung; Legacy-FoodStore.savePrice bleibt manuell und separat | Rechtsprüfung je externer Source, doppelte APP_DISPLAY-Sperre |
+| Preisdaten | Preisbeobachtung / Angebot mit Quellen-, Rechte-, Mengen-, Regions- und Zeitmetadaten | Keine direkte Buchung; Legacy-FoodStore.savePrice bleibt manuell und separat | Vorhandene technische Quellen-/APP_DISPLAY-Sperren, keine neue separate Rechtsrecherche (ADR-019) |
 | Rezept-KI | recipe.draft, Host-Mengen- und Rezeptversionen, drei unabhängige Flags, Allergen-/Nährwertprüfung | FoodStore.saveRecipe/savePlan erst nach Hostbestätigung; produce/consume nie aus Entwurf | Voller Kotlin-Kern/Hostschema/Room/Compose-/Hardwaretest |
 
 ## Implementierter erster Host-Adapter
@@ -30,3 +30,9 @@ Unbekannte Identität, Filialzuordnung, Menge, Währung, Preisbedingungen oder G
 3. Vergleich/Bedarf aus Python-Snapshots in eigenständiges Kotlin portieren und gegen dieselben synthetischen Referenzfixtures prüfen; Quelle/Filiale/Bio/Pfand/Coupon/Zeithorizont und Nichtbuchung als Pflichtgates.
 4. Rezept-KI als getrennte geprüfte Offline-Vorschlagsfunktion mit 8 unabhängigen Kontextflags, Host-Mengen- und Allergenprüfungen integrieren; lokal gehostetes Modell erst nach Geräte-/Datenschutznachweis.
 5. Bei einer späteren Schemaänderung Room-Version erhöhen und alle historischen IDs und Versionen durch explizite 1→neu-Migration erhalten. Keine produktive Sheet-Migration ohne Freigabe.
+
+## Aktualisierte Händlerfähigkeiten und zweiter Offline-Port (31.10.2026)
+
+ADR-018 trennt drei Fähigkeiten: gezielte reguläre Preisabfrage (vier Händler), veröffentlichte Einzelangebotspreise (alle acht Händler) und Angebotskatalog-Discovery (vier Händler ALDI Nord/Süd, Lidl, REWE). Referenz: EG-Architecture@18794be978cc324e5366996178d368929a4a0fa4, policies/retailer-source-capabilities.v1.json Version 1.0.3, Blob 7ed2ef6918c8fdcdb9c482cb0a38eb38e5f6852c. Die dritte Fähigkeit ist im Hostcode noch zu ergänzen. ADR-019 verlangt die Fortsetzung technischer Integration ohne ungefragte neue Rechtsrecherchen; bestehende technische Quellen- und Anzeigegates bleiben erhalten.
+
+HistoricalPaidPriceKernel.kt prüft nur synthetische bestätigte Bonpreisfakten in einem reinen read-only Kotlin-Kern gegen die gepinnte Original-Python-Referenz; 35 gemeinsame Fixtures. Noch keine Room-/FoodStore-/UI-Anbindung, kein heutiges Marktangebot, keine vollständige Integration. Aktueller Teststand in docs/STATUS.md.
