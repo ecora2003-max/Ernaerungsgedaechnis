@@ -1,40 +1,38 @@
-# Host-Integration der Fachmodule (31.10.2026)
+# Integration der Fachmodule in die Android-Haupt-App
 
-Dieses Dokument beschreibt die Android-Integrationsgrenzen, keine Produktivfreigabe. Der Architekturvertrag v1.0.0-draft bleibt vom noch nicht freigegebenen Shoppingvertrag v1.1.0-draft (ADR-017) getrennt.
+Stand 31.10.2026. Verbindliche Abnahmekriterien: [ACCEPTANCE.md](ACCEPTANCE.md); laufender, commitgenauer Nachweis: [STATUS.md](STATUS.md). Diese Datei beschreibt **Schnittstellen und Grenzen**, keine produktive Freigabe.
 
-## Modulports und Schreibgrenzen
+## Architektur und Schreibhoheit
 
-| Zulieferer | Reiner Host-Eingang | Erlaubte App-Schreibgrenze | Offenes Gate |
-| --- | --- | --- | --- |
-| Produktdaten | GTIN/SKU/Bonalias und bestätigte Version über RecognitionReader, product.match und receipt.line | FoodStore.rememberRecognizedProduct, saveAlias, acceptReceiptScan; nur explizit bestätigt | Python-Fachkern auf Kotlin/Room portieren, historische Preisposition belegen |
-| Einkaufsintelligenz | Snapshot von Planung, Mengen, Filiale, Angebotsbelegen, Budget, Datum und Historie; v1.1 ausschließlich opt-in | Kauf nur über FoodStore, Einkaufswunsch ist niemals Ist-Ereignis | Vergleichs-/Budget-/FEFO-Kotlin-Parität und App-Regressionsbeleg |
-| Preisdaten | Preisbeobachtung / Angebot mit Quellen-, Rechte-, Mengen-, Regions- und Zeitmetadaten | Keine direkte Buchung; Legacy-FoodStore.savePrice bleibt manuell und separat | Vorhandene technische Quellen-/APP_DISPLAY-Sperren, keine neue separate Rechtsrecherche (ADR-019) |
-| Rezept-KI | recipe.draft, Host-Mengen- und Rezeptversionen, drei unabhängige Flags, Allergen-/Nährwertprüfung | FoodStore.saveRecipe/savePlan erst nach Hostbestätigung; produce/consume nie aus Entwurf | Voller Kotlin-Kern/Hostschema/Room/Compose-/Hardwaretest |
+- Einziges Schreibrepository: `ecora2003-max/Ernaerungsgedaechnis`. `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsintelligenz` und `EG-Rezept-KI` bleiben nur lesbar.
+- Vertragsbasis: `EG-Architecture@18794be978cc324e5366996178d368929a4a0fa4`, `contracts/v1` = `1.0.0-draft`, Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072`. `contracts/v1.1` = `1.1.0-draft`, Schema-Blob `dca777d219307a90bf3d4dff6189fbf12476c508`, **nicht automatisch aktiviert oder STABLE**.
+- Reine Kotlin-Fachkerne und lesende Vorschläge dürfen keine Ist-Buchungen auslösen. Zahlung, Lager, Produktion, Verzehr und Storno laufen ausschließlich über bestätigte, transaktionale und idempotente `FoodStore`-Operationen. Kein privater Google-Sheets-Import, keine zweite schreibbare Datenwahrheit.
+- Die Haupt-App besitzt inzwischen **Room 8 (36 Tabellen)**. Das additive private `paid_price_observations`-Ledger bleibt von der bestehenden `price_observations`-Tabelle für andere Preisbeobachtungen getrennt. Versionierte Schemas 1–8, befüllte 1→8 bis 7→8-Migrationstests; keine destruktiven Migrationen.
 
-## Implementierter erster Host-Adapter
+## Aktuell vorhandene Ports
 
-Die neue reine Kotlin-Datei unter app/src/main/java/de/ernaehrung/demo/data/integration/ExternalPriceBridge.kt enthält eine austauschbare CandidateSupplier-Schnittstelle und den ReadOnlyExternalPricePort. **Kein Händlerfeed, keine Live-Anfrage, keine UI-Anzeige und kein Room-Write wurden verbunden.** Die vertrauenswürdige DisplayPermissionRegistry wird allein vom Host bereitgestellt und ist standardmäßig DENY_ALL. Angeblich vom Feed gelieferte PERMITTED-Tags reichen nicht.
+| Fachbereich | Tatsächlich vorhandene Host-Grenze | Verifikation / offene Grenze |
+| --- | --- | --- |
+| Produktdaten / Bon | `ProductReceiptClassifier` (synthetische Python↔Kotlin-TSV-Parität), unbestätigter `RecognitionReader.review`-Vorschlag; `HistoricalPaidPriceKernel`, `PaidReceiptPriceReader` und `FoodStore.saveHistoricalPaidPrice` für bestätigte private Bonpositionen | Bestätigter, idempotenter Room-8-Schreibpfad und synthetische Migrationen JVM-geprüft. Vollständige Produktidentifikation, Händler-/Filialkanonisierung und Geräte-OCR weiterhin offen |
+| Private Preisgeschichte | `HistoricalPaidComparisonReader` mit zeitkorrekter Audit-Sicht, Produktversions-ID und Kenntniszeitpunkt | Rein historisch, `HISTORICAL_PAID`, `isCurrentOffer=false`; kein heutiges Angebot, keine belegte frühere externe Kaufalternative |
+| Einkaufsintelligenz | `ShoppingUnitRateKernel`: exakte rationale Grundpreise/Mengen; `ShoppingValidityKernel`: Angebotstage, beobachtete Zeit, Kanal, bestätigter Filialscope als separater Vorschlagsfilter | Grundpreis 18/18 Python-Fixtures und 213/213 Host-JVM-Tests auf Code-SHA `70e684465e263d55522ab4ccd67112e6f0160e05` bestätigt. Validity-Port auf Folgecommit zunächst **CI offen**. Gesamter Vergleich, Bio, FEFO, Bedarf, Budget, Gebinde und Host-E2E fehlen |
+| Externe Preisdaten | `RetailerPolicy` (ADR-016/018) und `ExternalPriceBridge.project` mit getrennten Host-Quellenrechts-/APP_DISPLAY-Gates, standardmäßig `denyAll` | Keine Livequelle, keine produktive Anzeige oder Provideranbindung. Ein `PERMITTED`-Flag vom Feed allein ist kein Freigabenachweis |
+| Rezept-KI | Bestehende manuelle Rezept-/Herstellungs-/Verzehrfunktionen im Host, Fachmodul offline separat | Noch kein vollständiger Rezept-KI-Kotlin-Entwurfsport mit allen acht Kontextkombinationen, Allergengates und E2E-Bestätigung; kein On-Device-Modelltest |
 
-ADR-016: ALDI_NORD, ALDI_SUED, REWE, LIDL können fachlich gezielte Preisabfragen und veröffentlichte Angebote liefern; PENNY, KAUFLAND, EDEKA und NETTO_MD nur veröffentlichte Angebote. Diese Funktionen sind **keine** Live-Rechtsfreigabe.
+## Händlerfähigkeiten, Quellrechte und Scope
 
-ADR-014: APP_DISPLAY verlangt zusätzlich zur Source-Rechteangabe PERMITTED eine unabhängige zweckbezogene, belegte Host-Berechtigung. RESEARCH_ONLY und PRIVATE_USER_HISTORY können nie als externer Produktpreis im Display-Port erscheinen. Die private eigene Bonhistorie muss separat behandelt werden.
+ADR-018 / Policy 1.0.3: `ALDI_NORD`, `ALDI_SUED`, `REWE`, `LIDL` unterstützen fachlich gezielte reguläre Preisabfrage, veröffentlichte Einzelangebote und Angebotskatalog-Discovery; `PENNY`, `KAUFLAND`, `EDEKA`, `NETTO_MD` nur veröffentlichte Einzelangebote. `PUBLISHED_OFFER_CATALOG_DISCOVERY` ist bereits als dritte Capability in `RetailerPolicy` enthalten, wird aber im **Preis**-Port ausdrücklich mit `NON_PRICE_CAPABILITY` abgewiesen. Ein eigener Katalog-Indexadapter fehlt noch.
 
-Unbekannte Identität, Filialzuordnung, Menge, Währung, Preisbedingungen oder Gültigkeit sowie Quellen aus der Zukunft werden gesperrt, nicht als Nullwerte ersetzt. Warenpreis und Pfand bleiben getrennt; bei unbekanntem Pfand wird kein vollständiger Checkout-Cashbetrag behauptet. Ein Teil-Snapshot kann niemals den absoluten Marktbestpreis belegen. Kein Rot-/Orange-/Grau-Ersparnisvergleich wird in diesem ersten Schritt erzeugt.
+Die Händlerfähigkeit ist keine Quellenrechtsfreigabe. Für APP_DISPLAY müssen sowohl die fachliche Fähigkeit als auch eine unabhängige, vom Host bestätigte quellen- und zweckgebundene Genehmigung erfüllt sein. Der reine Shopping-Zeit-/Store-Filter ersetzt keines dieser Gates: Die Python-Referenz `engine._valid` lehnt explizit `RESTRICTED` ab, erteilt aber bei `UNKNOWN` allein **keine** Rechtefreigabe. Eine nicht kanonisierte freie Bon-Händlerbezeichnung ist keine bestätigte Retailer-/Store-ID. Keine unbestätigten Händlerpreise oder privaten historischen Bonpreise als heutige Angebote behandeln.
 
-**Legacy-Schutz:** Das bestehende FoodStore-/Room-7-Schema, die 1→7-Migrationen und die bisherigen Shopping-Ansichten wurden nicht verändert. Die vorhandenen manuellen Preisfassungen besitzen keine ausreichende externe Rechte-/Store-/SKU-Provenienz: Sie dürfen nicht still als freigegebene externe Feed-Beobachtungen umetikettiert werden.
+ADR-019: Keine ungefragten zusätzlichen separaten Rechtsrecherchen; vorhandene technische Zugriffs- und Anzeigesperren bleiben erhalten.
 
-## Fortsetzung in dieser Reihenfolge
+## Fortsetzung und Abnahmeregeln
 
-1. Vertrags-v1-DTOs auf Host-IDs, Mengen, Versionen, Store-Scopes und Zeitpunkte mappen. Erst nach unabhängiger Quellenfreigabe die echte Host-Rechte-Registry einführen. Keine v1.1-Produktion ohne Architekturfreigabe.
-2. Synthetische End-to-End-Kette: Bonentwurf → Version/Alias → bestätigter Kauf → genau eine historische positionierte Preisbeobachtung, idempotente Retries und sichere Storno-/Tombstones. Zwei verschiedene reale Käufe dürfen nicht zusammenfallen.
-3. Vergleich/Bedarf aus Python-Snapshots in eigenständiges Kotlin portieren und gegen dieselben synthetischen Referenzfixtures prüfen; Quelle/Filiale/Bio/Pfand/Coupon/Zeithorizont und Nichtbuchung als Pflichtgates.
-4. Rezept-KI als getrennte geprüfte Offline-Vorschlagsfunktion mit 8 unabhängigen Kontextflags, Host-Mengen- und Allergenprüfungen integrieren; lokal gehostetes Modell erst nach Geräte-/Datenschutznachweis.
-5. Bei einer späteren Schemaänderung Room-Version erhöhen und alle historischen IDs und Versionen durch explizite 1→neu-Migration erhalten. Keine produktive Sheet-Migration ohne Freigabe.
+1. Neu eingereichte isolierte Ports erst nach aktuellem Gradle-/JUnit-XML-/Python-Fixture-/Room-Schema-CI-Lauf auf exakt dem Code-SHA als JVM-geprüft bezeichnen. Keine alten CI-Ergebnisse auf neuen Code übertragen.
+2. Den bestätigten Händler-/Filial-Identitätsport, Produktversions- und Preisquellen-Gates mit Zeit-/Gültigkeitsprüfung **explizit** verketten; anschließend Rot-/Orange-/Grau-Vergleich und historische Alternativen mit identischen Python-/Kotlin-Fixtures, ohne Zukunftsdaten oder ungeprüfte Vollabdeckung.
+3. FEFO, 1-/7-/56-Tage-Bedarfe, Gebinde-/Budget-/Pfandprüfung und Einkaufsvorschläge als **nicht buchende** Host-Ports ergänzen.
+4. Offline-Rezeptentwurf → explizite Bestätigung → Herstellung → separater Verzehr als synthetische E2E-Kette mit Allergen-/Mengenprüfung und acht Kontextflags absichern.
+5. Echte Android-Geräte-/Emulator-Instrumentation für Kamera, OCR, UI und Offline-/Privacy-Eigenschaften gesondert durchführen. `:app:compileDebugAndroidTestKotlin` ist **nur Kompilierung**, kein Gerätetest; kein automatischer APK-Meilenstein.
 
-## Aktualisierte Händlerfähigkeiten und zweiter Offline-Port (31.10.2026)
-
-ADR-018 trennt drei Fähigkeiten: gezielte reguläre Preisabfrage (vier Händler), veröffentlichte Einzelangebotspreise (alle acht Händler) und Angebotskatalog-Discovery (vier Händler ALDI Nord/Süd, Lidl, REWE). Referenz: EG-Architecture@18794be978cc324e5366996178d368929a4a0fa4, policies/retailer-source-capabilities.v1.json Version 1.0.3, Blob 7ed2ef6918c8fdcdb9c482cb0a38eb38e5f6852c. Die dritte Fähigkeit ist im Hostcode noch zu ergänzen. ADR-019 verlangt die Fortsetzung technischer Integration ohne ungefragte neue Rechtsrecherchen; bestehende technische Quellen- und Anzeigegates bleiben erhalten.
-
-HistoricalPaidPriceKernel.kt prüft nur synthetische bestätigte Bonpreisfakten in einem reinen read-only Kotlin-Kern gegen die gepinnte Original-Python-Referenz; 35 gemeinsame Fixtures. Noch keine Room-/FoodStore-/UI-Anbindung, kein heutiges Marktangebot, keine vollständige Integration. Aktueller Teststand in docs/STATUS.md.
-
-Die neue `PUBLISHED_OFFER_CATALOG_DISCOVERY`-Fähigkeit ist nur eine Händler-Funktionsentscheidung. Der vorhandene `ExternalPriceBridge`-Preisport lehnt sie bewusst mit `NON_PRICE_CAPABILITY` ab und ruft keinen Preisdaten-Supplier auf. Ein gesonderter Katalogindex-Port mit eigenen Datums-/Quellen-/Rechteprüfungen ist noch nicht implementiert.
+Statusklassen: `OFFLINE_VERIFIED` für Fachreferenz, eng begrenzte JVM-Portprüfungen nur als solche, `JVM_INTEGRATION_VERIFIED` erst bei vollständiger Modul-/Host-Parität und E2E, `ANDROID_DEVICE_VERIFIED` erst nach wirklicher Instrumentation, `INTEGRATED` erst nach sämtlichen relevanten Gates. **Aktuell ist keines der vier Fachmodule insgesamt INTEGRATED.**
