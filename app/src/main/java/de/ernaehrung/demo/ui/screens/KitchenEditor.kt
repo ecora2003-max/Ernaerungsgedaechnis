@@ -20,6 +20,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
         catalog = state.versions,
         editingEnabled = !draftConsent.busy,
         onInvalidate = { model.clearRecipeDraftConsent() },
+        onDiscardPending = { model.discardPendingRecipeDraftConsent() },
         onReview = { json, request, facts, states ->
             model.prepareRecipeDraftConsent(json, request, facts, states)
         }
