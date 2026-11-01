@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III"
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261101090059247-5ii3udgo"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
 acquiredAtUtc: "2026-11-01T09:00:59.247Z"
 lastHeartbeatUtc: "2026-11-01T09:13:24.682Z"
-leaseExpiresAtUtc: "2026-11-01T09:23:24.682Z"
-task: "Android-Host-Integration III: nächster offener Schritt"
-workingBranch: "codex/recipe-consent-session-action-20261101-iii-5ii3udgo"
-lastReleasedAtUtc: "2026-11-01T08:47:22.596Z"
-lastReleasedCommit: "130faf1d8428fef54f40cf28edf2729f9a78926c"
-nextStep: "Main-CI prüfen, dann nächstes offenes Integrations-Gate umsetzen"
+leaseExpiresAtUtc: null
+task: "Keine aktive Integrationsarbeit"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
+lastReleasedCommit: "607ddc8f4c73bc6bb819b0883f16f998cdbff88d"
+nextStep: "PR #12 gemergt; unabhängige Main-CI 41292191448 334/334 JVM, 7/7 Room erfolgreich. Docs-only STATUS-Commit 607ddc8 CI PENDING. Als Nächstes echte Host-Evidence-Akquise, persistente Session-/Operation-Key-Wiederaufnahme und authentifizierte Nutzeraktion."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
