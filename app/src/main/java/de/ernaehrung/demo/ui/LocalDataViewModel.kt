@@ -224,8 +224,10 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
         confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>
     ) {
+        // Never cancel a consent that may already have committed inside Room.
+        // A second programmatic preview request must wait for the first transaction.
+        if (recipeConsentJob?.isActive == true) return
         recipePreviewJob?.cancel()
-        recipeConsentJob?.cancel()
         pendingRecipeDraft = null
         recipeDraftConsent.value = RecipeDraftConsentUiState(busy = true)
         val immutableFacts = confirmations.mapValues { (_, line) ->

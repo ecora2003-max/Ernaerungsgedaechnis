@@ -141,4 +141,44 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun competingPreviewCannotCancelConsentAlreadyInsideRoomTransaction() = runBlocking {
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val holdTransaction = java.util.concurrent.atomic.AtomicBoolean(false)
+        val guardedVm = LocalDataViewModel(FoodStore(db) {
+            if (holdTransaction.get()) {
+                entered.countDown()
+                check(release.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "synthetic consent transaction was not released"
+                }
+            }
+            at
+        })
+        guardedVm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = withTimeout(10_000) {
+            guardedVm.recipeDraftConsentState.first { !it.busy && it.review != null }
+        }
+        val digest = requireNotNull(preview.review?.approvalBasisDigest)
+        val session = requireNotNull(preview.sessionId)
+        holdTransaction.set(true)
+        guardedVm.confirmRecipeDraftConsent(digest, session)
+        try {
+            assertTrue("consent must reach the Room transaction",
+                entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            val revised = json.replace("\"title\":\"Reis\"", "\"title\":\"Reis neu\"")
+            guardedVm.prepareRecipeDraftConsent(revised, request, facts, states)
+            guardedVm.clearRecipeDraftConsent()
+            assertTrue(guardedVm.recipeDraftConsentState.value.busy)
+            assertEquals(session, guardedVm.recipeDraftConsentState.value.sessionId)
+        } finally {
+            release.countDown()
+        }
+        withTimeout(10_000) {
+            guardedVm.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        assertEquals(2, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+    }
 }
