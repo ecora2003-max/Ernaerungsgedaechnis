@@ -21,7 +21,10 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     if (draftConsent.review != null || draftConsent.error != null) {
         Panel {
             draftConsent.review?.let { review ->
-                RecipeDraftConsentReview(review, model::confirmRecipeDraftConsent)
+                RecipeDraftConsentReview(review,
+                    sessionKey = "${draftConsent.sessionId}:${draftConsent.attemptVersion}") { digest ->
+                    model.confirmRecipeDraftConsent(digest, draftConsent.sessionId)
+                }
             }
             if (draftConsent.busy) CircularProgressIndicator()
             draftConsent.error?.let { Hint(it) }
