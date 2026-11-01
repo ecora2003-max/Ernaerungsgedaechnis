@@ -63,17 +63,17 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 
 ```yaml
 state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat)"
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101T094355133Z-x6qybibs5k"
-acquiredAtUtc: "2026-11-01T09:43:55.133Z"
-lastHeartbeatUtc: "2026-11-01T10:06:00.984Z"
-leaseExpiresAtUtc: "2026-11-01T10:16:00.984Z"
-task: "Android-Hauptapp-Integration fortsetzen"
-workingBranch: "codex/recipe-untrusted-json-inspection-20261101-chat-x6qybibs5k"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Integration II"
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261101T111847375Z-v8f0yf79k"
+acquiredAtUtc: "2026-11-01T11:18:47.375Z"
+lastHeartbeatUtc: "2026-11-01T11:18:47.375Z"
+leaseExpiresAtUtc: "2026-11-01T11:33:47.375Z"
+task: "Android-Hauptapp-Integration fortsetzen; Recovery: vorheriger Automatisierungslauf 95350fb5-a720-832d-a5c2-e8c46cc66803 am 2026-11-01T10:48:11.372776Z abgeschlossen"
+workingBranch: null
 lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
 lastReleasedCommit: "607ddc8f4c73bc6bb819b0883f16f998cdbff88d"
-nextStep: "PR #12 gemergt; unabhängige Main-CI 41292191448 334/334 JVM, 7/7 Room erfolgreich. Docs-only STATUS-Commit 607ddc8 CI PENDING. Als Nächstes echte Host-Evidence-Akquise, persistente Session-/Operation-Key-Wiederaufnahme und authentifizierte Nutzeraktion."
+nextStep: "PR #13 und CI prüfen, sichere Host-Integration fortsetzen"
 ```
 
 **Hier arbeitet jetzt ein Chat!**
