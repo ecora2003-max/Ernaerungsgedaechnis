@@ -16,7 +16,10 @@ def main(schema_path: str, fixture_path: str) -> None:
     schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
     fixture = json.loads(Path(fixture_path).read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
-    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    checker = FormatChecker()
+    if "date-time" not in checker.checkers:
+        raise RuntimeError("date-time format assertion unavailable; install jsonschema[format]")
+    validator = Draft202012Validator(schema, format_checker=checker)
 
     def valid(obj: dict, label: str) -> None:
         failures = list(validator.iter_errors(obj))

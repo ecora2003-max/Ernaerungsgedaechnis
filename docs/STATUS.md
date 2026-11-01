@@ -439,3 +439,9 @@ Die echte KSP-generierte `8.json` wurde aus demselben CI-Artefakt extrahiert: **
 
 - Neu: synthetische, vom JVM-Importtest abgeleitete v1-recipe.draft-JSON-Fixture, tools/check_recipe_v1_schema.py mit 9 positiven (einschließlich aller acht Flagkombinationen) und 14 negativen Draft-2020-12-Schemafällen; Workflow lädt das Architektur-Schema von EG-Architecture@7f372f63e692e842444eea700540e9b585f7a5b8 und prüft die unveränderte Blob-SHA bedde4677342817fe6b883962c8dfbbd60100072 vor Ausführung. Nur CI-/Testcode, keine App-/Room-/UI-Änderung.
 - Noch **kein PASS** für dieses neue Gate: nach Commit den gesamten CI-Run und den tatsächlichen Schema-Schritt prüfen. Schema-CI prüft die Fixture, **nicht** jede beliebige Android-Laufzeitnachricht; vollständige Laufzeit-Schema-/Revalidator-Parität bleibt offen. Kein APK und keine produktiven Daten.
+
+
+### Korrektur des Schema-CI-Formatgates (erneuter CI ausstehend)
+
+- [CI 41274210865](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41274210865), Codecommit 6400c0451297595ab748486149e867042e610e9b: **ROT**, obwohl 303/303 JVM, 7/7 Migrationen, Lint und Android-Testkompilierung PASS. Neues Schema-Gate entdeckte, dass jsonschema ohne optionale Formatabhängigkeiten einen ungültigen meta.createdAt-Wert (yesterday) trotz FormatChecker nicht abweist; spätere Python-/Schema-Gates wurden übersprungen. Kein grüner Gesamtnachweis für 6400c045.
+- Korrektur: CI installiert jetzt explizit jsonschema[format]==4.23.0 und der Validator verlangt den registrierten date-time-Checker. Der negative Timestamp-Fall bleibt erhalten; kein Test entfernt oder abgeschwächt. Erst nach erneutem tatsächlichem CI-PASS als erfolgreich einstufen.
