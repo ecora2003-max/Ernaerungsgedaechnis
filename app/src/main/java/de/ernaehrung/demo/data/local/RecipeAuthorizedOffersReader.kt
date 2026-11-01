@@ -24,8 +24,15 @@ internal class RecipeAuthorizedOffersReader(
     private val permissions: ExternalPriceBridge.DisplayPermissionRegistry =
         ExternalPriceBridge.denyAll,
     private val stores: ShoppingOfferGate.ConfirmedStoreRegistry =
-        ShoppingOfferGate.denyAllStores
+        ShoppingOfferGate.denyAllStores,
+    private val articles: ArticleRegistry = denyAllArticles
 ) {
+    fun interface ArticleRegistry {
+        /** Independent host-reviewed article-to-version and package identity. */
+        fun isConfirmed(version: ProductVersionEntity,
+                        candidate: ExternalPriceBridge.Candidate,
+                        asOf: Instant): Boolean
+    }
     fun interface HostFactsRegistry {
         /** Independently confirmed host facts, never feed-supplied flags. */
         fun verified(observationId: String): ShoppingOfferGate.HostFacts?
@@ -42,6 +49,7 @@ internal class RecipeAuthorizedOffersReader(
     companion object {
         private const val PREFIX = "AUTHORIZED_HOST_OFFERS_V1"
         private const val MAX_OFFERS = 256
+        val denyAllArticles = ArticleRegistry { _, _, _ -> false }
 
         fun scopeId(scope: Scope): String = listOf(
             PREFIX, scope.retailer.name, scope.productVersionId,
@@ -58,6 +66,14 @@ internal class RecipeAuthorizedOffersReader(
     suspend fun read(scope: Scope, capturedAt: Instant): RecipeContextContentBinding.Snapshot? {
         if (!validScope(scope)) return null
         val version = dao.version(scope.productVersionId) ?: return null
+        val cutoff = capturedAt.toEpochMilli()
+        if (version.productId.isBlank() || version.recordedAt > cutoff ||
+            version.source == Source.DEMO ||
+            version.quality !in setOf(Quality.SOURCED, Quality.CONFIRMED)) return null
+        val latest = dao.allVersions().filter {
+            it.productId == version.productId && it.recordedAt <= cutoff
+        }.maxOfOrNull { it.revision } ?: return null
+        if (version.revision != latest) return null
         val request = ExternalPriceBridge.Request(
             retailer = scope.retailer,
             capability = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION,
@@ -82,10 +98,14 @@ internal class RecipeAuthorizedOffersReader(
             ExternalPriceBridge.VisiblePrice>>()
         for (candidate in candidates) {
             if (candidate.productVersionId != version.id) return null
+            val confirmedArticle = try {
+                articles.isConfirmed(version, candidate, capturedAt)
+            } catch (_: RuntimeException) { false }
+            if (!confirmedArticle) return null
             val facts = try { hostFacts.verified(candidate.observationId) }
                 catch (_: RuntimeException) { null } ?: return null
             // Feed-supplied productVersionConfirmed cannot establish identity.
-            // Exact current Room identity is checked above and used here.
+            // Current Room version AND independent host article review are required.
             val result = ShoppingOfferGate.evaluate(
                 request, candidate.copy(productVersionConfirmed = true),
                 facts, permissions, stores
