@@ -35,6 +35,7 @@ import java.time.OffsetDateTime
 @Composable
 internal fun RecipeDraftImportPanel(
     catalog: List<ProductVersionEntity>,
+    editingEnabled: Boolean = true,
     onInvalidate: () -> Unit,
     onReview: (String, Gate.Request,
         Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
@@ -56,6 +57,10 @@ internal fun RecipeDraftImportPanel(
     val labels = eligible.associate { it.id to "${it.name} · v${it.revision} · ${it.id}" }
 
     Fold("JSON-Rezeptentwurf importieren und manuell prüfen") {
+        if (!editingEnabled) {
+            Text("Eine Rezeptbestätigung wird gerade verarbeitet. Änderungen erst nach Abschluss möglich.")
+            return@Fold
+        }
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
         OutlinedTextField(
             value = json,
