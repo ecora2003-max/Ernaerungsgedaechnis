@@ -122,14 +122,19 @@ internal fun RecipeDraftImportPanel(
         OutlinedTextField(
             value = json,
             onValueChange = { next ->
-                checkpoint.discard()
-                invalidate()
-                imported = null
-                error = null
-                versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                allergenAnswers = emptyMap()
-                if (next.length <= 262_144) json = next
-                else error = "JSON zu groß (maximal 262144 Zeichen)."
+                // Reject oversized input without changing the current draft, revoking
+                // its pending review or deleting an explicitly saved checkpoint.
+                if (next.length > 262_144) {
+                    error = "JSON zu groß (maximal 262144 Zeichen)."
+                } else if (next != json) {
+                    checkpoint.discard()
+                    invalidate()
+                    imported = null
+                    error = null
+                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                    allergenAnswers = emptyMap()
+                    json = next
+                }
             },
             modifier = Modifier.fillMaxWidth().testTag("recipe_draft_json"),
             label = { Text("recipe.draft v1 JSON einfügen") },
