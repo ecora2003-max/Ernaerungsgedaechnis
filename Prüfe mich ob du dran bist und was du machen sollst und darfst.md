@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T09:00:59.247Z"
 lastHeartbeatUtc: "2026-11-01T09:00:59.247Z"
 leaseExpiresAtUtc: "2026-11-01T09:15:59.247Z"
 task: "Android-Host-Integration III: nächster offener Schritt"
-workingBranch: null
+workingBranch: "codex/recipe-consent-session-action-20261101-iii-5ii3udgo"
 lastReleasedAtUtc: "2026-11-01T08:47:22.596Z"
 lastReleasedCommit: "130faf1d8428fef54f40cf28edf2729f9a78926c"
 nextStep: "Main-CI prüfen, dann nächstes offenes Integrations-Gate umsetzen"
