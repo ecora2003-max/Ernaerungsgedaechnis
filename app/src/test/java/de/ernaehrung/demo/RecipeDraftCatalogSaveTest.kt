@@ -56,14 +56,14 @@ class RecipeDraftCatalogSaveTest {
     }
     private suspend fun preview(
         text: String = json,
-        facts: Map<String, Catalog.ConfirmedLine> = confirmed()
-    ) = store.previewRecipeDraftV1(text, request, facts, states)
+        facts: Map<String, Catalog.ConfirmedLine>? = null
+    ) = store.previewRecipeDraftV1(text, request, facts ?: confirmed(), states)
 
     private suspend fun save(
         key: String, expected: RecipeInput, text: String = json,
-        facts: Map<String, Catalog.ConfirmedLine> = confirmed(),
+        facts: Map<String, Catalog.ConfirmedLine>? = null,
         req: Gate.Request = request, confirmedSave: Boolean = true
-    ) = store.saveReviewedRecipeDraftV1(key, text, req, facts, states, expected, confirmedSave)
+    ) = store.saveReviewedRecipeDraftV1(key, text, req, facts ?: confirmed(), states, expected, confirmedSave)
 
     private suspend fun rejected(block: suspend () -> Unit) {
         try { block(); fail("Expected transaction to reject the recipe write") }
