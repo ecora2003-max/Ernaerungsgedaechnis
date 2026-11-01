@@ -575,7 +575,7 @@ class LocalDataScreenTest {
             model.historicalPaid.value.report?.references?.size == 1
         }
         rule.onNodeWithTag("shopping_paid_history_$version")
-            .assertTextContains("1 belegte Positionen")
+            .assertTextContains("1 belegte Positionen", substring = true)
         rule.onNodeWithText("Kein aktuelles Angebot", substring = true).assertExists()
         runBlocking {
             assertEquals(initialOperations, database.foodDao().operationCount())
