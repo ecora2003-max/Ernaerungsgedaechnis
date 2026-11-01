@@ -65,6 +65,13 @@ class RecipeDraftCatalogSaveTest {
         req: Gate.Request = request, confirmedSave: Boolean = true
     ) = store.saveReviewedRecipeDraftV1(key, text, req, facts ?: confirmed(), states, expected, confirmedSave)
 
+    private suspend fun consent(
+        key: String, expected: Gate.Review, text: String = json,
+        facts: Map<String, Catalog.ConfirmedLine>? = null,
+        req: Gate.Request = request, confirmedAction: Boolean = true
+    ) = store.recordReviewedRecipeDraftV1Consent(key, text, req,
+        facts ?: confirmed(), states, expected, confirmedAction)
+
     private suspend fun rejected(block: suspend () -> Unit) {
         try { block(); fail("Expected transaction to reject the recipe write") }
         catch (_: IllegalArgumentException) { }
@@ -75,6 +82,7 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
         assertNotNull(ready.input)
         val expected = ready
+        consent("recipe-save", expected)
         val before = dao.operationCount()
         val recipe = save("recipe-save", expected)
         assertEquals(recipe, save("recipe-save", expected))
@@ -98,6 +106,9 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun changedDraftOrChangedHostAllergenEvidenceCannotReusePreview() = runBlocking {
         val expected = preview()
+        listOf("changed-title", "changed-amount", "changed-allergen").forEach {
+            consent(it, expected)
+        }
         val before = dao.operationCount()
         rejected { save("changed-title", expected,
             text = json.replace("\"title\":\"Reis\"", "\"title\":\"Reis geändert\"")) }
@@ -113,6 +124,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun interveningCatalogRevisionInvalidatesPreviouslyReadyPreview() = runBlocking {
         val expected = preview()
+        consent("stale-save", expected)
         val productId = requireNotNull(dao.version(versionId)).productId
         store.rememberProduct("revision", ProductInput("Reis, neue Version",
             source = Source.USER, quality = Quality.CONFIRMED),
@@ -126,6 +138,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun sameRecipeInputButDifferentDraftIdentityOrMetadataCannotSave() = runBlocking {
         val expected = preview()
+        listOf("draft-id", "trace-id", "warnings").forEach { consent(it, expected) }
         val before = dao.operationCount()
         val changedDraftId = json.replace("\"draftId\":\"draft-save\"", "\"draftId\":\"other-draft\"")
         val changedTrace = json.replace("\"traceId\":\"save-test\"", "\"traceId\":\"new-trace\"")
@@ -143,6 +156,8 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun changedRestrictionsOrAllergenEvidenceCannotReuseOtherwiseIdenticalPreview() = runBlocking {
         val expected = preview()
+        consent("changed-restrictions", expected)
+        consent("changed-evidence", expected)
         val before = dao.operationCount()
         val fewerRestrictions = request.copy(confirmedRestrictions = emptySet())
         val alteredFacts = confirmed().mapValues {
@@ -158,6 +173,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun rawGenericReviewCannotMasqueradeAsHostBoundPreview() = runBlocking {
         val ready = preview()
+        consent("unbound", ready)
         val unbound = ready.copy(approvalBasisDigest = null)
         rejected { save("unbound", unbound) }
         assertNull(dao.operation("unbound"))
@@ -166,6 +182,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun operationKeyRejectsAnotherDraftWithIdenticalRecipeProjection() = runBlocking {
         val first = preview()
+        consent("same-projection-key", first)
         val saved = save("same-projection-key", first)
         val count = dao.operationCount()
         val otherJson = json.replace("\"draftId\":\"draft-save\"", "\"draftId\":\"another-draft\"")
@@ -180,6 +197,8 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun manualAndDraftRecipeOperationsCannotReplayEachOthersKeys() = runBlocking {
         val approved = preview()
+        consent("manual-key", approved)
+        consent("draft-key", approved)
         val input = requireNotNull(approved.input)
         val manual = store.saveRecipe("manual-key", input,
             reason = "Bestätigter Rezeptentwurf v1")
@@ -194,6 +213,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun reusedOperationKeyWithDifferentReviewedRecipeCannotOverwriteHistory() = runBlocking {
         val original = preview()
+        consent("same-key", original)
         val saved = save("same-key", original)
         val altered = json.replace("\"amount\":200", "\"amount\":201")
         val changedPreview = preview(altered)
@@ -202,5 +222,76 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(before, dao.operationCount())
         assertEquals(saved, dao.operation("same-key")!!.resultId)
         assertEquals(200_000L, dao.ingredients(saved).single().amount)
+    }
+
+    @Test fun absentOrUnconfirmedConsentCannotAuthorizeRecipeWrite() = runBlocking {
+        val ready = preview()
+        val before = dao.operationCount()
+        rejected { save("no-consent-ledger", ready) }
+        rejected { consent("unconfirmed-consent", ready, confirmedAction = false) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("no-consent-ledger"))
+        assertNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:unconfirmed-consent"))
+    }
+
+    @Test fun consentCheckpointIsDurableIdempotentAndDraftSpecific() = runBlocking {
+        val ready = preview()
+        val before = dao.operationCount()
+        val digest = consent("consent-audit", ready)
+        val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:consent-audit"))
+        assertEquals("RECIPE_DRAFT_CONSENT_V1", checkpoint.kind)
+        assertEquals(digest, checkpoint.resultId)
+        assertEquals(at, checkpoint.recordedAt)
+        assertEquals(digest, consent("consent-audit", ready))
+        assertEquals(before + 1, dao.operationCount())
+        assertNull(dao.operation("consent-audit"))
+        val changed = json.replace("\"draftId\":\"draft-save\"", "\"draftId\":\"changed-id\"")
+        rejected { consent("consent-audit", preview(changed), text = changed) }
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun consentSurvivesDatabaseRestartAndRevalidatedSaveIsIdempotent() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val name = "recipe-consent-restart-${System.nanoTime()}.db"
+        context.deleteDatabase(name)
+        try {
+            val firstDb = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
+            val facts: Map<String, Catalog.ConfirmedLine>
+            val ready: Gate.Review
+            try {
+                val firstStore = FoodStore(firstDb) { at }
+                val id = firstStore.rememberProduct("restart-product",
+                    ProductInput("Reis", source = Source.USER, quality = Quality.CONFIRMED))
+                val v = requireNotNull(firstDb.foodDao().version(id))
+                facts = mapOf("rice" to Catalog.ConfirmedLine("rice", v.id, v.revision,
+                    v.recordedAt, at, BaseUnit.GRAM, Gate.Basis.NET, Gate.State.RAW,
+                    allergens = mapOf("SOY" to false)))
+                ready = firstStore.previewRecipeDraftV1(json, request, facts, states)
+                assertNotNull(ready.approvalBasisDigest)
+                firstStore.recordReviewedRecipeDraftV1Consent("restart-save", json,
+                    request, facts, states, ready, true)
+                assertNull(firstDb.foodDao().operation("restart-save"))
+            } finally {
+                firstDb.close()
+            }
+            val secondDb = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
+            try {
+                val secondStore = FoodStore(secondDb) { at }
+                assertEquals(ready.approvalBasisDigest,
+                    secondDb.foodDao().operation("RECIPE_DRAFT_CONSENT_V1:restart-save")?.resultId)
+                val saved = secondStore.saveReviewedRecipeDraftV1("restart-save",
+                    json, request, facts, states, ready, true)
+                assertEquals(saved, secondStore.saveReviewedRecipeDraftV1("restart-save",
+                    json, request, facts, states, ready, true))
+                assertNotNull(secondDb.foodDao().recipeVersion(saved))
+                assertEquals(0, secondDb.foodDao().consumptionCount())
+                assertTrue(secondDb.foodDao().allPaidPrices().isEmpty())
+            } finally {
+                secondDb.close()
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
     }
 }
