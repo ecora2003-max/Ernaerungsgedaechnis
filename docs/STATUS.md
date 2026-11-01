@@ -4,6 +4,12 @@
 
 > **Historie vollständig erhalten:** [Integration-Statusarchiv vom 01.11.2026](archive/INTEGRATION_STATUS_HISTORY_2026-11-01.md) enthält die vorherigen rund 308.000 Zeichen **unverändert** samt chronologischen Entwicklungsschritten, Commit-/CI-Belegen und früheren Entscheidungspunkten. Dieses Dokument ist nur der kurze aktive Einstieg; beim Nachprüfen älterer Schritte gezielt das Archiv lesen. Alte Nachweise sind kein Ersatz für aktuelle Tests.
 
+## Integration III: Rezept-Consent-Zeitintegrität (01.11.2026)
+
+- [PR #48](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/48), **Code-/Test-HEAD `2044240fa11d530775400de1aa56860ed818352d`**, Squash-Merge `8dd74c8d99110e78dd04743557ad2a4fc4f35b33`: `FoodStore` verwirft negative oder zukünftig datierte Consent-Ledger-Einträge beim Wiederaufnehmen, beim idempotenten Bestätigungs-Retry und vor Rezept-Save. Zwei neue Room/Robolectric-Negativtests sichern ab, dass weder eine Wiederherstellung noch eine Rezeptbuchung daraus entsteht. Keine Schemaänderung, keine zusätzlichen Ist-Ereignisse.
+- **[PR-CI 41359988772](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41359988772) PASS auf exakt `2044240fa1`**: **401/401 JVM-Tests**, 0 Fehler, 0 Skips, **7/7 Room-Migrationen**, Lint, gepinnte Schema-/Python-Referenzgates und Android-Testkompilierung erfolgreich. **0 ausgeführte Android-Geräte-/Emulatortests**, keine APK. Dies ist eine begrenzte Replay-/Zeitintegritätskorrektur, **keine** unabhängige Authentifizierung der Nutzeraktion.
+- **Weiter:** unabhängig authentifizierte Nutzeraktion vor dem Rezept-Save tatsächlich anbinden, danach echte Android-/Privacy-E2E. Produktive autorisierte Host-Angebote nur nach bestätigten Source-/APP_DISPLAY-/Artikel-/Filialgates. Kein Fachmodul insgesamt `INTEGRATED`.
+
 ## Direkt ausführbare nächste Codeeinheit
 
 **Primär:** Unabhängig authentifizierte Nutzeraktionsprovenienz vor dem Rezept-Save anbinden und echte Android-/Privacy-E2E ausführen. Bei aktivem Kontext bleiben Speichervorgänge ausdrücklich gesperrt, bis alle kontextbezogenen und bestätigten FoodStore-Gates belegt sind. Die vorhandenen Room-STOCK-/SHOPPING-Lesestrecken und die neue autorisierte OFFERS-Hostcache-Lesestrecke sind nur JVM-/Room-geprüfte Teilintegration; produktive Host-Rechte-/Artikelregistries und eine echte Angebotsquelle fehlen weiterhin.
