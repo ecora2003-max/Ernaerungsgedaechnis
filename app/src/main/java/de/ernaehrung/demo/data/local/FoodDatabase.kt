@@ -161,6 +161,8 @@ internal interface FoodDao {
         FROM batches b JOIN product_versions v ON v.id = b.versionId
         JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     suspend fun planningBatches(): List<BatchRow>
+    /** Read-only stock history token for optimistic recipe-context revalidation. */
+    @Query("SELECT id FROM stock_movements ORDER BY id") suspend fun stockMovementIds(): List<String>
 
     @Query("SELECT * FROM storage_locations ORDER BY name") fun observeLocations(): Flow<List<StorageLocationEntity>>
     @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
