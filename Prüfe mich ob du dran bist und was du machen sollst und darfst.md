@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T14:15:36.760Z"
 lastHeartbeatUtc: "2026-11-01T14:15:36.760Z"
 leaseExpiresAtUtc: "2026-11-01T14:30:36.760Z"
 task: "Integrationsfortsetzung gemäß docs/ACCEPTANCE.md und INTEGRATION_ROADMAP"
-workingBranch: null
+workingBranch: "codex/integration-ii-authenticated-expiry-20261101-1419-23z5ei"
 lastReleasedAtUtc: "2026-11-01T14:05:51.563Z"
 lastReleasedCommit: "45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe"
 nextStep: "PR #21 merged ddfa9b1ec8beff4b902cdd8e018e5a55eb71059e; PR-CI 41313417623 and independent main CI 41313916538 PASS: 357/357 JVM, 7/7 Room, pinned references, lint/schema/Android test compilation. STATUS 45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe. Next: opt-in encrypted unconfirmed recipe Evidence-form resume with TTL/revocation and fresh Room/product-version revalidation; typed context digests, authenticated action provenance, cross-module purchase E2E and real Android device gates open."
