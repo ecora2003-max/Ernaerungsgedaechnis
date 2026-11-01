@@ -52,13 +52,10 @@ class RecipeDraftEncryptedImportCheckpointTest {
         store.discard()
         try {
             store.save(json)
-            time += 24L * 60 * 60 * 1000
-            assertEquals(json, store.load())
-            time++
-            assertNull(store.load())
             time = 9_999_999L
-            assertNull(store.load())
+            assertNull(store.load()) // Clock rollback fails closed without deleting evidence.
             time = 10_000_000L
+            assertEquals(json, store.load())
             val original = file.readBytes()
             val timestampTampered = original.clone()
             timestampTampered[11] = (timestampTampered[11].toInt() xor 1).toByte()
@@ -71,6 +68,15 @@ class RecipeDraftEncryptedImportCheckpointTest {
                 (ciphertextTampered.last().toInt() xor 1).toByte()
             file.writeBytes(ciphertextTampered)
             assertNull(store.load())
+            file.writeBytes(original)
+
+            time += 24L * 60 * 60 * 1000
+            assertEquals(json, store.load()) // Inclusive 24-hour boundary.
+            time++
+            assertNull(store.load())
+            assertFalse("Expired ciphertext must be deleted, not just hidden", file.exists())
+            time = 10_000_000L
+            assertNull(store.load()) // Rewinding the clock cannot resurrect an expired draft.
         } finally {
             store.discard()
         }
