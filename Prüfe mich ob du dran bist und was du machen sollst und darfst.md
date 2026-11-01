@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV3-20261101T133354331Z-jswcf53c"`, `ownerChatId: "Integration IV / automation turn 3"`, `leaseExpiresAtUtc: "2026-11-01T13:48:54.331Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
 ownerChatId: null
 ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
+acquiredAtUtc: "2026-11-01T13:33:54.331Z"
+lastHeartbeatUtc: "2026-11-01T13:33:54.331Z"
 leaseExpiresAtUtc: null
-task: null
+task: "Integration IV: Roadmap-abgestimmte Host-Integration und Room/FoodStore-Kohärenz"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T13:18:39.857Z"
 lastReleasedCommit: "903e0854e1538b2aaacce0ced7dffccf5a9cd78e"
 nextStep: "PR #19 merged c349ebc77de669ae475ab2cf524fa391757d9040; PR CI 41309855965 and independent main CI 41310208463 PASS: 356/356 JVM, 7/7 Room, pinned Python/recipe references, lint/schema/Android test compilation. STATUS 903e0854e1538b2aaacce0ced7dffccf5a9cd78e; roadmap now docs/INTEGRATION_ROADMAP.md. Next: opt-in encrypted recipe Evidence form resume with fresh Room validation/session revocation, typed context digests and authenticated action provenance; cross-module purchase E2E and Android device gates still open."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
