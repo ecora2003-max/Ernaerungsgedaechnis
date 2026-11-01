@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Der unten eingetragene erste Owner ist ein schon vor Einrichtung der Sperre gestarteter Automatisierungslauf; er kennt den neuen Mechanismus noch nicht und kann seine Sperre nicht selbst freigeben. Sobald dieser alte Lauf nachweislich beendet ist, darf die Sperre per geprüftem SHA freigegeben werden.
 
 ```yaml
-state: ACTIVE
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration-II-automation-run-9"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-run9-20261101071410520-rvinnu2f"
+state: FREE
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
 acquiredAtUtc: "2026-11-01T07:14:10.520Z"
-lastHeartbeatUtc: "2026-11-01T07:25:03.476Z"
-leaseExpiresAtUtc: "2026-11-01T07:55:03.476Z"
-task: "Persistierte unabhängige Nutzeraktions-/Consent-Provenienz für recipe.draft"
-workingBranch: "codex/recipe-draft-consent-ledger-20261101-run9"
-lastReleasedAtUtc: "2026-11-01T07:06:51.732Z"
-lastReleasedCommit: "d554519f39a7575def9da6230e5718fd7d46aff5"
-nextStep: "Implementieren und Room-/JVM-/CI-Tests prüfen"
+lastHeartbeatUtc: "2026-11-01T07:25:33.062Z"
+leaseExpiresAtUtc: null
+task: "Keine aktive Integrationsarbeit"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T07:25:33.062Z"
+lastReleasedCommit: "371722937e9d6d83524ba610b5bf863dbd8cee36"
+nextStep: "Main-Push-CI des Consent-Checkpoints unabhängig prüfen; danach UI-authentifizierte Nutzeraktion statt caller-Boolean, Kontext-Digests und Rezept-Revalidator-Parität"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
