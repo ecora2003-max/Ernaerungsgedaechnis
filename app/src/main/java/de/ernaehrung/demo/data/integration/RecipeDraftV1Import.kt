@@ -183,9 +183,28 @@ internal object RecipeDraftV1Import {
     fun review(
         json: String, request: Gate.Request, facts: Map<String, Gate.HostLine>,
         reviewedStates: Map<String, Gate.State>, now: OffsetDateTime,
-        context: Gate.Context<*, *, *>? = null
+        context: Gate.Context<*, *, *>? = null,
+        /** Independently timestamped host snapshot; never copied from model JSON. */
+        trustedContextSnapshotAt: OffsetDateTime? = null
     ): Gate.Review = try {
-        Gate.review(read(json, reviewedStates, now).draft, request, facts, context)
+        val imported = read(json, reviewedStates, now)
+        val base = Gate.review(imported.draft, request, facts, context)
+        val needsContext = request.flags.considerStock ||
+            request.flags.considerShopping || request.flags.considerOffers
+        when {
+            !needsContext || base.status == Gate.Status.BLOCKED -> base
+            trustedContextSnapshotAt == null -> base.copy(
+                status = Gate.Status.REVIEW_REQUIRED,
+                gaps = base.gaps + "TRUSTED_CONTEXT_SNAPSHOT_REQUIRED", input = null
+            )
+            imported.snapshotAt?.toInstant() != trustedContextSnapshotAt.toInstant() ->
+                base.copy(
+                    status = Gate.Status.BLOCKED,
+                    blockers = base.blockers + "CONTEXT_SNAPSHOT_TIME_MISMATCH",
+                    input = null
+                )
+            else -> base
+        }
     } catch (_: IllegalArgumentException) {
         Gate.Review(Gate.Status.BLOCKED, setOf("INVALID_RECIPE_DRAFT_V1"), emptySet(), null)
     }

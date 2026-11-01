@@ -50,8 +50,9 @@ class RecipeDraftV1ImportTest {
         json: String = sample, state: Map<String, Gate.State> = states,
         host: Map<String, Gate.HostLine> = facts,
         req: Gate.Request = request(),
-        context: Gate.Context<*, *, *>? = null
-    ) = Import.review(json, req, host, state, now, context)
+        context: Gate.Context<*, *, *>? = null,
+        trustedSnapshot: OffsetDateTime? = null
+    ) = Import.review(json, req, host, state, now, context, trustedSnapshot)
 
     @Test fun validV1DraftRequiresIndependentHostFactsAndExplicitSave() {
         val result = reviewed()
@@ -90,7 +91,9 @@ class RecipeDraftV1ImportTest {
                 Gate.Evidence("stock", true), Gate.Evidence("shopping", true),
                 Gate.Evidence("offers", true))
             assertEquals("bits=" + bits, Gate.Status.READY_FOR_EXPLICIT_SAVE,
-                reviewed(json, req = request(f), context = c).status)
+                reviewed(json, req = request(f), context = c,
+                    trustedSnapshot = if (bits == 0) null
+                        else OffsetDateTime.parse("2026-11-01T04:15:00+01:00")).status)
             if (bits != 0) {
                 assertEquals(Gate.Status.REVIEW_REQUIRED,
                     reviewed(json, req = request(f)).status)
@@ -98,6 +101,27 @@ class RecipeDraftV1ImportTest {
                     reviewed(json, req = request()).status)
             }
         }
+    }
+
+
+    @Test fun activeContextRequiresIndependentMatchingHostSnapshotTimestamp() {
+        val f = Gate.Flags(true, false, false)
+        val json = change("\"considerStock\":false", "\"considerStock\":true")
+        val c = Gate.context(f,
+            Gate.Evidence("stock", true), Gate.Evidence("shopping", true),
+            Gate.Evidence("offers", true))
+        val missing = reviewed(json, req = request(f), context = c)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, missing.status)
+        assertTrue("TRUSTED_CONTEXT_SNAPSHOT_REQUIRED" in missing.gaps)
+        assertNull(missing.input)
+        val wrong = reviewed(json, req = request(f), context = c,
+            trustedSnapshot = OffsetDateTime.parse("2026-11-01T04:15:01+01:00"))
+        assertEquals(Gate.Status.BLOCKED, wrong.status)
+        assertTrue("CONTEXT_SNAPSHOT_TIME_MISMATCH" in wrong.blockers)
+        assertNull(wrong.input)
+        val sameInstant = reviewed(json, req = request(f), context = c,
+            trustedSnapshot = OffsetDateTime.parse("2026-11-01T03:15:00Z"))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, sameInstant.status)
     }
 
     @Test fun contextFlagRequiresDatedSnapshotAndNoConsentLeakage() {
