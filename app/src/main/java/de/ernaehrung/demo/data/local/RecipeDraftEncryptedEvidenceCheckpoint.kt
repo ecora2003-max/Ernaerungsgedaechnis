@@ -121,7 +121,7 @@ internal class PrivateRecipeDraftEncryptedEvidenceCheckpoint(
         require(maps.all { map ->
             map.all { (key, value) -> validId(key) && value.length <= 128 }
         })
-        require(form.bases.values.all { it in setOf("NET", "DRAINED", "UNKNOWN") })
+        require(form.bases.values.all { it in setOf("NET", "DRAINED", "GROSS", "PER_PORTION", "PIECE", "UNKNOWN") })
         require(form.states.values.all { it in setOf("RAW", "COOKED") })
         require(form.allergens.size <= 256)
         require(form.allergens.keys.all { validId(it.first) && validId(it.second) })
