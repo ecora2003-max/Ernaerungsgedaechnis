@@ -37,6 +37,7 @@ internal fun RecipeDraftImportPanel(
     catalog: List<ProductVersionEntity>,
     editingEnabled: Boolean = true,
     onInvalidate: () -> Unit,
+    onDiscardPending: () -> Unit,
     onReview: (String, Gate.Request,
         Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         Map<String, Gate.State>) -> Unit
@@ -62,6 +63,19 @@ internal fun RecipeDraftImportPanel(
             return@Fold
         }
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
+        Text("Bei erneuter Eingabe bleibt nur der private, kurzlebige Vorgangsschlüssel erhalten; JSON und Prüfbelege werden nicht gespeichert.")
+        Button(
+            onClick = {
+                invalidate()
+                json = ""
+                imported = null
+                error = null
+                versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                allergenAnswers = emptyMap(); restrictionsText = ""
+                onDiscardPending()
+            },
+            modifier = Modifier.testTag("recipe_draft_discard_pending")
+        ) { Text("Unbestätigten Rezeptvorgang verwerfen") }
         OutlinedTextField(
             value = json,
             onValueChange = { next ->

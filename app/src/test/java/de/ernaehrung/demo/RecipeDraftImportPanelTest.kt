@@ -28,6 +28,30 @@ import org.robolectric.annotation.GraphicsMode
 class RecipeDraftImportPanelTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    @Test fun explicitDiscardClearsUnconfirmedFormAndInvokesHostForget() {
+        var invalidations = 0
+        var discards = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(),
+                            onInvalidate = { invalidations++ },
+                            onDiscardPending = { discards++ },
+                            onReview = { _, _, _, _ -> })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput("{draft}")
+        rule.onNodeWithTag("recipe_draft_discard_pending").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(1, discards)
+            assertEquals(2, invalidations)
+        }
+    }
+
     @Test fun malformedJsonNeverOpensEvidenceOrConsent() {
         var reviews = 0
         rule.runOnUiThread {
@@ -35,7 +59,7 @@ class RecipeDraftImportPanelTest {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
                     }
                 }
             }
@@ -66,7 +90,7 @@ class RecipeDraftImportPanelTest {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
                     }
                 }
             }

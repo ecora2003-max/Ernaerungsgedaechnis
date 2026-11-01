@@ -63,10 +63,23 @@ internal class PrivateRecipeDraftPendingKeyStore(
     // Only an opaque, short-lived checkpoint is read; never deserialize recipe JSON.
     private fun read(): Entry? {
         if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return null
-        val content = file.openRead().bufferedReader(StandardCharsets.UTF_8).use {
-            // A corrupted or oversized private file must never be treated as consent.
-            it.readText().takeIf { text -> text.length <= 256 }
-        } ?: return null
+        // Read at most 257 bytes: readText() would allocate an entire corrupted
+        // file before checking size. The checkpoint format is ASCII-only.
+        val content = try {
+            file.openRead().use { stream ->
+                val bytes = ByteArray(257)
+                var length = 0
+                while (length < bytes.size) {
+                    val count = stream.read(bytes, length, bytes.size - length)
+                    if (count <= 0) break
+                    length += count
+                }
+                if (length > 256) return null
+                String(bytes, 0, length, StandardCharsets.UTF_8)
+            }
+        } catch (_: java.io.IOException) {
+            return null // Fail closed on damaged private storage.
+        }
         val fields = content.trimEnd('\n').split('\n')
         if (fields.size != 4 || fields[0] != "v1" ||
             !DIGEST.matches(fields[1]) || !KEY.matches(fields[2])) return null

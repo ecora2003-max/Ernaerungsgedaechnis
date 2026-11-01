@@ -218,9 +218,17 @@ class LocalDataViewModel internal constructor(
         if (recipeConsentJob?.isActive == true) return
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
-        // Explicit editing discards an unconfirmed key, not a recorded Room consent.
-        pendingKeyStore.discard()
+        // Editing invalidates the gesture, never the short-lived opaque key:
+        // retyping JSON after process death must not erase its pending operation.
+        // A different revalidated digest replaces the key on the next preview.
         recipeDraftConsent.value = RecipeDraftConsentUiState()
+    }
+
+    /** Explicitly abandon the pending key. A Room consent is never undone. */
+    internal fun discardPendingRecipeDraftConsent() {
+        if (recipeConsentJob?.isActive == true) return
+        clearRecipeDraftConsent()
+        pendingKeyStore.discard()
     }
 
     /** Caller must gather independently confirmed mapping, basis, state and allergen facts.
