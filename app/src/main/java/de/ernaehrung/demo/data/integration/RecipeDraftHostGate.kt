@@ -19,7 +19,9 @@ internal object RecipeDraftHostGate {
         val stock: S?, val shopping: L?, val offers: O?,
         val gaps: Set<String>,
         /** Original host-approved selection; unbound caller-built contexts fail closed. */
-        val projectedFlags: Flags? = null
+        val projectedFlags: Flags? = null,
+        /** Optional typed content binding; absent means no content-level evidence. */
+        val contentBinding: RecipeContextContentBinding.Binding? = null
     )
 
     /** Inactive and unapproved contexts are never forwarded, including to optional local models. */
@@ -42,6 +44,23 @@ internal object RecipeDraftHostGate {
             gaps,
             flags
         )
+    }
+
+    /** Project typed, approved snapshots and bind their exact content, not just flags. */
+    fun typedContext(
+        flags: Flags,
+        snapshotAt: java.time.Instant,
+        stock: Evidence<RecipeContextContentBinding.Snapshot>?,
+        shopping: Evidence<RecipeContextContentBinding.Snapshot>?,
+        offers: Evidence<RecipeContextContentBinding.Snapshot>?
+    ): Context<RecipeContextContentBinding.Snapshot,
+        RecipeContextContentBinding.Snapshot, RecipeContextContentBinding.Snapshot> {
+        val projected = context(flags, stock, shopping, offers)
+        val binding = if (projected.gaps.isEmpty())
+            RecipeContextContentBinding.bind(flags, snapshotAt,
+                projected.stock, projected.shopping, projected.offers)
+        else null
+        return projected.copy(contentBinding = binding)
     }
 
     enum class UnitCode { G, ML, PORTION, PIECE }
@@ -100,6 +119,15 @@ internal object RecipeDraftHostGate {
             // Snapshot values alone do not prove which request selected them.
             // A projection from a different consent/flag combination is never reusable.
             if (context.projectedFlags != request.flags) blockers += "CONTEXT_CONSENT_MISMATCH"
+            // A bound typed projection must still match its original content.
+            // No binding is not treated as approval for the FoodStore write gate.
+            context.contentBinding?.let { binding ->
+                val matches = RecipeContextContentBinding.matches(binding, request.flags,
+                    context.stock as? RecipeContextContentBinding.Snapshot,
+                    context.shopping as? RecipeContextContentBinding.Snapshot,
+                    context.offers as? RecipeContextContentBinding.Snapshot)
+                if (!matches) blockers += "CONTEXT_CONTENT_CHANGED"
+            }
             // A missing requested snapshot is UNKNOWN, never an empty stock/list/offer.
             if (request.flags.considerStock && context.stock == null)
                 gaps += "STOCK_SNAPSHOT_UNAVAILABLE"
