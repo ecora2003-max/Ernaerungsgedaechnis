@@ -124,4 +124,39 @@ class RecipeRoomStockSnapshotTest {
                 release = ReleaseStatus.UNCHECKED), true)
         assertNull(store.readRecipeRoomStockSnapshot())
     }
+
+    @Test fun bestBeforeExpiryRequiresReviewWhileCurrentDayIsStillValid() = runBlocking {
+        store.receive("room-stock-current-best-before",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                bestBefore = "2026-11-01", release = ReleaseStatus.RELEASED), true)
+        assertNotNull(store.readRecipeRoomStockSnapshot())
+        store.receive("room-stock-expired-best-before",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                bestBefore = "2026-10-31", release = ReleaseStatus.RELEASED), true)
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun unconfirmedLocationIsNotUsableStock() = runBlocking {
+        val other = store.addLocation("unconfirmed-location", "Unbestätigt", false)
+        val op = "legacy-receipt-location"
+        db.foodDao().insertOperation(OperationEntity(op, "RECEIPT", op, at.toEpochMilli(), "legacy-batch"))
+        db.foodDao().insertBatch(BatchEntity("legacy-batch", versionId, other, op,
+            "2026-11-01", null, null, release = ReleaseStatus.RELEASED))
+        db.foodDao().insertMovement(StockMovementEntity("legacy-movement", "legacy-batch", op,
+            500L, MovementKind.RECEIPT, null, Source.USER, "Testdaten",
+            at.toEpochMilli(), occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+    }
+
+    @Test fun futureAcquiredLegacyBatchIsNotCurrentStock() = runBlocking {
+        val op = "legacy-future-receipt"
+        db.foodDao().insertOperation(OperationEntity(op, "RECEIPT", op, at.toEpochMilli(), "future-batch"))
+        db.foodDao().insertBatch(BatchEntity("future-batch", versionId, locationId, op,
+            "2026-11-02", null, null, release = ReleaseStatus.RELEASED))
+        db.foodDao().insertMovement(StockMovementEntity("future-movement", "future-batch", op,
+            500L, MovementKind.RECEIPT, null, Source.USER, "Testdaten",
+            at.toEpochMilli(), occurredOn = "2026-11-02"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+    }
 }
