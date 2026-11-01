@@ -29,6 +29,7 @@ import de.ernaehrung.demo.data.integration.RecipeDraftHostGate
 internal fun RecipeDraftConsentReview(
     review: RecipeDraftHostGate.Review,
     sessionKey: String? = null,
+    resetVersion: Int = 0,
     actionEnabled: Boolean = true,
     onConfirm: (approvalBasisDigest: String, sessionId: String?) -> Unit
 ) {
@@ -38,7 +39,7 @@ internal fun RecipeDraftConsentReview(
         input != null && digest != null && Regex("[0-9a-f]{64}").matches(digest)
     // Any change to the host-issued approval basis invalidates the gesture.
     // A pending/recorded host action must invalidate an old checked gesture.
-    var checked by remember(sessionKey, digest, input, ready, actionEnabled) { mutableStateOf(false) }
+    var checked by remember(sessionKey, resetVersion, digest, input, ready, actionEnabled) { mutableStateOf(false) }
     var submitted by remember(sessionKey, digest, input, ready, actionEnabled) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().testTag("recipe_draft_consent_review")) {
