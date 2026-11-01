@@ -63,17 +63,17 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 
 ```yaml
 state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration-II-automation-run-2"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-run2-20261101T182221734Z-2szz1kax"
-acquiredAtUtc: "2026-11-01T18:22:21.734Z"
-lastHeartbeatUtc: "2026-11-01T18:46:10.518Z"
-leaseExpiresAtUtc: "2026-11-01T18:56:10.518Z"
-task: "Continue four-module Android integration, article/store evidence UI path"
-workingBranch: "codex/integration-ii-private-history-evidence-20261101-r2-2szz1kax"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Integration-III-automation-run-1"
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-run1-20261101T190220148Z-qddyh5ni5"
+acquiredAtUtc: "2026-11-01T19:02:20.148Z"
+lastHeartbeatUtc: "2026-11-01T19:02:20.148Z"
+leaseExpiresAtUtc: "2026-11-01T19:17:20.148Z"
+task: "Recover completed Integration-II run; verify PR #32 CI, continue four-module Android integration"
+workingBranch: null
 lastReleasedAtUtc: "2026-11-01T18:18:14.671Z"
 lastReleasedCommit: "282924cb82dbe54b7b746200e8cb5d7cdf6a0ac5"
-nextStep: "PR #29 merged (94100f9f), main CI 41335249078 PASS 374 JVM / 7 Room; evidence in STATUS via PR #30. Next exclusive owner: integrate independently evidenced persistent article/store reviews into real receipt-price-shopping UI path with E2E/Android tests, or typed recipe context content digests. Four modules not yet INTEGRATED."
+nextStep: "Review PR #32 CI and merge if verified; proceed with next scoped Android integration task."
 ```
 
 **Hier arbeitet jetzt ein Chat!**
