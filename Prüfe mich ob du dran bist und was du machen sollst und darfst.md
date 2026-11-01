@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T13:50:48.038Z"
 lastHeartbeatUtc: "2026-11-01T13:50:48.038Z"
 leaseExpiresAtUtc: null
 task: "Continue integration and roadmap coherence check"
-workingBranch: null
+workingBranch: "codex/integration-chat-draft-expiry-20261101-1352"
 lastReleasedAtUtc: "2026-11-01T13:47:12.355Z"
 lastReleasedCommit: "0f4afa997a830a01d715574a96dcdf31d7de8e44"
 nextStep: "PR #20 merged 0f3bf5eab771ae8a32cc965de7da90c85e5eb25d; PR CI 41312032954 and independent main CI 41312482597 PASS: 357/357 JVM, 7/7 Room, pinned references, lint/schema/Android test compilation. STATUS 0f4afa997a830a01d715574a96dcdf31d7de8e44. Next: opt-in encrypted recipe Evidence form resume with TTL/revocation and fresh Room validation; typed context digests, authenticated action provenance, cross-module purchase E2E and real Android device gates open."
