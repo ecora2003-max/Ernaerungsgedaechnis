@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Ernährungsgedächtnis Integration II"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793556592535-blakfnk1"
-acquiredAtUtc: "2026-11-01T18:09:52.535Z"
-lastHeartbeatUtc: "2026-11-01T18:16:32.067Z"
-leaseExpiresAtUtc: "2026-11-01T18:31:32.067Z"
-task: "Review PR #29 and continue integration under exclusive lock"
-workingBranch: "codex/integration-ii-pr29-evidence-20261101-blakfnk1"
-lastReleasedAtUtc: "2026-11-01T18:00:52.278Z"
-lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
-nextStep: "Review PR #29; check CI and merge if safe, then verify main CI."
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T18:18:14.671Z"
+lastReleasedCommit: "282924cb82dbe54b7b746200e8cb5d7cdf6a0ac5"
+nextStep: "PR #29 merged (94100f9f), main CI 41335249078 PASS 374 JVM / 7 Room; evidence in STATUS via PR #30. Next exclusive owner: integrate independently evidenced persistent article/store reviews into real receipt-price-shopping UI path with E2E/Android tests, or typed recipe context content digests. Four modules not yet INTEGRATED."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
