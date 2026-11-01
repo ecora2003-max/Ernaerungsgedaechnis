@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
+state: "ACTIVE"
 ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: "Completed documentation PR #37 merge; no code changes"
-workingBranch: null
+ownerChatId: "Manual user-directed lease reliability maintenance"
+ownerRunToken: "chat-manual-manual-maintenance-20261101T20072231"
+acquiredAtUtc: "2026-11-01T20:07:22.310Z"
+lastHeartbeatUtc: "2026-11-01T20:07:22.310Z"
+leaseExpiresAtUtc: "2026-11-01T20:22:22.310Z"
+task: "Fix expired lease recovery and stop CI renewing completed automation runs"
+workingBranch: "pending"
 lastReleasedAtUtc: "2026-11-01T20:05:06.529Z"
 lastReleasedCommit: "c23554da6e0d73c127180102c1c10c6cbd7425e0"
-nextStep: "Implement bounded typed Room/Host recipe context snapshot reader and transactional revalidation, or independently verified article/store identity review; run full CI."
+nextStep: "Implement, test, review and merge bounded coordination reliability changes; release own lease on completion."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
