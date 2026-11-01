@@ -15,9 +15,15 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate
+import de.ernaehrung.demo.data.local.RecipeInput
 
 /** A device-authentication result is usable only for its original live UI preview. */
-internal data class RecipeCredentialChallenge(val digest: String, val sessionId: String)
+internal data class RecipeCredentialChallenge(
+    val digest: String,
+    val sessionId: String,
+    val reviewedInput: RecipeInput,
+    val resetVersion: Int
+)
 
 internal object RecipeCredentialResultGate {
     fun accepts(
@@ -25,14 +31,17 @@ internal object RecipeCredentialResultGate {
         resultCode: Int,
         review: RecipeDraftHostGate.Review?,
         sessionId: String?,
+        resetVersion: Int,
         actionEnabled: Boolean
     ): Boolean = challenge != null &&
         resultCode == Activity.RESULT_OK &&
         actionEnabled &&
         sessionId != null &&
         sessionId == challenge.sessionId &&
+        resetVersion == challenge.resetVersion &&
         review?.status == RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
         review.input != null &&
+        review.input == challenge.reviewedInput &&
         review.approvalBasisDigest == challenge.digest &&
         Regex("[0-9a-f]{64}").matches(challenge.digest)
 }
@@ -58,15 +67,21 @@ internal fun RecipeDraftDeviceCredentialReview(
     val latestReview by rememberUpdatedState(review)
     val latestSession by rememberUpdatedState(sessionKey)
     val latestEnabled by rememberUpdatedState(actionEnabled)
+    val latestResetVersion by rememberUpdatedState(resetVersion)
     val latestCallback by rememberUpdatedState(onAuthenticated)
-    var challenge by remember { mutableStateOf<RecipeCredentialChallenge?>(null) }
+    // A host transition invalidates even an in-flight OS result. In particular,
+    // a changed preview/session or disabled-then-reenabled action cannot reuse it.
+    var challenge by remember(sessionKey, resetVersion, review, actionEnabled) {
+        mutableStateOf<RecipeCredentialChallenge?>(null)
+    }
     var retryVersion by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val completed = challenge
         challenge = null // Consume every result, including cancellation and stale results.
         if (RecipeCredentialResultGate.accepts(
-                completed, result.resultCode, latestReview, latestSession, latestEnabled
+                completed, result.resultCode, latestReview, latestSession,
+                latestResetVersion, latestEnabled
             )) {
             error = null
             latestCallback(requireNotNull(completed).digest, completed.sessionId)
@@ -88,16 +103,19 @@ internal fun RecipeDraftDeviceCredentialReview(
                 "Gerätesperre bestätigen, um genau diese Rezeptvorschau freizugeben."
             )
         } else null
-        if (renderedSession == null || intent == null ||
+        val candidate = if (renderedSession != null && review.input != null) {
+            RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion)
+        } else null
+        if (intent == null ||
             !RecipeCredentialResultGate.accepts(
-                RecipeCredentialChallenge(digest, renderedSession),
-                Activity.RESULT_OK, review, sessionKey, actionEnabled
+                candidate, Activity.RESULT_OK, review, sessionKey,
+                resetVersion, actionEnabled
             )
         ) {
             error = "Eine sichere Gerätesperre und eine aktuelle Rezeptvorschau sind erforderlich."
             retryVersion++
         } else {
-            challenge = RecipeCredentialChallenge(digest, renderedSession)
+            challenge = requireNotNull(candidate)
             error = null
             try {
                 launcher.launch(intent)
