@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "integration-III-6ae65fdd040081919b0a5fb1c8962104-20261101T145820Z-r3-7a4e1"`, `ownerChatId: "Integration III automation run 3"`, `leaseExpiresAtUtc: "2026-11-01T15:13:44.894Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -64,11 +64,11 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 ```yaml
 state: "ACTIVE"
 ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: null
-ownerRunToken: null
+ownerChatId: "Integration III automation run 3"
+ownerRunToken: "integration-III-6ae65fdd040081919b0a5fb1c8962104-20261101T145820Z-r3-7a4e1"
 acquiredAtUtc: "2026-11-01T14:58:44.894Z"
 lastHeartbeatUtc: "2026-11-01T14:58:44.894Z"
-leaseExpiresAtUtc: null
+leaseExpiresAtUtc: "2026-11-01T15:13:44.894Z"
 task: "Continue four-module Android integration with focused tests"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T14:54:23.357Z"
