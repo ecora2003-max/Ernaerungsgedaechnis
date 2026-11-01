@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T12:28:34.983Z"
 lastHeartbeatUtc: "2026-11-01T12:28:34.983Z"
 leaseExpiresAtUtc: "2026-11-01T12:43:34.983Z"
 task: "Integration IV: Room/FoodStore Kotlin port coherence and E2E; implement next integration unit"
-workingBranch: null
+workingBranch: "codex/integration-iv-pending-key-reimport-20261101-r2-agkb5q"
 lastReleasedAtUtc: "2026-11-01T12:24:49.257Z"
 lastReleasedCommit: "5ac2b4fa5c87d067486df714fc33fb68b13b3de4"
 nextStep: "PR #16 gemergt 32acbdce7c036dd98b86537f6551ddaab659e18f; PR-CI 41305589197 und unabhängige Main-CI 41305903707 PASS: 347/347 JVM, 7/7 Room, Rezept-/Pythonreferenzen/Lint/Schema/Android-Testkompilierung. STATUS 5ac2b4fa5c87d067486df714fc33fb68b13b3de4. Nächste Einheit: nutzerkontrollierte Wiederaufnahme unbestätigter Formular-/Evidence-Eingaben und authentifizierte Nutzeraktionsprovenienz; danach Kontext-Content-Digests, Revalidator-Parität, Geräte-E2E."
