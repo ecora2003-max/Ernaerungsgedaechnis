@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Ernährungsgedächtnis Integration III"
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104:run3:20261101T170220Z:7c92f1"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
 acquiredAtUtc: "2026-11-01T17:02:21.656Z"
 lastHeartbeatUtc: "2026-11-01T17:12:31.809Z"
-leaseExpiresAtUtc: "2026-11-01T17:22:31.809Z"
-task: "Continue cross-module Android integration, identify next small verified unit"
-workingBranch: "codex/integration-iii-store-identity-20261101-r3-7c92f1"
-lastReleasedAtUtc: "2026-11-01T16:47:55.399Z"
-lastReleasedCommit: "7135fa1c126ceec5dd3cdd07bcea00a1526ea804"
-nextStep: "Review STATUS/ROADMAP and select next verifiable integration step"
+leaseExpiresAtUtc: null
+task: "Released after PR #28, final PR and independent main CI PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T17:18:39.330Z"
+lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
+nextStep: "PR #28 merged 6eb0861e; PR CI 41329799807 and independent main CI 41330322868 PASS (373/373 JVM, 7/7 Room, lint/schema/pinned Python/Android test compilation). STATUS b25dbd2b. Next: persistent independently verified article/store review provenance, real UI/OCR/offline/privacy/device E2E, or typed recipe context digests. All four module gates OPEN."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
