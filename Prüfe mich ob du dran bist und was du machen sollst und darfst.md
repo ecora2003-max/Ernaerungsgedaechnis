@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: null
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Ernährungsgedächtnis Integration II"
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793556592535-blakfnk1"
+acquiredAtUtc: "2026-11-01T18:09:52.535Z"
+lastHeartbeatUtc: "2026-11-01T18:09:52.535Z"
+leaseExpiresAtUtc: "2026-11-01T18:24:52.535Z"
+task: "Review PR #29 and continue integration under exclusive lock"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T18:00:52.278Z"
 lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
-nextStep: "Coordinated recovery after completed Integration IV run. PR #29 open with green PR-CI; next exclusive owner must review and merge under valid lock, then verify main CI. Resume roadmap and Android E2E."
+nextStep: "Review PR #29; check CI and merge if safe, then verify main CI."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
