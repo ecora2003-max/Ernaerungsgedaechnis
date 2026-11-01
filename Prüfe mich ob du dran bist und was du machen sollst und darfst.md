@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T19:02:20.148Z"
 lastHeartbeatUtc: "2026-11-01T19:02:20.148Z"
 leaseExpiresAtUtc: "2026-11-01T19:17:20.148Z"
 task: "Recover completed Integration-II run; verify PR #32 CI, continue four-module Android integration"
-workingBranch: null
+workingBranch: "codex/integration-iii-recipe-context-flags-20261101-r1-qddyh5ni5"
 lastReleasedAtUtc: "2026-11-01T18:18:14.671Z"
 lastReleasedCommit: "282924cb82dbe54b7b746200e8cb5d7cdf6a0ac5"
 nextStep: "Review PR #32 CI and merge if verified; proceed with next scoped Android integration task."
