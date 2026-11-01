@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat)"
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-2026-11-01T12:46:36.826Z-42gptwtl"
-acquiredAtUtc: "2026-11-01T12:46:36.826Z"
-lastHeartbeatUtc: "2026-11-01T12:58:25.882Z"
-leaseExpiresAtUtc: "2026-11-01T13:08:25.882Z"
-task: "Continue host recipe integration"
-workingBranch: "codex/integration-chat-encrypted-draft-20261101-42gptwtl"
-lastReleasedAtUtc: "2026-11-01T12:42:18.546Z"
-lastReleasedCommit: "421c7ecca607bb0a1e3fa4a0320178900dd01bee"
-nextStep: "PR #17 gemergt 1001d0b7303b30c272db8dbada190e9686bafefc; PR-CI 41306910693 und unabhängige Main-CI 41307346042 PASS: 351/351 JVM, 7/7 Room, Rezept-/Pythonreferenzen/Lint/Schema/Android-Testkompilierung. STATUS 421c7ecca607bb0a1e3fa4a0320178900dd01bee. Nächste Einheit: nutzerkontrollierte verschlüsselte Formular-/Evidence-Wiederaufnahme, authentifizierte Nutzeraktionsprovenienz, typisierte Kontext-Digests, Revalidator-Parität, Geräte-E2E."
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T13:03:21.800Z"
+lastReleasedCommit: "8e302cc4750936ac26f99b13ecb219645252cc52"
+nextStep: "PR #18 gemergt 9f33c631a8fdf2015fd0b7f6a59a265e53b7845e; PR-CI 41308626105 und unabhängige Main-CI 41309018425 PASS: 356/356 JVM, 7/7 Room, gepinnte Python-/Rezeptreferenzen, Lint/Schema/Android-Testkompilierung. STATUS 8e302cc4750936ac26f99b13ecb219645252cc52. Nächste Einheit: opt-in verschlüsselte Evidence-Formularwiederaufnahme mit frischer Host-/Room-Revalidierung und Session-Revocation; authentifizierte Nutzeraktionsprovenienz, typisierte Kontext-Digests, Revalidator-Parität, Android-Geräte-E2E."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
