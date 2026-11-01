@@ -148,4 +148,15 @@ class RecipeRoomStockSnapshotTest {
             at.toEpochMilli(), occurredOn = "2026-11-01"))
         assertNull(store.readRecipeRoomStockSnapshot())
     }
+
+    @Test fun futureAcquiredLegacyBatchIsNotCurrentStock() = runBlocking {
+        val op = "legacy-future-receipt"
+        db.foodDao().insertOperation(OperationEntity(op, "RECEIPT", op, at.toEpochMilli(), "future-batch"))
+        db.foodDao().insertBatch(BatchEntity("future-batch", versionId, locationId, op,
+            "2026-11-02", null, null, release = ReleaseStatus.RELEASED))
+        db.foodDao().insertMovement(StockMovementEntity("future-movement", "future-batch", op,
+            500L, MovementKind.RECEIPT, null, Source.USER, "Testdaten",
+            at.toEpochMilli(), occurredOn = "2026-11-02"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+    }
 }
