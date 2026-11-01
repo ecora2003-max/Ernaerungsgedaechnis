@@ -82,6 +82,29 @@ class RecipeDraftEncryptedImportCheckpointTest {
         }
     }
 
+    @Test fun forgedExpiredTimestampCannotDeleteAuthenticatedDraft() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = PrivateRecipeDraftEncryptedImportCheckpoint(
+            context, { 100_000_000L }, { keyA })
+        val file = File(context.noBackupFilesDir, "recipe-draft-encrypted-import-v1")
+        store.discard()
+        try {
+            store.save(json)
+            val authentic = file.readBytes()
+            val forged = authentic.clone()
+            // A forged issue time of zero looks >24 hours old, but its AAD tag
+            // no longer matches. It must not trigger irreversible deletion.
+            for (index in 4..11) forged[index] = 0
+            file.writeBytes(forged)
+            assertNull(store.load())
+            assertTrue("Unauthenticated expiry must not erase a valid draft", file.exists())
+            file.writeBytes(authentic)
+            assertEquals(json, store.load())
+        } finally {
+            store.discard()
+        }
+    }
+
     @Test fun oversizeCorruptionAndInvalidSaveFailClosed() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val store = PrivateRecipeDraftEncryptedImportCheckpoint(context, { 1_000L }, { keyA })
