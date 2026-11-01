@@ -68,6 +68,69 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             context, trustedContextSnapshotAt)
     }
 
+    /**
+     * Durable, separate confirmation checkpoint for one already reviewed draft.
+     * This records a host-side action and its time in the existing append-only
+     * operation ledger; it is NOT proof of a human/UI gesture. No recipe, stock,
+     * purchase or consumption is written by this checkpoint.
+     *
+     * The UI must eventually supply independently authenticated action provenance.
+     */
+    internal suspend fun recordReviewedRecipeDraftV1Consent(
+        key: String,
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        expectedPreview: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
+        confirmed: Boolean,
+        context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+    ): String = db.withTransaction {
+        require(confirmed && request.userConfirmedRecipeSave) {
+            "Rezeptentwurf nur nach separater Nutzeraktion bestätigen."
+        }
+        requireValidRecipeDraftSaveKey(key)
+        val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
+            reviewedStates, context, trustedContextSnapshotAt)
+        require(current.status ==
+            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+            current.input != null &&
+            expectedPreview.status ==
+                de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+            expectedPreview.input == current.input &&
+            expectedPreview.approvalBasisDigest != null &&
+            expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
+            "Bestätigung bezieht sich nicht auf die aktuelle geprüfte Rezeptvorschau."
+        }
+        val digest = requireNotNull(current.approvalBasisDigest)
+        val consentKey = recipeDraftConsentKey(key)
+        val hash = recipeDraftConsentFingerprint(key, digest)
+        val previous = dao.operation(consentKey)
+        if (previous != null) {
+            require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
+                previous.fingerprint == hash && previous.resultId == digest) {
+                "Bestätigungs-ID wurde bereits für einen anderen Rezeptentwurf verwendet."
+            }
+            return@withTransaction previous.resultId
+        }
+        dao.insertOperation(OperationEntity(consentKey, "RECIPE_DRAFT_CONSENT_V1",
+            hash, now(), digest))
+        digest
+    }
+
+    private fun requireValidRecipeDraftSaveKey(key: String) {
+        require(key.isNotBlank() && key.length <= 200 &&
+            !key.startsWith("RECIPE_DRAFT_CONSENT_V1:")) {
+            "Ungültige Rezeptvorgangs-ID."
+        }
+    }
+
+    private fun recipeDraftConsentKey(key: String) = "RECIPE_DRAFT_CONSENT_V1:$key"
+
+    private fun recipeDraftConsentFingerprint(key: String, digest: String) =
+        WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
+
     /** Always re-read current catalog and revalidate the exact previously reviewed input
      * inside the same transaction as the new recipe write. An AI draft, stale preview,
      * changed ingredient version or absent separate confirmation can never be saved here.
@@ -87,6 +150,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(confirmed && request.userConfirmedRecipeSave) {
             "Rezeptübernahme separat und ausdrücklich bestätigen."
         }
+        requireValidRecipeDraftSaveKey(key)
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
             reviewedStates, context, trustedContextSnapshotAt)
         require(current.status ==
@@ -98,6 +162,17 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             expectedPreview.approvalBasisDigest != null &&
             expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
             "Rezeptentwurf, Freigabebasis oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
+        }
+        // The confirmation must have been recorded by a separate host action
+        // and must survive app restart. A caller-provided Boolean alone is not enough.
+        val digest = requireNotNull(current.approvalBasisDigest)
+        val consent = dao.operation(recipeDraftConsentKey(key))
+        require(consent != null &&
+            consent.kind == "RECIPE_DRAFT_CONSENT_V1" &&
+            consent.resultId == digest &&
+            consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
+            consent.recordedAt <= now()) {
+            "Keine passende dauerhaft gespeicherte Rezeptbestätigung vorhanden."
         }
         // Bind the persisted operation fingerprint to the exact approved preview.
         // A second draft with the same projected recipe must not replay this key.
