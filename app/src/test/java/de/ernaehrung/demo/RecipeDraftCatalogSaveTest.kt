@@ -283,6 +283,10 @@ class RecipeDraftCatalogSaveTest {
                 val secondStore = FoodStore(secondDb) { at }
                 assertEquals(ready.approvalBasisDigest,
                     secondDb.foodDao().operation("RECIPE_DRAFT_CONSENT_V1:restart-save")?.resultId)
+                assertEquals("restart-save",
+                    secondStore.recordedRecipeDraftV1ConsentKey(
+                        requireNotNull(ready.approvalBasisDigest)))
+                assertNull(secondStore.recordedRecipeDraftV1ConsentKey("invalid-digest"))
                 val saved = secondStore.saveReviewedRecipeDraftV1("restart-save",
                     json, request, facts, states, ready, true)
                 assertEquals(saved, secondStore.saveReviewedRecipeDraftV1("restart-save",

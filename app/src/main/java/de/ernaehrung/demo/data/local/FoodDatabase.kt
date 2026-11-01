@@ -121,6 +121,9 @@ internal interface FoodDao {
     @Query("SELECT * FROM product_versions ORDER BY name, revision DESC") fun observeVersions(): Flow<List<ProductVersionEntity>>
 
     @Query("SELECT * FROM operations WHERE id = :id") suspend fun operation(id: String): OperationEntity?
+    @Query("""SELECT * FROM operations WHERE kind = 'RECIPE_DRAFT_CONSENT_V1'
+        AND resultId = :digest ORDER BY recordedAt, id""")
+    suspend fun recipeDraftConsentsForDigest(digest: String): List<OperationEntity>
     @Query("SELECT * FROM product_versions WHERE id = :id") suspend fun version(id: String): ProductVersionEntity?
     @Query("SELECT * FROM product_versions WHERE productId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestVersion(id: String): ProductVersionEntity?
     @Query("SELECT * FROM product_versions WHERE productId = :id ORDER BY revision") suspend fun versions(id: String): List<ProductVersionEntity>

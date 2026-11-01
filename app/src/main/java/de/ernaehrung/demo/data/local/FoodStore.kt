@@ -121,6 +121,27 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         digest
     }
 
+    /**
+     * Reopen an already recorded checkpoint using the existing append-only Room
+     * ledger. This is read-only: an unconfirmed session cannot be reconstructed,
+     * and a recovered checkpoint is not new evidence of a human action.
+     * Fingerprint verification prevents unrelated or malformed ledger entries
+     * from being interpreted as a matching recipe consent.
+     */
+    internal suspend fun recordedRecipeDraftV1ConsentKey(digest: String): String? {
+        if (!Regex("[0-9a-f]{64}").matches(digest)) return null
+        val prefix = "RECIPE_DRAFT_CONSENT_V1:"
+        return dao.recipeDraftConsentsForDigest(digest).firstOrNull { operation ->
+            if (!operation.id.startsWith(prefix)) false
+            else {
+                val key = operation.id.substring(prefix.length)
+                key.isNotBlank() && key.length <= 200 &&
+                    !key.startsWith(prefix) &&
+                    operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
+            }
+        }?.id?.substring(prefix.length)
+    }
+
     private fun requireValidRecipeDraftSaveKey(key: String) {
         require(key.isNotBlank() && key.length <= 200 &&
             !key.startsWith("RECIPE_DRAFT_CONSENT_V1:")) {
