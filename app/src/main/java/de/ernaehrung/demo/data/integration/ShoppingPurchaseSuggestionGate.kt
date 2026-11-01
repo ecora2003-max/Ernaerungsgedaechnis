@@ -76,6 +76,11 @@ internal object ShoppingPurchaseSuggestionGate {
         require(LocalDate.parse(needs.asOf) == shoppingDate) {
             "need snapshot and shopping date differ"
         }
+        // A later evidence cutoff could retroactively authorize prices which
+        // were not knowable on the shopping day (historical hindsight).
+        require(!asOf.toLocalDate().isAfter(shoppingDate)) {
+            "evidence cutoff after shopping date"
+        }
         val view = requireNotNull(needs.horizons[horizon]) { "unprojected need horizon" }
         require(offers.size <= 256) { "purchase candidate limit exceeded" }
         val ids = offers.map { it.input.candidate.observationId }
@@ -104,6 +109,10 @@ internal object ShoppingPurchaseSuggestionGate {
         var allMerchandiseKnown = snapshotComplete
         var allCheckoutKnown = snapshotComplete
         var allFeasible = snapshotComplete && budgetValid && capacityMl != null
+        // Per-food-type budgets and capacity are sequential. A review-only row
+        // is not a confirmed allocation; later rows cannot claim feasibility
+        // against a hypothetical remainder until the earlier row is resolved.
+        var priorRowNeedsReview = false
         val rows = mutableListOf<Row>()
         val orderedTotals = view.totals.sortedWith(
             compareBy<ShoppingNeedsKernel.Total> { it.foodTypeId }
@@ -131,6 +140,8 @@ internal object ShoppingPurchaseSuggestionGate {
                     input.request.purchaseOn != shoppingDate ||
                         input.request.asOf.toInstant() != asOf.toInstant() ->
                         "shopping date/evidence cutoff mismatch"
+                    input.candidate.observedAt.toLocalDate().isAfter(shoppingDate) ->
+                        "price observation postdates shopping day"
                     offer.minPacks <= 0 || (offer.maxPacks != null && offer.maxPacks < 0) ->
                         "invalid package count"
                     offer.minPacks > 1 && !offer.multibuyTermsConfirmedByHost ->
@@ -190,6 +201,8 @@ internal object ShoppingPurchaseSuggestionGate {
                     it.basis == key.basis && it.quantityToBuy > zero
             }.maxOfOrNull { LocalDate.parse(it.dueDate) }
             val reasons = mutableSetOf<String>()
+            if (priorRowNeedsReview)
+                reasons.add("earlier need unresolved; sequential budget/capacity provisional")
             if (rejected.isNotEmpty()) reasons.add("incomplete authorized candidate coverage")
             if (due == null) reasons.add("last demand date UNKNOWN")
             if (budgetValid && due != null && due.isAfter(requireNotNull(budget?.periodEnd))) {
@@ -207,6 +220,7 @@ internal object ShoppingPurchaseSuggestionGate {
                 allMerchandiseKnown = false
                 allCheckoutKnown = false
                 allFeasible = false
+                priorRowNeedsReview = true
                 continue
             }
             val candidates = valid.map {
@@ -271,6 +285,7 @@ internal object ShoppingPurchaseSuggestionGate {
                 remainingBudget >= zero
             if (!feasible) {
                 allFeasible = false
+                priorRowNeedsReview = true
                 issues.add("purchase proposal requires review: " + key.foodTypeId)
             }
             rows.add(Row(key.foodTypeId, key.unit, key.basis,

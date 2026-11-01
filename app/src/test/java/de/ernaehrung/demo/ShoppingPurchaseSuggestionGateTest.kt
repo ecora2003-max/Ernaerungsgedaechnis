@@ -213,4 +213,56 @@ class ShoppingPurchaseSuggestionGateTest {
             Suggest.suggest(projected, 28, day, cutoff, listOf(pack))
         }
     }
+
+    @Test fun laterCutoffCannotRetroactivelyAuthorizeShoppingDay() {
+        val projected = needs(demand("need", "milk", 10))
+        val pack = offer("offer", "milk", 10, 100)
+        val hindsight = day.plusDays(2).atTime(12, 0).atOffset(
+            java.time.ZoneOffset.ofHours(1))
+        val backdated = pack.copy(input = pack.input.copy(
+            request = pack.input.request.copy(asOf = hindsight),
+            candidate = pack.input.candidate.copy(observedAt = hindsight.minusHours(1))))
+        assertThrows(IllegalArgumentException::class.java) {
+            Suggest.suggest(projected, 7, day, hindsight, listOf(backdated),
+                budget, capacity, rights, stores, articles)
+        }
+    }
+
+    @Test fun laterObservedLocalDayCannotLeakThroughOffsetConversion() {
+        val projected = needs(demand("need", "milk", 10))
+        val localCutoff = day.atTime(22, 0).atOffset(
+            java.time.ZoneOffset.ofHours(1))
+        val pack = offer("offer", "milk", 10, 100)
+        val sourceClock = localCutoff.withOffsetSameInstant(
+            java.time.ZoneOffset.ofHours(14))
+        assertTrue(sourceClock.toLocalDate().isAfter(day))
+        val offsetEvidence = pack.copy(input = pack.input.copy(
+            request = pack.input.request.copy(asOf = localCutoff),
+            candidate = pack.input.candidate.copy(observedAt = sourceClock)))
+        val result = Suggest.suggest(projected, 7, day, localCutoff,
+            listOf(offsetEvidence), budget, capacity, rights, stores, articles)
+        assertEquals("REVIEW", result.rows.single().status)
+        assertEquals("price observation postdates shopping day",
+            result.rows.single().rejected["offer"])
+        assertNull(result.totalCheckoutCents)
+        assertTrue(result.sideEffects.isEmpty())
+    }
+
+    @Test fun unresolvedEarlierNeedBlocksLaterSequentialFeasibilityClaim() {
+        val projected = needs(demand("milk", "milk", 10),
+            demand("oat", "oat", 5))
+        val result = suggest(projected, listOf(
+            offer("milk-unknown", "milk", 10, 100, null),
+            offer("oat-verified", "oat", 5, 50, 0)))
+        assertEquals(listOf("REVIEW", "REVIEW"),
+            result.rows.map { it.status })
+        assertEquals("deposit/checkout cash UNKNOWN",
+            result.rows.first().rejected["milk-unknown"])
+        assertTrue(result.rows.last().reasons.contains(
+            "earlier need unresolved; sequential budget/capacity provisional"))
+        assertEquals(BigInteger.valueOf(50), result.knownCheckoutSubtotalCents)
+        assertNull(result.totalCheckoutCents)
+        assertNull(result.budgetRemainingCents)
+        assertTrue(result.sideEffects.isEmpty())
+    }
 }
