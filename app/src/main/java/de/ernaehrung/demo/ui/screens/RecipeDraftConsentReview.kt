@@ -34,8 +34,8 @@ internal fun RecipeDraftConsentReview(
     val ready = review.status == RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
         input != null && digest != null && Regex("[0-9a-f]{64}").matches(digest)
     // Any change to the host-issued approval basis invalidates the gesture.
-    var checked by remember(digest, ready) { mutableStateOf(false) }
-    var submitted by remember(digest, ready) { mutableStateOf(false) }
+    var checked by remember(digest, input, ready) { mutableStateOf(false) }
+    var submitted by remember(digest, input, ready) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().testTag("recipe_draft_consent_review")) {
         Text("Rezeptentwurf prüfen · keine Herstellung oder Verzehrbuchung")
