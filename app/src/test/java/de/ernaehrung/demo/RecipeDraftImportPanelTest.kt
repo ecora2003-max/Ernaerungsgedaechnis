@@ -8,7 +8,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -187,8 +190,8 @@ class RecipeDraftImportPanelTest {
         // the previous draft, even when the new JSON is still schema-valid.
         rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
         rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
-        rule.onNodeWithTag("recipe_draft_restrictions").assertTextEquals(
-            "Bestätigte Ausschlüsse, z. B. ALLERGEN:SOY, FOOD:milk")
+        rule.onNodeWithTag("recipe_draft_restrictions").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
