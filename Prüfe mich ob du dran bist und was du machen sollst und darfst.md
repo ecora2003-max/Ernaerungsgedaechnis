@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme, Fristverlängerung oder Freigabe.
 
 ```yaml
-state: "ACTIVE"
+state: "FREE"
 ownerAutomationId: null
-ownerChatId: "Documentation cleanup"
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "manual-doc-cleanup-20261101T205620529Z"
-acquiredAtUtc: "2026-11-01T20:56:20.529Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Clarify development instructions"
-workingBranch: "codex/docs-fast-start-20261101"
-lastReleasedAtUtc: null
-lastReleasedCommit: null
-nextStep: "Finish documentation and release"
+task: "Documentation entrypoint cleaned; code integration next"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T21:05:24.141Z"
+lastReleasedCommit: "ad2a3e5dd6e85ac03e250eea0699f4569811b5c9"
+nextStep: "Implement actual Room/Host recipe context snapshot integration with tests"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
