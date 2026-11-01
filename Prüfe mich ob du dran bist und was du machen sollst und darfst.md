@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: null
+state: "ACTIVE"
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+ownerChatId: "Integration IV"
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV-20261101143530709-nztctwfacm"
+acquiredAtUtc: "2026-11-01T14:35:30.709Z"
+lastHeartbeatUtc: "2026-11-01T14:35:30.709Z"
+leaseExpiresAtUtc: "2026-11-01T14:50:30.709Z"
+task: "Integration IV: Room/FoodStore, Hostports, versioned recipe evidence, E2E coherence"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T14:31:51.177Z"
 lastReleasedCommit: "882b68e0c995cdfc248a2bc4c521810565ad9752"
 nextStep: "PR #22 squash-merged 882b68e0c995cdfc248a2bc4c521810565ad9752; exact final PR head 4d325c6f3d90e4172a53d075ab433b5e680d30cb, CI 41316049019 PASS: 49 JUnit XML, 358/358 JVM, 7/7 Room, pinned schema/Python references, lint, Room schema, Android test compilation; new forged-expiry regression passed. Independent main-push CI for merge SHA not observable through available PR-only workflow lookup: PENDING, do not claim PASS. docs/STATUS.md includes code/test/CI evidence and next steps. Next: verify independent main CI, then opt-in encrypted unconfirmed recipe Evidence-form resume with TTL/revocation and fresh Room/product-version revalidation; typed context digests, authenticated action provenance, purchase E2E and real Android device gates remain open."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
