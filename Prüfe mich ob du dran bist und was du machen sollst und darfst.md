@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261101220058655-650khw8vqi"
 acquiredAtUtc: "2026-11-01T22:00:58.655Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Continue open integration PR or implement next Room/Host code unit"
-workingBranch: null
+task: "Fail-closed Room stock recipe context: location and shelf-life safety"
+workingBranch: "codex/integration-iii-stock-safety-20261101-2206"
 lastReleasedAtUtc: "2026-11-01T21:55:56.490Z"
 lastReleasedCommit: "642cd584c1a3e1b84e16a9c1df52b68528619cda"
 nextStep: "Continue SHOPPING/OFFERS Room/Host snapshots and authenticated recipe-save provenance"
