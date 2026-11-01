@@ -163,6 +163,35 @@ class RecipeDraftCatalogSaveTest {
         assertNull(dao.operation("unbound"))
     }
 
+
+    @Test fun operationKeyRejectsAnotherDraftWithIdenticalRecipeProjection() = runBlocking {
+        val first = preview()
+        val saved = save("same-projection-key", first)
+        val count = dao.operationCount()
+        val otherJson = json.replace("\"draftId\":\"draft-save\"", "\"draftId\":\"another-draft\"")
+        val other = preview(otherJson)
+        assertEquals(first.input, other.input)
+        assertNotEquals(first.approvalBasisDigest, other.approvalBasisDigest)
+        rejected { save("same-projection-key", other, text = otherJson) }
+        assertEquals(count, dao.operationCount())
+        assertEquals(saved, dao.operation("same-projection-key")!!.resultId)
+        assertEquals(saved, save("same-projection-key", first))
+    }
+
+    @Test fun manualAndDraftRecipeOperationsCannotReplayEachOthersKeys() = runBlocking {
+        val approved = preview()
+        val input = requireNotNull(approved.input)
+        val manual = store.saveRecipe("manual-key", input,
+            reason = "Bestätigter Rezeptentwurf v1")
+        rejected { save("manual-key", approved) }
+        val draft = save("draft-key", approved)
+        rejected { store.saveRecipe("draft-key", input,
+            reason = "Bestätigter Rezeptentwurf v1") }
+        assertEquals(manual, dao.operation("manual-key")!!.resultId)
+        assertEquals(draft, dao.operation("draft-key")!!.resultId)
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun reusedOperationKeyWithDifferentReviewedRecipeCannotOverwriteHistory() = runBlocking {
         val original = preview()
         val saved = save("same-key", original)

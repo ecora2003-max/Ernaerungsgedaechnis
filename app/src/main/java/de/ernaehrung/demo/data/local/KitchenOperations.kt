@@ -19,14 +19,27 @@ data class ProductionInput(val recipeVersionId: String, val actualPortions: Long
 
 internal class KitchenOperations(private val db: FoodDatabase, private val now: () -> Long) {
     private val dao = db.foodDao()
-    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String?, reason: String): String = db.withTransaction {
+    suspend fun saveRecipe(
+        key: String, input: RecipeInput, recipeId: String?, reason: String,
+        /** Only for a separately reviewed recipe.draft; null preserves all legacy retry hashes. */
+        approvalBasisDigest: String? = null
+    ): String = db.withTransaction {
         require(input.name.isNotBlank() && reason.isNotBlank()) { "Rezeptname und Änderungsgrund fehlen." }
         Amounts.positive(input.yieldPortions)
         require(input.ingredients.isNotEmpty()) { "Mindestens eine Zutat angeben." }
         require(input.ingredients.map { it.versionId }.distinct().size == input.ingredients.size) { "Gleiche Artikelversion nur einmal als Zutat angeben." }
         input.ingredients.forEach { it.amount?.let(Amounts::positive) }
-        val hash = fingerprint("RECIPE", recipeId, reason, input.name, input.yieldPortions, input.steps,
+        val recipeHash = fingerprint("RECIPE", recipeId, reason, input.name, input.yieldPortions, input.steps,
             input.storageInstructions, input.safetySource, input.ingredients.map { listOf(it.versionId, it.amount, it.note) })
+        // Preserve the existing fingerprint for all manual/legacy recipe operations.
+        // An approved AI draft must additionally bind its operation key to the exact
+        // reviewed draft/host-evidence digest, even when the RecipeInput is identical.
+        val hash = if (approvalBasisDigest == null) recipeHash else {
+            require(approvalBasisDigest.matches(Regex("[0-9a-f]{64}"))) {
+                "Ungültiger Rezept-Freigabedigest."
+            }
+            fingerprint("RECIPE_DRAFT_APPROVAL_BOUND_V1", recipeHash, approvalBasisDigest)
+        }
         replay(dao, key, hash)?.let { return@withTransaction it }
         val previous = recipeId?.let { requireNotNull(dao.latestRecipeVersion(it)) { "Rezept nicht gefunden." } }
         val identity = recipeId ?: id()
