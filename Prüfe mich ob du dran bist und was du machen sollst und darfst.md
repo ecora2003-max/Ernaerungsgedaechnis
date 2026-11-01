@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T08:16:36.648Z"
 lastHeartbeatUtc: "2026-11-01T08:16:36.648Z"
 leaseExpiresAtUtc: "2026-11-01T08:31:36.648Z"
 task: "Integration II: recipe UI consent gate"
-workingBranch: null
+workingBranch: "codex/recipe-consent-ui-gate-20261101-ii-ucdom24s1x"
 lastReleasedAtUtc: "2026-11-01T08:14:55.482Z"
 lastReleasedCommit: "16231c141304e1730002b93e2e7cf583ae49000e"
 nextStep: "Main-Push-CI für PR #9 Merge 9493f60a nachprüfen; danach UI-gebundene Rezept-Nutzeraktion, Kontext-Content-Digests und gepinnte Rezept-Revalidator-Parität"
