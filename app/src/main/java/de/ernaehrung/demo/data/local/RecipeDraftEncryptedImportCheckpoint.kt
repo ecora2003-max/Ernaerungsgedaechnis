@@ -33,10 +33,11 @@ internal interface RecipeDraftEncryptedImportCheckpoint {
 internal class PrivateRecipeDraftEncryptedImportCheckpoint(
     context: Context,
     private val now: () -> Long = System::currentTimeMillis,
-    private val keyProvider: () -> SecretKey = { androidKey() }
+    private val keyProvider: () -> SecretKey = { androidKey() },
+    fileName: String = "recipe-draft-encrypted-import-v1"
 ) : RecipeDraftEncryptedImportCheckpoint {
     private val file = AtomicFile(File(context.applicationContext.noBackupFilesDir,
-        "recipe-draft-encrypted-import-v1"))
+        fileName))
 
     override fun save(json: String) = synchronized(lock) {
         val bytes = json.toByteArray(StandardCharsets.UTF_8)
@@ -110,7 +111,7 @@ internal class PrivateRecipeDraftEncryptedImportCheckpoint(
 
     override fun discard() = synchronized(lock) { file.delete() }
 
-    private companion object {
+    internal companion object {
         val lock = Any()
         val MAGIC = byteArrayOf(0x52, 0x44, 0x49, 0x31) // RDI1
         const val HEADER_BYTES = 12
@@ -121,14 +122,14 @@ internal class PrivateRecipeDraftEncryptedImportCheckpoint(
         const val MAX_AGE_MS = 24L * 60 * 60 * 1000
         const val KEY_ALIAS = "eg.recipe.unconfirmed.import.v1"
 
-        fun androidKey(): SecretKey = synchronized(lock) {
+        fun androidKey(alias: String = KEY_ALIAS): SecretKey = synchronized(lock) {
             val store = KeyStore.getInstance("AndroidKeyStore")
             store.load(null)
-            val existing = store.getKey(KEY_ALIAS, null) as? SecretKey
+            val existing = store.getKey(alias, null) as? SecretKey
             if (existing != null) return@synchronized existing
             val generator = KeyGenerator.getInstance(
                 KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-            generator.init(KeyGenParameterSpec.Builder(KEY_ALIAS,
+            generator.init(KeyGenParameterSpec.Builder(alias,
                 KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
