@@ -30,6 +30,8 @@ internal data class RecipeDraftConsentUiState(
     val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review? = null,
     val busy: Boolean = false,
     val recordedDigest: String? = null,
+    val sessionId: String? = null,
+    val attemptVersion: Int = 0,
     val error: String? = null
 )
 
@@ -230,7 +232,8 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                         java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review)
                 }
-                recipeDraftConsent.value = RecipeDraftConsentUiState(review = review)
+                recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
+                    sessionId = pendingRecipeDraft?.operationKey)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -245,11 +248,12 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
      * Revalidation and the durable operation ledger remain inside FoodStore.
      * This is UI-action provenance, not an authenticated human identity.
      */
-    internal fun confirmRecipeDraftConsent(approvalBasisDigest: String) {
+    internal fun confirmRecipeDraftConsent(approvalBasisDigest: String, sessionId: String?) {
         val session = pendingRecipeDraft ?: return
         if (recipeDraftConsent.value.busy ||
             recipeDraftConsent.value.recordedDigest != null ||
-            session.review.approvalBasisDigest != approvalBasisDigest) return
+            session.review.approvalBasisDigest != approvalBasisDigest ||
+            session.operationKey != sessionId) return
         recipeDraftConsent.value = recipeDraftConsent.value.copy(busy = true, error = null)
         recipeConsentJob = viewModelScope.launch {
             try {
@@ -259,7 +263,8 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingRecipeDraft === session) {
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
-                        review = session.review, recordedDigest = recorded)
+                        review = session.review, recordedDigest = recorded,
+                        sessionId = session.operationKey)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -267,7 +272,9 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingRecipeDraft === session) {
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
-                        review = session.review, error = "Bestätigung nicht gespeichert: ${e.message}")
+                        review = session.review, sessionId = session.operationKey,
+                        attemptVersion = recipeDraftConsent.value.attemptVersion + 1,
+                        error = "Bestätigung nicht gespeichert: ${e.message}")
                 }
             }
         }
