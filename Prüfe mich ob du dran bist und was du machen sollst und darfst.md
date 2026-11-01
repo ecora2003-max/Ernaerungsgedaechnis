@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "manual-user-triggered"
-ownerChatId: "manual-integration-run-7q4m"
-ownerRunToken: "manual-integration-2026-11-01T20:04:34.616Z-7q4m"
-acquiredAtUtc: "2026-11-01T20:04:34.616Z"
-lastHeartbeatUtc: "2026-11-01T20:04:34.616Z"
-leaseExpiresAtUtc: "2026-11-01T20:19:34.616Z"
-task: "Continue bounded Android host integration"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: "Completed documentation PR #37 merge; no code changes"
 workingBranch: null
-lastReleasedAtUtc: "2026-11-01T20:03:18.988Z"
-lastReleasedCommit: "c811c5c191399651a9a55b86a0bf0fc292105ce0"
-nextStep: "Recovery after expired owner lease on 2026-11-01: PR #37 pending; next integration automation must acquire a fresh ACTIVE lease by CAS, check current main and CI before continuing."
+lastReleasedAtUtc: "2026-11-01T20:05:06.529Z"
+lastReleasedCommit: "c23554da6e0d73c127180102c1c10c6cbd7425e0"
+nextStep: "Implement bounded typed Room/Host recipe context snapshot reader and transactional revalidation, or independently verified article/store identity review; run full CI."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
