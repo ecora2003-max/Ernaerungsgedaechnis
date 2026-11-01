@@ -50,6 +50,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val expenseReader = ExpenseReader(db, now)
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
+    /** Read-only, transactionally consistent host snapshot; never a booking. */
+    internal suspend fun readRecipeRoomStockSnapshot():
+        de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =
+        db.withTransaction {
+            RecipeRoomStockSnapshotReader(dao).read(java.time.Instant.ofEpochMilli(now()))
+        }
+
 
     /**
      * Database-backed, read-only preview. Model-provided identities and allergy
@@ -239,8 +246,38 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 input = null, approvalBasisDigest = null
             )
         }
-        // No stable typed digest of active stock/list/offer context exists yet. Such
-        // previews may be inspected, but cannot authorize a write via this port.
+        // Re-read actual Room stock within this transaction, never trust caller-built
+        // typed content. Keep the original timestamp only for content comparison:
+        // the fresh read's revision and rows must match, and review expires in 5 min.
+        // Other active sources and user-action provenance still cannot authorize save.
+        if (request.flags.considerStock) {
+            val binding = context?.contentBinding
+            val original = context?.stock as?
+                de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot
+            val fresh = RecipeRoomStockSnapshotReader(dao)
+                .read(java.time.Instant.ofEpochMilli(trustedNow))
+            val ageSeconds = if (binding != null && fresh != null)
+                runCatching {
+                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
+                }.getOrNull() else null
+            val valid = context?.contentBindingRequired == true &&
+                binding?.stockDigest != null && original != null && fresh != null &&
+                original.capturedAt == binding.snapshotAt &&
+                ageSeconds != null && ageSeconds in 0L..300L &&
+                original == fresh.copy(capturedAt = original.capturedAt)
+            if (!valid) {
+                return review.copy(
+                    status = if (review.status ==
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.BLOCKED)
+                        review.status else
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.REVIEW_REQUIRED,
+                    gaps = review.gaps + "ROOM_STOCK_SNAPSHOT_STALE_OR_CHANGED",
+                    input = null, approvalBasisDigest = null
+                )
+            }
+        }
+        // Other active context sources lack a trusted Room reader; a digest alone
+        // is not an authenticated action or permission to write a recipe.
         val contextRequested = request.flags.considerStock ||
             request.flags.considerShopping || request.flags.considerOffers
         return if (review.status ==
