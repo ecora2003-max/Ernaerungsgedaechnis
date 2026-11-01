@@ -1,6 +1,10 @@
 package de.ernaehrung.demo
 
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -8,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.screens.RecipeDraftImportPanel
 import java.time.OffsetDateTime
@@ -30,8 +35,10 @@ class RecipeDraftImportPanelTest {
         rule.runOnUiThread {
             rule.activity.setContent {
                 DemoTheme {
-                    RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                        onReview = { _, _, _, _ -> reviews++ })
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
                 }
             }
         }
@@ -68,8 +75,8 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
         rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
-        rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performClick()
-        rule.onNodeWithTag("recipe_draft_manual_review").performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
         rule.runOnIdle { assertEquals(0, reviews) }
     }
