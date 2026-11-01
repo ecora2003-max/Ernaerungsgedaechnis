@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T22:40:08.353Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement authorized OFFERS Room/Host snapshots and regression tests"
-workingBranch: null
+workingBranch: "codex/recipe-authorized-offers-20261101-2240"
 lastReleasedAtUtc: "2026-11-01T22:36:19.993Z"
 lastReleasedCommit: "0741743977e5d585c824c2629bf0d9dceccdf3b4"
 nextStep: "Implement authorized OFFERS Room/Host snapshots with transactional review, then authenticated recipe-save action provenance and Android E2E"
