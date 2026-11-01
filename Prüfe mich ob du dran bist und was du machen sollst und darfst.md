@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Der unten eingetragene erste Owner ist ein schon vor Einrichtung der Sperre gestarteter Automatisierungslauf; er kennt den neuen Mechanismus noch nicht und kann seine Sperre nicht selbst freigeben. Sobald dieser alte Lauf nachweislich beendet ist, darf die Sperre per geprüftem SHA freigegeben werden.
 
 ```yaml
-state: FREE
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T06:49:07Z"
-lastHeartbeatUtc: "2026-11-01T07:03:34.674Z"
-leaseExpiresAtUtc: null
-task: "Keine aktive Integrationsarbeit"
+state: ACTIVE
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Integration-II-automation-run-9"
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-run9-20261101071410520-rvinnu2f"
+acquiredAtUtc: "2026-11-01T07:14:10.520Z"
+lastHeartbeatUtc: "2026-11-01T07:14:10.520Z"
+leaseExpiresAtUtc: "2026-11-01T07:44:10.520Z"
+task: "Persistierte unabhängige Nutzeraktions-/Consent-Provenienz für recipe.draft"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T07:06:51.732Z"
 lastReleasedCommit: "d554519f39a7575def9da6230e5718fd7d46aff5"
-nextStep: "Persistierte unabhängige Nutzeraktions-/Consent-Provenienz für recipe.draft; auf neuem Branch und mit CI/Room-Neustarttests"
+nextStep: "Implementieren und Room-/JVM-/CI-Tests prüfen"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
