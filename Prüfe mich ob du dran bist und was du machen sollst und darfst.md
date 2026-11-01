@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261101T231435863Z-jjtbyagueo"
 acquiredAtUtc: "2026-11-01T23:14:35.863Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe save provenance and transactional context integration"
-workingBranch: null
+task: "Require Android device credential before recipe consent UI callback"
+workingBranch: "integration-ii/recipe-device-credential-20261101-2314"
 lastReleasedAtUtc: "2026-11-01T23:07:29.752Z"
 lastReleasedCommit: "d9c027ee88ba2a2293981243d95e251c6a01a366"
 nextStep: "Implement independent authenticated user-action provenance before recipe save; run real Android/privacy E2E; approved host offers only with source/identity gates"
