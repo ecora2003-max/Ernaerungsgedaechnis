@@ -86,13 +86,6 @@ internal class PrivateRecipeDraftEncryptedImportCheckpoint(
             val issuedAt = ByteBuffer.wrap(header, MAGIC.size, 8).long
             val time = now()
             if (issuedAt < 0 || time < issuedAt) return@synchronized null
-            if (time - issuedAt > MAX_AGE_MS) {
-                // Expiry is irreversible: retaining the ciphertext indefinitely would
-                // defeat the promised 24-hour local retention limit. Do not delete on
-                // a transient Keystore failure or unauthenticated header corruption.
-                file.delete()
-                return@synchronized null
-            }
             val iv = payload.copyOfRange(HEADER_BYTES, HEADER_BYTES + IV_BYTES)
             val ciphertext = payload.copyOfRange(HEADER_BYTES + IV_BYTES, payload.size)
             if (ciphertext.size > MAX_PLAINTEXT_BYTES + TAG_BYTES)
@@ -102,6 +95,12 @@ internal class PrivateRecipeDraftEncryptedImportCheckpoint(
             cipher.updateAAD(header)
             val plain = cipher.doFinal(ciphertext)
             if (plain.isEmpty() || plain.size > MAX_PLAINTEXT_BYTES) return@synchronized null
+            // The timestamp is untrusted until GCM authenticates the header as AAD.
+            // A forged old timestamp must never delete a still-valid checkpoint.
+            if (time - issuedAt > MAX_AGE_MS) {
+                file.delete()
+                return@synchronized null
+            }
             String(plain, StandardCharsets.UTF_8)
         } catch (_: Exception) {
             // Includes IO, missing/invalidated Keystore key, and GCM tag failures.
