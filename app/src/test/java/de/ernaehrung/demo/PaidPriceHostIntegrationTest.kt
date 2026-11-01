@@ -1,6 +1,11 @@
 package de.ernaehrung.demo
 
 import android.content.Context
+import de.ernaehrung.demo.data.integration.RetailerPolicy as Policy
+import de.ernaehrung.demo.data.integration.ExternalPriceBridge as Price
+import de.ernaehrung.demo.data.integration.ShoppingOfferGate as OfferGate
+import de.ernaehrung.demo.data.integration.ShoppingPriceComparisonGate as CompareGate
+import de.ernaehrung.demo.data.integration.ShoppingPurchaseSuggestionGate as SuggestGate
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.ernaehrung.demo.data.local.*
@@ -239,40 +244,36 @@ class PaidPriceHostIntegrationTest {
             foodTypeId = "tofu", attributes = mapOf("state" to "raw"),
             quantity = de.ernaehrung.demo.data.integration.ShoppingUnitRateKernel.Quantity(
                 10, "g", "NET", 1, true))
-        val policy = de.ernaehrung.demo.data.integration.RetailerPolicy
-        val price = de.ernaehrung.demo.data.integration.ExternalPriceBridge
-        val offerGate = de.ernaehrung.demo.data.integration.ShoppingOfferGate
-        val compareGate = de.ernaehrung.demo.data.integration.ShoppingPriceComparisonGate
-        val rights = price.DisplayPermissionRegistry { source, ref, capability, on ->
+        val rights = Price.DisplayPermissionRegistry { source, ref, capability, on ->
             source == "synthetic-licensed-source" && ref == "synthetic-host-grant" &&
-                capability == policy.Capability.PUBLISHED_OFFER_COLLECTION && on == shoppingDay
+                capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION && on == shoppingDay
         }
-        val stores = offerGate.ConfirmedStoreRegistry { retailer, storeId, region, _ ->
-            retailer == policy.Retailer.LIDL && storeId == "canonical-test-store" &&
+        val stores = OfferGate.ConfirmedStoreRegistry { retailer, storeId, region, _ ->
+            retailer == Policy.Retailer.LIDL && storeId == "canonical-test-store" &&
                 region == "berlin"
         }
-        val articles = compareGate.ConfirmedArticleRegistry { productVersion, checked, _, _ ->
+        val articles = CompareGate.ConfirmedArticleRegistry { productVersion, checked, _, _ ->
             productVersion == version && checked.foodTypeId == "tofu" &&
                 checked.quantity == article.quantity
         }
-        fun observed(id: String, cents: Long, deposit: Long? = 0) : compareGate.Input {
-            val request = price.Request(policy.Retailer.LIDL,
-                policy.Capability.PUBLISHED_OFFER_COLLECTION, version, shoppingDay,
+        fun observed(id: String, cents: Long, deposit: Long? = 0) : CompareGate.Input {
+            val request = Price.Request(Policy.Retailer.LIDL,
+                Policy.Capability.PUBLISHED_OFFER_COLLECTION, version, shoppingDay,
                 cutoff, "canonical-test-store", "berlin")
-            val candidate = price.Candidate(id, version, true, policy.Retailer.LIDL,
-                policy.Capability.PUBLISHED_OFFER_COLLECTION, "synthetic-licensed-source",
-                price.Origin.EXTERNAL, price.RightsStatus.PERMITTED, "synthetic-host-grant",
+            val candidate = Price.Candidate(id, version, true, Policy.Retailer.LIDL,
+                Policy.Capability.PUBLISHED_OFFER_COLLECTION, "synthetic-licensed-source",
+                Price.Origin.EXTERNAL, Price.RightsStatus.PERMITTED, "synthetic-host-grant",
                 cutoff.minusHours(1), shoppingDay, shoppingDay.plusDays(2),
                 "canonical-test-store", "berlin", cents, deposit, 10_000,
-                price.Unit.GRAM, conditionsVerified = true)
-            return compareGate.Input(request, candidate,
-                offerGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE", false,
+                Price.Unit.GRAM, conditionsVerified = true)
+            return CompareGate.Input(request, candidate,
+                OfferGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE", false,
                     "STORE_CONFIRMED", true), article, false)
         }
         val target = observed("synthetic-target", 250)
         val cheaper = observed("synthetic-cheaper", 100, 25)
         val beforeProposals = dao.operationCount()
-        val comparison = compareGate.compare(target, listOf(cheaper),
+        val comparison = CompareGate.compare(target, listOf(cheaper),
             permissions = rights, stores = stores, articles = articles)
         assertTrue(comparison.targetEligible)
         assertEquals(listOf("synthetic-cheaper"),
@@ -285,17 +286,15 @@ class PaidPriceHostIntegrationTest {
                 "synthetic-need", "tofu", "2026-10-31",
                 ShoppingNeedsKernel.Quantity(10, "g", "NET", 1, true)))),
             listOf(7))
-        val suggestionGate =
-            de.ernaehrung.demo.data.integration.ShoppingPurchaseSuggestionGate
-        val pack = suggestionGate.Offer(cheaper, shelfLifeDays = 5,
+        val pack = SuggestGate.Offer(cheaper, shelfLifeDays = 5,
             storageClass = "DRY", packageVolumeMl = 100)
         fun propose(
-            offer: suggestionGate.Offer = pack,
-            permissions: price.DisplayPermissionRegistry = rights,
-            storeRegistry: offerGate.ConfirmedStoreRegistry = stores,
-            articleRegistry: compareGate.ConfirmedArticleRegistry = articles
-        ) = suggestionGate.suggest(needs, 7, shoppingDay, cutoff, listOf(offer),
-            suggestionGate.Budget(500, shoppingDay, shoppingDay.plusDays(6)),
+            offer: SuggestGate.Offer = pack,
+            permissions: Price.DisplayPermissionRegistry = rights,
+            storeRegistry: OfferGate.ConfirmedStoreRegistry = stores,
+            articleRegistry: CompareGate.ConfirmedArticleRegistry = articles
+        ) = SuggestGate.suggest(needs, 7, shoppingDay, cutoff, listOf(offer),
+            SuggestGate.Budget(500, shoppingDay, shoppingDay.plusDays(6)),
             mapOf("DRY" to 1000L), permissions, storeRegistry, articleRegistry)
         val positive = propose()
         assertEquals("FEASIBLE_NOT_PURCHASED", positive.rows.single().status)
@@ -308,12 +307,12 @@ class PaidPriceHostIntegrationTest {
 
         // Independent gates: source permission, canonical store, product version,
         // null deposit, future observation and a different physical store.
-        assertEquals("REVIEW", propose(permissions = price.denyAll).rows.single().status)
-        assertNull(propose(permissions = price.denyAll).totalCheckoutCents)
+        assertEquals("REVIEW", propose(permissions = Price.denyAll).rows.single().status)
+        assertNull(propose(permissions = Price.denyAll).totalCheckoutCents)
         assertEquals("REVIEW",
-            propose(storeRegistry = offerGate.denyAllStores).rows.single().status)
+            propose(storeRegistry = OfferGate.denyAllStores).rows.single().status)
         assertEquals("REVIEW",
-            propose(articleRegistry = compareGate.denyAllArticles).rows.single().status)
+            propose(articleRegistry = CompareGate.denyAllArticles).rows.single().status)
         assertNull(propose(offer = pack.copy(input = cheaper.copy(
             candidate = cheaper.candidate.copy(depositCents = null)))).totalCheckoutCents)
         assertNull(propose(offer = pack.copy(input = cheaper.copy(
