@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Der unten eingetragene erste Owner ist ein schon vor Einrichtung der Sperre gestarteter Automatisierungslauf; er kennt den neuen Mechanismus noch nicht und kann seine Sperre nicht selbst freigeben. Sobald dieser alte Lauf nachweislich beendet ist, darf die Sperre per geprüftem SHA freigegeben werden.
 
 ```yaml
-state: FREE
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T07:14:10.520Z"
-lastHeartbeatUtc: "2026-11-01T07:25:33.062Z"
-leaseExpiresAtUtc: null
-task: "Keine aktive Integrationsarbeit"
-workingBranch: null
+state: ACTIVE
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+ownerChatId: "Integration IV"
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca:2026-11-01T07:30:10.695Z:e9lcyx1cie"
+acquiredAtUtc: "2026-11-01T07:30:10.695Z"
+lastHeartbeatUtc: "2026-11-01T07:30:10.695Z"
+leaseExpiresAtUtc: "2026-11-01T08:00:10.695Z"
+task: "Main-CI prüfen; Rezept-Consent-UI-Authentifizierung und Integrationskohärenz"
+workingBranch: "pending"
 lastReleasedAtUtc: "2026-11-01T07:25:33.062Z"
 lastReleasedCommit: "371722937e9d6d83524ba610b5bf863dbd8cee36"
 nextStep: "Main-Push-CI des Consent-Checkpoints unabhängig prüfen; danach UI-authentifizierte Nutzeraktion statt caller-Boolean, Kontext-Digests und Rezept-Revalidator-Parität"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
