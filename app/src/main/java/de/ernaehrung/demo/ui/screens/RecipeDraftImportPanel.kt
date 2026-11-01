@@ -76,7 +76,7 @@ internal fun RecipeDraftImportPanel(
         }
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
         Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
-        Row {
+        Column {
             Button(
                 enabled = json.isNotBlank(),
                 modifier = Modifier.testTag("recipe_draft_encrypted_save"),
