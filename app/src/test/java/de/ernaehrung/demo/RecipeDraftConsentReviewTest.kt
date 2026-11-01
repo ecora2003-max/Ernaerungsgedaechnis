@@ -2,8 +2,6 @@ package de.ernaehrung.demo
 
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
