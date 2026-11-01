@@ -128,6 +128,48 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
+    @Test fun reimportAfterViewModelRecreationRecoversDurableConsentWithoutReplay() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val first = ready()
+        val digest = requireNotNull(first.review?.approvalBasisDigest)
+        val originalKey = requireNotNull(first.sessionId)
+        vm.confirmRecipeDraftConsent(digest, originalKey)
+        withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        val before = db.foodDao().operationCount()
+        assertEquals(2, before)
+
+        // A new ViewModel represents lost in-memory session state. It must
+        // discover the old operation key, not create a new consent gesture.
+        val recreated = LocalDataViewModel(FoodStore(db) { at })
+        recreated.prepareRecipeDraftConsent(json, request, facts, states)
+        val restored = withTimeout(10_000) {
+            recreated.recipeDraftConsentState.first { !it.busy && it.review != null }
+        }
+        assertEquals(digest, restored.recordedDigest)
+        assertEquals(originalKey, restored.sessionId)
+        recreated.confirmRecipeDraftConsent(digest, originalKey)
+        assertEquals(before, db.foodDao().operationCount())
+
+        // A different raw draft is a different approval basis, even when the
+        // projected ingredient/product version is otherwise unchanged.
+        recreated.prepareRecipeDraftConsent(
+            json.replace("\"title\":\"Reis\"", "\"title\":\"Reis neu\""),
+            request, facts, states)
+        val changed = withTimeout(10_000) {
+            recreated.recipeDraftConsentState.first {
+                !it.busy && it.review != null &&
+                    it.review?.approvalBasisDigest != digest
+            }
+        }
+        assertNull(changed.recordedDigest)
+        assertNotEquals(originalKey, changed.sessionId)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+    }
+
     @Test fun changingImportEvidenceInvalidatesOldSessionBeforeConsent() = runBlocking {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val old = ready()

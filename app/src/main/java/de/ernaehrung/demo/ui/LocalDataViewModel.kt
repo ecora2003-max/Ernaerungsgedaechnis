@@ -239,15 +239,23 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                 val review = store.previewRecipeDraftV1(json, immutableRequest,
                     immutableFacts, reviewedStates.toMap())
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                if (review.status ==
+                val ready = review.status ==
                     de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
-                    review.input != null && review.approvalBasisDigest != null) {
+                    review.input != null && review.approvalBasisDigest != null
+                // A fresh host revalidation may discover a durable consent from
+                // before process death. Never silently record a second checkpoint.
+                val recordedKey = if (ready)
+                    store.recordedRecipeDraftV1ConsentKey(requireNotNull(review.approvalBasisDigest))
+                else null
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (ready && recordedKey == null) {
                     pendingRecipeDraft = PendingRecipeDraft(
                         java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review)
                 }
                 recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
-                    sessionId = pendingRecipeDraft?.operationKey)
+                    recordedDigest = if (recordedKey != null) review.approvalBasisDigest else null,
+                    sessionId = recordedKey ?: pendingRecipeDraft?.operationKey)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
