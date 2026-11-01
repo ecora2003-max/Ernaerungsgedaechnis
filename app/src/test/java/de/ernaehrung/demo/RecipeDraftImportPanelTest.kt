@@ -95,6 +95,44 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals(null, checkpoint.saved) }
     }
 
+    @Test fun oversizedPasteDoesNotDiscardEncryptedDraftOrInvalidateCurrentReview() {
+        val checkpoint = object : RecipeDraftEncryptedImportCheckpoint {
+            var saved: String? = null
+            override fun save(json: String) { saved = json }
+            override fun load(): String? = saved
+            override fun discard() { saved = null }
+        }
+        var invalidations = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
+                            onInvalidate = { invalidations++ },
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput("{draft}")
+        rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
+        val before = invalidations
+        rule.onNodeWithTag("recipe_draft_json").performTextInput("x".repeat(262_145))
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("{draft}")
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        rule.runOnIdle {
+            assertEquals("{draft}", checkpoint.saved)
+            assertEquals(before, invalidations)
+        }
+        // A real accepted edit still revokes the old saved checkpoint.
+        rule.onNodeWithTag("recipe_draft_json").performTextInput("x")
+        rule.runOnIdle {
+            assertEquals(null, checkpoint.saved)
+            assertEquals(before + 1, invalidations)
+        }
+    }
+
     @Test fun malformedJsonNeverOpensEvidenceOrConsent() {
         var reviews = 0
         rule.runOnUiThread {
