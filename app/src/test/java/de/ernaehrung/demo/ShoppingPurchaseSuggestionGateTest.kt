@@ -184,6 +184,22 @@ class ShoppingPurchaseSuggestionGateTest {
         assertNull(distinct.totalCheckoutCents)
     }
 
+    @Test fun separatelyConfirmedQuantityBasesDoNotContaminateEachOthersCoverage() {
+        val projected = needs(demand("net", "milk", 10, "NET"),
+            demand("drained", "milk", 5, "DRAINED"))
+        val offers = listOf(offer("net-price", "milk", 10, 100, basis = "NET"),
+            offer("drained-price", "milk", 5, 50, basis = "DRAINED"))
+        val result = suggest(projected, offers)
+        assertEquals(listOf("DRAINED", "NET"), result.rows.map { it.basis })
+        assertEquals(listOf("FEASIBLE_NOT_PURCHASED", "FEASIBLE_NOT_PURCHASED"),
+            result.rows.map { it.status })
+        assertTrue(result.rows.all { it.rejected.isEmpty() && it.reasons.isEmpty() })
+        assertEquals(BigInteger.valueOf(150), result.totalCheckoutCents)
+        assertEquals(BigInteger.valueOf(150), result.totalMerchandiseCents)
+        assertEquals(BigInteger.valueOf(150), result.budgetRemainingCents)
+        assertTrue(result.sideEffects.isEmpty())
+    }
+
     @Test fun duplicateObservationsAndStaleSnapshotCannotBeOptimized() {
         val projected = needs(demand("need", "milk", 10))
         val pack = offer("same", "milk", 10, 100)
