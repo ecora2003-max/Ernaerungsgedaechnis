@@ -7,6 +7,9 @@ import de.ernaehrung.demo.data.integration.RecipeCatalogEvidence as Catalog
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
 import de.ernaehrung.demo.data.local.*
 import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
@@ -340,5 +343,34 @@ class RecipeDraftCatalogSaveTest {
         store = FoodStore(db) { at + 120_000L }
         assertNotNull(dao.recipeVersion(save("clock-shift", ready, text = futureJson)))
         assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun concurrentConsentAndSaveRetriesProduceOneRecipe() = runBlocking {
+        val ready = preview()
+        val facts = confirmed()
+        val before = dao.operationCount()
+        val consentDigests = (1..8).map {
+            async(Dispatchers.Default) {
+                store.recordReviewedRecipeDraftV1Consent(
+                    "concurrent-recipe", json, request, facts, states, ready, true)
+            }
+        }.awaitAll()
+        assertEquals(1, consentDigests.toSet().size)
+        assertEquals(ready.approvalBasisDigest, consentDigests.first())
+        assertEquals(before + 1, dao.operationCount())
+
+        val recipeIds = (1..8).map {
+            async(Dispatchers.Default) {
+                store.saveReviewedRecipeDraftV1(
+                    "concurrent-recipe", json, request, facts, states, ready, true)
+            }
+        }.awaitAll()
+        assertEquals(1, recipeIds.toSet().size)
+        val recipeId = recipeIds.first()
+        assertEquals(recipeId, dao.operation("concurrent-recipe")?.resultId)
+        assertEquals(before + 2, dao.operationCount())
+        assertEquals(1, dao.ingredients(recipeId).size)
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
     }
 }
