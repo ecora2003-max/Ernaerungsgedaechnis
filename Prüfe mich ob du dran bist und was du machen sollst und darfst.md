@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T16:19:31.508Z"
-lastHeartbeatUtc: "2026-11-01T16:29:52.183Z"
-leaseExpiresAtUtc: null
-task: "Released after PR #26 merged and independent main CI verified"
+state: "ACTIVE"
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+ownerChatId: "Integration IV"
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261101T1634-yhhgm83fg9"
+acquiredAtUtc: "2026-11-01T16:34:52.127Z"
+lastHeartbeatUtc: "2026-11-01T16:34:52.127Z"
+leaseExpiresAtUtc: "2026-11-01T16:49:52.127Z"
+task: "Integration IV host coherence and next integration unit"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T16:31:39.198Z"
 lastReleasedCommit: "776679c26f342acb636b6c3ecb28f65a435d8762"
 nextStep: "PR #26 merged 628fb0d3830776c3b18642acda5492346e42b1dd; final PR-CI 41325925372 and independent main CI 41326281039 PASS (364/364 JVM, 7/7 Room, pinned references, lint/schema/androidTest compilation). Roadmap d4376ded, STATUS 776679c2; following docs-only main CI PENDING. Next: real host canonical store/article registry and UI/OCR/offline/privacy/device E2E, or typed recipe context digests. Four module gates OPEN."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
