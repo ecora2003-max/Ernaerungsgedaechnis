@@ -46,3 +46,13 @@ class RecoverySafetyTests(unittest.TestCase):
         proof = replace(PROOF, run_id="another")
         self.assertEqual(propose_release(DOC, proof, NOW, "a" * 40)[1],
                          "RUN_ID_UNVERIFIED")
+
+    def test_other_automation_rejected(self):
+        proof = replace(PROOF, automation_id="other")
+        self.assertEqual(propose_release(DOC, proof, NOW, "a" * 40)[1],
+                         "OTHER_AUTOMATION")
+
+    def test_future_expiry_not_reclaimed(self):
+        early = dt.datetime(2026, 11, 1, 19, 56, tzinfo=dt.timezone.utc)
+        self.assertEqual(propose_release(DOC, PROOF, early, "a" * 40)[1],
+                         "LEASE_NOT_EXPIRED")
