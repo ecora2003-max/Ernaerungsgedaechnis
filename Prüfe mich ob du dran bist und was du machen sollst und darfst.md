@@ -67,10 +67,10 @@ ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
 ownerChatId: null
 ownerRunToken: "legacy-67f91d09-2058-8327-b2de-da2817d878cc"
 acquiredAtUtc: "2026-11-01T06:49:07Z"
-lastHeartbeatUtc: "2026-11-01T06:49:07Z"
-leaseExpiresAtUtc: "2026-11-01T07:19:07Z"
+lastHeartbeatUtc: "2026-11-01T06:56:39.550Z"
+leaseExpiresAtUtc: "2026-11-01T07:26:39.550Z"
 task: "Vor Sperreneinrichtung bereits laufende Integration (Chat), kein zweiter Integrator erlaubt"
-workingBranch: null
+workingBranch: "codex/recipe-draft-operation-key-binding-20261101"
 lastReleasedAtUtc: null
 lastReleasedCommit: null
 nextStep: "Nach Abschluss des legacy-Laufs anhand von GitHub STATUS.md weiterentwickeln"
