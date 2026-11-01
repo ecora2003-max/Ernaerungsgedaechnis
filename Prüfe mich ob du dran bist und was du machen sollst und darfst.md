@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: ACTIVE
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II 2026-11-01"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793520996648-ucdom24s1x"
+state: FREE
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
 acquiredAtUtc: "2026-11-01T08:16:36.648Z"
 lastHeartbeatUtc: "2026-11-01T08:31:40.880Z"
-leaseExpiresAtUtc: "2026-11-01T08:41:40.880Z"
-task: "Integration II: recipe UI consent gate"
-workingBranch: "codex/recipe-consent-ui-gate-20261101-ii-ucdom24s1x"
-lastReleasedAtUtc: "2026-11-01T08:14:55.482Z"
-lastReleasedCommit: "16231c141304e1730002b93e2e7cf583ae49000e"
-nextStep: "Main-Push-CI für PR #9 Merge 9493f60a nachprüfen; danach UI-gebundene Rezept-Nutzeraktion, Kontext-Content-Digests und gepinnte Rezept-Revalidator-Parität"
+leaseExpiresAtUtc: null
+task: "Keine aktive Integrationsarbeit"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T08:36:07.717Z"
+lastReleasedCommit: "5b5c2fcd96ef946e41a1a97b26c7cd54bb977c7f"
+nextStep: "PR #10 und Main-CI 329/329 grün; UI-Digest-Callback an echten ViewModel/FoodStore-Consent mit Host-Fakten und Operation-Key anbinden, danach Kontext-Digests/Revalidator-Parität"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
