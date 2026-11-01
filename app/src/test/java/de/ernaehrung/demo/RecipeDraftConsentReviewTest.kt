@@ -83,4 +83,23 @@ class RecipeDraftConsentReviewTest {
         rule.onNodeWithTag("recipe_draft_consent_confirm").assertDoesNotExist()
         rule.runOnIdle { assertEquals(emptyList<String>(), calls) }
     }
+    @Test fun identicalDigestInNewHostSessionRequiresFreshGesture() {
+        val session = mutableStateOf("first-session")
+        val calls = mutableListOf<String>()
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    RecipeDraftConsentReview(review(), sessionKey = session.value) { calls += it }
+                }
+            }
+        }
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
+        rule.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+        rule.runOnUiThread { session.value = "second-session" }
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
+        rule.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        rule.runOnIdle { assertEquals(listOf("a".repeat(64), "a".repeat(64)), calls) }
+    }
 }
