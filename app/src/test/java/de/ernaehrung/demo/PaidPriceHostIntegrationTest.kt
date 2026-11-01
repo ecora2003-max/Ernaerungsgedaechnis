@@ -163,7 +163,7 @@ class PaidPriceHostIntegrationTest {
 
     @Test fun receiptToPrivatePriceToUnbookedShoppingNeedNeverPromotesHistoryToLiveOffer() = runBlocking {
         val version = tofu()
-        val scan = store.saveReceiptScan("chain-scan", "TESTMARKT\\n30.10.2026\\nTOFU 2x 1,99\\nSUMME 3,98", "MANUAL_TEXT")
+        val scan = store.saveReceiptScan("chain-scan", "TESTMARKT\n30.10.2026\nTOFU 2x 1,99\nSUMME 3,98", "MANUAL_TEXT")
         val draft = store.reviewReceiptScan(scan)
         assertTrue(dao.purchases().isEmpty())
         assertTrue(dao.allPaidPrices().isEmpty())
