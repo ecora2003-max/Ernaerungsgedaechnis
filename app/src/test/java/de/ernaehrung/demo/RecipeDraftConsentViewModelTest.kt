@@ -79,15 +79,15 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review.status)
         val digest = requireNotNull(review.approvalBasisDigest)
         assertNull(vm.recipeDraftConsentState.value.recordedDigest)
-        vm.confirmRecipeDraftConsent("f".repeat(64))
+        vm.confirmRecipeDraftConsent("f".repeat(64), vm.recipeDraftConsentState.value.sessionId)
         assertEquals(1, db.foodDao().operationCount()) // only the product creation
         assertNull(vm.recipeDraftConsentState.value.recordedDigest)
-        vm.confirmRecipeDraftConsent(digest)
+        vm.confirmRecipeDraftConsent(digest, vm.recipeDraftConsentState.value.sessionId)
         val recorded = withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
         assertEquals(digest, recorded.recordedDigest)
-        vm.confirmRecipeDraftConsent(digest) // local duplicate gesture is ignored
+        vm.confirmRecipeDraftConsent(digest, vm.recipeDraftConsentState.value.sessionId) // local duplicate gesture is ignored
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().allPaidPrices().isEmpty())
@@ -101,11 +101,29 @@ class RecipeDraftConsentViewModelTest {
         vm.prepareRecipeDraftConsent(revised, request, facts, states)
         val newDigest = requireNotNull(ready().review?.approvalBasisDigest)
         assertNotEquals(oldDigest, newDigest)
-        vm.confirmRecipeDraftConsent(oldDigest)
+        vm.confirmRecipeDraftConsent(oldDigest, vm.recipeDraftConsentState.value.sessionId)
         assertEquals(1, db.foodDao().operationCount())
-        vm.confirmRecipeDraftConsent(newDigest)
+        vm.confirmRecipeDraftConsent(newDigest, vm.recipeDraftConsentState.value.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == newDigest }
+        }
+        assertEquals(2, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+    @Test fun sameDigestNewSessionRejectsOldCallbackToken() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val first = ready()
+        val digest = requireNotNull(first.review?.approvalBasisDigest)
+        val oldToken = requireNotNull(first.sessionId)
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val second = ready()
+        assertEquals(digest, second.review?.approvalBasisDigest)
+        assertNotEquals(oldToken, second.sessionId)
+        vm.confirmRecipeDraftConsent(digest, oldToken)
+        assertEquals(1, db.foodDao().operationCount())
+        vm.confirmRecipeDraftConsent(digest, second.sessionId)
+        withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
