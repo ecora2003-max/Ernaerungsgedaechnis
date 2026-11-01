@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV3-20261101T133354331Z-jswcf53c"`, `ownerChatId: "Integration IV / automation turn 3"`, `leaseExpiresAtUtc: "2026-11-01T13:48:54.331Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -64,11 +64,11 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 ```yaml
 state: "ACTIVE"
 ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: null
-ownerRunToken: null
+ownerChatId: "Integration IV / automation turn 3"
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV3-20261101T133354331Z-jswcf53c"
 acquiredAtUtc: "2026-11-01T13:33:54.331Z"
 lastHeartbeatUtc: "2026-11-01T13:33:54.331Z"
-leaseExpiresAtUtc: null
+leaseExpiresAtUtc: "2026-11-01T13:48:54.331Z"
 task: "Integration IV: Roadmap-abgestimmte Host-Integration und Room/FoodStore-Kohärenz"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T13:18:39.857Z"
