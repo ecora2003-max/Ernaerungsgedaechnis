@@ -20,6 +20,13 @@ data class RecipeNutritionUiState(val report: NutritionResult? = null, val error
 data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
 data class ExecutionUiState(val view: PlanExecutionView? = null, val error: String? = null)
 data class ShoppingUiState(val report: ShoppingReport? = null, val error: String? = null)
+/** Read-only, opt-in private paid-price history; never an offer or a shopping booking. */
+data class HistoricalPaidUiState(
+    val scope: HistoricalPaidComparisonScope? = null,
+    val report: HistoricalPaidComparison? = null,
+    val busy: Boolean = false,
+    val error: String? = null
+)
 data class ExpenseUiState(val report: ExpenseReport? = null, val error: String? = null)
 data class RecognitionUiState(val data: RecognitionData? = null, val error: String? = null)
 data class AliasUiState(val busy: Boolean = false, val match: AliasMatch? = null, val error: String? = null, val queryText: String = "")
@@ -133,6 +140,44 @@ class LocalDataViewModel internal constructor(
         val last = runCatching { java.time.LocalDate.parse(first).plusDays(days - 1).toString() }.getOrDefault(first)
         shoppingQuery.value = ShoppingScope(first, last, purchase.trim(), budgetId) to shoppingQuery.value.second + 1
     }
+    private val historicalPaidResult = MutableStateFlow(HistoricalPaidUiState())
+    val historicalPaid = historicalPaidResult.asStateFlow()
+    private var historicalPaidJob: kotlinx.coroutines.Job? = null
+
+    /** Explicit shopping-screen lookup; cutoff is never later than the target purchase day. */
+    fun showHistoricalPaidForShopping(
+        versionId: String, purchaseOn: String, nowMillis: Long = System.currentTimeMillis()
+    ) {
+        historicalPaidJob?.cancel()
+        val scope = try {
+            require(versionId.isNotBlank() && nowMillis >= 0L)
+            val day = java.time.LocalDate.parse(purchaseOn)
+            require(day.toString() == purchaseOn)
+            val endOfPurchaseDayUtc = day.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC)
+                .toInstant().toEpochMilli() - 1L
+            HistoricalPaidComparisonScope(versionId, purchaseOn,
+                minOf(nowMillis, endOfPurchaseDayUtc))
+        } catch (_: Exception) {
+            historicalPaidResult.value = HistoricalPaidUiState(
+                error = "Kaufdatum oder Produktversion für den privaten Preisvergleich ungültig.")
+            return
+        }
+        historicalPaidResult.value = HistoricalPaidUiState(scope = scope, busy = true)
+        historicalPaidJob = viewModelScope.launch {
+            try {
+                val report = store.historicalPaidComparison(scope)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                historicalPaidResult.value = HistoricalPaidUiState(scope = scope, report = report)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                historicalPaidResult.value = HistoricalPaidUiState(scope = scope,
+                    error = "Private Bezahlpreishistorie konnte nicht gelesen werden.")
+            }
+        }
+    }
+
     private val chosenExecutionEntry = MutableStateFlow("")
     val selectedExecutionEntry = chosenExecutionEntry.asStateFlow()
     val execution: StateFlow<ExecutionUiState> = chosenExecutionEntry.flatMapLatest { entry ->
