@@ -64,19 +64,19 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
+state: "ACTIVE"
 ownerAutomationId: null
-ownerChatId: null
+ownerChatId: "User-directed return to simple manual coordination"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: "Next integration: typed Room/Host snapshot source and transactional validation"
-workingBranch: null
+ownerRunToken: "manual-revert-20261101T2037-e2111a3428"
+acquiredAtUtc: "2026-11-01T20:38:42.685Z"
+lastHeartbeatUtc: "2026-11-01T20:38:42.685Z"
+leaseExpiresAtUtc: "2026-11-01T20:53:42.688Z"
+task: "Restore simple manual ACTIVE/FREE coordination; disable automatic lease mechanisms"
+workingBranch: "pending"
 lastReleasedAtUtc: "2026-11-01T20:34:52.088Z"
-lastReleasedCommit: "6d77ea7ce00347f0aa10c9cf2fd03a28d18c4224"
-nextStep: "Implement typed Room/Host snapshot source with transactional revalidation, branch/PR/CI."
+lastReleasedCommit: "e2111a34287a7e6d14af2f3b1008b1532be32294"
+nextStep: "Revert complicated run-ID gate; manual owner controls state; all automations continue."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
