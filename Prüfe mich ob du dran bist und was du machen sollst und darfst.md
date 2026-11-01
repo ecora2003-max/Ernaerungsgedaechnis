@@ -59,7 +59,7 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 
 ## 5. EINZIGER AKTUELLER SPERRSTATUS – am Ende der Datei belassen
 
-Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Der unten eingetragene erste Owner ist ein schon vor Einrichtung der Sperre gestarteter Automatisierungslauf; er kennt den neuen Mechanismus noch nicht und kann seine Sperre nicht selbst freigeben. Sobald dieser alte Lauf nachweislich beendet ist, darf die Sperre per geprüftem SHA freigegeben werden.
+Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
 state: FREE
