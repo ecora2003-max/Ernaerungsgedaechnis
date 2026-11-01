@@ -48,6 +48,22 @@ class RecipeDraftPendingKeyStoreTest {
         }
     }
 
+    @Test fun oversizedOrCorruptPrivateCheckpointIsRejectedAndReplaced() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = PrivateRecipeDraftPendingKeyStore(context) { 1_000_000L }
+        store.discard()
+        val file = File(context.noBackupFilesDir, "recipe-draft-pending-key-v1")
+        try {
+            file.writeText("x".repeat(1_000_000))
+            val newKey = store.resumeOrCreate(digestA)
+            assertTrue(newKey.isNotBlank())
+            assertTrue(file.readText().length <= 256)
+            assertEquals(newKey, store.resumeOrCreate(digestA))
+        } finally {
+            store.discard()
+        }
+    }
+
     @Test fun expiryClockRollbackAndInvalidDigestNeverAuthorizeReuse() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         var time = 10_000_000L
