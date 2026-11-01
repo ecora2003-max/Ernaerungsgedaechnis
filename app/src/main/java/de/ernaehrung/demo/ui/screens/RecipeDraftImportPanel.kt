@@ -142,7 +142,9 @@ internal fun RecipeDraftImportPanel(
                     error = "JSON zu groß (maximal 262144 Zeichen)."
                 } else if (next != json) {
                     checkpoint.discard()
-                    evidenceCheckpoint.discard()
+                    // Initial re-entry after process loss must not erase an opt-in
+                    // form for the same JSON. Subsequent edits revoke it.
+                    if (json.isNotBlank()) evidenceCheckpoint.discard()
                     invalidate()
                     imported = null
                     error = null
