@@ -60,7 +60,7 @@ class RecipeDraftCatalogSaveTest {
     ) = store.previewRecipeDraftV1(text, request, facts ?: confirmed(), states)
 
     private suspend fun save(
-        key: String, expected: RecipeInput, text: String = json,
+        key: String, expected: Gate.Review, text: String = json,
         facts: Map<String, Catalog.ConfirmedLine>? = null,
         req: Gate.Request = request, confirmedSave: Boolean = true
     ) = store.saveReviewedRecipeDraftV1(key, text, req, facts ?: confirmed(), states, expected, confirmedSave)
@@ -73,7 +73,8 @@ class RecipeDraftCatalogSaveTest {
     @Test fun exactReviewedInputSavesOnceAndNeverBooksStockOrConsumption() = runBlocking {
         val ready = preview()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
-        val expected = requireNotNull(ready.input)
+        assertNotNull(ready.input)
+        val expected = ready
         val before = dao.operationCount()
         val recipe = save("recipe-save", expected)
         assertEquals(recipe, save("recipe-save", expected))
@@ -85,7 +86,7 @@ class RecipeDraftCatalogSaveTest {
     }
 
     @Test fun missingSeparateConfirmationCannotWriteAnything() = runBlocking {
-        val expected = requireNotNull(preview().input)
+        val expected = preview()
         val before = dao.operationCount()
         rejected { save("no-confirm", expected, confirmedSave = false) }
         rejected { save("request-no-confirm", expected,
@@ -96,7 +97,7 @@ class RecipeDraftCatalogSaveTest {
     }
 
     @Test fun changedDraftOrChangedHostAllergenEvidenceCannotReusePreview() = runBlocking {
-        val expected = requireNotNull(preview().input)
+        val expected = preview()
         val before = dao.operationCount()
         rejected { save("changed-title", expected,
             text = json.replace("\"title\":\"Reis\"", "\"title\":\"Reis geändert\"")) }
@@ -111,7 +112,7 @@ class RecipeDraftCatalogSaveTest {
     }
 
     @Test fun interveningCatalogRevisionInvalidatesPreviouslyReadyPreview() = runBlocking {
-        val expected = requireNotNull(preview().input)
+        val expected = preview()
         val productId = requireNotNull(dao.version(versionId)).productId
         store.rememberProduct("revision", ProductInput("Reis, neue Version",
             source = Source.USER, quality = Quality.CONFIRMED),
@@ -123,11 +124,50 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED, preview().status)
     }
 
+    @Test fun sameRecipeInputButDifferentDraftIdentityOrMetadataCannotSave() = runBlocking {
+        val expected = preview()
+        val before = dao.operationCount()
+        val changedDraftId = json.replace("\"draftId\":\"draft-save\"", "\"draftId\":\"other-draft\"")
+        val changedTrace = json.replace("\"traceId\":\"save-test\"", "\"traceId\":\"new-trace\"")
+        val changedWarnings = json.replace("\"warnings\":[]", "\"warnings\":[\"Changed warning\"]")
+        for ((key, text) in listOf("draft-id" to changedDraftId,
+            "trace-id" to changedTrace, "warnings" to changedWarnings)) {
+            val current = preview(text)
+            assertEquals(expected.input, current.input)
+            assertNotEquals(expected.approvalBasisDigest, current.approvalBasisDigest)
+            rejected { save(key, expected, text = text) }
+            assertNull(dao.operation(key))
+        }
+        assertEquals(before, dao.operationCount())
+    }
+
+    @Test fun changedRestrictionsOrAllergenEvidenceCannotReuseOtherwiseIdenticalPreview() = runBlocking {
+        val expected = preview()
+        val before = dao.operationCount()
+        val fewerRestrictions = request.copy(confirmedRestrictions = emptySet())
+        val alteredFacts = confirmed().mapValues {
+            it.value.copy(allergens = mapOf("SOY" to false, "WHEAT" to false))
+        }
+        assertEquals(expected.input,
+            store.previewRecipeDraftV1(json, fewerRestrictions, confirmed(), states).input)
+        assertEquals(expected.input, preview(facts = alteredFacts).input)
+        rejected { save("changed-restrictions", expected, req = fewerRestrictions) }
+        rejected { save("changed-evidence", expected, facts = alteredFacts) }
+        assertEquals(before, dao.operationCount())
+    }
+
+    @Test fun rawGenericReviewCannotMasqueradeAsHostBoundPreview() = runBlocking {
+        val ready = preview()
+        val unbound = ready.copy(approvalBasisDigest = null)
+        rejected { save("unbound", unbound) }
+        assertNull(dao.operation("unbound"))
+    }
+
     @Test fun reusedOperationKeyWithDifferentReviewedRecipeCannotOverwriteHistory() = runBlocking {
-        val original = requireNotNull(preview().input)
+        val original = preview()
         val saved = save("same-key", original)
         val altered = json.replace("\"amount\":200", "\"amount\":201")
-        val changedPreview = requireNotNull(preview(altered).input)
+        val changedPreview = preview(altered)
         val before = dao.operationCount()
         rejected { save("same-key", changedPreview, text = altered) }
         assertEquals(before, dao.operationCount())

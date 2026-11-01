@@ -76,7 +76,9 @@ internal object RecipeDraftHostGate {
     data class Review(
         val status: Status, val blockers: Set<String>, val gaps: Set<String>,
         /** Null unless independently validated AND separately confirmed. No side effects. */
-        val input: RecipeInput?
+        val input: RecipeInput?,
+        /** Host-issued preview binding; null for generic, blocked or unbound reviews. */
+        val approvalBasisDigest: String? = null
     )
 
     fun review(

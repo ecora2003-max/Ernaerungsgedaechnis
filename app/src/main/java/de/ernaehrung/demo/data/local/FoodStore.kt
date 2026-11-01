@@ -79,7 +79,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
         confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
-        expectedPreview: RecipeInput,
+        expectedPreview: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
         confirmed: Boolean,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
         trustedContextSnapshotAt: java.time.OffsetDateTime? = null
@@ -91,8 +91,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             reviewedStates, context, trustedContextSnapshotAt)
         require(current.status ==
             de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
-            current.input != null && current.input == expectedPreview) {
-            "Rezeptentwurf oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
+            current.input != null &&
+            expectedPreview.status ==
+                de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+            expectedPreview.input == current.input &&
+            expectedPreview.approvalBasisDigest != null &&
+            expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
+            "Rezeptentwurf, Freigabebasis oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
         }
         kitchen.saveRecipe(key, current.input, null, "Bestätigter Rezeptentwurf v1")
     }
@@ -117,9 +122,50 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
             lines, dao.allVersions(), confirmations, trustedNow)
-        return de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
+        val review = de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
             json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
+        // No stable typed digest of active stock/list/offer context exists yet. Such
+        // previews may be inspected, but cannot authorize a write via this port.
+        val contextRequested = request.flags.considerStock ||
+            request.flags.considerShopping || request.flags.considerOffers
+        return if (review.status ==
+            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+            !contextRequested) {
+            review.copy(approvalBasisDigest = recipeDraftApprovalBasisDigest(
+                json, request, confirmations, reviewedStates, trustedContextSnapshotAt))
+        } else review
     }
+
+    /**
+     * Versioned, length-delimited SHA-256 over the exact incoming UTF-8 draft and
+     * all typed caller-provided approval inputs. The raw-byte digest is deliberately
+     * strict (even a whitespace change requires re-review); it is NOT a durable
+     * user-action attestation or canonical JSON/2020-12 schema validation.
+     */
+    private fun recipeDraftApprovalBasisDigest(
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        trustedContextSnapshotAt: java.time.OffsetDateTime?
+    ): String = WriteRules.fingerprint(
+        "RECIPE_DRAFT_APPROVAL_BASIS_V1", json,
+        listOf(request.flags.considerStock, request.flags.considerShopping,
+            request.flags.considerOffers, request.portions,
+            request.confirmedRestrictions.sorted(), request.userConfirmedRecipeSave),
+        confirmations.toSortedMap().map { (foodType, c) ->
+            listOf(foodType, c.foodTypeId, c.productVersionId, c.productRevision,
+                c.versionRecordedAt, c.confirmedAt, c.unit.name, c.basis?.name,
+                c.state?.name, c.pieceMassMilliGrams,
+                c.allergens.toSortedMap().map { (allergen, present) ->
+                    listOf(allergen, present)
+                })
+        },
+        reviewedStates.toSortedMap().map { (foodType, state) ->
+            listOf(foodType, state.name)
+        },
+        trustedContextSnapshotAt?.toInstant()?.toString()
+    )
 
     fun watchRecognition() = recognitionReader.watch()
     suspend fun recognitionData() = recognitionReader.data()
