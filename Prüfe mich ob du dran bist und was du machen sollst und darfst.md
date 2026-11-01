@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "manual-idle-recovery"
-ownerChatId: "Projektsteuerung – GitHub-Inaktivitätswächter"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "manual-idle-35m-20261101-261101214530355"
-acquiredAtUtc: "2026-11-01T21:45:30.355Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Install 35-minute inactivity recovery GitHub workflow, tests, documentation"
-workingBranch: "maintenance/integration-idle-recovery-35m-20261101"
-lastReleasedAtUtc: "2026-11-01T21:44:40.623Z"
-lastReleasedCommit: "9e20c8d01229acde8cc0ff4759f46f9344f12ee2"
-nextStep: "Implement real Room/Host SHOPPING and OFFERS snapshots and authenticated recipe-save action provenance"
+task: "35-minute GitHub inactivity recovery installed (PR #43; 14 tests PASS)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T21:55:56.490Z"
+lastReleasedCommit: "642cd584c1a3e1b84e16a9c1df52b68528619cda"
+nextStep: "Continue SHOPPING/OFFERS Room/Host snapshots and authenticated recipe-save provenance"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
