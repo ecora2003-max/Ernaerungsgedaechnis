@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T22:59:00.372Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Explicit recipe-save user action and transactional context validation"
-workingBranch: null
+workingBranch: "codex/integration-iii-consent-time-integrity-20261101-2259"
 lastReleasedAtUtc: "2026-11-01T22:49:16.190Z"
 lastReleasedCommit: "923a61c8fd27902d7559fc130a65f18acd9845c6"
 nextStep: "Authenticate independent recipe-save user action and Android/Privacy E2E; activate real approved host offers only with source/identity gates"
