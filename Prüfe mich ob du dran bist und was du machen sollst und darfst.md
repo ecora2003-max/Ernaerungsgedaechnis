@@ -51,19 +51,19 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme, Fristverlängerung oder Freigabe.
 
 ```yaml
-state: "FREE"
+state: "ACTIVE"
 ownerAutomationId: null
-ownerChatId: null
+ownerChatId: "Documentation cleanup"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "manual-doc-cleanup-20261101T205620529Z"
+acquiredAtUtc: "2026-11-01T20:56:20.529Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Run ended without code changes; integration pending"
-workingBranch: null
-lastReleasedAtUtc: "2026-11-01T20:47:27.598Z"
-lastReleasedCommit: "091f41a9b290dd2f4ab6f9f1474480fc44d750c5"
-nextStep: "Continue next bounded integration unit with branch, tests, CI and PR."
+task: "Clarify development instructions"
+workingBranch: "pending"
+lastReleasedAtUtc: null
+lastReleasedCommit: null
+nextStep: "Finish documentation and release"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
