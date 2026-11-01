@@ -105,4 +105,29 @@ class RecipeCatalogEvidenceTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED,
             preview(original.copy(state = null)).status)
     }
+    @Test fun ambiguousCatalogIdsAndLatestRevisionsFailClosed() = runBlocking {
+        val version = requireNotNull(dao.version(versionId))
+        val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        val confirmed = mapOf("rice" to confirmation())
+        fun resolve(versions: List<ProductVersionEntity>) =
+            Catalog.resolve(listOf(line), versions, confirmed, at)
+
+        assertEquals(versionId, resolve(listOf(version))["rice"]?.productVersionId)
+        // A duplicated ID must not silently select the last row in associateBy.
+        assertTrue(resolve(listOf(version, version.copy(name = "Conflicting name"))).isEmpty())
+        assertTrue(resolve(listOf(version, version)).isEmpty())
+        // Two rows claiming to be the latest revision of the same product are ambiguous.
+        assertTrue(resolve(listOf(version, version.copy(id = "other-version"))).isEmpty())
+        // The same version ID cannot belong to two different products.
+        assertTrue(resolve(listOf(version, version.copy(productId = "other-product"))).isEmpty())
+        // Invalid revision/identity metadata cannot be independently confirmed.
+        val invalid = version.copy(revision = 0)
+        assertTrue(Catalog.resolve(listOf(line), listOf(invalid),
+            mapOf("rice" to confirmation().copy(productRevision = 0)), at).isEmpty())
+        assertTrue(resolve(listOf(version.copy(productId = ""))).isEmpty())
+        assertEquals(0, dao.consumptionCount())
+        assertEquals(0, dao.operationCount() - 1) // only setup's product creation
+    }
+
 }
