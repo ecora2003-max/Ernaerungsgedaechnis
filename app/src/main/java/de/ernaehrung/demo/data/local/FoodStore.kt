@@ -91,8 +91,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             "Rezeptentwurf nur nach separater Nutzeraktion bestätigen."
         }
         requireValidRecipeDraftSaveKey(key)
+        val actionAt = now()
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
-            reviewedStates, context, trustedContextSnapshotAt, requireNonFutureDraft = true)
+            reviewedStates, context, trustedContextSnapshotAt,
+            requireNonFutureDraft = true, trustedNow = actionAt)
         require(current.status ==
             de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             current.input != null &&
@@ -115,7 +117,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             return@withTransaction previous.resultId
         }
         dao.insertOperation(OperationEntity(consentKey, "RECIPE_DRAFT_CONSENT_V1",
-            hash, now(), digest))
+            hash, actionAt, digest))
         digest
     }
 
@@ -151,8 +153,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             "Rezeptübernahme separat und ausdrücklich bestätigen."
         }
         requireValidRecipeDraftSaveKey(key)
+        val saveAt = now()
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
-            reviewedStates, context, trustedContextSnapshotAt, requireNonFutureDraft = true)
+            reviewedStates, context, trustedContextSnapshotAt,
+            requireNonFutureDraft = true, trustedNow = saveAt)
         require(current.status ==
             de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             current.input != null &&
@@ -171,7 +175,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             consent.kind == "RECIPE_DRAFT_CONSENT_V1" &&
             consent.resultId == digest &&
             consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
-            consent.recordedAt <= now()) {
+            consent.recordedAt <= saveAt) {
             "Keine passende dauerhaft gespeicherte Rezeptbestätigung vorhanden."
         }
         // Bind the persisted operation fingerprint to the exact approved preview.
@@ -188,9 +192,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>?,
         trustedContextSnapshotAt: java.time.OffsetDateTime?,
-        requireNonFutureDraft: Boolean = false
+        requireNonFutureDraft: Boolean = false,
+        trustedNow: Long = now()
     ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review {
-        val trustedNow = now()
         val clock = java.time.OffsetDateTime.ofInstant(
             java.time.Instant.ofEpochMilli(trustedNow), java.time.ZoneOffset.UTC)
         val imported = try {
