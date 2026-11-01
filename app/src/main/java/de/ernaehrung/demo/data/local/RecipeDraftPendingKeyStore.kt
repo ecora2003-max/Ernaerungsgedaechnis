@@ -60,6 +60,7 @@ internal class PrivateRecipeDraftPendingKeyStore(
         if (previous?.digest == approvalDigest && previous.key == operationKey) file.delete()
     }
 
+    // Only an opaque, short-lived checkpoint is read; never deserialize recipe JSON.
     private fun read(): Entry? {
         if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) return null
         val content = file.openRead().bufferedReader(StandardCharsets.UTF_8).use {
