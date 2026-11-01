@@ -3,6 +3,8 @@ package de.ernaehrung.demo
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -42,6 +44,8 @@ class RecipeDraftConsentReviewTest {
                 DemoTheme { RecipeDraftConsentReview(review()) { calls += it } }
             }
         }
+        rule.onNodeWithText("Soll-Portionen: 2").assertExists()
+        rule.onNodeWithText("Artikelversion verified-version · Menge in bestätigter Basiseinheit: 200").assertExists()
         rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
         rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsEnabled().performClick()
