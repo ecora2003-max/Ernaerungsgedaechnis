@@ -1,41 +1,48 @@
 # Integration lease reliability
 
-The four hourly integration automations share one lock in the final YAML block of
-"Prüfe mich ob du dran bist und was du machen sollst und darfst.md" on main.
+Four hourly integration automations share one exclusive lock in the final
+YAML block of "Prüfe mich ob du dran bist und was du machen sollst und darfst.md"
+on the GitHub main branch.
 
-## Owner identity
+## Acquire FREE (own execution)
 
-- Before acquiring FREE, obtain the current run's automation ID and exact run ID
-  from Automations.peek. Store both as ownerAutomationId and ownerRunId.
-- Set ownerRunToken to automation-id:run-id:unique-nonce.
-- If a run ID cannot be verified, do not acquire a writing lease.
-- A successful compare-and-swap file update is not enough: read main again,
-  verify the exact owner token, and only then start writing.
-- Renew the lease explicitly at least every 10 minutes while working; use a
-  fresh file SHA and do not renew a lease already expired.
-- After work, release on main immediately and verify FREE.
+- Read current main HEAD, the complete lock file and its GitHub blob SHA.
+- A running ChatGPT automation may **not** be able to retrieve its own run ID.
+  Never require ownerRunId as a prerequisite for a new FREE acquisition.
+- Use the known automation ID and a **fresh, cryptographically random**
+  per-execution nonce to construct an unguessable, non-reused ownerRunToken.
+  Record ownerRunId only when the actual current run ID is independently
+  available; otherwise set it to null. Do not use the latest *previous* run ID.
+- Write ACTIVE with a 15-minute lease, ownerAutomationId, ownerChatId, the
+  optional ownerRunId, ownerRunToken, timestamps, task and workingBranch
+  through the current file SHA (compare-and-swap). Use the pure
+  `tools/acquire_integration_lease.py` helper to construct this change.
+- Re-read main and confirm the exact token, ACTIVE and an unexpired lease
+  **before** any other writes. On a conflict, stop instead of overwriting.
+- While actively working, renew your **own** valid lease before expiration,
+  with fresh SHA-CAS at least every 10 minutes; after work release immediately
+  and verify FREE on main.
 
-## Ended-run recovery
+## Recovery of a foreign expired lease
 
-- At ACTIVE + expired lease, fetch the owner automation's latest run from
-  Automations.peek. Check both the exact automation ID and the exact run ID
-  recorded in the lock. A matching completed or failed run is required.
-- Use tools/recover_integration_lease.py propose_release for the pure
-  validation of the supplied trusted run evidence. It cannot fetch live runs.
-- Commit the proposed FREE document using GitHub file-SHA compare-and-swap;
-  on any mismatch stop and re-read the owner. Never delete a fresh lease.
-- If the latest run is in_progress, missing, outdated, or inconsistent, stop
-  without writing. Do not treat an expired time alone as permission.
-- Verify FREE from main. Only then may a new run acquire its own lease.
+- Expiration alone is NOT proof that the owner has finished.
+- Use a fresh, trusted Automations.peek result, not a text inference from the
+  lock or a GitHub CI run.
+- `tools/recover_integration_lease.py` can propose release only when a
+  stored ownerRunId exactly matches the completed/failed automation run and
+  its automation ID, token and timeline also validate.
+- If the prior owner's run ID was unavailable and recorded as null, there is
+  **no automatic recovery**. Report a lock-blocking exception for manual,
+  separately verified release. Never infer the run ID from a later run.
+- Commit FREE only using the live file blob SHA; verify FREE afterward,
+  then acquire the next separate owner token. Never rewrite another ACTIVE
+  owner.
 
-## CI and safety trade-off
+## CI trade-off
 
-GitHub Actions cannot independently read ChatGPT automation-run state.
-Automatic workflow_run-triggered lease writes are disabled; matching CI branch
-names do not prove an owner is still alive. Owner-only explicit heartbeats
-remain required. A stale lock cannot be automatically cleared if no trusted
-run-state evidence is accessible; safety takes priority over liveness.
+GitHub Actions cannot independently verify the lifetime of a ChatGPT
+automation run. CI-triggered lease renewal has therefore been disabled.
+The lock remains advisory rather than a server-enforced GitHub write policy.
 
-The recovery Python module proposes a document only. It never writes to
-GitHub. Automated worker code must supply verifiable evidence and use the
-GitHub contents API with a fresh expected blob SHA.
+Fail-closed recovery ensures safety but does not guarantee progress after a
+crash. Reliability in actual scheduled automation runs still needs testing.
