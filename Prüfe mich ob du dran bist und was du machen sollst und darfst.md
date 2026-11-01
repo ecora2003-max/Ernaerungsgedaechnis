@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T16:34:52.127Z"
-lastHeartbeatUtc: "2026-11-01T16:46:28.450Z"
-leaseExpiresAtUtc: null
-task: "Released after PR #27 and independent main CI verified"
+state: "ACTIVE"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Ernährungsgedächtnis Integration III"
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104:run3:20261101T170220Z:7c92f1"
+acquiredAtUtc: "2026-11-01T17:02:21.656Z"
+lastHeartbeatUtc: "2026-11-01T17:02:21.656Z"
+leaseExpiresAtUtc: "2026-11-01T17:17:21.656Z"
+task: "Continue cross-module Android integration, identify next small verified unit"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T16:47:55.399Z"
 lastReleasedCommit: "7135fa1c126ceec5dd3cdd07bcea00a1526ea804"
-nextStep: "PR #27 merged 993daf6ae45ae88a863960c5a185002b22b1a948; PR CI 41327225765 and main CI 41327671578 PASS (368/368 JVM, 7/7 Room, lint/schema/pinned Python/Android test compilation). STATUS 7135fa1c. Next: persistently verified host article/store registries and real purchase-price-shopping UI/OCR/offline/privacy/device E2E, or typed recipe context digests. Four module gates OPEN."
+nextStep: "Review STATUS/ROADMAP and select next verifiable integration step"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
