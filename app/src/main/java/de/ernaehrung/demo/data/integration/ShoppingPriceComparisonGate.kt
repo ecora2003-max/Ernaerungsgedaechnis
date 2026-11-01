@@ -87,10 +87,15 @@ internal object ShoppingPriceComparisonGate {
         val request = input.request
         val candidate = input.candidate
         if (request.productVersionId.isBlank() ||
-            request.productVersionId != candidate.productVersionId ||
-            !articles.isConfirmed(request.productVersionId, input.article,
-                input.organic, request.asOf)
+            request.productVersionId != candidate.productVersionId
         ) return Checked(null, "host product/version/organic evidence missing")
+        // A failed local identity lookup is UNKNOWN, never confirmed.
+        val articleConfirmed = try {
+            articles.isConfirmed(request.productVersionId, input.article,
+                input.organic, request.asOf)
+        } catch (_: RuntimeException) { false }
+        if (!articleConfirmed)
+            return Checked(null, "host product/version/organic evidence missing")
 
         val gate = try {
             ShoppingOfferGate.evaluate(request, candidate, input.facts, permissions, stores)

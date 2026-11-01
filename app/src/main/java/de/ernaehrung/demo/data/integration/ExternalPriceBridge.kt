@@ -125,8 +125,15 @@ object ExternalPriceBridge {
                 gaps += Gap.INVALID_SOURCE; continue
             }
             val ref = candidate.rightsEvidenceRef
-            if (candidate.rightsStatus != RightsStatus.PERMITTED || ref.isNullOrBlank() ||
-                !permissions.permits(candidate.sourceId, ref, request.capability, request.purchaseOn)) {
+            // Permission providers are external trust anchors: failure is DENY,
+            // not an uncaught exception or a fallback to the feed's PERMITTED flag.
+            val permitted = if (candidate.rightsStatus == RightsStatus.PERMITTED &&
+                !ref.isNullOrBlank()) {
+                try {
+                    permissions.permits(candidate.sourceId, ref, request.capability, request.purchaseOn)
+                } catch (_: RuntimeException) { false }
+            } else false
+            if (!permitted) {
                 gaps += Gap.MISSING_RIGHTS; continue
             }
             if (!candidate.productVersionConfirmed || candidate.productVersionId != request.productVersionId) {

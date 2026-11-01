@@ -220,6 +220,30 @@ class ShoppingPriceComparisonGateTest {
         assertTrue(unknown.signals.incomplete)
     }
 
+    @Test fun failedArticleRegistryDeniesTargetOrCandidateWithoutCrashing() {
+        val unavailable = Gate.ConfirmedArticleRegistry { _, _, _, _ ->
+            throw IllegalStateException("identity lookup unavailable")
+        }
+        val noTarget = compare(candidates = listOf(offer("red", "v-red")),
+            articleRegistry = unavailable)
+        assertFalse(noTarget.targetEligible)
+        assertTrue(noTarget.cheaper.isEmpty())
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), noTarget.signals.signals)
+
+        val candidateUnavailable = Gate.ConfirmedArticleRegistry { version, article, organic, at ->
+            if (version == "v-red") throw IllegalStateException("candidate lookup unavailable")
+            articles.isConfirmed(version, article, organic, at)
+        }
+        val result = compare(candidates = listOf(
+            offer("red", "v-red"), offer("orange", "v-orange", 220, organic = false)),
+            articleRegistry = candidateUnavailable)
+        assertTrue(result.targetEligible)
+        assertEquals(listOf("orange"), result.cheaper.map { it.observationId })
+        assertEquals("host product/version/organic evidence missing", result.excluded["red"])
+        assertEquals(listOf("ORANGE_DIFFERENT_BIO_CHEAPER", "GREY_MAY_BE_CHEAPER"),
+            result.signals.signals)
+    }
+
     @Test fun duplicateOrMissingObservationIdsFailBeforeComparison() {
         fun rejected(target: Gate.Input, rows: List<Gate.Input>) {
             try {

@@ -65,7 +65,11 @@ internal object ShoppingOfferGate {
     ): Result {
         val storeId = request.storeId?.takeIf { it.isNotBlank() }
             ?: return Result(null, setOf(Gap.STORE_NOT_CONFIRMED))
-        if (!stores.isConfirmed(request.retailer, storeId, request.regionId, request.asOf))
+        // A temporarily unavailable host registry is not a confirmed store.
+        val storeConfirmed = try {
+            stores.isConfirmed(request.retailer, storeId, request.regionId, request.asOf)
+        } catch (_: RuntimeException) { false }
+        if (!storeConfirmed)
             return Result(null, setOf(Gap.STORE_NOT_CONFIRMED))
         if (!facts.verifiedByHost)
             return Result(null, setOf(Gap.HOST_FACTS_UNVERIFIED))

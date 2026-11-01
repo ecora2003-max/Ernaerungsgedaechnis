@@ -135,6 +135,23 @@ class ShoppingOfferGateTest {
         assertEquals(setOf(Price.Gap.PRICE_CONDITIONS_UNKNOWN), conditions.externalGaps)
     }
 
+    @Test fun unavailableHostStoreAndRightsRegistriesFailClosed() {
+        val storeUnavailable = Gate.ConfirmedStoreRegistry { _, _, _, _ ->
+            throw IllegalStateException("store lookup unavailable")
+        }
+        val deniedStore = review(stores = storeUnavailable)
+        assertEquals(setOf(Gate.Gap.STORE_NOT_CONFIRMED), deniedStore.gaps)
+        assertNull(deniedStore.offer)
+
+        val rightsUnavailable = Price.DisplayPermissionRegistry { _, _, _, _ ->
+            throw IllegalStateException("permission lookup unavailable")
+        }
+        val deniedRights = review(permissions = rightsUnavailable)
+        assertEquals(setOf(Gate.Gap.EXTERNAL_PRICE_REJECTED), deniedRights.gaps)
+        assertEquals(setOf(Price.Gap.MISSING_RIGHTS), deniedRights.externalGaps)
+        assertNull(deniedRights.offer)
+    }
+
     @Test fun knownZeroPriceRemainsDistinctFromUnknown() {
         val free = review(candidate = candidate().copy(merchandiseCents = 0, depositCents = null))
         assertTrue(free.eligible)
