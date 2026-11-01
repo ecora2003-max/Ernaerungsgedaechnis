@@ -102,6 +102,12 @@ class RecipeAuthorizedOffersSnapshotTest {
         },
         ShoppingOfferGate.ConfirmedStoreRegistry { retailer, id, region, _ ->
             retailer == scope.retailer && id == scope.storeId && region == scope.regionId
+        },
+        RecipeAuthorizedOffersReader.ArticleRegistry { version, candidate, captured ->
+            version.id == versionId && version.recordedAt <= captured.toEpochMilli() &&
+                candidate.productVersionId == version.id &&
+                candidate.quantityMilli == 200_000L &&
+                candidate.unit == Price.Unit.GRAM
         }
     )
 
