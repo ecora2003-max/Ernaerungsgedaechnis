@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat) 2026-11-02"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101T234317550Z-8kv4gpwq8"
-acquiredAtUtc: "2026-11-01T23:43:17.550Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe-save authenticated action provenance and regression tests"
-workingBranch: "integration/chat-credential-challenge-binding-20261102"
-lastReleasedAtUtc: "2026-11-01T23:29:35.188Z"
-lastReleasedCommit: "5dc8a83fed5a6ec927cfc2ae6925b1d63f0fc59f"
-nextStep: "Independently verifiable authenticated action at FoodStore recipe save; real Android/privacy E2E; generator/revalidator parity"
+task: "Recipe credential challenge hardening merged PR #51 (405/405 CI)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T23:51:23.832Z"
+lastReleasedCommit: "661a5a12393d48f9696cf1dfa0530c377b40bea2"
+nextStep: "Authenticated action attestation at FoodStore recipe save; actual Android credential/privacy E2E; recipe parity"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
