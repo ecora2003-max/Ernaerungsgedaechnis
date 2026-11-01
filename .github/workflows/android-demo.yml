@@ -89,6 +89,21 @@ jobs:
             -o "$RUNNER_TEMP/eg-shopping-coverage-engine.py"
           python3 tools/check_shopping_coverage_reference.py "$RUNNER_TEMP/eg-shopping-coverage-engine.py" \
             app/src/test/resources/integration/shopping_coverage_signals_v1.tsv
+      - name: Verify pinned full shopping compare_prices Python-Kotlin vectors
+        run: |
+          mkdir -p "$RUNNER_TEMP/eg-shopping-full/eg_shopping" "$RUNNER_TEMP/eg-shopping-full/policies"
+          touch "$RUNNER_TEMP/eg-shopping-full/eg_shopping/__init__.py"
+          for file in engine.py source_policy.py; do
+            curl --fail --location --silent --show-error --retry 2 --max-time 30 \
+              "https://raw.githubusercontent.com/ecora2003-max/EG-Einkaufsintelligenz/a3e13b147124ad7c25698a695e2ab42d7299a58a/eg_shopping/$file" \
+              -o "$RUNNER_TEMP/eg-shopping-full/eg_shopping/$file"
+          done
+          curl --fail --location --silent --show-error --retry 2 --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Einkaufsintelligenz/a3e13b147124ad7c25698a695e2ab42d7299a58a/policies/retailer-source-capabilities.v1.json \
+            -o "$RUNNER_TEMP/eg-shopping-full/policies/retailer-source-capabilities.v1.json"
+          PYTHONPATH="$RUNNER_TEMP/eg-shopping-full" python3 \
+            tools/check_shopping_full_compare_reference.py \
+            app/src/test/resources/integration/shopping_full_compare_v1.tsv
       - name: Verify versioned Room schema
         run: |
           git diff --exit-code -- app/schemas/

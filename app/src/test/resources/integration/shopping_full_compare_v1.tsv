@@ -1,0 +1,10 @@
+case	mode	targetCents	targetAmount	targetOrganic	candidates	expectedIds	expectedSignals	expectedDeltas	expectedRates
+same_bio	PUBLISHED_OFFER_COLLECTION	300	1000	true	red:200:1000:true:milk:25	red	RED_SAME_BIO_CHEAPER	-100	200/1
+different_bio	PUBLISHED_OFFER_COLLECTION	300	1000	true	orange:220:1000:false:milk:25	orange	ORANGE_DIFFERENT_BIO_CHEAPER	-80	220/1
+both_signals	PUBLISHED_OFFER_COLLECTION	300	1000	true	orange:220:1000:false:milk:25;red:200:1000:true:milk:25	red,orange	RED_SAME_BIO_CHEAPER,ORANGE_DIFFERENT_BIO_CHEAPER	-100,-80	200/1,220/1
+exact_rate_tie	PUBLISHED_OFFER_COLLECTION	300	1000	true	b:200:1000:true:milk:25;a:100:500:true:milk:25	a,b	RED_SAME_BIO_CHEAPER	-100,-100	200/1,200/1
+fractional_delta	PUBLISHED_OFFER_COLLECTION	301	1000	true	fraction:100:333:true:milk:25	fraction	RED_SAME_BIO_CHEAPER	null	100000/333
+unknown_organic	PUBLISHED_OFFER_COLLECTION	300	1000	true	unknown:200:1000:null:milk:25	unknown	GREY_MAY_BE_CHEAPER	-100	200/1
+unknown_deposit	PUBLISHED_OFFER_COLLECTION	300	1000	true	red:200:1000:true:milk:null	red	RED_SAME_BIO_CHEAPER,GREY_MAY_BE_CHEAPER	-100	200/1
+no_cheaper	PUBLISHED_OFFER_COLLECTION	300	1000	true	equal:300:1000:true:milk:25;expensive:400:1000:true:milk:25	-	-	-	-
+targeted_sale	TARGETED_PRODUCT_PRICE_QUERY	300	1000	true	red:200:1000:true:milk:25	red	RED_SAME_BIO_CHEAPER	-100	200/1
