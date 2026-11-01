@@ -2,6 +2,7 @@ package de.ernaehrung.demo
 
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.key
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
@@ -62,13 +63,16 @@ class RecipeDraftImportPanelTest {
             override fun discard() { saved = null }
         }
         var reviews = 0
+        var epoch = 0
         fun render() {
             rule.activity.setContent {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
-                        RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
-                            onInvalidate = {}, onDiscardPending = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                        key(epoch) {
+                            RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
+                                onInvalidate = {}, onDiscardPending = {},
+                                onReview = { _, _, _, _ -> reviews++ })
+                        }
                     }
                 }
             }
@@ -81,7 +85,7 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals("{draft}", checkpoint.saved) }
 
         // A fresh composition must not restore or confirm anything automatically.
-        rule.runOnUiThread { render() }
+        rule.runOnUiThread { epoch++; render() }
         rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
         rule.onNodeWithTag("recipe_draft_encrypted_restore").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_json").assertTextContains("{draft}")
