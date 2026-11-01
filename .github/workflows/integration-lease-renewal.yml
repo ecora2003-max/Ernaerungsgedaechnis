@@ -1,36 +1,37 @@
-name: Integration lease auto-renew
+name: Integration lease coordination safety tests
 
-# A workflow_run uses trusted code from the default branch. Never execute the
-# triggering PR branch with the write-capable token.
+# Intentionally NO workflow_run trigger and NO GitHub write token.
+# GitHub CI cannot query whether a ChatGPT automation is still running.
+# Renewal on a matching branch can outlive the owner; explicit owner CAS
+# heartbeats and verified automation-run recovery are required instead.
 on:
-  workflow_run:
-    workflows: ["Android checks and optional APK"]
-    types: [requested, completed]
+  pull_request:
+    paths:
+      - ".github/workflows/integration-lease-renewal.yml"
+      - "tools/renew_integration_lease.py"
+      - "tools/recover_integration_lease.py"
+      - "tools/test_renew_integration_lease.py"
+      - "tools/test_recover_integration_lease.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/integration-lease-renewal.yml"
+      - "tools/renew_integration_lease.py"
+      - "tools/recover_integration_lease.py"
+      - "tools/test_renew_integration_lease.py"
+      - "tools/test_recover_integration_lease.py"
 
 permissions:
-  contents: write
-
-concurrency:
-  group: integration-lease-renewal
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  renew:
-    if: >-
-      github.event.workflow_run.head_repository.full_name == github.repository &&
-      github.event.workflow_run.head_branch != 'main' &&
-      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'pull_request')
+  safety-tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
-      - name: Checkout ONLY trusted default branch
+      - name: Checkout unprivileged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: main
-      - name: Verify safety regression cases
-        run: python3 -m unittest tools/test_renew_integration_lease.py
-      - name: Extend matching active lease up to 10 minutes after CI event
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 tools/renew_integration_lease.py
+      - name: Verify lease safety invariants
+        run: python3 -m unittest discover -s tools -p 'test_*integration_lease.py' -v
