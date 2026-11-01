@@ -128,4 +128,17 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
+    @Test fun changingImportEvidenceInvalidatesOldSessionBeforeConsent() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val old = ready()
+        val digest = requireNotNull(old.review?.approvalBasisDigest)
+        val session = requireNotNull(old.sessionId)
+        vm.clearRecipeDraftConsent()
+        assertNull(vm.recipeDraftConsentState.value.review)
+        assertNull(vm.recipeDraftConsentState.value.sessionId)
+        vm.confirmRecipeDraftConsent(digest, session)
+        assertEquals(1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
