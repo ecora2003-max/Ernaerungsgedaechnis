@@ -136,7 +136,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val previous = dao.operation(consentKey)
         if (previous != null) {
             require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
-                previous.fingerprint == hash && previous.resultId == digest) {
+                previous.fingerprint == hash && previous.resultId == digest &&
+                previous.recordedAt in 0L..actionAt) {
+                // A future-dated ledger row is not an already performed action.
+                // Reject retry rather than silently accepting a clock rollback.
                 "Bestätigungs-ID wurde bereits für einen anderen Rezeptentwurf verwendet."
             }
             return@withTransaction previous.resultId
@@ -156,12 +159,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun recordedRecipeDraftV1ConsentKey(digest: String): String? {
         if (!Regex("[0-9a-f]{64}").matches(digest)) return null
         val prefix = "RECIPE_DRAFT_CONSENT_V1:"
+        val checkedAt = now()
         return dao.recipeDraftConsentsForDigest(digest).firstOrNull { operation ->
             if (!operation.id.startsWith(prefix)) false
             else {
                 val key = operation.id.substring(prefix.length)
                 key.isNotBlank() && key.length <= 200 &&
                     !key.startsWith(prefix) &&
+                    operation.recordedAt in 0L..checkedAt &&
                     operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
             }
         }?.id?.substring(prefix.length)
@@ -221,7 +226,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             consent.kind == "RECIPE_DRAFT_CONSENT_V1" &&
             consent.resultId == digest &&
             consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
-            consent.recordedAt <= saveAt) {
+            consent.recordedAt in 0L..saveAt) {
             "Keine passende dauerhaft gespeicherte Rezeptbestätigung vorhanden."
         }
         // Bind the persisted operation fingerprint to the exact approved preview.
