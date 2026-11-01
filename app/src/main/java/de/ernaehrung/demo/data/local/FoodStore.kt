@@ -50,6 +50,35 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val expenseReader = ExpenseReader(db, now)
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
+
+    /**
+     * Database-backed, read-only preview. Model-provided identities and allergy
+     * claims cannot populate host facts; only separately confirmed, current
+     * catalog versions may do so. Never calls saveRecipe/produce/consume.
+     */
+    internal suspend fun previewRecipeDraftV1(
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+    ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review = db.withTransaction {
+        val trustedNow = now()
+        val clock = java.time.OffsetDateTime.ofInstant(
+            java.time.Instant.ofEpochMilli(trustedNow), java.time.ZoneOffset.UTC)
+        val lines = try {
+            de.ernaehrung.demo.data.integration.RecipeDraftV1Import
+                .read(json, reviewedStates, clock).draft.lines
+        } catch (_: IllegalArgumentException) {
+            emptyList()
+        }
+        val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
+            lines, dao.allVersions(), confirmations, trustedNow)
+        de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
+            json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
+    }
+
     fun watchRecognition() = recognitionReader.watch()
     suspend fun recognitionData() = recognitionReader.data()
     suspend fun matchAlias(text: String, merchant: String?, kind: AliasKind) = recognitionReader.match(text, merchant, kind)
