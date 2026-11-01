@@ -71,6 +71,14 @@ internal class HostCatalogArticleRegistry(
         val quantity = try {
             ShoppingUnitRateKernel.confirmedQuantity(article.quantity)
         } catch (_: IllegalArgumentException) { null } ?: return false
+        // A versioned catalog package amount is an independent host fact.
+        // A separately reviewed offer may describe multiple packs, but its
+        // per-pack amount must not contradict a known versioned package size.
+        // Unknown package size remains unknown; no quantity is invented.
+        val knownPackageAmount = version.packageAmount
+        if (knownPackageAmount != null &&
+            (knownPackageAmount <= 0 || article.quantity?.amount != knownPackageAmount))
+            return false
         // Piece/package conversions are not derivable from the host base unit.
         val expectedUnit = when (version.baseUnit) {
             BaseUnit.GRAM -> "g"
