@@ -9,17 +9,21 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import de.ernaehrung.demo.data.integration.RecipeDraftManualReview
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
 import de.ernaehrung.demo.data.local.ProductVersionEntity
+import de.ernaehrung.demo.data.local.RecipeDraftEncryptedImportCheckpoint
+import de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.Quality
 import de.ernaehrung.demo.data.local.Source
 import de.ernaehrung.demo.ui.Choices
@@ -36,12 +40,20 @@ import java.time.OffsetDateTime
 internal fun RecipeDraftImportPanel(
     catalog: List<ProductVersionEntity>,
     editingEnabled: Boolean = true,
+    recordedDigest: String? = null,
+    checkpointStore: RecipeDraftEncryptedImportCheckpoint? = null,
     onInvalidate: () -> Unit,
     onDiscardPending: () -> Unit,
     onReview: (String, Gate.Request,
         Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         Map<String, Gate.State>) -> Unit
 ) {
+    val context = LocalContext.current
+    val checkpoint = checkpointStore ?: remember(context) {
+        PrivateRecipeDraftEncryptedImportCheckpoint(context)
+    }
+    // A durable consent is authoritative; no longer retain a draft checkpoint.
+    LaunchedEffect(recordedDigest) { if (recordedDigest != null) checkpoint.discard() }
     var json by remember { mutableStateOf("") }
     var imported by remember { mutableStateOf<RecipeDraftV1Import.Imported?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -63,7 +75,37 @@ internal fun RecipeDraftImportPanel(
             return@Fold
         }
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
-        Text("Bei erneuter Eingabe bleibt nur der private, kurzlebige Vorgangsschlüssel erhalten; JSON und Prüfbelege werden nicht gespeichert.")
+        Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
+        Row {
+            Button(
+                enabled = json.isNotBlank(),
+                modifier = Modifier.testTag("recipe_draft_encrypted_save"),
+                onClick = {
+                    try {
+                        checkpoint.save(json)
+                        error = "JSON verschlüsselt vorgemerkt (maximal 24 Stunden). Kein Prüfbeleg und keine Bestätigung."
+                    } catch (_: Exception) {
+                        error = "Verschlüsselte Speicherung nicht möglich. Kein unverschlüsselter Ersatz."
+                    }
+                }
+            ) { Text("JSON verschlüsselt merken") }
+            Button(
+                modifier = Modifier.testTag("recipe_draft_encrypted_restore"),
+                onClick = {
+                    val saved = checkpoint.load()
+                    if (saved == null) {
+                        error = "Kein gültiger verschlüsselter Entwurf vorhanden."
+                    } else {
+                        invalidate()
+                        json = saved
+                        imported = null
+                        versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                        allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+                        error = "JSON wiederhergestellt. Alle Nachweise neu prüfen und erneut ausdrücklich bestätigen."
+                    }
+                }
+            ) { Text("Gemerkten JSON-Entwurf laden") }
+        }
         Button(
             onClick = {
                 invalidate()
@@ -72,6 +114,7 @@ internal fun RecipeDraftImportPanel(
                 error = null
                 versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
                 allergenAnswers = emptyMap(); restrictionsText = ""
+                checkpoint.discard()
                 onDiscardPending()
             },
             modifier = Modifier.testTag("recipe_draft_discard_pending")
@@ -79,6 +122,7 @@ internal fun RecipeDraftImportPanel(
         OutlinedTextField(
             value = json,
             onValueChange = { next ->
+                checkpoint.discard()
                 invalidate()
                 imported = null
                 error = null
