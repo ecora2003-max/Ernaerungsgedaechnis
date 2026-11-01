@@ -194,6 +194,41 @@ class RecipeDraftV1ImportTest {
         }
     }
 
+    @Test fun bookingClaimsInNestedAndUnknownExtensionsNeverBecomeHostEvents() {
+        val forbidden = listOf(
+            change("\"status\":\"DRAFT\"", "\"status\":\"DRAFT\",\"consumptionRecorded\":true"),
+            change("\"label\":\"Reis\"", "\"label\":\"Reis\",\"preparedPortionsCreated\":true"),
+            change("\"nutrition\":{\"proteinG\":999999}",
+                "\"nutrition\":{\"proteinG\":999999,\"rawIngredientsCharged\":true}"),
+            change("\"warnings\":[]", "\"warnings\":[],\"sideEffects\":[{\"consumptionRecorded\":true}]"),
+            change("\"warnings\":[]", "\"warnings\":[],\"consumptionRecorded\":null")
+        )
+        forbidden.forEach { candidate ->
+            val review = reviewed(candidate)
+            assertEquals(Gate.Status.BLOCKED, review.status)
+            assertNull(review.input)
+        }
+        // A false extension claim is not itself proof of a real event or a blocker.
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+            reviewed(change("\"status\":\"DRAFT\"",
+                "\"status\":\"DRAFT\",\"consumptionRecorded\":false")).status)
+    }
+
+    @Test fun futureDatedHostContextCannotAttestARecipeEvenWithinProducerClockSkew() {
+        val f = Gate.Flags(true, false, false)
+        val futureJson = sample
+            .replace("2026-11-01T04:30:00+01:00", "2026-11-01T05:03:00+01:00")
+            .replace("2026-11-01T04:15:00+01:00", "2026-11-01T05:02:00+01:00")
+            .replace("\"considerStock\":false", "\"considerStock\":true")
+        val c = Gate.context(f, Gate.Evidence("stock", true),
+            null as Gate.Evidence<String>?, null as Gate.Evidence<String>?)
+        val result = reviewed(futureJson, req = request(f), context = c,
+            trustedSnapshot = OffsetDateTime.parse("2026-11-01T05:02:00+01:00"))
+        assertEquals(Gate.Status.BLOCKED, result.status)
+        assertTrue("TRUSTED_CONTEXT_SNAPSHOT_IN_FUTURE" in result.blockers)
+        assertNull(result.input)
+    }
+
     @Test fun incompatibleBasisAndUnknownVersionFailClosed() {
         assertEquals(Gate.Status.BLOCKED,
             reviewed(change("\"basis\":\"NET\"", "\"basis\":\"GROSS\"")).status)
