@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+ownerChatId: "Integration-IV-2026-11-01-run2"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261101T222423872Z-igsc0ryklg"
+acquiredAtUtc: "2026-11-01T22:24:23.872Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Room STOCK safety guards + 3 Robolectric regressions merged (PR #44), verified CI 390/390"
+task: "Implement real Shopping/Offers Host/Room snapshot consistency and regression tests"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T22:09:41.850Z"
 lastReleasedCommit: "3a8b26c53860d76dbb8dcd51faa67b8bdf7c25cf"
 nextStep: "Continue real SHOPPING/OFFERS Room/Host snapshots, transactional context revalidation and authenticated recipe-save action provenance"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
