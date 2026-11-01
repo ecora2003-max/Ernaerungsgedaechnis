@@ -54,7 +54,7 @@ Statusklassen: `OFFLINE_VERIFIED` für Fachreferenz, eng begrenzte JVM-Portprüf
 
 ## Andere Einkaufstage: begrenzte Host-Autorisierung (01.11.2026)
 
-`OtherDayOffer` meldet nur noch einen tatsächlich mit unverändertem `asOf` hostseitig geprüften Tag als `validFrom == validUntil`. Ein Feed darf zwar ein mehrtägiges `SALE`-Fenster behaupten, aber eine APP_DISPLAY-Bestätigung für nur einen Tag legitimiert **keine** ungeprüfte Veröffentlichung der übrigen Tage. Dies ist eine bewusst konservative Host-Projektion und noch keine vollständige Python-`otherDayOffers`-Fensterparität. Der zusätzliche 20-Tage-Negativtest und der vollständige CI-Nachweis werden in `docs/STATUS.md` protokolliert.
+`OtherDayOffer` meldet nur noch einen tatsächlich mit unverändertem `asOf` hostseitig geprüften Tag als `validFrom == validUntil`. Ein Feed darf zwar ein mehrtägiges `SALE`-Fenster behaupten, aber eine APP_DISPLAY-Bestätigung für nur einen Tag legitimiert **keine** ungeprüfte Veröffentlichung der übrigen Tage. Dies ist eine bewusst konservative Host-Projektion und noch keine vollständige Python-`otherDayOffers`-Fensterparität. Der zusätzliche 20-Tage-Negativtest ist auf Host-Code-/Test-SHA `a378d597dd19a2412ef76568841aeb28611c991e` durch [CI 41262094814](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41262094814) bestanden (250/250 JVM, 7 Migrationen, 9/9 Full-call-Python-Referenzfälle, Lint/Schema/Android-Testkompilierung). Keine Android-Geräteausführung oder Gesamtmodulfreigabe.
 
 ## Host-Registry-Ausfälle (01.11.2026)
 
