@@ -15,6 +15,21 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     Heading("Rezepte & tatsächliche Herstellung", "Kochen ist kein Essen.")
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
+    // This panel appears only after a separately host-reviewed draft was supplied
+    // to the ViewModel. No untrusted generator output can activate it on its own.
+    val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
+    if (draftConsent.review != null || draftConsent.error != null) {
+        Panel {
+            draftConsent.review?.let { review ->
+                RecipeDraftConsentReview(review, model::confirmRecipeDraftConsent)
+            }
+            if (draftConsent.busy) CircularProgressIndicator()
+            draftConsent.error?.let { Hint(it) }
+            if (draftConsent.recordedDigest != null) {
+                Text("Rezeptvorschau ausdrücklich bestätigt und lokal protokolliert. Noch kein Rezept gespeichert, keine Herstellung und kein Verzehr.")
+            }
+        }
+    }
     if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model)
     state.recipes.forEach { recipe -> Panel {
         Section(recipe.name, "Version ${recipe.revision} · ${Amounts.format(recipe.yieldPortions)} Soll-Portionen")
