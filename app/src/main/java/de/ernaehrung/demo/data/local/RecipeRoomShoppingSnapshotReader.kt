@@ -20,7 +20,7 @@ internal class RecipeRoomShoppingSnapshotReader(
         private const val MAX_LINES = 10_000
 
         fun scopeId(scope: ShoppingScope): String =
-            "$"+"PREFIX:"+"$"+"{scope.startsOn}:"+"$"+"{scope.endsOn}:"+"$"+"{scope.purchaseOn}"
+            "${PREFIX}:${scope.startsOn}:${scope.endsOn}:${scope.purchaseOn}"
 
         /** Only canonical, budget-free planning scopes can be reconstructed. */
         fun scopeFromId(id: String): ShoppingScope? {
@@ -74,7 +74,7 @@ internal class RecipeRoomShoppingSnapshotReader(
         )
         val lines = rows.map { row ->
             RecipeContextContentBinding.Line(
-                identity = "shopping:"+"$"+"{row.need.versionId}",
+                identity = "shopping:${row.need.versionId}",
                 versionId = row.need.versionId,
                 amountMilli = row.need.knownMissing,
                 unit = row.need.unit.label
