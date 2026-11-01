@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -17,6 +18,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollTo
+import de.ernaehrung.demo.data.local.RecipeDraftEvidenceForm
+import de.ernaehrung.demo.data.local.RecipeDraftEncryptedEvidenceCheckpoint
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.screens.RecipeDraftImportPanel
@@ -196,5 +199,63 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
         rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
+    @Test fun encryptedEvidenceResumeIsOptInDraftBoundAndRequiresNewManualReview() {
+        val checkpoint = object : RecipeDraftEncryptedEvidenceCheckpoint {
+            var saved: RecipeDraftEvidenceForm? = null
+            override fun save(form: RecipeDraftEvidenceForm) { saved = form }
+            override fun load(): RecipeDraftEvidenceForm? = saved
+            override fun discard() { saved = null }
+        }
+        val now = OffsetDateTime.now().toString()
+        val json = """
+            {"contractVersion":"1.0.0-draft","messageType":"recipe.draft",
+             "meta":{"producer":"synthetic","traceId":"evidence-compose","createdAt":"$now"},
+             "payload":{"draftId":"draft-evidence","title":"Reis","portionCount":2,
+               "ingredients":[{"label":"Reis","foodTypeId":"rice","sourceStatus":"CONFIRMED",
+                 "quantity":{"amount":200,"unit":"g","basis":"NET","confirmed":true}}],
+               "steps":["Kochen"],"flags":{"considerStock":false,
+                 "considerShopping":false,"considerOffers":false},
+               "warnings":[],"status":"DRAFT"}}
+        """.trimIndent()
+        var reviews = 0
+        var epoch = 0
+        fun render() {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        key(epoch) {
+                            RecipeDraftImportPanel(emptyList(), evidenceCheckpointStore = checkpoint,
+                                onInvalidate = {}, onDiscardPending = {},
+                                onReview = { _, _, _, _ -> reviews++ })
+                        }
+                    }
+                }
+            }
+        }
+        rule.runOnUiThread { render() }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
+        rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_restrictions").performTextInput("ALLERGEN:SOY")
+        rule.onNodeWithTag("recipe_draft_evidence_save").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals("ALLERGEN:SOY", checkpoint.saved?.restrictionsText)
+            assertEquals(0, reviews)
+        }
+
+        rule.runOnUiThread { epoch++; render() }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
+        rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_evidence_restore").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("ALLERGEN:SOY")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(0, reviews) }
+
+        // Any accepted draft edit revokes the encrypted unconfirmed form.
+        rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
+        rule.runOnIdle { assertEquals(null, checkpoint.saved) }
     }
 }
