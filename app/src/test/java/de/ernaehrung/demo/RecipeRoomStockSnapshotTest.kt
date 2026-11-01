@@ -136,4 +136,16 @@ class RecipeRoomStockSnapshotTest {
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(0, db.foodDao().consumptionCount())
     }
+
+    @Test fun unconfirmedLocationIsNotUsableStock() = runBlocking {
+        val other = store.addLocation("unconfirmed-location", "Unbestätigt", false)
+        val op = "legacy-receipt-location"
+        db.foodDao().insertOperation(OperationEntity(op, "RECEIPT", op, at.toEpochMilli(), "legacy-batch"))
+        db.foodDao().insertBatch(BatchEntity("legacy-batch", versionId, other, op,
+            "2026-11-01", null, null, release = ReleaseStatus.RELEASED))
+        db.foodDao().insertMovement(StockMovementEntity("legacy-movement", "legacy-batch", op,
+            500L, MovementKind.RECEIPT, null, Source.USER, "Testdaten",
+            at.toEpochMilli(), occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+    }
 }
