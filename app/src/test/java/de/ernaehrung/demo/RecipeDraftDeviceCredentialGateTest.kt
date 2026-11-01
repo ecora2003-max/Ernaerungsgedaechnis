@@ -17,19 +17,23 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class RecipeDraftDeviceCredentialGateTest {
     private val digest = "a".repeat(64)
-    private val challenge = RecipeCredentialChallenge(digest, "session-1")
     private val ready = Gate.Review(
         Gate.Status.READY_FOR_EXPLICIT_SAVE, emptySet(), emptySet(),
         RecipeInput("Reis", 2_000L, listOf(RecipeItemInput("version", 200_000L)), "Kochen"),
         approvalBasisDigest = digest
     )
+    private val challenge get() = RecipeCredentialChallenge(digest, "session-1",
+        requireNotNull(ready.input), 7)
+
     private fun accepts(
         code: Int = Activity.RESULT_OK,
         current: Gate.Review? = ready,
         session: String? = "session-1",
+        resetVersion: Int = 7,
         enabled: Boolean = true,
         pending: RecipeCredentialChallenge? = challenge
-    ) = RecipeCredentialResultGate.accepts(pending, code, current, session, enabled)
+    ) = RecipeCredentialResultGate.accepts(pending, code, current, session,
+        resetVersion, enabled)
 
     @Test fun successfulSystemResultMatchesOnlyLiveBoundSession() {
         assertTrue(accepts())
@@ -46,12 +50,18 @@ class RecipeDraftDeviceCredentialGateTest {
         assertFalse(accepts(session = null))
         assertFalse(accepts(current = ready.copy(approvalBasisDigest = "b".repeat(64))))
         assertFalse(accepts(current = ready.copy(input = null)))
+        assertFalse(accepts(current = ready.copy(input =
+            requireNotNull(ready.input).copy(name = "Anderes Rezept"))))
         assertFalse(accepts(current = ready.copy(status = Gate.Status.REVIEW_REQUIRED)))
         assertFalse(accepts(current = null))
     }
 
     @Test fun busyOrAlreadyRecordedHostActionCannotReuseSystemResult() {
         assertFalse(accepts(enabled = false))
+        assertFalse(accepts(resetVersion = 8))
+        assertFalse(accepts(pending = challenge.copy(resetVersion = 6)))
+        assertFalse(accepts(pending = challenge.copy(reviewedInput =
+            requireNotNull(ready.input).copy(steps = "Andere Schritte"))))
         assertFalse(accepts(pending = challenge.copy(digest = "not-a-digest")))
     }
 }
