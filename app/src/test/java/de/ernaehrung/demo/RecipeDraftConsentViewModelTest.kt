@@ -148,7 +148,9 @@ class RecipeDraftConsentViewModelTest {
             recreated.recipeDraftConsentState.first { !it.busy && it.review != null }
         }
         assertEquals(digest, restored.recordedDigest)
-        assertEquals(originalKey, restored.sessionId)
+        // A recovered ledger operation is NOT a recovered UI gesture.
+        assertNull(restored.sessionId)
+        assertNotNull(FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
         recreated.confirmRecipeDraftConsent(digest, originalKey)
         assertEquals(before, db.foodDao().operationCount())
 
@@ -168,6 +170,59 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+    }
+
+    @Test fun pendingKeySurvivesProcessRecreationButOldUiGestureCannotReplay() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val pendingKeys = PrivateRecipeDraftPendingKeyStore(context) { at }
+        pendingKeys.discard()
+        try {
+            val firstVm = LocalDataViewModel(FoodStore(db) { at },
+                pendingKeyStore = pendingKeys)
+            firstVm.prepareRecipeDraftConsent(json, request, facts, states)
+            val first = withTimeout(10_000) {
+                firstVm.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            val digest = requireNotNull(first.review?.approvalBasisDigest)
+            val oldGesture = requireNotNull(first.sessionId)
+            val persistedKey = pendingKeys.resumeOrCreate(digest)
+            assertEquals(1, db.foodDao().operationCount())
+
+            val newVm = LocalDataViewModel(FoodStore(db) { at },
+                pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
+            newVm.prepareRecipeDraftConsent(json, request, facts, states)
+            val resumed = withTimeout(10_000) {
+                newVm.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            assertEquals(digest, resumed.review?.approvalBasisDigest)
+            assertNotEquals(oldGesture, resumed.sessionId)
+            assertEquals(persistedKey, pendingKeys.resumeOrCreate(digest))
+            newVm.confirmRecipeDraftConsent(digest, oldGesture)
+            assertEquals(1, db.foodDao().operationCount())
+            assertNull(newVm.recipeDraftConsentState.value.recordedDigest)
+
+            newVm.confirmRecipeDraftConsent(digest, resumed.sessionId)
+            withTimeout(10_000) {
+                newVm.recipeDraftConsentState.first { it.recordedDigest == digest }
+            }
+            assertEquals(persistedKey,
+                FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
+            assertEquals(2, db.foodDao().operationCount())
+            assertEquals(0, db.foodDao().consumptionCount())
+            assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+
+            val afterRestart = LocalDataViewModel(FoodStore(db) { at },
+                pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
+            afterRestart.prepareRecipeDraftConsent(json, request, facts, states)
+            val recorded = withTimeout(10_000) {
+                afterRestart.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            assertEquals(digest, recorded.recordedDigest)
+            assertNull(recorded.sessionId)
+            assertEquals(2, db.foodDao().operationCount())
+        } finally {
+            pendingKeys.discard()
+        }
     }
 
     @Test fun changingImportEvidenceInvalidatesOldSessionBeforeConsent() = runBlocking {
