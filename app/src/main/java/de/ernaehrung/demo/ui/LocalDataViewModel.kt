@@ -39,7 +39,11 @@ data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emp
     val method: String? = null, val message: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class LocalDataViewModel(private val store: FoodStore, private val productLookup: ProductLookupGateway = OpenFoodFactsClient()) : ViewModel() {
+class LocalDataViewModel(
+    private val store: FoodStore,
+    private val productLookup: ProductLookupGateway = OpenFoodFactsClient(),
+    private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore
+) : ViewModel() {
     val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
         .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())
@@ -191,6 +195,8 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
     // a durable consent. No recipe/stock/consumption write occurs in this flow.
     private data class PendingRecipeDraft(
         val operationKey: String,
+        /** Ephemeral gesture identity: never persisted or supplied by the draft. */
+        val sessionId: String,
         val json: String,
         val request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
         val confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
@@ -212,6 +218,8 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
         if (recipeConsentJob?.isActive == true) return
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
+        // Explicit editing discards an unconfirmed key, not a recorded Room consent.
+        pendingKeyStore.discard()
         recipeDraftConsent.value = RecipeDraftConsentUiState()
     }
 
@@ -249,13 +257,21 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                 else null
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (ready && recordedKey == null) {
+                    // Only an opaque key survives process death. The new UI session
+                    // must still require a fresh, independent explicit gesture.
+                    val key = pendingKeyStore.resumeOrCreate(requireNotNull(review.approvalBasisDigest))
                     pendingRecipeDraft = PendingRecipeDraft(
-                        java.util.UUID.randomUUID().toString(), json, immutableRequest,
+                        key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review)
+                } else if (recordedKey != null) {
+                    // A durable Room checkpoint wins over a stale pending-key file.
+                    runCatching {
+                        pendingKeyStore.finish(requireNotNull(review.approvalBasisDigest), recordedKey)
+                    }
                 }
                 recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
                     recordedDigest = if (recordedKey != null) review.approvalBasisDigest else null,
-                    sessionId = recordedKey ?: pendingRecipeDraft?.operationKey)
+                    sessionId = pendingRecipeDraft?.sessionId)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -275,7 +291,7 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
         if (recipeDraftConsent.value.busy ||
             recipeDraftConsent.value.recordedDigest != null ||
             session.review.approvalBasisDigest != approvalBasisDigest ||
-            session.operationKey != sessionId) return
+            session.sessionId != sessionId) return
         recipeDraftConsent.value = recipeDraftConsent.value.copy(busy = true, error = null)
         recipeConsentJob = viewModelScope.launch {
             try {
@@ -283,10 +299,13 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                     session.operationKey, session.json, session.request,
                     session.confirmations, session.reviewedStates, session.review, true)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                // Room is authoritative. Cleanup failure cannot turn a committed
+                // consent into a false UI failure or trigger an automatic retry.
+                runCatching { pendingKeyStore.finish(recorded, session.operationKey) }
                 if (pendingRecipeDraft === session) {
+                    pendingRecipeDraft = null
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
-                        review = session.review, recordedDigest = recorded,
-                        sessionId = session.operationKey)
+                        review = session.review, recordedDigest = recorded)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
