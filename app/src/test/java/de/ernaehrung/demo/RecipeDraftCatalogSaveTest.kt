@@ -356,7 +356,7 @@ class RecipeDraftCatalogSaveTest {
             }
         }.awaitAll()
         assertEquals(1, consentDigests.toSet().size)
-        assertEquals(ready.approvalBasisDigest, consentDigests.single())
+        assertEquals(ready.approvalBasisDigest, consentDigests.first())
         assertEquals(before + 1, dao.operationCount())
 
         val recipeIds = (1..8).map {
