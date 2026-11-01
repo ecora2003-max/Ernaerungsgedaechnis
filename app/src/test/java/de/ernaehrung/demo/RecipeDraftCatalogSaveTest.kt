@@ -271,6 +271,35 @@ class RecipeDraftCatalogSaveTest {
         assertTrue(dao.allPaidPrices().isEmpty())
     }
 
+    @Test fun futureDatedConsentLedgerCannotBeRecoveredRetriedOrUsedToSave() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        val key = "future-ledger"
+        val fingerprint = WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
+        dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$key",
+            "RECIPE_DRAFT_CONSENT_V1", fingerprint, at + 60_000L, digest))
+        val before = dao.operationCount()
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent(key, ready) }
+        rejected { save(key, ready) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation(key))
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun negativeTimestampCannotImpersonateDurableRecipeConsent() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        val key = "negative-ledger"
+        val fingerprint = WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
+        dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$key",
+            "RECIPE_DRAFT_CONSENT_V1", fingerprint, -1L, digest))
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent(key, ready) }
+        rejected { save(key, ready) }
+        assertNull(dao.operation(key))
+    }
+
     @Test fun consentSurvivesDatabaseRestartAndRevalidatedSaveIsIdempotent() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "recipe-consent-restart-${System.nanoTime()}.db"
