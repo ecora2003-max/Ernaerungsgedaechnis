@@ -15,8 +15,10 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     Heading("Rezepte & tatsächliche Herstellung", "Kochen ist kein Essen.")
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
+    val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
     RecipeDraftImportPanel(
         catalog = state.versions,
+        editingEnabled = !draftConsent.busy,
         onInvalidate = { model.clearRecipeDraftConsent() },
         onReview = { json, request, facts, states ->
             model.prepareRecipeDraftConsent(json, request, facts, states)
@@ -24,7 +26,6 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     )
     // This panel appears only after a separately host-reviewed draft was supplied
     // to the ViewModel. No untrusted generator output can activate it on its own.
-    val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
     if (draftConsent.review != null || draftConsent.error != null) {
         Panel {
             draftConsent.review?.let { review ->
