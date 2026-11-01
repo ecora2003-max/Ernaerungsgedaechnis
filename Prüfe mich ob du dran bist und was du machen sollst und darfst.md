@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T14:58:44.894Z"
 lastHeartbeatUtc: "2026-11-01T14:58:44.894Z"
 leaseExpiresAtUtc: "2026-11-01T15:13:44.894Z"
 task: "Continue four-module Android integration with focused tests"
-workingBranch: null
+workingBranch: "codex/integration-iii-evidence-resume-20261101-r3-7a4e1"
 lastReleasedAtUtc: "2026-11-01T14:54:23.357Z"
 lastReleasedCommit: "9fc112aa73de5154b78419145cfd20a2812e9ca8"
 nextStep: "PR #23 merged 1f87a468a405c29971618d1d7d86cb46cb8e31b4; final PR SHA 5a1f0b073e6f79d96885afe06db4008b59954100 CI 41318127694 PASS (49 JUnit XML, 358/358 JVM, 7/7 Room, pinned schema/Python, lint, Android test compilation). Main-push CI for merge SHA not independently observable: PENDING. STATUS commit 9fc112aa73de5154b78419145cfd20a2812e9ca8. Next: verify independent main CI, implement opt-in encrypted unconfirmed recipe Evidence-form resume with TTL/revocation and fresh Room/product version revalidation or synthetic purchase-price-shopping E2E; typed context digests, action provenance, device gates open."
