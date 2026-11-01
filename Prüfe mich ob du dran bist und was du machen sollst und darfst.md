@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Integration II scheduled run 2"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261101T231435863Z-jjtbyagueo"
+acquiredAtUtc: "2026-11-01T23:14:35.863Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Consent ledger time integrity merged (PR #48); 401/401 CI; status PR #49"
+task: "Recipe save provenance and transactional context integration"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T23:07:29.752Z"
 lastReleasedCommit: "d9c027ee88ba2a2293981243d95e251c6a01a366"
 nextStep: "Implement independent authenticated user-action provenance before recipe save; run real Android/privacy E2E; approved host offers only with source/identity gates"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
