@@ -39,7 +39,7 @@ class RecipeDraftConsentReviewTest {
         val calls = mutableListOf<String>()
         rule.runOnUiThread {
             rule.activity.setContent {
-                DemoTheme { RecipeDraftConsentReview(review()) { calls += it } }
+                DemoTheme { RecipeDraftConsentReview(review()) { digest, _ -> calls += digest } }
             }
         }
         rule.onNodeWithText("Soll-Portionen: 2").assertExists()
@@ -56,7 +56,7 @@ class RecipeDraftConsentReviewTest {
         val calls = mutableListOf<String>()
         rule.runOnUiThread {
             rule.activity.setContent {
-                DemoTheme { RecipeDraftConsentReview(current.value) { calls += it } }
+                DemoTheme { RecipeDraftConsentReview(current.value) { digest, _ -> calls += digest } }
             }
         }
         rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
@@ -73,7 +73,7 @@ class RecipeDraftConsentReviewTest {
         val calls = mutableListOf<String>()
         rule.runOnUiThread {
             rule.activity.setContent {
-                DemoTheme { RecipeDraftConsentReview(current.value) { calls += it } }
+                DemoTheme { RecipeDraftConsentReview(current.value) { digest, _ -> calls += digest } }
             }
         }
         rule.onNodeWithTag("recipe_draft_consent_confirm").assertDoesNotExist()
@@ -85,11 +85,13 @@ class RecipeDraftConsentReviewTest {
     }
     @Test fun identicalDigestInNewHostSessionRequiresFreshGesture() {
         val session = mutableStateOf("first-session")
-        val calls = mutableListOf<String>()
+        val calls = mutableListOf<Pair<String, String?>>()
         rule.runOnUiThread {
             rule.activity.setContent {
                 DemoTheme {
-                    RecipeDraftConsentReview(review(), sessionKey = session.value) { calls += it }
+                    RecipeDraftConsentReview(review(), sessionKey = session.value) { digest, renderedSession ->
+                        calls += digest to renderedSession
+                    }
                 }
             }
         }
@@ -100,6 +102,40 @@ class RecipeDraftConsentReviewTest {
         rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
         rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         rule.onNodeWithTag("recipe_draft_consent_confirm").performClick()
-        rule.runOnIdle { assertEquals(listOf("a".repeat(64), "a".repeat(64)), calls) }
+        rule.runOnIdle { assertEquals(listOf("a".repeat(64) to "first-session",
+            "a".repeat(64) to "second-session"), calls) }
     }
+    @Test fun pendingOrRecordedHostActionDisablesConsentAndRequiresFreshGestureAfterRetry() {
+        val enabled = mutableStateOf(true)
+        val retry = mutableStateOf(0)
+        val calls = mutableListOf<Pair<String, String?>>()
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    RecipeDraftConsentReview(review(), sessionKey = "bound-session",
+                        resetVersion = retry.value, actionEnabled = enabled.value) { digest, id ->
+                        calls += digest to id
+                    }
+                }
+            }
+        }
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsEnabled()
+        rule.runOnUiThread { enabled.value = false } // Host transaction pending.
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(emptyList<Pair<String, String?>>(), calls) }
+        rule.runOnUiThread {
+            enabled.value = true
+            retry.value += 1 // Failed host write: a new explicit gesture is required.
+        }
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
+        rule.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        rule.runOnIdle { assertEquals(listOf("a".repeat(64) to "bound-session"), calls) }
+        rule.runOnUiThread { enabled.value = false } // Host recorded consent.
+        rule.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_draft_consent_checkbox").assertIsNotEnabled()
+    }
+
 }
