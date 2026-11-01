@@ -1,0 +1,57 @@
+package de.ernaehrung.demo
+
+import android.app.Activity
+import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
+import de.ernaehrung.demo.data.local.RecipeInput
+import de.ernaehrung.demo.data.local.RecipeItemInput
+import de.ernaehrung.demo.ui.screens.RecipeCredentialChallenge
+import de.ernaehrung.demo.ui.screens.RecipeCredentialResultGate
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class RecipeDraftDeviceCredentialGateTest {
+    private val digest = "a".repeat(64)
+    private val challenge = RecipeCredentialChallenge(digest, "session-1")
+    private val ready = Gate.Review(
+        Gate.Status.READY_FOR_EXPLICIT_SAVE, emptySet(), emptySet(),
+        RecipeInput("Reis", 2_000L, listOf(RecipeItemInput("version", 200_000L)), "Kochen"),
+        approvalBasisDigest = digest
+    )
+    private fun accepts(
+        code: Int = Activity.RESULT_OK,
+        current: Gate.Review? = ready,
+        session: String? = "session-1",
+        enabled: Boolean = true,
+        pending: RecipeCredentialChallenge? = challenge
+    ) = RecipeCredentialResultGate.accepts(pending, code, current, session, enabled)
+
+    @Test fun successfulSystemResultMatchesOnlyLiveBoundSession() {
+        assertTrue(accepts())
+    }
+
+    @Test fun cancelledOrAbsentSystemResultNeverAuthorizesConsent() {
+        assertFalse(accepts(code = Activity.RESULT_CANCELED))
+        assertFalse(accepts(code = 123))
+        assertFalse(accepts(pending = null))
+    }
+
+    @Test fun changedSessionOrPreviewInvalidatesLateAuthenticationResult() {
+        assertFalse(accepts(session = "session-2"))
+        assertFalse(accepts(session = null))
+        assertFalse(accepts(current = ready.copy(approvalBasisDigest = "b".repeat(64))))
+        assertFalse(accepts(current = ready.copy(input = null)))
+        assertFalse(accepts(current = ready.copy(status = Gate.Status.REVIEW_REQUIRED)))
+        assertFalse(accepts(current = null))
+    }
+
+    @Test fun busyOrAlreadyRecordedHostActionCannotReuseSystemResult() {
+        assertFalse(accepts(enabled = false))
+        assertFalse(accepts(pending = challenge.copy(digest = "not-a-digest")))
+    }
+}
