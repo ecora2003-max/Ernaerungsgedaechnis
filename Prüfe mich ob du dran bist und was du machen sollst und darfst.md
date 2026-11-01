@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Ernährungsgedächtnis Integration II"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-2026-11-01T19:19:43.764Z-37wlzl0j9m"
-acquiredAtUtc: "2026-11-01T19:19:43.764Z"
-lastHeartbeatUtc: "2026-11-01T19:47:48.301Z"
-leaseExpiresAtUtc: "2026-11-01T19:57:48.301Z"
-task: "Continue main app integration, verified gates and next bounded unit"
-workingBranch: "codex/integration-ii-context-status-20261101-r2-37wlzl0j9m"
-lastReleasedAtUtc: "2026-11-01T19:15:51.503Z"
-lastReleasedCommit: "1e654de5f082e80059461f0bab39994c552427be"
-nextStep: "Verify latest CI and integrate next bounded cross-module feature"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: "RECOVERED: expired Integration II lease; latest recorded owner run completed; no active automation run detected"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T20:03:18.988Z"
+lastReleasedCommit: "c811c5c191399651a9a55b86a0bf0fc292105ce0"
+nextStep: "Recovery after expired owner lease on 2026-11-01: PR #37 pending; next integration automation must acquire a fresh ACTIVE lease by CAS, check current main and CI before continuing."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
