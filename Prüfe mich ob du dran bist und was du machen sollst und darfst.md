@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T21:45:30.355Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Install 35-minute inactivity recovery GitHub workflow, tests, documentation"
-workingBranch: null
+workingBranch: "maintenance/integration-idle-recovery-35m-20261101"
 lastReleasedAtUtc: "2026-11-01T21:44:40.623Z"
 lastReleasedCommit: "9e20c8d01229acde8cc0ff4759f46f9344f12ee2"
 nextStep: "Implement real Room/Host SHOPPING and OFFERS snapshots and authenticated recipe-save action provenance"
