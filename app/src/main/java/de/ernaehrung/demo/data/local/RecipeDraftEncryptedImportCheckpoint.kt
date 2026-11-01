@@ -85,8 +85,14 @@ internal class PrivateRecipeDraftEncryptedImportCheckpoint(
                 return@synchronized null
             val issuedAt = ByteBuffer.wrap(header, MAGIC.size, 8).long
             val time = now()
-            if (issuedAt < 0 || time < issuedAt || time - issuedAt > MAX_AGE_MS)
+            if (issuedAt < 0 || time < issuedAt) return@synchronized null
+            if (time - issuedAt > MAX_AGE_MS) {
+                // Expiry is irreversible: retaining the ciphertext indefinitely would
+                // defeat the promised 24-hour local retention limit. Do not delete on
+                // a transient Keystore failure or unauthenticated header corruption.
+                file.delete()
                 return@synchronized null
+            }
             val iv = payload.copyOfRange(HEADER_BYTES, HEADER_BYTES + IV_BYTES)
             val ciphertext = payload.copyOfRange(HEADER_BYTES + IV_BYTES, payload.size)
             if (ciphertext.size > MAX_PLAINTEXT_BYTES + TAG_BYTES)
