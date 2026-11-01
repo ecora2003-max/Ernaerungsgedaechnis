@@ -51,19 +51,19 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme, Fristverlängerung oder Freigabe.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "Integration (Chat)"
-ownerChatId: "manual-trigger"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "integration-chat-mvyawr4c-fgz7nsacn4"
-acquiredAtUtc: "2026-11-01T20:47:16.812Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Continue four-module integration and roadmap"
+task: "Run ended without code changes; integration pending"
 workingBranch: null
-lastReleasedAtUtc: "2026-11-01T20:45:05.140Z"
-lastReleasedCommit: "901929fc481be3ba8a6765adebc326dc78093ba2"
-nextStep: "Next scheduled integration run manually claims FREE-to-ACTIVE with a unique owner token, implements the next feature, then releases to FREE."
+lastReleasedAtUtc: "2026-11-01T20:47:27.598Z"
+lastReleasedCommit: "091f41a9b290dd2f4ab6f9f1474480fc44d750c5"
+nextStep: "Continue next bounded integration unit with branch, tests, CI and PR."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
