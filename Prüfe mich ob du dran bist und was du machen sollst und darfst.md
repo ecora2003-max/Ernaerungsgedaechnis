@@ -62,14 +62,14 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: null
+state: "ACTIVE"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Ernährungsgedächtnis Integration III"
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-2026-11-01T12:06:30.784Z-is2iya591"
+acquiredAtUtc: "2026-11-01T12:06:30.784Z"
+lastHeartbeatUtc: "2026-11-01T12:06:30.784Z"
+leaseExpiresAtUtc: "2026-11-01T12:21:30.784Z"
+task: "Fortsetzung Host-Integration nach PR #15; persistente Rezept-UI-Session/Operation-Key"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T11:49:28.504Z"
 lastReleasedCommit: "f9c71e4f9b61079996d1a14392a4c363011fd478"
@@ -77,4 +77,4 @@ nextStep: "PR #15 gemergt fc7be7115626e1d337ab29562b7e72a33e9de630; PR-CI 413028
 
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
