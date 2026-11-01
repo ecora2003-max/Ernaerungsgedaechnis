@@ -32,10 +32,16 @@ internal interface RecipeDraftEncryptedImportCheckpoint {
  */
 internal class PrivateRecipeDraftEncryptedImportCheckpoint(
     context: Context,
-    private val now: () -> Long = System::currentTimeMillis,
-    private val keyProvider: () -> SecretKey = { androidKey() },
-    fileName: String = "recipe-draft-encrypted-import-v1"
+    private val now: () -> Long,
+    private val keyProvider: () -> SecretKey,
+    fileName: String
 ) : RecipeDraftEncryptedImportCheckpoint {
+    // Keep the original three-argument/trailing-lambda API for callers and tests.
+    constructor(
+        context: Context,
+        now: () -> Long = System::currentTimeMillis,
+        keyProvider: () -> SecretKey = { androidKey() }
+    ) : this(context, now, keyProvider, "recipe-draft-encrypted-import-v1")
     private val file = AtomicFile(File(context.applicationContext.noBackupFilesDir,
         fileName))
 
