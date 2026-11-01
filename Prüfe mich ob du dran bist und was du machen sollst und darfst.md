@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T22:24:23.872Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement real Shopping/Offers Host/Room snapshot consistency and regression tests"
-workingBranch: null
+workingBranch: "integration-iv-room-shopping-snapshot-20261101b"
 lastReleasedAtUtc: "2026-11-01T22:09:41.850Z"
 lastReleasedCommit: "3a8b26c53860d76dbb8dcd51faa67b8bdf7c25cf"
 nextStep: "Continue real SHOPPING/OFFERS Room/Host snapshots, transactional context revalidation and authenticated recipe-save action provenance"
