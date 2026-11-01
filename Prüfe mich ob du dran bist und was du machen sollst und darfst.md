@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T08:36:38.136Z"
 lastHeartbeatUtc: "2026-11-01T08:36:38.136Z"
 leaseExpiresAtUtc: "2026-11-01T08:51:38.136Z"
 task: "Integration IV: next Host UI consent binding and own integration coherence"
-workingBranch: null
+workingBranch: "codex/integration-iv-recipe-ui-consent-20261101-0838-k7yq"
 lastReleasedAtUtc: "2026-11-01T08:36:07.717Z"
 lastReleasedCommit: "5b5c2fcd96ef946e41a1a97b26c7cd54bb977c7f"
 nextStep: "PR #10 und Main-CI 329/329 grün; UI-Digest-Callback an echten ViewModel/FoodStore-Consent mit Host-Fakten und Operation-Key anbinden, danach Kontext-Digests/Revalidator-Parität"
