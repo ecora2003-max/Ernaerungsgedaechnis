@@ -319,4 +319,26 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
         assertTrue(dao.allPaidPrices().isEmpty())
     }
+
+    @Test fun consentUsesOneTrustedInstantEvenIfDeviceClockChangesDuringTransaction() = runBlocking {
+        val futureJson = json.replace(
+            "\"createdAt\":\"2026-11-01T04:00:00Z\"",
+            "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
+        val ready = preview(futureJson)
+        var clockReads = 0
+        store = FoodStore(db) {
+            if (clockReads++ == 0) at + 120_000L else at
+        }
+        val digest = consent("clock-shift", ready, text = futureJson)
+        assertEquals(ready.approvalBasisDigest, digest)
+        val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:clock-shift"))
+        assertEquals(at + 120_000L, checkpoint.recordedAt)
+        assertEquals(1, clockReads)
+        // A clock rollback must not let the subsequent save predate creation.
+        rejected { save("clock-shift", ready, text = futureJson) }
+        assertNull(dao.operation("clock-shift"))
+        store = FoodStore(db) { at + 120_000L }
+        assertNotNull(dao.recipeVersion(save("clock-shift", ready, text = futureJson)))
+        assertEquals(0, dao.consumptionCount())
+    }
 }
