@@ -91,7 +91,7 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().allPaidPrices().isEmpty())
-        assertTrue(db.foodDao().allRecipeVersions().isEmpty())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
     }
 
     @Test fun changedPreviewInvalidatesOldCallbackWithoutAnyLedgerSideEffect() = runBlocking {
