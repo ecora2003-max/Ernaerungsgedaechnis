@@ -57,6 +57,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             RecipeRoomStockSnapshotReader(dao).read(java.time.Instant.ofEpochMilli(now()))
         }
 
+    /** Actual Room planning/checklist context, never an external offer or booking. */
+    internal suspend fun readRecipeRoomShoppingSnapshot(scope: ShoppingScope):
+        de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =
+        db.withTransaction {
+            RecipeRoomShoppingSnapshotReader(db, now)
+                .read(scope, java.time.Instant.ofEpochMilli(now()))
+        }
+
 
     /**
      * Database-backed, read-only preview. Model-provided identities and allergy
@@ -276,8 +284,42 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 )
             }
         }
-        // Other active context sources lack a trusted Room reader; a digest alone
-        // is not an authenticated action or permission to write a recipe.
+        // Shopping needs are projections of actual Room plans and checklist
+        // revisions, not confirmed purchases or authorized retailer offers.
+        // Recompute in this same transaction, with the original scope and
+        // capture time, so an intervening plan/stock/mark change fails closed.
+        if (request.flags.considerShopping) {
+            val binding = context?.contentBinding
+            val original = context?.shopping as?
+                de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot
+            val scope = original?.scopeId?.let(
+                RecipeRoomShoppingSnapshotReader::scopeFromId)
+            val fresh = scope?.let {
+                RecipeRoomShoppingSnapshotReader(db, now)
+                    .read(it, java.time.Instant.ofEpochMilli(trustedNow))
+            }
+            val ageSeconds = if (binding != null && fresh != null)
+                runCatching {
+                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
+                }.getOrNull() else null
+            val valid = context?.contentBindingRequired == true &&
+                binding?.shoppingDigest != null && original != null && fresh != null &&
+                original.capturedAt == binding.snapshotAt &&
+                ageSeconds != null && ageSeconds in 0L..300L &&
+                original == fresh.copy(capturedAt = original.capturedAt)
+            if (!valid) {
+                return review.copy(
+                    status = if (review.status ==
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.BLOCKED)
+                        review.status else
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.REVIEW_REQUIRED,
+                    gaps = review.gaps + "ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED",
+                    input = null, approvalBasisDigest = null
+                )
+            }
+        }
+        // Active context is not independent user-action provenance and never
+        // authorizes recipe saving, even if all Room sources are current.
         val contextRequested = request.flags.considerStock ||
             request.flags.considerShopping || request.flags.considerOffers
         return if (review.status ==
