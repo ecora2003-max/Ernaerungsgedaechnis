@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261101T173130520Z-hao1wkud69"`, `ownerChatId: "Integration IV scheduled run 6"`, `leaseExpiresAtUtc: "2026-11-01T17:46:30.520Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -59,21 +59,21 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 
 ## 5. EINZIGER AKTUELLER SPERRSTATUS – am Ende der Datei belassen
 
-Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
+Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+state: "FREE"
+ownerAutomationId: null
 ownerChatId: null
 ownerRunToken: null
-acquiredAtUtc: "2026-11-01T17:31:30.520Z"
-lastHeartbeatUtc: "2026-11-01T17:31:30.520Z"
+acquiredAtUtc: null
+lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV cross-module host coherence and next bounded implementation"
-workingBranch: "codex/integration-iv-catalog-package-20261101-hao1wkud69"
-lastReleasedAtUtc: "2026-11-01T17:18:39.330Z"
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T18:00:52.278Z"
 lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
-nextStep: "PR #28 merged 6eb0861e; PR CI 41329799807 and independent main CI 41330322868 PASS (373/373 JVM, 7/7 Room, lint/schema/pinned Python/Android test compilation). STATUS b25dbd2b. Next: persistent independently verified article/store review provenance, real UI/OCR/offline/privacy/device E2E, or typed recipe context digests. All four module gates OPEN."
+nextStep: "Coordinated recovery after completed Integration IV run. PR #29 open with green PR-CI; next exclusive owner must review and merge under valid lock, then verify main CI. Resume roadmap and Android E2E."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
