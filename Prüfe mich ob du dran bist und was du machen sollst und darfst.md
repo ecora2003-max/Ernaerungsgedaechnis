@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T13:33:54.331Z"
 lastHeartbeatUtc: "2026-11-01T13:33:54.331Z"
 leaseExpiresAtUtc: "2026-11-01T13:48:54.331Z"
 task: "Integration IV: Roadmap-abgestimmte Host-Integration und Room/FoodStore-Kohärenz"
-workingBranch: null
+workingBranch: "codex/integration-iv-draft-oversize-20261101-jswcf53c"
 lastReleasedAtUtc: "2026-11-01T13:18:39.857Z"
 lastReleasedCommit: "903e0854e1538b2aaacce0ced7dffccf5a9cd78e"
 nextStep: "PR #19 merged c349ebc77de669ae475ab2cf524fa391757d9040; PR CI 41309855965 and independent main CI 41310208463 PASS: 356/356 JVM, 7/7 Room, pinned Python/recipe references, lint/schema/Android test compilation. STATUS 903e0854e1538b2aaacce0ced7dffccf5a9cd78e; roadmap now docs/INTEGRATION_ROADMAP.md. Next: opt-in encrypted recipe Evidence form resume with fresh Room validation/session revocation, typed context digests and authenticated action provenance; cross-module purchase E2E and Android device gates still open."
