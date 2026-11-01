@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: null
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Ernährungsgedächtnis Integration II"
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-2026-11-01T14:15:36.760Z-23z5ei0own"
+acquiredAtUtc: "2026-11-01T14:15:36.760Z"
+lastHeartbeatUtc: "2026-11-01T14:15:36.760Z"
+leaseExpiresAtUtc: "2026-11-01T14:30:36.760Z"
+task: "Integrationsfortsetzung gemäß docs/ACCEPTANCE.md und INTEGRATION_ROADMAP"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T14:05:51.563Z"
 lastReleasedCommit: "45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe"
 nextStep: "PR #21 merged ddfa9b1ec8beff4b902cdd8e018e5a55eb71059e; PR-CI 41313417623 and independent main CI 41313916538 PASS: 357/357 JVM, 7/7 Room, pinned references, lint/schema/Android test compilation. STATUS 45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe. Next: opt-in encrypted unconfirmed recipe Evidence-form resume with TTL/revocation and fresh Room/product-version revalidation; typed context digests, authenticated action provenance, cross-module purchase E2E and real Android device gates open."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
