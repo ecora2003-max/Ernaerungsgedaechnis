@@ -10,7 +10,7 @@ Tatsächliche Zugänge, Verbrauch, Umlagerung, Zählkorrektur, Entsorgung und He
 
 Gemeinsame Tages-/Wochen-/56-Tage-Planung mit expliziter Ist-Zuordnung berechnet offenen Restbedarf. Einkaufsvorschläge berücksichtigen geeigneten Bestand, bestätigte Kaufpackungen, Preise und Überschüsse. Listenhäkchen sind kein Kauf. Verfügbares Budget erscheint erst nach explizit vollständigem Ausgabenabgleich. Regeln: [docs/PLANNING.md](docs/PLANNING.md), [docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md), [docs/SHOPPING.md](docs/SHOPPING.md), [docs/PURCHASES.md](docs/PURCHASES.md).
 
-Schema **7** mit 35 Tabellen; Testdaten aus Schema 1–6 werden ohne Löschung/Umdeutung migriert. Sichere Backups, Produktionsmigration und Release-Signierung folgen später. Noch keine persönlichen Daten übernehmen. Aktueller Prüfstand und nächste Phase: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); Produktplan unter [docs/product/](docs/product/).
+Die veröffentlichte Phase-5-Basis nutzte **Room 7 (35 Tabellen)**. Der aktuelle Entwicklungszweig nutzt **Room 8 (36 Tabellen)** mit befüllten Migrationstests von 1–7 nach 8 und zusätzlichen **isolierten, nicht produktiv angeschlossenen** Fachmodul-Ports. Sichere Backups, Produktionsmigration, vollständige Modulparität und Android-Gerätetests bleiben offen. **Das GitHub-Repository ist derzeit öffentlich**: keine persönlichen Bons, Profile, Datenbanken, Zugangsdaten oder privaten Schlüssel committen. Aktuelle Nachweise: [docs/STATUS.md](docs/STATUS.md), Schnittstellen: [docs/INTEGRATION.md](docs/INTEGRATION.md); die historische Phase-5-Übergabe steht in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Produktplan unter [docs/product/](docs/product/).
 
 ## Schnellstart
 
