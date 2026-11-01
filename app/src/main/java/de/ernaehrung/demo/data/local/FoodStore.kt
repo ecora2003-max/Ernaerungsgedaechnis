@@ -292,8 +292,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             val binding = context?.contentBinding
             val original = context?.shopping as?
                 de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot
-            val scope = original?.scopeId?.let(
-                RecipeRoomShoppingSnapshotReader::scopeFromId)
+            val scope = original?.scopeId?.let {
+                RecipeRoomShoppingSnapshotReader.scopeFromId(it)
+            }
             val fresh = scope?.let {
                 RecipeRoomShoppingSnapshotReader(db, now)
                     .read(it, java.time.Instant.ofEpochMilli(trustedNow))
