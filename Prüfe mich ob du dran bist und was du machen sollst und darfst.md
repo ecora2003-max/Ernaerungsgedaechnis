@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV"
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261101T1634-yhhgm83fg9"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
 acquiredAtUtc: "2026-11-01T16:34:52.127Z"
 lastHeartbeatUtc: "2026-11-01T16:46:28.450Z"
-leaseExpiresAtUtc: "2026-11-01T16:56:28.450Z"
-task: "Integration IV host coherence and next integration unit"
-workingBranch: "codex/integration-iv-catalog-article-20261101-yhhgm83fg9"
-lastReleasedAtUtc: "2026-11-01T16:31:39.198Z"
-lastReleasedCommit: "776679c26f342acb636b6c3ecb28f65a435d8762"
-nextStep: "PR #26 merged 628fb0d3830776c3b18642acda5492346e42b1dd; final PR-CI 41325925372 and independent main CI 41326281039 PASS (364/364 JVM, 7/7 Room, pinned references, lint/schema/androidTest compilation). Roadmap d4376ded, STATUS 776679c2; following docs-only main CI PENDING. Next: real host canonical store/article registry and UI/OCR/offline/privacy/device E2E, or typed recipe context digests. Four module gates OPEN."
+leaseExpiresAtUtc: null
+task: "Released after PR #27 and independent main CI verified"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T16:47:55.399Z"
+lastReleasedCommit: "7135fa1c126ceec5dd3cdd07bcea00a1526ea804"
+nextStep: "PR #27 merged 993daf6ae45ae88a863960c5a185002b22b1a948; PR CI 41327225765 and main CI 41327671578 PASS (368/368 JVM, 7/7 Room, lint/schema/pinned Python/Android test compilation). STATUS 7135fa1c. Next: persistently verified host article/store registries and real purchase-price-shopping UI/OCR/offline/privacy/device E2E, or typed recipe context digests. Four module gates OPEN."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
