@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T21:30:07.973Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Room/Host recipe context snapshot integration and FoodStore boundary regression"
-workingBranch: null
+workingBranch: "integration-iv-room-stock-snapshot-20261101"
 lastReleasedAtUtc: "2026-11-01T21:07:49Z"
 lastReleasedCommit: "ad2a3e5dd6e85ac03e250eea0699f4569811b5c9"
 nextStep: "Implement actual Room/Host recipe context snapshot integration with tests"
