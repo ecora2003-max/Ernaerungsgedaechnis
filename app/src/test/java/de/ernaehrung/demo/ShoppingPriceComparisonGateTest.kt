@@ -255,4 +255,28 @@ class ShoppingPriceComparisonGateTest {
         rejected(target, listOf(offer("red", "v-red"), offer("red", "v-red")))
         rejected(target, listOf(offer("", "v-red")))
     }
+
+    @Test fun unknownTargetDepositIsAnExplicitGreyCheckoutGap() {
+        val result = compare(
+            target = offer("target", "v-target", cents = 300, deposit = null),
+            candidates = listOf(offer("red", "v-red", cents = 200, deposit = 25))
+        )
+        assertTrue(result.targetEligible)
+        assertEquals(listOf("red"), result.cheaper.map { it.observationId })
+        assertEquals(listOf("RED_SAME_BIO_CHEAPER", "GREY_MAY_BE_CHEAPER"),
+            result.signals.signals)
+        assertTrue(result.signals.gaps.contains("target: deposit/checkout cost UNKNOWN"))
+        assertFalse(result.marketWideBestPriceProven)
+    }
+
+    @Test fun unknownDepositOnNonCheaperCandidateIsNotSilentlyDiscarded() {
+        val result = compare(candidates = listOf(
+            offer("expensive", "v-expensive", cents = 400, deposit = null)
+        ))
+        assertTrue(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+        assertTrue(result.signals.gaps.contains("expensive: deposit/checkout cost UNKNOWN"))
+        assertTrue(result.excluded.isEmpty())
+    }
 }

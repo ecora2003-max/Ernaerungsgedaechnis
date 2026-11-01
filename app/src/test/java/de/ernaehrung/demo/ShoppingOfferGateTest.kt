@@ -158,4 +158,53 @@ class ShoppingOfferGateTest {
         assertEquals(0L, free.offer!!.merchandiseCents)
         assertNull(free.offer!!.checkoutCents)
     }
+
+    @Test fun targetedLookupMayReturnVerifiedDatedSaleWithoutReclassifyingSource() {
+        val targeted = Policy.Capability.TARGETED_PRODUCT_PRICE_QUERY
+        val targetedRights = Price.DisplayPermissionRegistry { source, ref, capability, on ->
+            source == "host-approved-source" && ref == "host-permission-42" &&
+                capability == targeted && on == day
+        }
+        val targetRequest = request().copy(capability = targeted)
+        val targetCandidate = candidate().copy(capability = targeted)
+        val allowed = review(request = targetRequest, candidate = targetCandidate,
+            permissions = targetedRights)
+        assertTrue(allowed.eligible)
+        assertEquals(199L, allowed.offer!!.merchandiseCents)
+
+        val noRights = review(request = targetRequest, candidate = targetCandidate)
+        assertEquals(setOf(Price.Gap.MISSING_RIGHTS), noRights.externalGaps)
+        val noDates = review(request = targetRequest,
+            candidate = targetCandidate.copy(validFrom = null),
+            permissions = targetedRights)
+        assertEquals(setOf(Price.Gap.DATE_INVALID), noDates.externalGaps)
+        val coupon = review(request = targetRequest, candidate = targetCandidate,
+            facts = facts().copy(conditional = true), permissions = targetedRights)
+        assertEquals(setOf(Gate.Gap.SHOPPING_VALIDITY_REJECTED), coupon.gaps)
+        val unverified = review(request = targetRequest, candidate = targetCandidate,
+            facts = facts().copy(verifiedByHost = false), permissions = targetedRights)
+        assertEquals(setOf(Gate.Gap.HOST_FACTS_UNVERIFIED), unverified.gaps)
+    }
+
+    @Test fun targetedSaleRemainsRestrictedToFourPolicyRetailers() {
+        val targeted = Policy.Capability.TARGETED_PRODUCT_PRICE_QUERY
+        val targetedRights = Price.DisplayPermissionRegistry { _, _, cap, _ -> cap == targeted }
+        val confirmedStores = Gate.ConfirmedStoreRegistry { _, store, _, _ ->
+            store == "canonical-store-42"
+        }
+        for (retailer in Policy.Retailer.entries) {
+            val result = review(
+                request = request().copy(retailer = retailer, capability = targeted),
+                candidate = candidate().copy(retailer = retailer, capability = targeted),
+                permissions = targetedRights, stores = confirmedStores
+            )
+            if (retailer in setOf(Policy.Retailer.ALDI_NORD, Policy.Retailer.ALDI_SUED,
+                    Policy.Retailer.REWE, Policy.Retailer.LIDL)) {
+                assertTrue("$retailer should pass with independent host evidence", result.eligible)
+            } else {
+                assertFalse("$retailer has no targeted query capability", result.eligible)
+                assertTrue(result.externalGaps.contains(Price.Gap.UNSUPPORTED_CAPABILITY))
+            }
+        }
+    }
 }

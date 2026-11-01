@@ -163,6 +163,9 @@ internal object ShoppingPriceComparisonGate {
         val accepted = mutableListOf<Cheaper>()
         val excluded = linkedMapOf<String, String>()
         val gaps = mutableListOf<String>()
+        // A merchandise-only rate never proves the target checkout amount.
+        if (target.candidate.depositCents == null)
+            gaps.add("target: deposit/checkout cost UNKNOWN")
         for (candidate in candidates.sortedBy { it.candidate.observationId }) {
             val id = candidate.candidate.observationId
             // Every comparison uses ONE shopping date and ONE evidence cutoff.
@@ -181,6 +184,9 @@ internal object ShoppingPriceComparisonGate {
                 gaps.add("$id: $reason")
                 continue
             }
+            // Preserve checkout uncertainty even when merchandise is not cheaper.
+            if (candidate.candidate.depositCents == null)
+                gaps.add("$id: deposit/checkout cost UNKNOWN")
             // A purported CONFIRMED_BY_USER match may originate in a feed or
             // imported draft. Pass only decisions independently attested by the
             // host for this exact observation pair, product versions and cutoff.
@@ -227,8 +233,6 @@ internal object ShoppingPriceComparisonGate {
                 target.organic == candidate.organic -> "SAME"
                 else -> "DIFFERENT"
             }
-            if (candidate.candidate.depositCents == null)
-                gaps.add("$id: deposit/checkout cost UNKNOWN")
             accepted.add(Cheaper(
                 id, comparability.level, organicDifference, checked.rate,
                 ShoppingUnitRateKernel.targetEquivalentDifferenceCents(

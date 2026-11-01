@@ -77,10 +77,13 @@ internal object ShoppingOfferGate {
         // host boundary deliberately requires a verified physical store.
         if (facts.scopeType != "STORE_CONFIRMED")
             return Result(null, setOf(Gap.SCOPE_NOT_CONFIRMED))
+        // A targeted product lookup may legitimately return a dated SALE, but it
+        // must retain its TARGETED_PRODUCT_PRICE_QUERY provenance and pass the
+        // independent host rights, store, conditions and validity checks below.
         val supportedKind = when (request.capability) {
             RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION -> facts.priceKind == "SALE"
             RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY ->
-                facts.priceKind == "CURRENT_DISPLAYED" || facts.priceKind == "LISTED_REGULAR"
+                facts.priceKind in setOf("CURRENT_DISPLAYED", "LISTED_REGULAR", "SALE")
             RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY -> false
         }
         if (!supportedKind)
