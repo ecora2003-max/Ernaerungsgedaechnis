@@ -113,7 +113,17 @@ internal object ShoppingPurchaseSuggestionGate {
             val key = Key(total.foodTypeId, total.unit, total.basis)
             val rejected = sortedMapOf<String, String>()
             val valid = mutableListOf<Verified>()
-            val matching = offers.filter { it.input.article.foodTypeId == key.foodTypeId }
+            // Different confirmed quantity bases are separate needs, not rejected competitors.
+            // Keep malformed/unconfirmed quantities in scope so they still fail closed.
+            val matching = offers.filter { offer ->
+                if (offer.input.article.foodTypeId != key.foodTypeId) false
+                else {
+                    val q = try {
+                        ShoppingUnitRateKernel.confirmedQuantity(offer.input.article.quantity)
+                    } catch (_: IllegalArgumentException) { null }
+                    q == null || (q.unit == key.unit && q.quantityBasis == key.basis)
+                }
+            }
             for (offer in matching) {
                 val input = offer.input
                 val id = input.candidate.observationId
