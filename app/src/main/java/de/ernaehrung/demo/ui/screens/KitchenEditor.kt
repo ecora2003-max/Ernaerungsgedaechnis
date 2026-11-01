@@ -31,7 +31,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     if (draftConsent.review != null || draftConsent.error != null) {
         Panel {
             draftConsent.review?.let { review ->
-                RecipeDraftConsentReview(review,
+                RecipeDraftDeviceCredentialReview(review,
                     sessionKey = draftConsent.sessionId,
                     resetVersion = draftConsent.attemptVersion,
                     actionEnabled = !draftConsent.busy && draftConsent.recordedDigest == null &&
