@@ -31,7 +31,7 @@ class RecipeDraftHostGateTest {
             assertEquals(bits.toString(), if (f.considerShopping) shopping.value else null, c.shopping)
             assertEquals(bits.toString(), if (f.considerOffers) offers.value else null, c.offers)
             assertTrue(c.gaps.isEmpty())
-            val reviewed = Gate.review(draft(f), request(f), mapOf("rice" to fact()))
+            val reviewed = Gate.review(draft(f), request(f), mapOf("rice" to fact()), c)
             assertEquals(bits.toString(), Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed.status)
         }
     }
@@ -129,6 +129,35 @@ class RecipeDraftHostGateTest {
             mapOf("rice" to fact())).status)
         assertEquals(Gate.Status.BLOCKED, Gate.review(draft(), request(restrictions = setOf("FOOD:rice")),
             mapOf("rice" to fact())).status)
+    }
+
+
+    @Test fun requestedContextsMustBePresentAndApprovedAtFinalReview() {
+        val f = Gate.Flags(true, true, true)
+        val facts = mapOf("rice" to fact())
+        val absent = Gate.review(draft(f), request(f), facts)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, absent.status)
+        assertTrue("REQUESTED_CONTEXT_NOT_VALIDATED" in absent.gaps)
+        assertNull(absent.input)
+
+        val incomplete = Gate.context(f, Gate.Evidence("stock", true),
+            null as Gate.Evidence<String>?, Gate.Evidence("offers", false))
+        val pending = Gate.review(draft(f), request(f), facts, incomplete)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, pending.status)
+        assertTrue("SHOPPING_SNAPSHOT_UNAVAILABLE" in pending.gaps)
+        assertTrue("OFFERS_SNAPSHOT_UNAVAILABLE" in pending.gaps)
+        assertNull(pending.input)
+
+        val approved = Gate.context(f, Gate.Evidence("stock", true),
+            Gate.Evidence("shopping", true), Gate.Evidence("offers", true))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+            Gate.review(draft(f), request(f), facts, approved).status)
+
+        val leaked = Gate.Context<String, String, String>("stock", null, null, emptySet())
+        val rejected = Gate.review(draft(), request(), facts, leaked)
+        assertEquals(Gate.Status.BLOCKED, rejected.status)
+        assertTrue("CONTEXT_CONSENT_MISMATCH" in rejected.blockers)
+        assertNull(rejected.input)
     }
 
     @Test fun draftDoesNotMutateInputsOrWriteToFoodStore() {

@@ -79,9 +79,34 @@ internal object RecipeDraftHostGate {
         val input: RecipeInput?
     )
 
-    fun review(draft: Draft, request: Request, facts: Map<String, HostLine>): Review {
+    fun review(
+        draft: Draft, request: Request, facts: Map<String, HostLine>,
+        /** Context must be the independently approved projection for this request. */
+        context: Context<*, *, *>? = null
+    ): Review {
         val blockers = linkedSetOf<String>()
         val gaps = linkedSetOf<String>()
+        val anyRequested = request.flags.considerStock ||
+            request.flags.considerShopping || request.flags.considerOffers
+        if (anyRequested && context == null) {
+            gaps += "REQUESTED_CONTEXT_NOT_VALIDATED"
+        }
+        if (context != null) {
+            // A missing requested snapshot is UNKNOWN, never an empty stock/list/offer.
+            if (request.flags.considerStock && context.stock == null)
+                gaps += "STOCK_SNAPSHOT_UNAVAILABLE"
+            if (request.flags.considerShopping && context.shopping == null)
+                gaps += "SHOPPING_SNAPSHOT_UNAVAILABLE"
+            if (request.flags.considerOffers && context.offers == null)
+                gaps += "OFFERS_SNAPSHOT_UNAVAILABLE"
+            gaps.addAll(context.gaps)
+            // Do not permit a mismatched context assembled under broader consent.
+            if ((!request.flags.considerStock && context.stock != null) ||
+                (!request.flags.considerShopping && context.shopping != null) ||
+                (!request.flags.considerOffers && context.offers != null)) {
+                blockers += "CONTEXT_CONSENT_MISMATCH"
+            }
+        }
         if (draft.contractVersion != CONTRACT || draft.messageType != "recipe.draft") {
             blockers += "UNSUPPORTED_CONTRACT"
         }
