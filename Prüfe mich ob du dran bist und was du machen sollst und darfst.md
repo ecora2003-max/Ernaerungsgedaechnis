@@ -33,6 +33,8 @@ Nach **erfolgreicher Sperrenübernahme** und vor der eigentlichen Entwicklung:
 
 Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem GitHub-`main`-Branch**. Der lesbare Zustand lautet entweder exakt **„Hier arbeitet kein Chat mehr.“** oder **„Hier arbeitet jetzt ein Chat!“**. Dazu gehören Maschinenfelder. Jede Ausführung benötigt eine **eindeutige Kennung** `ownerRunToken` (Automatisierungs-ID + tatsächliche Run-ID; wenn unbekannt + selbst erzeugte eindeutige Ausführungskennung), `ownerChatId`, `acquiredAtUtc`, `lastHeartbeatUtc`, `leaseExpiresAtUtc`, `task`.
 
+**Verbindliche Ergänzung zur Wiederherstellung:** [docs/LEASE_COORDINATION.md](docs/LEASE_COORDINATION.md). Künftige Automatisierungsläufe müssen ihre konkrete `ownerRunId` aus ihrem eigenen Laufstatus erfassen und in `ownerRunToken` einbinden (`Automations-ID:Run-ID:Nonce`). Ohne verifizierte Run-ID keine Schreibsperrenübernahme. Bei abgelaufener Sperre nur nach exakt zugeordneter `completed`/`failed`-Lauf-Evidenz und atomarer CAS-Freigabe wiederherstellen. Wegen fehlender ChatGPT-Laufstatusprüfung durch GitHub Actions ist CI-basierte automatische Sperrverlängerung deaktiviert; ausschließlich der laufende Besitzer führt vor Ablauf eigene Heartbeats aus.
+
 ### A. Vor dem Arbeiten / Sperre übernehmen
 
 1. **Frisch** die Sperrdatei von `main` mit GitHub-FILE-SHA abrufen, niemals von altem Cache/Chatkopie. Bei `ACTIVE` und gültiger, noch nicht abgelaufener `leaseExpiresAtUtc`: **KEINE Entwicklung/Schreibaktionen starten**, nicht an fremdem Branch weiterarbeiten, nicht auf fremde PRs pushen. Die eigene Ausführung beenden; bei nächster geplanter Stunde erneut versuchen. Nur belegte notwendige Blockade melden, nicht routinemäßig.
@@ -65,6 +67,7 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 state: "ACTIVE"
 ownerAutomationId: null
 ownerChatId: "Manual user-directed lease reliability maintenance"
+ownerRunId: null
 ownerRunToken: "chat-manual-manual-maintenance-20261101T20072231"
 acquiredAtUtc: "2026-11-01T20:07:22.310Z"
 lastHeartbeatUtc: "2026-11-01T20:07:22.310Z"
