@@ -25,7 +25,10 @@ fun LocalDataScreen(initialSection: String = "Katalog", initialRecognitionMode: 
     val context = LocalContext.current.applicationContext
     val factory = remember(context) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(FoodStore(FoodDatabase.localSandbox(context))) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(
+            FoodStore(FoodDatabase.localSandbox(context)),
+            pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context)
+        ) as T
     } }
     val model: LocalDataViewModel = viewModel(factory = factory)
     LocalDataContent(model, initialSection, initialRecognitionMode)
