@@ -1,0 +1,24 @@
+name: Integration idle recovery safety tests
+
+on:
+  pull_request:
+    paths:
+      - 'tools/integration_idle_recovery.py'
+      - 'tools/test_integration_idle_recovery.py'
+      - '.github/workflows/integration-idle-recovery.yml'
+      - '.github/workflows/integration-idle-recovery-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify safe inactivity recovery
+        run: python3 -m unittest discover -s tools -p "test_integration_idle_recovery.py" -v

@@ -1,0 +1,31 @@
+name: Integration idle lock recovery (35 minutes)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: integration-idle-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted default branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify idle-recovery safety tests
+        run: python3 -m unittest discover -s tools -p "test_integration_idle_recovery.py" -v
+      - name: Check registered integration owner and GitHub activity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/integration_idle_recovery.py --repo "$GITHUB_REPOSITORY"
