@@ -35,7 +35,7 @@ class RecipeDraftImportPanelTest {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
                     }
                 }
             }
@@ -66,7 +66,7 @@ class RecipeDraftImportPanelTest {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
                     }
                 }
             }
