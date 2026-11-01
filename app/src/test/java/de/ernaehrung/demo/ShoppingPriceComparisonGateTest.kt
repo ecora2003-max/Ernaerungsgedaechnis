@@ -269,6 +269,64 @@ class ShoppingPriceComparisonGateTest {
         assertFalse(result.marketWideBestPriceProven)
     }
 
+    @Test fun independentlyAuthorizedOtherDaySalesAreInformationalOnly() {
+        val future = offer("red", "v-red", cents = 100).let {
+            it.copy(candidate = it.candidate.copy(
+                validFrom = day.plusDays(1), validUntil = day.plusDays(3)))
+        }
+        val past = offer("orange", "v-orange", cents = 90).let {
+            it.copy(candidate = it.candidate.copy(
+                validFrom = day.minusDays(3), validUntil = day.minusDays(1)))
+        }
+        val datedRights = Price.DisplayPermissionRegistry { source, ref, capability, on ->
+            source == "licensed-test-source" && ref == "host-grant" &&
+                capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION &&
+                on in day.minusDays(3)..day.plusDays(3)
+        }
+        val result = compare(candidates = listOf(future, past), rights = datedRights)
+        assertTrue(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals(listOf("orange", "red"),
+            result.otherDayOffers.map { it.observationId })
+        assertEquals(day.plusDays(1), result.otherDayOffers[1].validFrom)
+        assertEquals(day.minusDays(1), result.otherDayOffers[0].validUntil)
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+        assertEquals(2, result.excluded.size)
+        assertFalse(result.marketWideBestPriceProven)
+    }
+
+    @Test fun otherDaySaleDoesNotBypassRightsIdentityOrEvidenceCutoff() {
+        val future = offer("red", "v-red", cents = 100).let {
+            it.copy(candidate = it.candidate.copy(
+                validFrom = day.plusDays(1), validUntil = day.plusDays(2)))
+        }
+        // A grant for the current day alone cannot authorize another day.
+        assertTrue(compare(candidates = listOf(future)).otherDayOffers.isEmpty())
+        val datedRights = Price.DisplayPermissionRegistry { source, ref, capability, on ->
+            source == "licensed-test-source" && ref == "host-grant" &&
+                capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION &&
+                on in day..day.plusDays(2)
+        }
+        val futureEvidence = future.copy(candidate = future.candidate.copy(
+            observedAt = asOf.plusMinutes(1)))
+        val forgedRights = future.copy(candidate = future.candidate.copy(
+            rightsEvidenceRef = "untrusted"))
+        val unrelated = future.copy(article = article(food = "oat"))
+        val wrongStore = future.copy(candidate = future.candidate.copy(storeId = "alias"),
+            request = future.request.copy(storeId = "alias"))
+        val regular = future.copy(facts = future.facts.copy(priceKind = "LISTED_REGULAR"))
+        for (invalid in listOf(futureEvidence, forgedRights, unrelated, wrongStore, regular)) {
+            val result = compare(candidates = listOf(invalid), rights = datedRights)
+            assertTrue(result.otherDayOffers.isEmpty())
+            assertTrue(result.cheaper.isEmpty())
+        }
+        val failedRegistry = Price.DisplayPermissionRegistry { _, _, _, _ ->
+            throw IllegalStateException("registry unavailable")
+        }
+        assertTrue(compare(candidates = listOf(future),
+            rights = failedRegistry).otherDayOffers.isEmpty())
+    }
+
     @Test fun unknownDepositOnNonCheaperCandidateIsNotSilentlyDiscarded() {
         val result = compare(candidates = listOf(
             offer("expensive", "v-expensive", cents = 400, deposit = null)

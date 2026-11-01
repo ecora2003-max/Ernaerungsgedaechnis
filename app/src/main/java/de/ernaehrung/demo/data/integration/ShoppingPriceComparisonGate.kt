@@ -64,11 +64,19 @@ internal object ShoppingPriceComparisonGate {
         val targetEquivalentDifferenceCents: BigInteger?
     )
 
+    /** Only a dated, host-authorized SALE; never a current price or purchase suggestion. */
+    data class OtherDayOffer(
+        val observationId: String,
+        val validFrom: java.time.LocalDate,
+        val validUntil: java.time.LocalDate
+    )
+
     data class Result(
         val targetEligible: Boolean,
         val cheaper: List<Cheaper>,
         val excluded: Map<String, String>,
-        val signals: ShoppingCoverageSignalKernel.Result
+        val signals: ShoppingCoverageSignalKernel.Result,
+        val otherDayOffers: List<OtherDayOffer> = emptyList()
     ) {
         val marketWideBestPriceProven: Boolean get() = false
     }
@@ -133,6 +141,48 @@ internal object ShoppingPriceComparisonGate {
             else Checked(rate, null)
     }
 
+    /**
+     * A date-mismatched sale is not a current alternative. Only report its
+     * date window if the SAME observation passes all independent host gates
+     * on a day inside that window, using the original evidence cutoff.
+     * The source grant must explicitly permit that other day. No price or
+     * checkout amount is exposed here and no future observation is imported.
+     */
+    private fun verifiedOtherDaySale(
+        target: Input,
+        candidate: Input,
+        permissions: ExternalPriceBridge.DisplayPermissionRegistry,
+        stores: ShoppingOfferGate.ConfirmedStoreRegistry,
+        articles: ConfirmedArticleRegistry
+    ): OtherDayOffer? {
+        if (candidate.facts.priceKind != "SALE") return null
+        val from = candidate.candidate.validFrom ?: return null
+        val until = candidate.candidate.validUntil ?: return null
+        if (from.isAfter(until)) return null
+        val shoppingDay = target.request.purchaseOn
+        if (!shoppingDay.isBefore(from) && !shoppingDay.isAfter(until)) return null
+        val otherDay = if (shoppingDay.isBefore(from)) from else until
+        val checked = check(
+            candidate.copy(request = candidate.request.copy(purchaseOn = otherDay)),
+            permissions, stores, articles
+        )
+        if (checked.rate == null) return null
+        // Do not advertise unrelated groceries as other-day alternatives.
+        // Functional substitutions require a separate user confirmation and
+        // are deliberately not inferred for this informational projection.
+        val comparable = try {
+            ShoppingComparabilityKernel.compare(
+                ShoppingComparabilityKernel.Observation(
+                    target.candidate.observationId, target.article),
+                ShoppingComparabilityKernel.Observation(
+                    candidate.candidate.observationId, candidate.article),
+                emptyList()
+            )
+        } catch (_: IllegalArgumentException) { return null }
+        if (comparable.level !in setOf("EXACT_SKU", "SAME_FOOD_VARIANT")) return null
+        return OtherDayOffer(candidate.candidate.observationId, from, until)
+    }
+
     fun compare(
         target: Input,
         candidates: List<Input>,
@@ -161,6 +211,7 @@ internal object ShoppingPriceComparisonGate {
         }
         val targetRate = targetCheck.rate
         val accepted = mutableListOf<Cheaper>()
+        val otherDays = mutableListOf<OtherDayOffer>()
         val excluded = linkedMapOf<String, String>()
         val gaps = mutableListOf<String>()
         // A merchandise-only rate never proves the target checkout amount.
@@ -179,6 +230,8 @@ internal object ShoppingPriceComparisonGate {
             }
             val checked = check(candidate, permissions, stores, articles)
             if (checked.rate == null) {
+                verifiedOtherDaySale(target, candidate, permissions, stores, articles)
+                    ?.let { otherDays.add(it) }
                 val reason = checked.rejection ?: "offer not eligible"
                 excluded[id] = reason
                 gaps.add("$id: $reason")
@@ -255,6 +308,7 @@ internal object ShoppingPriceComparisonGate {
             },
             gaps
         )
-        return Result(true, accepted, excluded, signals)
+        return Result(true, accepted, excluded, signals,
+            otherDays.sortedBy { it.observationId })
     }
 }
