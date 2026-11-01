@@ -66,6 +66,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
 
 
+    /** Authorized host-cache offers; the caller must supply independent rights and store gates. */
+    internal suspend fun readRecipeAuthorizedOffersSnapshot(
+        scope: RecipeAuthorizedOffersReader.Scope,
+        reader: RecipeAuthorizedOffersReader
+    ): de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =
+        db.withTransaction { reader.read(scope, java.time.Instant.ofEpochMilli(now())) }
+
     /**
      * Database-backed, read-only preview. Model-provided identities and allergy
      * claims cannot populate host facts; only separately confirmed, current
@@ -77,10 +84,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
-        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null,
+        offersScope: RecipeAuthorizedOffersReader.Scope? = null,
+        offersReader: RecipeAuthorizedOffersReader? = null
     ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review = db.withTransaction {
         reviewRecipeDraftV1InTransaction(json, request, confirmations, reviewedStates,
-            context, trustedContextSnapshotAt)
+            context, trustedContextSnapshotAt, offersScope = offersScope,
+            offersReader = offersReader)
     }
 
     /**
@@ -229,7 +239,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>?,
         trustedContextSnapshotAt: java.time.OffsetDateTime?,
         requireNonFutureDraft: Boolean = false,
-        trustedNow: Long = now()
+        trustedNow: Long = now(),
+        offersScope: RecipeAuthorizedOffersReader.Scope? = null,
+        offersReader: RecipeAuthorizedOffersReader? = null
     ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review {
         val clock = java.time.OffsetDateTime.ofInstant(
             java.time.Instant.ofEpochMilli(trustedNow), java.time.ZoneOffset.UTC)
@@ -315,6 +327,38 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                         review.status else
                         de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.REVIEW_REQUIRED,
                     gaps = review.gaps + "ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED",
+                    input = null, approvalBasisDigest = null
+                )
+            }
+        }
+        // An offer is not a Room price observation or a feed permission flag.
+        // Revalidate the independently authorized host cache against the current
+        // Room product version and rights/store registries in this transaction.
+        // No configured host cache means REVIEW_REQUIRED, not empty offers.
+        if (request.flags.considerOffers) {
+            val binding = context?.contentBinding
+            val original = context?.offers as?
+                de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot
+            val fresh = if (offersReader != null && offersScope != null &&
+                original?.scopeId == RecipeAuthorizedOffersReader.scopeId(offersScope)) {
+                offersReader.read(offersScope, java.time.Instant.ofEpochMilli(trustedNow))
+            } else null
+            val ageSeconds = if (binding != null && fresh != null)
+                runCatching {
+                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
+                }.getOrNull() else null
+            val valid = context?.contentBindingRequired == true &&
+                binding?.offersDigest != null && original != null && fresh != null &&
+                original.capturedAt == binding.snapshotAt &&
+                ageSeconds != null && ageSeconds in 0L..300L &&
+                original == fresh.copy(capturedAt = original.capturedAt)
+            if (!valid) {
+                return review.copy(
+                    status = if (review.status ==
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.BLOCKED)
+                        review.status else
+                        de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.REVIEW_REQUIRED,
+                    gaps = review.gaps + "HOST_OFFERS_SNAPSHOT_STALE_OR_UNAUTHORIZED",
                     input = null, approvalBasisDigest = null
                 )
             }
