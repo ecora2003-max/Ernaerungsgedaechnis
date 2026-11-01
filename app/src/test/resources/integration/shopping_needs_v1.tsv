@@ -1,0 +1,13 @@
+id	asOf	stock	demands	history	historyStart	historyUntil	h1	h7	h28	h56	unknown	complete
+fefo-once	2026-10-31	LOT1|oats|8|g|NET|1|true|true|true|2026-11-06	e1|oats|2026-10-31|5|g|NET|1|true|PREPARATION_RAW;e2|oats|2026-11-01|6|g|NET|1|true|PREPARATION_RAW	-	-	-	-	oats:g:NET=3	oats:g:NET=3	oats:g:NET=3	-	true
+unsafe-lot	2026-10-31	BAD|oats|99|g|NET|1|true|false|true|2026-11-03	e1|oats|2026-10-31|20|g|NET|1|true|-	-	-	-	oats:g:NET=20	oats:g:NET=20	oats:g:NET=20	oats:g:NET=20	-	false
+expired	2026-10-31	OLD|oats|100|g|NET|1|true|true|true|2026-10-31	later|oats|2026-11-02|30|g|NET|1|true|-	-	-	-	-	oats:g:NET=30	oats:g:NET=30	oats:g:NET=30	-	true
+unknown-snapshots	2026-10-31	~	~	-	-	-	-	-	-	-	-	false
+unknown-demand	2026-10-31	-	missing|oats|2026-10-31|-|g|NET|1|true|PREPARATION_RAW	-	-	-	-	-	-	-	missing	false
+prepared-portions	2026-10-31	-	cook|oats|2026-10-31|100|g|NET|1|true|PREPARATION_RAW;eat1|oats|2026-10-31|100|g|NET|1|true|PORTION_CONSUMPTION;eat2|oats|2026-11-01|100|g|NET|1|true|COOKED_MEAL_CONSUMPTION	-	-	-	oats:g:NET=100	oats:g:NET=100	oats:g:NET=100	oats:g:NET=100	-	true
+baseline-plan	2026-10-31	-	planned-today|oats|2026-10-31|100|g|NET|1|true|-	h1|oats|2026-10-10|70|g|NET|1|true|-;h2|oats|2026-10-11|70|g|NET|1|true|-;h3|oats|2026-10-12|70|g|NET|1|true|-	2026-10-10	2026-10-16	oats:g:NET=100	oats:g:NET=280	oats:g:NET=910	oats:g:NET=1750	-	true
+insufficient-baseline	2026-10-31	-	-	h1|oats|2026-10-30|100|g|NET|1|true|-	2026-10-30	2026-10-30	-	-	-	-	-	false
+basis-isolation	2026-10-31	LOT|oats|8|g|NET|1|true|true|true|2026-11-30	e1|oats|2026-10-31|10|g|NET|1|true|-;e2|oats|2026-10-31|10|g|DRAINED|1|true|-	-	-	-	oats:g:DRAINED=10,oats:g:NET=2	oats:g:DRAINED=10,oats:g:NET=2	oats:g:DRAINED=10,oats:g:NET=2	oats:g:DRAINED=10,oats:g:NET=2	-	true
+two-lots	2026-10-31	A|oats|4|g|NET|1|true|true|true|2026-11-02;B|oats|6|g|NET|1|true|true|true|2026-11-10	e1|oats|2026-11-01|5|g|NET|1|true|-;e2|oats|2026-11-03|5|g|NET|1|true|-	-	-	-	-	-	-	-	-	true
+outside-horizon	2026-10-31	-	far|oats|2026-12-30|50|g|NET|1|true|-	-	-	-	-	-	-	-	-	true
+unknown-expiry	2026-10-31	LOT|oats|9|g|NET|1|true|true|true|-	e1|oats|2026-10-31|5|g|NET|1|true|-	-	-	-	oats:g:NET=5	oats:g:NET=5	oats:g:NET=5	oats:g:NET=5	-	false
