@@ -29,15 +29,17 @@ import de.ernaehrung.demo.data.integration.RecipeDraftHostGate
 internal fun RecipeDraftConsentReview(
     review: RecipeDraftHostGate.Review,
     sessionKey: String? = null,
-    onConfirm: (approvalBasisDigest: String) -> Unit
+    actionEnabled: Boolean = true,
+    onConfirm: (approvalBasisDigest: String, sessionId: String?) -> Unit
 ) {
     val digest = review.approvalBasisDigest
     val input = review.input
     val ready = review.status == RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
         input != null && digest != null && Regex("[0-9a-f]{64}").matches(digest)
     // Any change to the host-issued approval basis invalidates the gesture.
-    var checked by remember(sessionKey, digest, input, ready) { mutableStateOf(false) }
-    var submitted by remember(sessionKey, digest, input, ready) { mutableStateOf(false) }
+    // A pending/recorded host action must invalidate an old checked gesture.
+    var checked by remember(sessionKey, digest, input, ready, actionEnabled) { mutableStateOf(false) }
+    var submitted by remember(sessionKey, digest, input, ready, actionEnabled) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().testTag("recipe_draft_consent_review")) {
         Text("Rezeptentwurf prüfen · keine Herstellung oder Verzehrbuchung")
@@ -56,8 +58,8 @@ internal fun RecipeDraftConsentReview(
         Row {
             Checkbox(
                 checked = checked,
-                onCheckedChange = { if (!submitted) checked = it },
-                enabled = !submitted,
+                onCheckedChange = { if (actionEnabled && !submitted) checked = it },
+                enabled = actionEnabled && !submitted,
                 modifier = Modifier.testTag("recipe_draft_consent_checkbox")
             )
             Text("Diese konkrete Rezeptvorschau und die geprüften Zutaten ausdrücklich übernehmen.",
@@ -65,12 +67,13 @@ internal fun RecipeDraftConsentReview(
         }
         Button(
             onClick = {
-                if (checked && !submitted) {
+                if (actionEnabled && checked && !submitted) {
                     submitted = true
-                    onConfirm(requireNotNull(digest))
+                    // Bind the exact session rendered for this gesture, never a later UI state.
+                    onConfirm(requireNotNull(digest), sessionKey)
                 }
             },
-            enabled = checked && !submitted,
+            enabled = actionEnabled && checked && !submitted,
             modifier = Modifier.testTag("recipe_draft_consent_confirm")
         ) { Text("Rezeptentwurf bestätigen") }
     }
