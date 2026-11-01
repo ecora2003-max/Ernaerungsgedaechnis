@@ -187,7 +187,8 @@ class RecipeDraftImportPanelTest {
         // the previous draft, even when the new JSON is still schema-valid.
         rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
         rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
-        rule.onNodeWithTag("recipe_draft_restrictions").assertTextEquals("")
+        rule.onNodeWithTag("recipe_draft_restrictions").assertTextEquals(
+            "Bestätigte Ausschlüsse, z. B. ALLERGEN:SOY, FOOD:milk")
         rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
