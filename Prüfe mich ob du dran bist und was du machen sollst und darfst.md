@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II"
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261101T111847375Z-v8f0yf79k"
-acquiredAtUtc: "2026-11-01T11:18:47.375Z"
-lastHeartbeatUtc: "2026-11-01T11:25:52.342Z"
-leaseExpiresAtUtc: "2026-11-01T11:35:52.342Z"
-task: "Android-Hauptapp-Integration fortsetzen; Recovery: vorheriger Automatisierungslauf 95350fb5-a720-832d-a5c2-e8c46cc66803 am 2026-11-01T10:48:11.372776Z abgeschlossen"
-workingBranch: "codex/recipe-consent-inflight-guard-20261101-ii-v8f0yf79k"
-lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
-lastReleasedCommit: "607ddc8f4c73bc6bb819b0883f16f998cdbff88d"
-nextStep: "PR #13 und CI prüfen, sichere Host-Integration fortsetzen"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T11:30:28.334Z"
+lastReleasedCommit: "c0285316baf07d514333caa9c0793d0cf4b427e8"
+nextStep: "PR #14 gemergt als ba43a8468f25456ba39490fc2647df138c77feb8; PR-CI 41301504362 PASS 342/342 JVM, 7/7 Room. Main-Push-CI für ba43a846 PENDING (PR-gefilterte Abfrage). Danach persistente replay-sichere Consent-Session/Operation-Key-Wiederaufnahme, typisierte Kontext-Digests und echte Geräte-E2E."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
