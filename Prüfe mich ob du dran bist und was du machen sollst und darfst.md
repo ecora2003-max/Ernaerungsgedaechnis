@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: FREE
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T07:30:10.695Z"
-lastHeartbeatUtc: "2026-11-01T07:37:58.321Z"
-leaseExpiresAtUtc: null
-task: "Keine aktive Integrationsarbeit"
+state: ACTIVE
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Ernährungsgedächtnis Integration III"
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104:2026-11-01T08:07:01.291Z:tcjt2zmib"
+acquiredAtUtc: "2026-11-01T08:07:01.291Z"
+lastHeartbeatUtc: "2026-11-01T08:07:01.291Z"
+leaseExpiresAtUtc: "2026-11-01T08:22:01.291Z"
+task: "Integration fortsetzen: Host-CI prüfen und nächstes Rezept-Consent-Gate implementieren"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T07:43:14.426Z"
 lastReleasedCommit: "d212e4608ad948be3d00c780643bac1695a9cd89"
 nextStep: "Main-Push-CI für PR-5-Merge a710e325 unabhängig prüfen; danach UI-gebundene Rezept-Consent-Aktion, Kontext-Digests und Rezept-Revalidator-Parität"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
