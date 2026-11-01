@@ -1,0 +1,8 @@
+id	target	candidates	shoppingDate	lastDue	budget	capacity	maxNodes	status	cost	mix	warnings
+mixed_exact	11	A|6|70|10|DRY|100;B|5|40|10|DRY|100	2026-11-01	2026-11-06	200	DRY=1000	250000	FEASIBLE_NOT_PURCHASED	110	A:1,B:1	-
+unknown_budget	11	A|6|70|10|DRY|100;B|5|40|10|DRY|100	2026-11-01	2026-11-06	-	DRY=1000	250000	REVIEW	110	A:1,B:1	budget UNKNOWN
+unknown_capacity	11	A|6|70|10|DRY|100;B|5|40|10|DRY|100	2026-11-01	2026-11-06	200	-	250000	REVIEW	110	A:1,B:1	available storage volume UNKNOWN
+short_shelf	11	A|6|70|1|DRY|100;B|5|40|1|DRY|100	2026-11-01	2026-11-06	200	DRY=1000	250000	REVIEW	110	A:1,B:1	shelf life or due date UNKNOWN/insufficient
+over_budget	11	A|6|70|10|DRY|100;B|5|40|10|DRY|100	2026-11-01	2026-11-06	100	DRY=1000	250000	REVIEW	110	A:1,B:1	budget exceeded
+search_bound	100	A|1|1|10|DRY|100;B|2|2|10|DRY|100	2026-11-01	2026-11-06	100	DRY=1000	1	SEARCH_LIMIT	-	-	no bounded package combination proven
+single_exact	10	A|10|90|5|DRY|50;B|5|60|5|DRY|50	2026-11-01	2026-11-03	200	DRY=500	250000	FEASIBLE_NOT_PURCHASED	90	A:1	-
