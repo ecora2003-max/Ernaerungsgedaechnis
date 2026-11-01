@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import de.ernaehrung.demo.data.local.Amounts
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate
 
 /**
@@ -46,9 +47,9 @@ internal fun RecipeDraftConsentReview(
         }
         val recipe = requireNotNull(input)
         Text(recipe.name)
-        Text("Soll-Portionen: ${recipe.yieldPortions}")
+        Text("Soll-Portionen: ${Amounts.format(recipe.yieldPortions)}")
         recipe.ingredients.forEach { ingredient ->
-            Text("Artikelversion ${ingredient.versionId} · Menge ${ingredient.amount?.toString() ?: "unbekannt"}")
+            Text("Artikelversion ${ingredient.versionId} · Menge in bestätigter Basiseinheit: ${ingredient.amount?.let(Amounts::format) ?: "unbekannt"}")
         }
         Text(recipe.steps)
         Row {
