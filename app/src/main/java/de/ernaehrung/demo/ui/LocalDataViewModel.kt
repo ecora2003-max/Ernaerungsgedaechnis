@@ -260,6 +260,7 @@ class LocalDataViewModel(
                     // Only an opaque key survives process death. The new UI session
                     // must still require a fresh, independent explicit gesture.
                     val key = pendingKeyStore.resumeOrCreate(requireNotNull(review.approvalBasisDigest))
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     pendingRecipeDraft = PendingRecipeDraft(
                         key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review)
