@@ -295,6 +295,28 @@ class ShoppingPriceComparisonGateTest {
         assertFalse(result.marketWideBestPriceProven)
     }
 
+    @Test fun otherDaySaleNeverAdvertisesUncheckedDatesAsAuthorized() {
+        val future = offer("red", "v-red", cents = 100).let {
+            it.copy(candidate = it.candidate.copy(
+                validFrom = day.plusDays(1), validUntil = day.plusDays(20)))
+        }
+        // The host grants APP_DISPLAY only for the first day of a 20-day
+        // feed-declared sale. The remaining 19 days must not be advertised.
+        val firstDayOnly = Price.DisplayPermissionRegistry { source, ref, capability, on ->
+            source == "licensed-test-source" && ref == "host-grant" &&
+                capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION &&
+                on == day.plusDays(1)
+        }
+        val result = compare(candidates = listOf(future), rights = firstDayOnly)
+        assertTrue(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals(listOf("red"), result.otherDayOffers.map { it.observationId })
+        assertEquals(day.plusDays(1), result.otherDayOffers.single().validFrom)
+        assertEquals(day.plusDays(1), result.otherDayOffers.single().validUntil)
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+        assertFalse(result.marketWideBestPriceProven)
+    }
+
     @Test fun otherDaySaleDoesNotBypassRightsIdentityOrEvidenceCutoff() {
         val future = offer("red", "v-red", cents = 100).let {
             it.copy(candidate = it.candidate.copy(

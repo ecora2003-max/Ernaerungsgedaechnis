@@ -64,7 +64,7 @@ internal object ShoppingPriceComparisonGate {
         val targetEquivalentDifferenceCents: BigInteger?
     )
 
-    /** Only a dated, host-authorized SALE; never a current price or purchase suggestion. */
+    /** Only a single explicitly host-authorized SALE day; never an unchecked full window or current price. */
     data class OtherDayOffer(
         val observationId: String,
         val validFrom: java.time.LocalDate,
@@ -145,8 +145,10 @@ internal object ShoppingPriceComparisonGate {
      * A date-mismatched sale is not a current alternative. Only report its
      * date window if the SAME observation passes all independent host gates
      * on a day inside that window, using the original evidence cutoff.
-     * The source grant must explicitly permit that other day. No price or
-     * checkout amount is exposed here and no future observation is imported.
+     * The source grant must explicitly permit that other day. Only that
+     * independently verified day is returned, NOT the entire feed-claimed sale
+     * interval. No price or checkout amount is exposed and no future observation
+     * is imported.
      */
     private fun verifiedOtherDaySale(
         target: Input,
@@ -180,7 +182,10 @@ internal object ShoppingPriceComparisonGate {
             )
         } catch (_: IllegalArgumentException) { return null }
         if (comparable.level !in setOf("EXACT_SKU", "SAME_FOOD_VARIANT")) return null
-        return OtherDayOffer(candidate.candidate.observationId, from, until)
+        // The feed's full [from, until] window is NOT independently authorized:
+        // permissions/store/article evidence was checked only for otherDay.
+        // Advertising unchecked dates would overstate the host's rights proof.
+        return OtherDayOffer(candidate.candidate.observationId, otherDay, otherDay)
     }
 
     fun compare(
