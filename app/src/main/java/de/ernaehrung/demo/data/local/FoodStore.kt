@@ -99,7 +99,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
             "Rezeptentwurf, Freigabebasis oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
         }
-        kitchen.saveRecipe(key, current.input, null, "Bestätigter Rezeptentwurf v1")
+        // Bind the persisted operation fingerprint to the exact approved preview.
+        // A second draft with the same projected recipe must not replay this key.
+        kitchen.saveRecipe(key, current.input, null, "Bestätigter Rezeptentwurf v1",
+            current.approvalBasisDigest)
     }
 
     /** Caller must supply independently verified confirmation facts, never model claims. */
