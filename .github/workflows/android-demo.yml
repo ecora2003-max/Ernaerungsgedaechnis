@@ -46,6 +46,9 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
+      - name: Verify fresh JUnit XML and migration regression counts
+        run: python3 tools/check_junit_xml.py app/build/test-results/testDebugUnitTest
+
       - name: Verify pinned product-data historical price parity fixtures
         run: |
           curl --fail --location --silent --show-error --output "$RUNNER_TEMP/eg-product-history-core.py" \
