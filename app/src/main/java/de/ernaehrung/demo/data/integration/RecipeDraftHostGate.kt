@@ -146,7 +146,8 @@ internal object RecipeDraftHostGate {
             if (!host.basisConfirmed || host.basis == null ||
                 !host.stateConfirmed || host.state == null) {
                 gaps += "UNCONFIRMED_BASIS_OR_STATE"
-            } else if (host.basis != line.basis || host.state != line.state) {
+            } else if (host.basis != line.basis ||
+                (line.state != State.UNKNOWN && host.state != line.state)) {
                 blockers += "BASIS_OR_STATE_MISMATCH"
             }
             for (allergen in allergies) {

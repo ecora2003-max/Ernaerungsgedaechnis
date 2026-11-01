@@ -177,8 +177,10 @@ internal object RecipeDraftBoundedJson {
                 n
             } else {
                 val n = BigInteger(raw)
-                try { n.intValueExact() } catch (_: ArithmeticException) {
-                    try { n.longValueExact() } catch (_: ArithmeticException) { n }
+                when {
+                    n.bitLength() <= 31 -> n.toInt()
+                    n.bitLength() <= 63 -> n.toLong()
+                    else -> n
                 }
             }
         }

@@ -36,8 +36,8 @@ internal object RecipeDraftV1Import {
         val n = when (value) {
             is Int -> value.toLong()
             is Long -> value
-            is BigInteger -> try { value.longValueExact() }
-                catch (_: ArithmeticException) { throw IllegalArgumentException(name + " out of range") }
+            is BigInteger -> if (value.bitLength() <= 63) value.toLong()
+                else throw IllegalArgumentException(name + " out of range")
             else -> throw IllegalArgumentException(name + " must be integer")
         }
         require(n >= 0) { name + " must be nonnegative" }
