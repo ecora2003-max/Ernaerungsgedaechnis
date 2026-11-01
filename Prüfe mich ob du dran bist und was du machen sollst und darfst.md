@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T12:06:30.784Z"
 lastHeartbeatUtc: "2026-11-01T12:06:30.784Z"
 leaseExpiresAtUtc: "2026-11-01T12:21:30.784Z"
 task: "Fortsetzung Host-Integration nach PR #15; persistente Rezept-UI-Session/Operation-Key"
-workingBranch: null
+workingBranch: "codex/recipe-pending-key-resume-20261101-iii-1207"
 lastReleasedAtUtc: "2026-11-01T11:49:28.504Z"
 lastReleasedCommit: "f9c71e4f9b61079996d1a14392a4c363011fd478"
 nextStep: "PR #15 gemergt fc7be7115626e1d337ab29562b7e72a33e9de630; PR-CI 41302802827 und unabhängige Main-CI 41303181850 PASS, 344/344 JVM, 7/7 Room, gepinnte Referenzen/Lint/Schema/Android-Testkompilierung. STATUS final f9c71e4f9b61079996d1a14392a4c363011fd478. Nächste Einheit: persistente unbestätigte Rezept-UI-Session/Operation-Key-Wiederaufnahme und authentifizierte Nutzeraktionsprovenienz; danach Kontext-Content-Digests, Revalidator-Parität und echte Geräte-E2E."
