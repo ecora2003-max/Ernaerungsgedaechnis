@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat)"
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101135048038-chat"
-acquiredAtUtc: "2026-11-01T13:50:48.038Z"
-lastHeartbeatUtc: "2026-11-01T13:58:06.895Z"
-leaseExpiresAtUtc: "2026-11-01T14:10:41.720Z"
-task: "Continue integration; repair own malformed lock acquisition"
-workingBranch: "codex/integration-chat-draft-expiry-20261101-1352"
-lastReleasedAtUtc: "2026-11-01T13:47:12.355Z"
-lastReleasedCommit: "0f4afa997a830a01d715574a96dcdf31d7de8e44"
-nextStep: "PR #20 merged 0f3bf5eab771ae8a32cc965de7da90c85e5eb25d; PR CI 41312032954 and independent main CI 41312482597 PASS: 357/357 JVM, 7/7 Room, pinned references, lint/schema/Android test compilation. STATUS 0f4afa997a830a01d715574a96dcdf31d7de8e44. Next: opt-in encrypted recipe Evidence form resume with TTL/revocation and fresh Room validation; typed context digests, authenticated action provenance, cross-module purchase E2E and real Android device gates open."
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T14:05:51.563Z"
+lastReleasedCommit: "45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe"
+nextStep: "PR #21 merged ddfa9b1ec8beff4b902cdd8e018e5a55eb71059e; PR-CI 41313417623 and independent main CI 41313916538 PASS: 357/357 JVM, 7/7 Room, pinned references, lint/schema/Android test compilation. STATUS 45eea9fd1232e029ab1fc3eaacc60250d0cd6ebe. Next: opt-in encrypted unconfirmed recipe Evidence-form resume with TTL/revocation and fresh Room/product-version revalidation; typed context digests, authenticated action provenance, cross-module purchase E2E and real Android device gates open."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
