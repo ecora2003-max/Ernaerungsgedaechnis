@@ -31,14 +31,25 @@ internal object RecipeCatalogEvidence {
         confirmations: Map<String, ConfirmedLine>,
         nowMillis: Long
     ): Map<String, RecipeDraftHostGate.HostLine> {
-        val byVersion = catalog.associateBy { it.id }
-        val latest = catalog.groupBy { it.productId }
-            .mapValues { (_, versions) -> versions.maxByOrNull { it.revision }?.id }
+        // Never let associateBy/maxBy silently pick a winner when an upstream
+        // catalog projection contains duplicate IDs or conflicting latest revisions.
+        // Room normally enforces unique IDs; this boundary must remain safe for
+        // injected, migrated or otherwise inconsistent catalog snapshots as well.
+        val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
+            versions.singleOrNull()?.let { id to it }
+        }.toMap()
+        val latest = catalog.groupBy { it.productId }.mapValues { (_, versions) ->
+            val highest = versions.maxOfOrNull { it.revision }
+            versions.filter { it.revision == highest }.singleOrNull()
+                ?.takeIf { byVersion[it.id] == it }?.id
+        }
         return lines.mapNotNull { line ->
             val confirmed = confirmations[line.foodTypeId] ?: return@mapNotNull null
             val version = byVersion[confirmed.productVersionId] ?: return@mapNotNull null
             // Version and user confirmation must be for the exact current immutable row.
             if (confirmed.foodTypeId != line.foodTypeId ||
+                version.id.isBlank() || version.productId.isBlank() ||
+                version.revision <= 0 ||
                 confirmed.productRevision != version.revision ||
                 confirmed.versionRecordedAt != version.recordedAt ||
                 latest[version.productId] != version.id ||
