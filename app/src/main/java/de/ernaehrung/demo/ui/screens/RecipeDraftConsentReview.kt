@@ -37,7 +37,7 @@ internal fun RecipeDraftConsentReview(
         input != null && digest != null && Regex("[0-9a-f]{64}").matches(digest)
     // Any change to the host-issued approval basis invalidates the gesture.
     var checked by remember(sessionKey, digest, input, ready) { mutableStateOf(false) }
-    var submitted by remember(digest, input, ready) { mutableStateOf(false) }
+    var submitted by remember(sessionKey, digest, input, ready) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().testTag("recipe_draft_consent_review")) {
         Text("Rezeptentwurf prüfen · keine Herstellung oder Verzehrbuchung")
