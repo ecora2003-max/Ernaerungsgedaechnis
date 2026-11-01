@@ -90,4 +90,27 @@ class RecipeContextContentBindingTest {
         assertTrue("STOCK_SNAPSHOT_UNAVAILABLE" in unapproved.gaps)
         assertNull(unapproved.stock)
     }
+
+    @Test fun invalidOrRemovedTypedBindingCannotClaimReadyForSave() {
+        val f = flags(1)
+        val invalid = Gate.typedContext(f, at,
+            Gate.Evidence(stock.copy(source = Binding.Source.OFFERS), true),
+            null, null)
+        assertNull(invalid.contentBinding)
+        assertTrue(invalid.contentBindingRequired)
+        val review = Gate.review(draft(f), Gate.Request(f, 2,
+            userConfirmedRecipeSave = true), facts(), invalid)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review.status)
+        assertTrue("CONTEXT_CONTENT_UNVERIFIED" in review.gaps)
+        assertNull(review.input)
+
+        val valid = Gate.typedContext(f, at, Gate.Evidence(stock, true),
+            null, null)
+        val stripped = valid.copy(contentBinding = null)
+        val strippedReview = Gate.review(draft(f), Gate.Request(f, 2,
+            userConfirmedRecipeSave = true), facts(), stripped)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, strippedReview.status)
+        assertTrue("CONTEXT_CONTENT_UNVERIFIED" in strippedReview.gaps)
+        assertNull(strippedReview.input)
+    }
 }

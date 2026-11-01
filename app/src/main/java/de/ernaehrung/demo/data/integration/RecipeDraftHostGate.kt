@@ -21,7 +21,9 @@ internal object RecipeDraftHostGate {
         /** Original host-approved selection; unbound caller-built contexts fail closed. */
         val projectedFlags: Flags? = null,
         /** Optional typed content binding; absent means no content-level evidence. */
-        val contentBinding: RecipeContextContentBinding.Binding? = null
+        val contentBinding: RecipeContextContentBinding.Binding? = null,
+        /** Typed projections fail closed when their content could not be bound. */
+        val contentBindingRequired: Boolean = false
     )
 
     /** Inactive and unapproved contexts are never forwarded, including to optional local models. */
@@ -60,7 +62,7 @@ internal object RecipeDraftHostGate {
             RecipeContextContentBinding.bind(flags, snapshotAt,
                 projected.stock, projected.shopping, projected.offers)
         else null
-        return projected.copy(contentBinding = binding)
+        return projected.copy(contentBinding = binding, contentBindingRequired = true)
     }
 
     enum class UnitCode { G, ML, PORTION, PIECE }
@@ -119,6 +121,8 @@ internal object RecipeDraftHostGate {
             // Snapshot values alone do not prove which request selected them.
             // A projection from a different consent/flag combination is never reusable.
             if (context.projectedFlags != request.flags) blockers += "CONTEXT_CONSENT_MISMATCH"
+            if (context.contentBindingRequired && context.contentBinding == null)
+                gaps += "CONTEXT_CONTENT_UNVERIFIED"
             // A bound typed projection must still match its original content.
             // No binding is not treated as approval for the FoodStore write gate.
             context.contentBinding?.let { binding ->
