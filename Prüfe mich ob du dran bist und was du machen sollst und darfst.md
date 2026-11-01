@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T08:07:01.291Z"
 lastHeartbeatUtc: "2026-11-01T08:07:01.291Z"
 leaseExpiresAtUtc: "2026-11-01T08:22:01.291Z"
 task: "Integration fortsetzen: Host-CI prüfen und nächstes Rezept-Consent-Gate implementieren"
-workingBranch: null
+workingBranch: "codex/recipe-consent-concurrent-retry-20261101-iii-tcjt2zmib"
 lastReleasedAtUtc: "2026-11-01T07:43:14.426Z"
 lastReleasedCommit: "d212e4608ad948be3d00c780643bac1695a9cd89"
 nextStep: "Main-Push-CI für PR-5-Merge a710e325 unabhängig prüfen; danach UI-gebundene Rezept-Consent-Aktion, Kontext-Digests und Rezept-Revalidator-Parität"
