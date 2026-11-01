@@ -62,14 +62,14 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: null
+state: "ACTIVE"
+ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
+ownerChatId: "Integration-IV-automation-run-2"
+ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-run2-1793536114983-agkb5q"
+acquiredAtUtc: "2026-11-01T12:28:34.983Z"
+lastHeartbeatUtc: "2026-11-01T12:28:34.983Z"
+leaseExpiresAtUtc: "2026-11-01T12:43:34.983Z"
+task: "Integration IV: Room/FoodStore Kotlin port coherence and E2E; implement next integration unit"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T12:24:49.257Z"
 lastReleasedCommit: "5ac2b4fa5c87d067486df714fc33fb68b13b3de4"
@@ -77,4 +77,4 @@ nextStep: "PR #16 gemergt 32acbdce7c036dd98b86537f6551ddaab659e18f; PR-CI 413055
 
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
