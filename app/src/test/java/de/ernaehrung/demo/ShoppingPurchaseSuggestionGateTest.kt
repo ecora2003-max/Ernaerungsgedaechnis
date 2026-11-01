@@ -78,9 +78,7 @@ class ShoppingPurchaseSuggestionGateTest {
             result.rows.map { it.status })
         assertEquals(BigInteger.valueOf(150), result.totalMerchandiseCents)
         assertEquals(BigInteger.valueOf(175), result.totalCheckoutCents)
-        assertEquals(BigInteger.valueOf(25), result.budgetRemainingCents?.let {
-            BigInteger.valueOf(200).subtract(result.totalCheckoutCents)
-        })
+        assertEquals(BigInteger.valueOf(125), result.budgetRemainingCents)
         assertEquals(BigInteger.valueOf(125), result.rows[0].checkoutCents)
         assertEquals(BigInteger.valueOf(25), result.rows[0].depositCents)
         assertTrue(result.snapshotComplete)
