@@ -64,8 +64,10 @@ class RecipeDraftImportPanelTest {
         rule.runOnUiThread {
             rule.activity.setContent {
                 DemoTheme {
-                    RecipeDraftImportPanel(emptyList(), onInvalidate = {},
-                        onReview = { _, _, _, _ -> reviews++ })
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
                 }
             }
         }
