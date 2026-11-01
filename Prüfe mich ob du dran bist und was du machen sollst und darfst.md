@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T12:46:36.826Z"
 lastHeartbeatUtc: "2026-11-01T12:46:36.826Z"
 leaseExpiresAtUtc: "2026-11-01T13:01:36.826Z"
 task: "Continue host recipe integration"
-workingBranch: null
+workingBranch: "codex/integration-chat-encrypted-draft-20261101-42gptwtl"
 lastReleasedAtUtc: "2026-11-01T12:42:18.546Z"
 lastReleasedCommit: "421c7ecca607bb0a1e3fa4a0320178900dd01bee"
 nextStep: "PR #17 gemergt 1001d0b7303b30c272db8dbada190e9686bafefc; PR-CI 41306910693 und unabhängige Main-CI 41307346042 PASS: 351/351 JVM, 7/7 Room, Rezept-/Pythonreferenzen/Lint/Schema/Android-Testkompilierung. STATUS 421c7ecca607bb0a1e3fa4a0320178900dd01bee. Nächste Einheit: nutzerkontrollierte verschlüsselte Formular-/Evidence-Wiederaufnahme, authentifizierte Nutzeraktionsprovenienz, typisierte Kontext-Digests, Revalidator-Parität, Geräte-E2E."
