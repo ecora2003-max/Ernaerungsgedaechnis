@@ -40,7 +40,7 @@ internal fun RecipeDraftConsentReview(
     // Any change to the host-issued approval basis invalidates the gesture.
     // A pending/recorded host action must invalidate an old checked gesture.
     var checked by remember(sessionKey, resetVersion, digest, input, ready, actionEnabled) { mutableStateOf(false) }
-    var submitted by remember(sessionKey, digest, input, ready, actionEnabled) { mutableStateOf(false) }
+    var submitted by remember(sessionKey, resetVersion, digest, input, ready, actionEnabled) { mutableStateOf(false) }
 
     Column(Modifier.fillMaxWidth().testTag("recipe_draft_consent_review")) {
         Text("Rezeptentwurf prüfen · keine Herstellung oder Verzehrbuchung")
