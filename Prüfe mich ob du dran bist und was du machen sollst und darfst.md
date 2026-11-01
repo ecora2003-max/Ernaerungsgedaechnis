@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T23:43:17.550Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe-save authenticated action provenance and regression tests"
-workingBranch: null
+workingBranch: "integration/chat-credential-challenge-binding-20261102"
 lastReleasedAtUtc: "2026-11-01T23:29:35.188Z"
 lastReleasedCommit: "5dc8a83fed5a6ec927cfc2ae6925b1d63f0fc59f"
 nextStep: "Independently verifiable authenticated action at FoodStore recipe save; real Android/privacy E2E; generator/revalidator parity"
