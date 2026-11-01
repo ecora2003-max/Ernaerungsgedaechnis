@@ -64,19 +64,19 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
+state: "ACTIVE"
 ownerAutomationId: null
-ownerChatId: null
+ownerChatId: "User-requested coordination hotfix"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: "Completed lease-reliability fix; PR 38 merged and CI checked"
-workingBranch: null
+ownerRunToken: "manual-fix-20261101202434-46689bc6"
+acquiredAtUtc: "2026-11-01T20:24:34.502Z"
+lastHeartbeatUtc: "2026-11-01T20:24:34.502Z"
+leaseExpiresAtUtc: "2026-11-01T20:39:34.502Z"
+task: "Restore working automation lock acquisition without requiring inaccessible run ID"
+workingBranch: "pending"
 lastReleasedAtUtc: "2026-11-01T20:20:09.021Z"
 lastReleasedCommit: "6d77ea7ce00347f0aa10c9cf2fd03a28d18c4224"
-nextStep: "Next integration worker must use verified run ID, manual heartbeat and fail-closed recovery"
+nextStep: "Update all automation prompts and GitHub lease instructions; test and release."
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
