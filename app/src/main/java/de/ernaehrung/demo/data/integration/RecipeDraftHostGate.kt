@@ -17,7 +17,9 @@ internal object RecipeDraftHostGate {
     data class Evidence<T>(val value: T, val approvedForRequest: Boolean)
     data class Context<S, L, O>(
         val stock: S?, val shopping: L?, val offers: O?,
-        val gaps: Set<String>
+        val gaps: Set<String>,
+        /** Original host-approved selection; unbound caller-built contexts fail closed. */
+        val projectedFlags: Flags? = null
     )
 
     /** Inactive and unapproved contexts are never forwarded, including to optional local models. */
@@ -37,7 +39,8 @@ internal object RecipeDraftHostGate {
             select(flags.considerStock, stock, "STOCK"),
             select(flags.considerShopping, shopping, "SHOPPING"),
             select(flags.considerOffers, offers, "OFFERS"),
-            gaps
+            gaps,
+            flags
         )
     }
 
@@ -94,6 +97,9 @@ internal object RecipeDraftHostGate {
             gaps += "REQUESTED_CONTEXT_NOT_VALIDATED"
         }
         if (context != null) {
+            // Snapshot values alone do not prove which request selected them.
+            // A projection from a different consent/flag combination is never reusable.
+            if (context.projectedFlags != request.flags) blockers += "CONTEXT_CONSENT_MISMATCH"
             // A missing requested snapshot is UNKNOWN, never an empty stock/list/offer.
             if (request.flags.considerStock && context.stock == null)
                 gaps += "STOCK_SNAPSHOT_UNAVAILABLE"
