@@ -49,6 +49,15 @@ jobs:
       - name: Verify fresh JUnit XML and migration regression counts
         run: python3 tools/check_junit_xml.py app/build/test-results/testDebugUnitTest
 
+      - name: Verify pinned recipe v1 schema and synthetic host fixture
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check jsonschema==4.23.0
+          curl --fail --location --silent --show-error --retry 2 --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Architecture/7f372f63e692e842444eea700540e9b585f7a5b8/contracts/v1/contract.schema.json \
+            -o "$RUNNER_TEMP/recipe-contract-v1.json"
+          test "$(git hash-object "$RUNNER_TEMP/recipe-contract-v1.json")" = "bedde4677342817fe6b883962c8dfbbd60100072"
+          python3 tools/check_recipe_v1_schema.py "$RUNNER_TEMP/recipe-contract-v1.json" \
+            app/src/test/resources/integration/recipe_draft_v1.json
       - name: Verify pinned product-data historical price parity fixtures
         run: |
           curl --fail --location --silent --show-error --output "$RUNNER_TEMP/eg-product-history-core.py" \

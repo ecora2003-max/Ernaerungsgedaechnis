@@ -1,0 +1,21 @@
+{
+          "contractVersion":"1.0.0-draft",
+          "messageType":"recipe.draft",
+          "meta":{"producer":"EG-Rezept-KI","traceId":"synthetic",
+            "createdAt":"2026-11-01T04:30:00+01:00",
+            "inputsSnapshotAt":"2026-11-01T04:15:00+01:00"},
+          "payload":{"draftId":"synthetic-1","title":"Reis",
+            "portionCount":2,
+            "ingredients":[{"label":"Reis","foodTypeId":"rice",
+              "quantity":{"amount":200,"unit":"g","basis":"NET",
+                "confirmed":true,"notes":"RAW according to untrusted AI"},
+              "sourceStatus":"CONFIRMED","allergenNotes":"allergen-free claimed"}],
+            "steps":["Reis kochen."],
+            "flags":{"considerStock":false,"considerShopping":false,"considerOffers":false},
+            "warnings":[],"status":"DRAFT",
+            "nutrition":{"proteinG":999999},
+            "xRecipeKi":{"verification":"STRUCTURALLY_VALID",
+              "mealPrep":{"rawIngredientsCharged":false,
+                "preparedPortionsCreated":false,"consumptionRecorded":false}}
+          }
+        }
