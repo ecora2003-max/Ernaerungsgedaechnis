@@ -69,7 +69,7 @@ internal object RecipeDraftV1Import {
         )
         when (value) {
             is Map<*, *> -> value.forEach { (key, nested) ->
-                if (key in bookingFields) {
+                if (key is String && key in bookingFields) {
                     require(nested == false) { "draft claims a completed booking" }
                 }
                 rejectUntrustedBookingClaims(nested)
