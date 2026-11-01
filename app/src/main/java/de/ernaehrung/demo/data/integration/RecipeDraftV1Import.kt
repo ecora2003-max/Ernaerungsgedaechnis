@@ -58,6 +58,26 @@ internal object RecipeDraftV1Import {
             name + " is stale"
         }
     }
+    /**
+     * v1 permits extension properties in recipe payloads. None may assert that a
+     * stock, preparation or consumption booking has already occurred. Inspect the
+     * entire bounded tree, not just the known xRecipeKi.mealPrep extension path.
+     */
+    private fun rejectUntrustedBookingClaims(value: Any?) {
+        val bookingFields = setOf(
+            "rawIngredientsCharged", "preparedPortionsCreated", "consumptionRecorded"
+        )
+        when (value) {
+            is Map<*, *> -> value.forEach { (key, nested) ->
+                if (key in bookingFields) {
+                    require(nested == false) { "draft claims a completed booking" }
+                }
+                rejectUntrustedBookingClaims(nested)
+            }
+            is List<*> -> value.forEach(::rejectUntrustedBookingClaims)
+        }
+    }
+
     private fun enumUnit(value: Any?): Gate.UnitCode = when (value) {
         "g" -> Gate.UnitCode.G
         "ml" -> Gate.UnitCode.ML
@@ -107,6 +127,7 @@ internal object RecipeDraftV1Import {
         }
 
         val p = obj(message["payload"], "payload")
+        rejectUntrustedBookingClaims(p)
         require(p["status"] == "DRAFT") { "only unconfirmed DRAFT status allowed" }
         val draftId = str(p["draftId"], "draftId")
         val title = str(p["title"], "title")
@@ -134,12 +155,10 @@ internal object RecipeDraftV1Import {
         if (p.containsKey("nutrition") && p["nutrition"] != null)
             obj(p["nutrition"], "nutrition") // Claims are deliberately discarded.
 
+        // Known extension shapes are checked even though all side-effect claims
+        // have already been rejected recursively above.
         val extension = p["xRecipeKi"]?.let { obj(it, "xRecipeKi") }
-        val prep = extension?.get("mealPrep")?.let { obj(it, "mealPrep") }
-        for (key in listOf("rawIngredientsCharged", "preparedPortionsCreated", "consumptionRecorded")) {
-            if (prep?.containsKey(key) == true)
-                require(prep[key] == false) { "draft claims a completed booking" }
-        }
+        extension?.get("mealPrep")?.let { obj(it, "mealPrep") }
 
         val lines = list(p["ingredients"], "ingredients").mapIndexed { index, value ->
             val line = obj(value, "ingredient " + index)
@@ -197,6 +216,12 @@ internal object RecipeDraftV1Import {
                 status = Gate.Status.REVIEW_REQUIRED,
                 gaps = base.gaps + "TRUSTED_CONTEXT_SNAPSHOT_REQUIRED", input = null
             )
+            trustedContextSnapshotAt.toInstant().isAfter(now.toInstant()) ->
+                base.copy(
+                    status = Gate.Status.BLOCKED,
+                    blockers = base.blockers + "TRUSTED_CONTEXT_SNAPSHOT_IN_FUTURE",
+                    input = null
+                )
             imported.snapshotAt?.toInstant() != trustedContextSnapshotAt.toInstant() ->
                 base.copy(
                     status = Gate.Status.BLOCKED,
