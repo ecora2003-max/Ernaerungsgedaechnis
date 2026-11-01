@@ -254,6 +254,23 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun recoveryIgnoresForgedFingerprintAndUnrelatedLedgerKind() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        val before = dao.operationCount()
+        dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:forged",
+            "RECIPE_DRAFT_CONSENT_V1", "not-the-bound-fingerprint", at, digest))
+        dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:wrong-kind",
+            "RECIPE", "not-a-consent", at, digest))
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(before + 2, dao.operationCount())
+        assertEquals(digest, consent("legitimate", ready))
+        assertEquals("legitimate", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(before + 3, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
+
     @Test fun consentSurvivesDatabaseRestartAndRevalidatedSaveIsIdempotent() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "recipe-consent-restart-${System.nanoTime()}.db"
