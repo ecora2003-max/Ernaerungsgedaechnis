@@ -314,7 +314,7 @@ class LocalDataViewModel(
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingRecipeDraft === session) {
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
-                        review = session.review, sessionId = session.operationKey,
+                        review = session.review, sessionId = session.sessionId,
                         attemptVersion = recipeDraftConsent.value.attemptVersion + 1,
                         error = "Bestätigung nicht gespeichert: ${e.message}")
                 }
