@@ -33,6 +33,23 @@ internal object ShoppingPriceComparisonGate {
 
     val denyAllArticles = ConfirmedArticleRegistry { _, _, _, _ -> false }
 
+    /**
+     * Independent HOST trust anchor for a user's explicit substitution decision.
+     * A feed-provided Match(status="CONFIRMED_BY_USER") is never proof by itself.
+     * Implementations must bind the real decision to both confirmed product versions
+     * and the evidence cutoff; an exception is treated as DENY.
+     */
+    fun interface ConfirmedSubstitutionRegistry {
+        fun isConfirmed(
+            targetProductVersionId: String,
+            candidateProductVersionId: String,
+            match: ShoppingComparabilityKernel.Match,
+            asOf: OffsetDateTime
+        ): Boolean
+    }
+
+    val denyAllSubstitutions = ConfirmedSubstitutionRegistry { _, _, _, _ -> false }
+
     data class HostCoverage(
         val coverage: ShoppingCoverageSignalKernel.Coverage,
         val verifiedByHost: Boolean
@@ -120,7 +137,8 @@ internal object ShoppingPriceComparisonGate {
             ExternalPriceBridge.denyAll,
         stores: ShoppingOfferGate.ConfirmedStoreRegistry =
             ShoppingOfferGate.denyAllStores,
-        articles: ConfirmedArticleRegistry = denyAllArticles
+        articles: ConfirmedArticleRegistry = denyAllArticles,
+        substitutions: ConfirmedSubstitutionRegistry = denyAllSubstitutions
     ): Result {
         require(candidates.size <= 256) { "comparison input limit exceeded" }
         val ids = listOf(target.candidate.observationId) +
@@ -158,12 +176,30 @@ internal object ShoppingPriceComparisonGate {
                 gaps.add("$id: $reason")
                 continue
             }
+            // A purported CONFIRMED_BY_USER match may originate in a feed or
+            // imported draft. Pass only decisions independently attested by the
+            // host for this exact observation pair, product versions and cutoff.
+            val trustedMatches = matches.filter { match ->
+                match.targetId == target.candidate.observationId &&
+                    match.candidateId == id &&
+                    match.status == "CONFIRMED_BY_USER" &&
+                    match.matchLevel == "FUNCTIONAL_SUBSTITUTE" &&
+                    try {
+                        substitutions.isConfirmed(
+                            target.request.productVersionId,
+                            candidate.request.productVersionId,
+                            match, target.request.asOf
+                        )
+                    } catch (_: RuntimeException) {
+                        false
+                    }
+            }
             val comparability = try {
                 ShoppingComparabilityKernel.compare(
                     ShoppingComparabilityKernel.Observation(
                         target.candidate.observationId, target.article),
                     ShoppingComparabilityKernel.Observation(id, candidate.article),
-                    matches
+                    trustedMatches
                 )
             } catch (_: IllegalArgumentException) {
                 ShoppingComparabilityKernel.Verdict("UNKNOWN",

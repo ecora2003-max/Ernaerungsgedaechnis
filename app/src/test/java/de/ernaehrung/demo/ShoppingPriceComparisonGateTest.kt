@@ -59,9 +59,10 @@ class ShoppingPriceComparisonGateTest {
         rights: Price.DisplayPermissionRegistry = permissions,
         storeRegistry: OfferGate.ConfirmedStoreRegistry = stores,
         articleRegistry: Gate.ConfirmedArticleRegistry = articles,
-        matches: List<Comparable.Match> = emptyList()
+        matches: List<Comparable.Match> = emptyList(),
+        substitutions: Gate.ConfirmedSubstitutionRegistry = Gate.denyAllSubstitutions
     ) = Gate.compare(target, candidates, coverage, matches,
-        rights, storeRegistry, articleRegistry)
+        rights, storeRegistry, articleRegistry, substitutions)
 
     @Test fun defaultRegistriesDenyEvenWithFeedPermissionAndCoverageClaims() {
         val result = Gate.compare(target, listOf(offer("red", "v-red")))
@@ -99,12 +100,44 @@ class ShoppingPriceComparisonGateTest {
         val unconfirmed = compare(candidates = listOf(substitute))
         assertTrue(unconfirmed.cheaper.isEmpty())
         assertTrue(unconfirmed.signals.incomplete)
-        val confirmed = compare(candidates = listOf(substitute), matches = listOf(
-            Comparable.Match("target", "sub", "CONFIRMED_BY_USER",
-                "FUNCTIONAL_SUBSTITUTE")))
+        val claimed = listOf(Comparable.Match("target", "sub", "CONFIRMED_BY_USER",
+            "FUNCTIONAL_SUBSTITUTE"))
+        // Even a correctly shaped "confirmed" match is untrusted input.
+        val forged = compare(candidates = listOf(substitute), matches = claimed)
+        assertTrue(forged.cheaper.isEmpty())
+        assertTrue(forged.signals.incomplete)
+        val confirmed = compare(candidates = listOf(substitute), matches = claimed,
+            substitutions = Gate.ConfirmedSubstitutionRegistry { targetVersion, candidateVersion, _, cutoff ->
+                targetVersion == "v-target" && candidateVersion == "v-sub" && cutoff == asOf
+            })
         assertEquals(1, confirmed.cheaper.size)
         assertEquals("FUNCTIONAL_SUBSTITUTE", confirmed.cheaper.single().comparability)
         assertTrue(confirmed.signals.signals.isEmpty())
+    }
+
+    @Test fun substitutionEvidenceMustBindVersionPairAndTimeAndRegistryFailuresDeny() {
+        val substitute = offer("sub", "v-sub", 100, article = article(food = "oat"))
+        val claimed = listOf(Comparable.Match("target", "sub", "CONFIRMED_BY_USER",
+            "FUNCTIONAL_SUBSTITUTE", listOf("untrusted source assertion")))
+        val wrongPair = compare(candidates = listOf(substitute), matches = claimed,
+            substitutions = Gate.ConfirmedSubstitutionRegistry { _, candidateVersion, _, _ ->
+                candidateVersion == "v-other"
+            })
+        assertTrue(wrongPair.cheaper.isEmpty())
+        val wrongCutoff = compare(candidates = listOf(substitute), matches = claimed,
+            substitutions = Gate.ConfirmedSubstitutionRegistry { _, _, _, cutoff ->
+                cutoff == asOf.plusDays(1)
+            })
+        assertTrue(wrongCutoff.cheaper.isEmpty())
+        val failedLookup = compare(candidates = listOf(substitute), matches = claimed,
+            substitutions = Gate.ConfirmedSubstitutionRegistry { _, _, _, _ ->
+                throw IllegalStateException("registry unavailable")
+            })
+        assertTrue(failedLookup.cheaper.isEmpty())
+        for (result in listOf(wrongPair, wrongCutoff, failedLookup)) {
+            assertEquals("product comparability unproven", result.excluded["sub"])
+            assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+        }
     }
 
     @Test fun rightsStoreIdentityFutureDateAndUnconfirmedArticleStayExcluded() {
