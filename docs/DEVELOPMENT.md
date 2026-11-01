@@ -1,4 +1,6 @@
-# Entwicklungsstand / Fortsetzung
+# Historische Übergabe: Phase 5 (30.10.2026)
+
+> **ARCHIV-/REFERENZDOKUMENT – keine aktuelle Arbeitsanweisung.** Die frühere Pausenregel und die alte Acht-Phasen-Planung sind durch den aktuellen Auftrag zur Integration aller vier Zuliefermodule überholt. **Hier nicht beginnen und nicht anhalten.** Verbindlicher Einstieg ist [STATUS.md](STATUS.md), Abnahme [ACCEPTANCE.md](ACCEPTANCE.md), flexible Ziele [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md). Der nächste Integrationslauf soll nach gültiger manueller Sperrenübernahme konkrete App-Integrationsfunktionen entwickeln und testen.
 
 > **Aktueller Integrationsstand (31.10.2026):** Dieses Dokument ist die historische Übergabe der Phase 5 vom 30.10.2026. Die nachfolgenden Angaben zu Room 7, 35 Tabellen und 183 Tests beschreiben den damaligen Stand, nicht den neuesten Host. Die Integration verwendet mittlerweile **Room 8 (36 Tabellen)**; aktueller Code-/Test-/Modulstatus und nächste Schritte stehen verbindlich in [STATUS.md](STATUS.md), Abnahmegrenzen in [ACCEPTANCE.md](ACCEPTANCE.md), Portarchitektur in [INTEGRATION.md](INTEGRATION.md). Keines der vier Fachmodule ist vollständig Android-integriert; Gerätetests bleiben offen.
 
@@ -46,9 +48,9 @@ python /workspace/tooling/run-gradle.py --continue :app:lintDebug :app:testDebug
 
 JDK 17+ (lokal 21, CI 17), SDK 35/Build Tools 34, Gradle 8.9. Proxy/CA/Anmeldung geerbt verwenden; keine Geheimnisse/SDK-Caches/App-Daten committen. In Migration 4→5 muss der Selbst-FK der umgebauten Preistabelle auf den endgültigen Namen `price_observations` zeigen.
 
-## Pause / Als Nächstes
+## Damalige Pause und damaliger Folgeauftrag (überholt)
 
-Nutzer meldet nur noch 35 Credits und anschließend etwa fünf Tage Pause. Phase 5 jetzt sichern und die ausdrücklich angeforderte APK-Erstellung anstoßen. APK und Testberichte deshalb sieben Tage aufbewahren. Der erste manuelle Lauf 41080103685 wurde für diese Aufbewahrungsänderung bewusst abgebrochen; der nachfolgende manuelle Lauf mit `build_apk=true` ist maßgeblich. Keine weitere Phase vor dieser Pause beginnen. Nach Rückkehr zuerst diesen Stand und den neuesten manuellen Actions-Lauf prüfen, dann auf Nutzerauftrag fortsetzen.
+Historischer Stand vom 30.10.2026: Nutzer meldete 35 Credits und plante eine etwa fünftägige Pause. Damals sollten Phase 5 gesichert und eine ausgewählte APK erstellt sowie Testberichte sieben Tage erhalten werden. Der erste manuelle Lauf 41080103685 wurde wegen Aufbewahrungsänderungen abgebrochen; danach war der Lauf mit `build_apk=true` maßgeblich. **Die damals vereinbarte Entwicklungspause gilt nicht mehr.** Jetzt gilt der Integrationsauftrag aller vier Zuliefermodule gemäß `docs/STATUS.md` und `docs/INTEGRATION_ROADMAP.md`; nicht auf eine weitere Freigabe warten.
 
 Phase 6 auf Nutzerauftrag: versionierter gezielter JSON-Export, validierter Import mit Identitäten/konkreten Versionen, Mengen/Einheiten und Aktualitäts-/Bestands-/Budgetkonflikten, kontrollierte Übernahme ausschließlich als Planung. Import darf nie tatsächlichen Verzehr, Einkäufe oder Ist-Bewegungen erzeugen. Quellen und Unsicherheit erhalten; kein API-Zwang.
 
