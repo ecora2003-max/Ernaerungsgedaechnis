@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T18:09:52.535Z"
 lastHeartbeatUtc: "2026-11-01T18:09:52.535Z"
 leaseExpiresAtUtc: "2026-11-01T18:24:52.535Z"
 task: "Review PR #29 and continue integration under exclusive lock"
-workingBranch: null
+workingBranch: "codex/integration-ii-pr29-evidence-20261101-blakfnk1"
 lastReleasedAtUtc: "2026-11-01T18:00:52.278Z"
 lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
 nextStep: "Review PR #29; check CI and merge if safe, then verify main CI."
