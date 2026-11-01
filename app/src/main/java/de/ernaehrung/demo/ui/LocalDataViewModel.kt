@@ -39,7 +39,7 @@ data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emp
     val method: String? = null, val message: String? = null)
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class LocalDataViewModel(
+class LocalDataViewModel internal constructor(
     private val store: FoodStore,
     private val productLookup: ProductLookupGateway = OpenFoodFactsClient(),
     private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore
