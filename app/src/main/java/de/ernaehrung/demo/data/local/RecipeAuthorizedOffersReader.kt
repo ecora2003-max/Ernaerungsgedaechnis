@@ -92,6 +92,13 @@ internal class RecipeAuthorizedOffersReader(
             )
             val visible = result.offer ?: return null
             if (!result.eligible) return null
+            val unitMatches = when (visible.unit) {
+                ExternalPriceBridge.Unit.GRAM -> version.baseUnit == BaseUnit.GRAM
+                ExternalPriceBridge.Unit.MILLILITRE ->
+                    version.baseUnit == BaseUnit.MILLILITRE
+                ExternalPriceBridge.Unit.PORTION -> version.baseUnit == BaseUnit.PORTION
+            }
+            if (!unitMatches) return null
             approved += candidate to visible
         }
         val ordered = approved.sortedBy { it.second.observationId }
