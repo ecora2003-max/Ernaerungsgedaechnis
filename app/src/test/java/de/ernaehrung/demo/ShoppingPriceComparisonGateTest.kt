@@ -359,4 +359,37 @@ class ShoppingPriceComparisonGateTest {
         assertTrue(result.signals.gaps.contains("expensive: deposit/checkout cost UNKNOWN"))
         assertTrue(result.excluded.isEmpty())
     }
+    @Test fun postPurchaseCutoffCannotRetroactivelyValidateHistoricalComparison() {
+        val hindsight = day.plusDays(2).atTime(12, 0).atOffset(
+            java.time.ZoneOffset.ofHours(1))
+        val backdatedTarget = target.copy(request = target.request.copy(asOf = hindsight))
+        val candidate = offer("red", "v-red", 100).let {
+            it.copy(request = it.request.copy(asOf = hindsight),
+                candidate = it.candidate.copy(observedAt = hindsight.minusHours(1)))
+        }
+        val result = compare(target = backdatedTarget, candidates = listOf(candidate))
+        assertFalse(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals("evidence cutoff after shopping date", result.excluded["target"])
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+    }
+
+    @Test fun laterLocalObservationDateCannotSlipThroughUtcOffsetInComparison() {
+        val sameDayCutoff = day.atTime(22, 0).atOffset(
+            java.time.ZoneOffset.ofHours(1))
+        val shifted = sameDayCutoff.withOffsetSameInstant(
+            java.time.ZoneOffset.ofHours(14))
+        assertTrue(shifted.toLocalDate().isAfter(day))
+        val sameDayTarget = target.copy(request = target.request.copy(asOf = sameDayCutoff))
+        val candidate = offer("red", "v-red", 100).let {
+            it.copy(request = it.request.copy(asOf = sameDayCutoff),
+                candidate = it.candidate.copy(observedAt = shifted))
+        }
+        val result = compare(target = sameDayTarget, candidates = listOf(candidate))
+        assertTrue(result.targetEligible)
+        assertTrue(result.cheaper.isEmpty())
+        assertEquals("price observation postdates shopping day", result.excluded["red"])
+        assertEquals(listOf("GREY_MAY_BE_CHEAPER"), result.signals.signals)
+    }
+
 }

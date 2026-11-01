@@ -145,4 +145,30 @@ class ExternalPriceBridgeTest {
         assertEquals(0, calls)
     }
 
+    @Test fun supplierOutageIsExplicitlyIncompleteAndDoesNotExposeFeedClaims() = runBlocking {
+        var calls = 0
+        val port = ReadOnlyExternalPricePort(ExternalPriceCandidateSupplier {
+            calls++
+            throw IllegalStateException("provider offline")
+        }, permitted)
+        val result = port.preview(request())
+        assertEquals(1, calls)
+        assertTrue(result.visible.isEmpty())
+        assertTrue(result.incomplete)
+        assertEquals(setOf(Gate.Gap.SUPPLIER_UNAVAILABLE), result.gaps)
+        assertFalse(result.marketWideBestPriceProven)
+    }
+
+    @Test fun supplierCancellationPropagatesInsteadOfMasqueradingAsOutage() = runBlocking {
+        val port = ReadOnlyExternalPricePort(ExternalPriceCandidateSupplier {
+            throw java.util.concurrent.CancellationException("cancelled")
+        }, permitted)
+        try {
+            port.preview(request())
+            fail("cancellation must propagate")
+        } catch (expected: java.util.concurrent.CancellationException) {
+            assertEquals("cancelled", expected.message)
+        }
+    }
+
 }

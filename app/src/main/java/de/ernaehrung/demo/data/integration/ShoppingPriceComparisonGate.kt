@@ -94,6 +94,13 @@ internal object ShoppingPriceComparisonGate {
     ): Checked {
         val request = input.request
         val candidate = input.candidate
+        // A historical comparison must not import prices discovered after the
+        // purchase day, even if a later asOf or a different UTC offset would
+        // otherwise pass the generic offer gate. Match the purchase host rule.
+        if (request.asOf.toLocalDate().isAfter(request.purchaseOn))
+            return Checked(null, "evidence cutoff after shopping date")
+        if (candidate.observedAt.toLocalDate().isAfter(request.purchaseOn))
+            return Checked(null, "price observation postdates shopping day")
         if (request.productVersionId.isBlank() ||
             request.productVersionId != candidate.productVersionId
         ) return Checked(null, "host product/version/organic evidence missing")

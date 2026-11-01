@@ -29,7 +29,7 @@ object ExternalPriceBridge {
     enum class Gap {
         UNSUPPORTED_CAPABILITY, NON_PRICE_CAPABILITY, NON_DISPLAY_CONTEXT, INVALID_SOURCE, MISSING_RIGHTS,
         PRODUCT_IDENTITY, SCOPE_MISMATCH, DATE_INVALID, PRICE_UNKNOWN, QUANTITY_UNKNOWN,
-        PRICE_CONDITIONS_UNKNOWN, DUPLICATE_OBSERVATION, LIMIT_EXCEEDED
+        PRICE_CONDITIONS_UNKNOWN, DUPLICATE_OBSERVATION, LIMIT_EXCEEDED, SUPPLIER_UNAVAILABLE
     }
 
     data class Request(
@@ -193,6 +193,17 @@ class ReadOnlyExternalPricePort(
             request.capability == RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY) {
             return ExternalPriceBridge.project(request, emptyList(), permissions)
         }
-        return ExternalPriceBridge.project(request, supplier.load(request), permissions)
+        val candidates = try {
+            supplier.load(request)
+        } catch (cancelled: java.util.concurrent.CancellationException) {
+            // A cancelled coroutine must stay cancelled, not be mistaken for
+            // a transient provider outage.
+            throw cancelled
+        } catch (_: RuntimeException) {
+            return ExternalPriceBridge.Projection(
+                emptyList(), setOf(ExternalPriceBridge.Gap.SUPPLIER_UNAVAILABLE), true
+            )
+        }
+        return ExternalPriceBridge.project(request, candidates, permissions)
     }
 }
