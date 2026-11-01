@@ -1,0 +1,30 @@
+# Integrations-Zielmatrix: vier Fachmodule und Android-E2E
+
+Stand: 01.11.2026. **Flexible Ziel- und Nachweismatrix**, keine Phasenreihenfolge, kein Architekturvertrag und keine zusätzliche Freigabe. Maßgeblich sind [ACCEPTANCE.md](ACCEPTANCE.md), die verbindlichen Repository-Regeln und der [commitgenaue STATUS](STATUS.md). Ein grüner Teiltest bedeutet **nicht**, dass ein ganzes Fachmodul integriert ist.
+
+## Unveränderliche Grenzen
+
+- Einziges Schreibrepository: `ecora2003-max/Ernaerungsgedaechnis`. Architektur und alle vier Zuliefermodule nur lesen; kein ungeprüfter Vertragswechsel. `1.0.0-draft` / v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072`; unabhängiger, nicht freigegebener `1.1.0-draft`-Blob `dca777d219307a90bf3d4dff6189fbf12476c508`. Keine STABLE-Behauptung.
+- Alle Ist-Buchungen ausschließlich explizit bestätigt, atomar und idempotent über `FoodStore`; Vorschläge, Erkennung, Preisvergleich, Einkaufsliste und KI-Entwürfe buchen nichts. Historische Identitäten und Room-Daten erhalten, `null != 0`, keine nicht belegten Live-Quellen.
+- Nachweisstufen aus [ACCEPTANCE.md](ACCEPTANCE.md): `OFFLINE_VERIFIED`, `JVM_INTEGRATION_VERIFIED`, `ANDROID_DEVICE_VERIFIED`, `INTEGRATED`. **Keines der vier Gesamtmodule ist derzeit INTEGRATED.** Android-Testkompilierung ist kein Gerätetest.
+
+## Ziel- und Nachweismatrix
+
+| Ziel | Tatsächlich belegter Teilstand | Offene Integrations- und Abnahmebelege |
+| --- | --- | --- |
+| **Produktdaten**: Versionen, Barcode/SKU/Bonalias, kanonische Artikel- und Händler-/Filialzuordnung, Mehrdeutigkeit, private Bonpreisgeschichte | Synthetischer `ProductReceiptClassifier`-Paritätspfad; Room-8-`HistoricalPaidPriceKernel` und idempotente bestätigte `FoodStore`-Historie; siehe [STATUS](STATUS.md) | Vollständige Python↔Kotlin-Parität inklusive Fehler-/Version-/Store-Scope; echte OCR-/Produktidentitäts- und Filialdaten, End-to-End-Kauf-/Stornopfad, Gerätebelege. **TEILWEISE; Modul-Gates OFFEN** |
+| **Preisdaten**: unabhängige Händlerfähigkeit, APP_DISPLAY-Rechte, Zeitpunkt, Region, Filiale, Pfand, Quelle | `ExternalPriceBridge`, `ShoppingOfferGate`, unabhängige deny-all-Hostregistries und fail-closed-Tests; [CI 41253221574](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41253221574) als begrenzter Gate-Beleg | Rechte- und Filialstammdaten aus unabhängig bestätigter Quelle, reale Providerfreigabe, zulässige Feedabdeckung, End-to-End-UI/Offline-/Geräte-Tests. Ohne Rechte bleibt Livefeed aus; Offlinefunktionen laufen weiter. **TEILWEISE; Live-Gates OFFEN** |
+| **Einkaufsintelligenz**: deterministische Preise/Bio/Ampel, FEFO, 1/7/56-Tage-Bedarf, Gebinde/Pfand/Budget, historisch korrekte Vorschläge | Kotlin-Hostports für Vergleich, Coverage, Bedarf und Vorschläge; gepinnte Python-Vollaufrufe 9 `compare_prices`, 12 `project_needs`, 7 `optimize_package_mix`, 7 `suggest_purchases`; [Main-CI 41309018425](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41309018425) | Vollständige Fehler-/Rechte-/Scope-Parität, reale geprüfte Artikel-/Store-Registries, durchgängiger Planungs-UI-Pfad, E2E ohne Buchung und Gerätetests. **TEILWEISE; Modul-Gates OFFEN** |
+| **Rezept-KI**: offlinefähiger Entwurf, acht Kontextkombinationen, geprüfte Mengen/Allergene/Zustand, expliziter Save, Herstellung, Verzehr | Begrenzter v1-JSON-Import, Host-/Room-Preview und synthetische `FoodStore`-Kette; Consent-/Digest-/Pending-Key-Gates; opt-in verschlüsselter unbestätigter JSON-Checkpoint, [PR #18](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/18) und [Main-CI 41309018425](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41309018425): 356/356 JVM, 7/7 Room | Verschlüsselte opt-in Evidence-Formularwiederaufnahme mit Session-Revocation und frischer Host-/Room-Revalidierung, unabhängig authentifizierte Nutzeraktionsprovenienz, typisierte Kontext-Content-Digests (alle acht Kombinationen), vollständige gepinnte Revalidator-/Generator-Parität, echte Android-/Offline-/Privacy-E2E. **TEILWEISE; Modul-Gates OFFEN** |
+| **Modulübergreifende Abnahme**: beide echten Datenflüsse, Schutz der Altdaten, Offline-/Privacy-/Android-Nachweise | Room 8 mit 36 Tabellen, sieben befüllte 1→8 bis 7→8-Migrationstests; [Main-CI 41309018425](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41309018425): 356 JVM, Lint, Schema, Python-Referenzen, Android-Test**kompilierung** PASS | (A) Erkennung→Bonentwurf→Bestätigung→Kauf→historischer Preis→Vergleich→Einkaufsvorschlag, Retry/Storno/Filial-/Zeitgates; (B) Rezeptentwurf→Review→Bestätigung→Herstellung→separater Verzehr; Negativpfade, Neustart, Rollback, 1–7-Datenerhaltung; tatsächlich ausgeführte Android-Kamera/OCR/UI/Offline-/Privacy-Tests. **E2E/ANDROID OFFEN** |
+
+## Flexible nächste Kandidaten
+
+Die Auswahl erfolgt pro Lauf anhand von **Abhängigkeit, realem Abnahmerisiko, Nutzwert und testbarer Begrenzung**, nicht anhand einer Modulquote. Sicherheits-/Datenintegritätsfehler zuerst.
+
+1. **Rezept-Evidence-Resume**: Opt-in, AES-GCM/Keystore, TTL/Revocation, begrenzte Daten, kein Consent-/Personenaktions-Replay, frische Produktversion und Room-Revalidierung. Reduziert Datenverlust- und unzulässiges Wiederverwendungsrisiko.
+2. **Typisierte Kontext-Content-Digests** über acht Kontextflagkombinationen und authentifizierte Aktionsprovenienz, ohne Modellbehauptungen als Hostbelege zu akzeptieren. Reduziert das Risiko veralteter/falscher Rezeptfreigaben.
+3. **Kauf-/Produkt-/Preis-/Einkaufs-E2E** auf synthetischem Room mit kanonischer Artikel-/Filialidentität, Operation-Key-Retry, Storno, Null/0, Zeit- und Rechtegates. Schließt die größte modulübergreifende Kette ohne Livefeed.
+4. **Revalidator-Parität und Android-Geräte-E2E**: getrennte, überprüfbare Prüfungen für Rezept- und Bon-/OCR-/Offline-/Privacy-Pfade; nicht aus JVM- oder Kompiliergrün ableiten.
+
+**Pflicht pro materieller Statusänderung:** exakte Code-/Test-/CI-/ggf. Geräte-SHAs und Ergebnisse in [STATUS.md](STATUS.md); hier nur Zielstatus und Evidenzlinks, kein zweites chronologisches Protokoll. Bei fehlendem Beleg `PENDING`/`TEILWEISE`/`OFFEN` statt Prozentwert oder Freigabe.
