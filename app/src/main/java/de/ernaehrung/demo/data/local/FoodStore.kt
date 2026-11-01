@@ -92,7 +92,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         requireValidRecipeDraftSaveKey(key)
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
-            reviewedStates, context, trustedContextSnapshotAt)
+            reviewedStates, context, trustedContextSnapshotAt, requireNonFutureDraft = true)
         require(current.status ==
             de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             current.input != null &&
@@ -152,7 +152,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         requireValidRecipeDraftSaveKey(key)
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
-            reviewedStates, context, trustedContextSnapshotAt)
+            reviewedStates, context, trustedContextSnapshotAt, requireNonFutureDraft = true)
         require(current.status ==
             de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             current.input != null &&
@@ -187,21 +187,33 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>?,
-        trustedContextSnapshotAt: java.time.OffsetDateTime?
+        trustedContextSnapshotAt: java.time.OffsetDateTime?,
+        requireNonFutureDraft: Boolean = false
     ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review {
         val trustedNow = now()
         val clock = java.time.OffsetDateTime.ofInstant(
             java.time.Instant.ofEpochMilli(trustedNow), java.time.ZoneOffset.UTC)
-        val lines = try {
+        val imported = try {
             de.ernaehrung.demo.data.integration.RecipeDraftV1Import
-                .read(json, reviewedStates, clock).draft.lines
+                .read(json, reviewedStates, clock)
         } catch (_: IllegalArgumentException) {
-            emptyList()
+            null
         }
+        val lines = imported?.draft?.lines ?: emptyList()
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
             lines, dao.allVersions(), confirmations, trustedNow)
         val review = de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
             json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
+        // Producer clock skew is tolerated for read-only preview only. A host
+        // confirmation or recipe write must never predate the draft it approves.
+        if (requireNonFutureDraft &&
+            imported?.createdAt?.toInstant()?.isAfter(clock.toInstant()) == true) {
+            return review.copy(
+                status = de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.BLOCKED,
+                blockers = review.blockers + "FUTURE_DRAFT_NOT_YET_CREATED",
+                input = null, approvalBasisDigest = null
+            )
+        }
         // No stable typed digest of active stock/list/offer context exists yet. Such
         // previews may be inspected, but cannot authorize a write via this port.
         val contextRequested = request.flags.considerStock ||
