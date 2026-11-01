@@ -160,6 +160,42 @@ class RecipeDraftHostGateTest {
         assertNull(rejected.input)
     }
 
+    @Test fun contextProjectionCannotBeReusedAcrossAnyOfEightConsentCombinations() {
+        val stock = Gate.Evidence("private-stock", true)
+        val shopping = Gate.Evidence("private-shopping", true)
+        val offers = Gate.Evidence("private-offers", true)
+        val facts = mapOf("rice" to fact())
+        for (sourceBits in 0..7) {
+            val source = Gate.Flags(sourceBits and 1 != 0, sourceBits and 2 != 0,
+                sourceBits and 4 != 0)
+            val projected = Gate.context(source, stock, shopping, offers)
+            assertEquals(source, projected.projectedFlags)
+            for (requestBits in 0..7) {
+                val target = Gate.Flags(requestBits and 1 != 0, requestBits and 2 != 0,
+                    requestBits and 4 != 0)
+                val reviewed = Gate.review(draft(target), request(target), facts, projected)
+                if (source == target) {
+                    assertEquals("source=$sourceBits target=$requestBits",
+                        Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed.status)
+                } else {
+                    assertEquals("source=$sourceBits target=$requestBits",
+                        Gate.Status.BLOCKED, reviewed.status)
+                    assertTrue("source=$sourceBits target=$requestBits",
+                        "CONTEXT_CONSENT_MISMATCH" in reviewed.blockers)
+                    assertNull(reviewed.input)
+                }
+            }
+        }
+        // Caller-assembled values without a recorded host projection are not approval.
+        val unbound = Gate.Context("private-stock", "private-shopping",
+            "private-offers", emptySet<String>())
+        val requested = Gate.Flags(true, true, true)
+        val rejected = Gate.review(draft(requested), request(requested), facts, unbound)
+        assertEquals(Gate.Status.BLOCKED, rejected.status)
+        assertTrue("CONTEXT_CONSENT_MISMATCH" in rejected.blockers)
+        assertNull(rejected.input)
+    }
+
     @Test fun draftDoesNotMutateInputsOrWriteToFoodStore() {
         val facts = mapOf("rice" to fact())
         val original = draft()
