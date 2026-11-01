@@ -72,6 +72,25 @@ private fun ShoppingItem(line: ShoppingLine, scope: ShoppingScope, blocked: Stat
         Text("Bekannte Fehlmenge: ${Amounts.format(item.need.knownMissing)} ${item.need.unit.label}${if (item.need.unknownRequirements > 0) " + weitere Menge ungeklärt" else ""}")
         Text(if (item.checked) "Gespeichert: auf Liste abgehakt · kein Kauf" else "Gespeichert: nicht abgehakt", Modifier.testTag("shopping_checked_${item.need.versionId}"))
         if (item.staleCheck) Hint("Frühere Markierung ist nach Datenänderung veraltet. Mengen und Preis erneut prüfen.")
+        val paidHistory by model.historicalPaid.collectAsStateWithLifecycle()
+        Action("Eigene vergangene Bezahlpreise ansehen", true) {
+            model.showHistoricalPaidForShopping(item.need.versionId, scope.purchaseOn)
+        }
+        if (paidHistory.scope?.productVersionId == item.need.versionId &&
+            paidHistory.scope?.targetPurchaseOn == scope.purchaseOn) {
+            if (paidHistory.busy) Text("Private Bezahlpreishistorie wird gelesen.")
+            paidHistory.error?.let { Hint(it) }
+            paidHistory.report?.let { history ->
+                Text(
+                    "Private historische Bezahlpreise: ${history.references.size} belegte Positionen; " +
+                        "niedrigster Preis je bestätigter Kaufeinheit: " +
+                        (history.lowestHistoricalUnitPriceCents?.let(Money::format) ?: "unbekannt"),
+                    Modifier.testTag("shopping_paid_history_${item.need.versionId}")
+                )
+                Hint("Nur früher tatsächlich bezahlte eigene Preise bis zum gewählten Kaufdatum. " +
+                    "Kein aktuelles Angebot, keine bestätigte Filiale, kein automatischer Einkauf.")
+            }
+        }
         IdPicker("Packungs-/Preisfassung ${item.need.versionId.take(8)}", listOf("" to "Keine Preisfassung") + item.alternatives.map {
             it.id to "${it.merchant ?: "Händler unbekannt"} · ${it.amount?.let(Amounts::format) ?: "Menge ungeklärt"} ${item.need.unit.label} · ${it.totalCents?.let { cents -> if (it.currency == "EUR") Money.format(cents) else "Währung ungeklärt" } ?: "Preis unbekannt"} · ${it.id.take(8)}"
         }, selected) { selected = it; checked = false }
