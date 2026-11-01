@@ -25,6 +25,14 @@ data class RecognitionUiState(val data: RecognitionData? = null, val error: Stri
 data class AliasUiState(val busy: Boolean = false, val match: AliasMatch? = null, val error: String? = null, val queryText: String = "")
 data class LookupUiState(val busy: Boolean = false, val result: ProductLookup? = null, val error: String? = null)
 data class ReceiptReviewUiState(val review: ReceiptReview? = null, val resolved: Boolean = false, val error: String? = null)
+/** A host-bound preview and the result of its separate, explicit UI action. */
+internal data class RecipeDraftConsentUiState(
+    val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review? = null,
+    val busy: Boolean = false,
+    val recordedDigest: String? = null,
+    val error: String? = null
+)
+
 data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emptyList(), val text: PhotoText? = null,
     val method: String? = null, val message: String? = null)
 
@@ -172,6 +180,95 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
                 throw cancelled
             } catch (error: Exception) {
                 saving.value = SaveState(message = "Nicht gespeichert. ${error.message}\nVorgang: $operationId")
+            }
+        }
+    }
+
+    // A session is created only from separately reviewed host catalog facts.
+    // A model digest, a caller-supplied Boolean or a recomposition cannot create
+    // a durable consent. No recipe/stock/consumption write occurs in this flow.
+    private data class PendingRecipeDraft(
+        val operationKey: String,
+        val json: String,
+        val request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        val confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        val reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review
+    )
+    private val recipeDraftConsent = MutableStateFlow(RecipeDraftConsentUiState())
+    internal val recipeDraftConsentState = recipeDraftConsent.asStateFlow()
+    private var pendingRecipeDraft: PendingRecipeDraft? = null
+    private var recipePreviewJob: kotlinx.coroutines.Job? = null
+    private var recipeConsentJob: kotlinx.coroutines.Job? = null
+
+    /** Caller must gather independently confirmed mapping, basis, state and allergen facts.
+     * This does not accept generator-provided confirmations or auto-enable a draft.
+     */
+    internal fun prepareRecipeDraftConsent(
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>
+    ) {
+        recipePreviewJob?.cancel()
+        recipeConsentJob?.cancel()
+        pendingRecipeDraft = null
+        recipeDraftConsent.value = RecipeDraftConsentUiState(busy = true)
+        val immutableFacts = confirmations.mapValues { (_, line) ->
+            line.copy(allergens = line.allergens.toMap())
+        }
+        val immutableRequest = request.copy(confirmedRestrictions = request.confirmedRestrictions.toSet())
+        recipePreviewJob = viewModelScope.launch {
+            try {
+                val review = store.previewRecipeDraftV1(json, immutableRequest,
+                    immutableFacts, reviewedStates.toMap())
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (review.status ==
+                    de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+                    review.input != null && review.approvalBasisDigest != null) {
+                    pendingRecipeDraft = PendingRecipeDraft(
+                        java.util.UUID.randomUUID().toString(), json, immutableRequest,
+                        immutableFacts, reviewedStates.toMap(), review)
+                }
+                recipeDraftConsent.value = RecipeDraftConsentUiState(review = review)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                recipeDraftConsent.value = RecipeDraftConsentUiState(error =
+                    "Rezeptvorschau konnte nicht geprüft werden: ${e.message}")
+            }
+        }
+    }
+
+    /** Invoked exclusively by the explicit RecipeDraftConsentReview callback.
+     * Revalidation and the durable operation ledger remain inside FoodStore.
+     * This is UI-action provenance, not an authenticated human identity.
+     */
+    internal fun confirmRecipeDraftConsent(approvalBasisDigest: String) {
+        val session = pendingRecipeDraft ?: return
+        if (recipeDraftConsent.value.busy ||
+            recipeDraftConsent.value.recordedDigest != null ||
+            session.review.approvalBasisDigest != approvalBasisDigest) return
+        recipeDraftConsent.value = recipeDraftConsent.value.copy(busy = true, error = null)
+        recipeConsentJob = viewModelScope.launch {
+            try {
+                val recorded = store.recordReviewedRecipeDraftV1Consent(
+                    session.operationKey, session.json, session.request,
+                    session.confirmations, session.reviewedStates, session.review, true)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pendingRecipeDraft === session) {
+                    recipeDraftConsent.value = RecipeDraftConsentUiState(
+                        review = session.review, recordedDigest = recorded)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pendingRecipeDraft === session) {
+                    recipeDraftConsent.value = RecipeDraftConsentUiState(
+                        review = session.review, error = "Bestätigung nicht gespeichert: ${e.message}")
+                }
             }
         }
     }
