@@ -300,12 +300,12 @@ class ShoppingPriceComparisonGateTest {
             it.copy(candidate = it.candidate.copy(
                 validFrom = day.plusDays(1), validUntil = day.plusDays(20)))
         }
-        // The host grants APP_DISPLAY only for the first day of a 20-day
+        // The host grants APP_DISPLAY for the target and first day of a 20-day
         // feed-declared sale. The remaining 19 days must not be advertised.
         val firstDayOnly = Price.DisplayPermissionRegistry { source, ref, capability, on ->
             source == "licensed-test-source" && ref == "host-grant" &&
                 capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION &&
-                on == day.plusDays(1)
+                (on == day || on == day.plusDays(1))
         }
         val result = compare(candidates = listOf(future), rights = firstDayOnly)
         assertTrue(result.targetEligible)
