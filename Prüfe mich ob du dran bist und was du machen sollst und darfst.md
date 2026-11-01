@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III"
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261101130620943-w9ytpv5r2l"
-acquiredAtUtc: "2026-11-01T13:06:20.943Z"
-lastHeartbeatUtc: "2026-11-01T13:12:26.238Z"
-leaseExpiresAtUtc: "2026-11-01T13:22:26.238Z"
-task: "Integration III: continue four-module Android integration; evaluate roadmap"
-workingBranch: "codex/integration-iii-roadmap-20261101-w9ytpv5r2l"
-lastReleasedAtUtc: "2026-11-01T13:03:21.800Z"
-lastReleasedCommit: "8e302cc4750936ac26f99b13ecb219645252cc52"
-nextStep: "PR #18 gemergt 9f33c631a8fdf2015fd0b7f6a59a265e53b7845e; PR-CI 41308626105 und unabhängige Main-CI 41309018425 PASS: 356/356 JVM, 7/7 Room, gepinnte Python-/Rezeptreferenzen, Lint/Schema/Android-Testkompilierung. STATUS 8e302cc4750936ac26f99b13ecb219645252cc52. Nächste Einheit: opt-in verschlüsselte Evidence-Formularwiederaufnahme mit frischer Host-/Room-Revalidierung und Session-Revocation; authentifizierte Nutzeraktionsprovenienz, typisierte Kontext-Digests, Revalidator-Parität, Android-Geräte-E2E."
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T13:18:39.857Z"
+lastReleasedCommit: "903e0854e1538b2aaacce0ced7dffccf5a9cd78e"
+nextStep: "PR #19 merged c349ebc77de669ae475ab2cf524fa391757d9040; PR CI 41309855965 and independent main CI 41310208463 PASS: 356/356 JVM, 7/7 Room, pinned Python/recipe references, lint/schema/Android test compilation. STATUS 903e0854e1538b2aaacce0ced7dffccf5a9cd78e; roadmap now docs/INTEGRATION_ROADMAP.md. Next: opt-in encrypted recipe Evidence form resume with fresh Room validation/session revocation, typed context digests and authenticated action provenance; cross-module purchase E2E and Android device gates still open."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
