@@ -11,6 +11,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.time.Instant
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import de.ernaehrung.demo.data.integration.ShoppingNeedsKernel
+import de.ernaehrung.demo.data.integration.ShoppingPurchaseSuggestionGate
 
 /** Synthetic multi-module integration without retailer feeds, live user data or write side-effects from price previews. */
 @RunWith(RobolectricTestRunner::class)
@@ -155,6 +159,51 @@ class PaidPriceHostIntegrationTest {
             assertNull(dao.operation(key))
             assertTrue(dao.allPaidPrices().isEmpty())
         }
+    }
+
+    @Test fun receiptToPrivatePriceToUnbookedShoppingNeedNeverPromotesHistoryToLiveOffer() = runBlocking {
+        val version = tofu()
+        val scan = store.saveReceiptScan("chain-scan", "TESTMARKT\n30.10.2026\nTOFU 2x 1,99\nSUMME 3,98", "MANUAL_TEXT")
+        val draft = store.reviewReceiptScan(scan)
+        assertTrue(dao.purchases().isEmpty())
+        assertTrue(dao.allPaidPrices().isEmpty())
+        val receipt = store.acceptReceiptScan("chain-payment", scan, purchase(version), draft.snapshot, true)
+        val line = dao.receiptLines(receipt).single()
+        val paid = store.saveHistoricalPaidPrice("chain-price",
+            review("chain-payment", line.id, version).copy(basisReason = "Zwei Stück und Kassenbetrag geprüft"), true)
+        assertEquals(paid, store.saveHistoricalPaidPrice("chain-price",
+            review("chain-payment", line.id, version).copy(basisReason = "Zwei Stück und Kassenbetrag geprüft"), true))
+        val historical = HistoricalPaidComparisonReader(db).compare(
+            HistoricalPaidComparisonScope(version, day, Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()))
+        assertEquals(listOf(paid), historical.references.map { it.observationId })
+        assertEquals(199L, historical.lowestHistoricalUnitPriceCents)
+        assertEquals("HISTORICAL_PAID", historical.priceKind)
+        assertFalse(historical.isCurrentOffer)
+
+        val need = ShoppingNeedsKernel.project(ShoppingNeedsKernel.Snapshot(day, emptyList(),
+            listOf(ShoppingNeedsKernel.Demand("tomorrow-tofu", "tofu", "2026-10-31",
+                ShoppingNeedsKernel.Quantity(10, "g", "NET", 1, true)))), listOf(7))
+        assertEquals(10L, need.horizons.getValue(7).totals.single().quantityToBuy.toLong())
+        val beforeOperations = dao.operationCount()
+        val suggestion = ShoppingPurchaseSuggestionGate.suggest(need, 7, LocalDate.parse(day),
+            OffsetDateTime.parse("2026-10-30T11:00:00Z"), emptyList(),
+            ShoppingPurchaseSuggestionGate.Budget(500, LocalDate.parse(day), LocalDate.parse(day).plusDays(6)),
+            mapOf("DRY" to 1000L))
+        assertEquals("REVIEW", suggestion.rows.single().status)
+        assertNull(suggestion.totalCheckoutCents)
+        assertTrue(suggestion.rows.single().lines.isEmpty())
+        assertTrue(suggestion.sideEffects.isEmpty())
+        assertEquals(beforeOperations, dao.operationCount())
+        assertEquals(1, dao.purchases().size)
+        assertEquals(1, dao.allPaidPrices().size)
+        assertTrue(dao.prices().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+
+        store.cancelPurchase("chain-reversal", ReversalInput("chain-payment", day, "Testkauf storniert"), true)
+        val afterReversal = HistoricalPaidComparisonReader(db).compare(
+            HistoricalPaidComparisonScope(version, day, Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()))
+        assertTrue(afterReversal.references.isEmpty())
+        assertEquals(1, dao.allPaidPrices().size) // Immutable audit retained, not a current offer.
     }
 
 }
