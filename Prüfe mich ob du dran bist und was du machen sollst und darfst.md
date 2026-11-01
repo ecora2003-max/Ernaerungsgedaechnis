@@ -68,7 +68,7 @@ ownerChatId: null
 ownerRunToken: null
 acquiredAtUtc: "2026-11-01T12:46:36.826Z"
 lastHeartbeatUtc: "2026-11-01T12:46:36.826Z"
-leaseExpiresAtUtc: null
+leaseExpiresAtUtc: "2026-11-01T13:01:36.826Z"
 task: "Continue host recipe integration"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T12:42:18.546Z"
