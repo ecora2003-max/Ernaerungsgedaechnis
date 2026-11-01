@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T16:19:31.508Z"
 lastHeartbeatUtc: "2026-11-01T16:19:31.508Z"
 leaseExpiresAtUtc: "2026-11-01T16:34:31.508Z"
 task: "Continue four-module Android integration; synthetic purchase-price-shopping E2E"
-workingBranch: null
+workingBranch: "codex/integration-ii-positive-shopping-20261101-048esz423y"
 lastReleasedAtUtc: "2026-11-01T16:09:22.553Z"
 lastReleasedCommit: "4f4c5253c6e8f5b7faff6e2c89120cbfbab13272"
 nextStep: "Read STATUS/roadmap and select next bounded integration work"
