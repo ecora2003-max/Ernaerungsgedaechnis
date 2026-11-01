@@ -9,16 +9,20 @@ on:
     paths:
       - ".github/workflows/integration-lease-renewal.yml"
       - "tools/renew_integration_lease.py"
+      - "tools/acquire_integration_lease.py"
       - "tools/recover_integration_lease.py"
       - "tools/test_renew_integration_lease.py"
+      - "tools/test_acquire_integration_lease.py"
       - "tools/test_recover_integration_lease.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/integration-lease-renewal.yml"
       - "tools/renew_integration_lease.py"
+      - "tools/acquire_integration_lease.py"
       - "tools/recover_integration_lease.py"
       - "tools/test_renew_integration_lease.py"
+      - "tools/test_acquire_integration_lease.py"
       - "tools/test_recover_integration_lease.py"
 
 permissions:
