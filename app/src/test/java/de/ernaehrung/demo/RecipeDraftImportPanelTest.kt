@@ -8,6 +8,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -180,6 +184,14 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
         rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
+        rule.onNodeWithTag("recipe_draft_restrictions").performTextInput("ALLERGEN:SOY")
+        rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("ALLERGEN:SOY")
+        // A changed JSON draft cannot inherit manually entered exclusions from
+        // the previous draft, even when the new JSON is still schema-valid.
+        rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
+        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_restrictions").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()

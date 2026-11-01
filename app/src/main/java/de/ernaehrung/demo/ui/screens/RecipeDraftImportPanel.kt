@@ -132,7 +132,7 @@ internal fun RecipeDraftImportPanel(
                     imported = null
                     error = null
                     versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap()
+                    allergenAnswers = emptyMap(); restrictionsText = ""
                     json = next
                 }
             },
