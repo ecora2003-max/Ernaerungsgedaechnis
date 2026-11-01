@@ -30,7 +30,7 @@ jobs:
           ref: main
       - name: Verify safety regression cases
         run: python3 -m unittest tools/test_renew_integration_lease.py
-      - name: Extend matching active lease by up to 15 minutes
+      - name: Extend matching active lease up to 10 minutes after CI event
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 tools/renew_integration_lease.py
