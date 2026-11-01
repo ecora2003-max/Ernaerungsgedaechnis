@@ -82,7 +82,7 @@ class HostCanonicalStoreRegistryTest {
         assertFalse(confirmed(registry(reviews = mapOf("canonical-42" to
             review(at = recorded - 1)))))
         assertFalse(confirmed(registry(reviews = mapOf("canonical-42" to
-            review(at = asOf.plusDays(1).toInstant().toEpochMilli()))))
+            review(at = asOf.plusDays(1).toInstant().toEpochMilli())))))
         assertFalse(confirmed(registry(snapshots = listOf(snapshot(verified = false)))))
         assertFalse(confirmed(registry(snapshots = listOf(snapshot(recordedAt = -1)))))
     }
