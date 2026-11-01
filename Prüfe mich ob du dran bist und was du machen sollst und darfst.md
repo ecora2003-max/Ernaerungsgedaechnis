@@ -51,19 +51,19 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme, Fristverlängerung oder Freigabe.
 
 ```yaml
-state: "ACTIVE"
+state: "FREE"
 ownerAutomationId: null
-ownerChatId: "User-directed return to simple manual coordination"
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "manual-revert-20261101T2037-e2111a3428"
-acquiredAtUtc: "2026-11-01T20:38:42.685Z"
-lastHeartbeatUtc: "2026-11-01T20:38:42.685Z"
-leaseExpiresAtUtc: "2026-11-01T20:53:42.688Z"
-task: "Restore simple manual ACTIVE/FREE coordination; disable automatic lease mechanisms"
-workingBranch: "codex/restore-manual-integration-lock-20261101"
-lastReleasedAtUtc: "2026-11-01T20:34:52.088Z"
-lastReleasedCommit: "e2111a34287a7e6d14af2f3b1008b1532be32294"
-nextStep: "Revert complicated run-ID gate; manual owner controls state; all automations continue."
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: "Manual coordination restored; automatic lease workflows removed"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T20:45:05.140Z"
+lastReleasedCommit: "901929fc481be3ba8a6765adebc326dc78093ba2"
+nextStep: "Next scheduled integration run manually claims FREE-to-ACTIVE with a unique owner token, implements the next feature, then releases to FREE."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
