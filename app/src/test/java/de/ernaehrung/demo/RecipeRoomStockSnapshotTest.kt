@@ -124,4 +124,16 @@ class RecipeRoomStockSnapshotTest {
                 release = ReleaseStatus.UNCHECKED), true)
         assertNull(store.readRecipeRoomStockSnapshot())
     }
+
+    @Test fun bestBeforeExpiryRequiresReviewWhileCurrentDayIsStillValid() = runBlocking {
+        store.receive("room-stock-current-best-before",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                bestBefore = "2026-11-01", release = ReleaseStatus.RELEASED), true)
+        assertNotNull(store.readRecipeRoomStockSnapshot())
+        store.receive("room-stock-expired-best-before",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                bestBefore = "2026-10-31", release = ReleaseStatus.RELEASED), true)
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }
