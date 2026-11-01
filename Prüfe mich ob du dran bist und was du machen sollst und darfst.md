@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T17:31:30.520Z"
 lastHeartbeatUtc: "2026-11-01T17:31:30.520Z"
 leaseExpiresAtUtc: null
 task: "Integration IV cross-module host coherence and next bounded implementation"
-workingBranch: null
+workingBranch: "codex/integration-iv-catalog-package-20261101-hao1wkud69"
 lastReleasedAtUtc: "2026-11-01T17:18:39.330Z"
 lastReleasedCommit: "b25dbd2bfb444db02421530aaa592ef164376a55"
 nextStep: "PR #28 merged 6eb0861e; PR CI 41329799807 and independent main CI 41330322868 PASS (373/373 JVM, 7/7 Room, lint/schema/pinned Python/Android test compilation). STATUS b25dbd2b. Next: persistent independently verified article/store review provenance, real UI/OCR/offline/privacy/device E2E, or typed recipe context digests. All four module gates OPEN."
