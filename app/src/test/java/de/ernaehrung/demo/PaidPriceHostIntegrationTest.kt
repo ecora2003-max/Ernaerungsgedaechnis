@@ -1,6 +1,11 @@
 package de.ernaehrung.demo
 
 import android.content.Context
+import de.ernaehrung.demo.data.integration.RetailerPolicy as Policy
+import de.ernaehrung.demo.data.integration.ExternalPriceBridge as Price
+import de.ernaehrung.demo.data.integration.ShoppingOfferGate as OfferGate
+import de.ernaehrung.demo.data.integration.ShoppingPriceComparisonGate as CompareGate
+import de.ernaehrung.demo.data.integration.ShoppingPurchaseSuggestionGate as SuggestGate
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.ernaehrung.demo.data.local.*
@@ -204,6 +209,133 @@ class PaidPriceHostIntegrationTest {
             HistoricalPaidComparisonScope(version, day, Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()))
         assertTrue(afterReversal.references.isEmpty())
         assertEquals(1, dao.allPaidPrices().size) // Immutable audit retained, not a current offer.
+    }
+
+
+    @Test fun authorizedPriceAlternativeAndShoppingProposalRemainReadOnlyAfterPaidReceipt() = runBlocking {
+        // A positive synthetic cross-module chain. Trust registries are supplied by
+        // the test host, not by a feed; this does not enable a real retailer.
+        val version = tofu()
+        val scan = store.saveReceiptScan("positive-scan",
+            "TESTMARKT\n30.10.2026\nTOFU 2x 1,99\nSUMME 3,98", "MANUAL_TEXT")
+        val draft = store.reviewReceiptScan(scan)
+        assertTrue(dao.purchases().isEmpty())
+        assertTrue(dao.allPaidPrices().isEmpty())
+        val receipt = store.acceptReceiptScan("positive-payment", scan,
+            purchase(version), draft.snapshot, true)
+        assertEquals(receipt, store.acceptReceiptScan("positive-payment", scan,
+            purchase(version), draft.snapshot, true))
+        val lineId = dao.receiptLines(receipt).single().id
+        val basis = review("positive-payment", lineId, version).copy(
+            basisReason = "Zwei Einheiten und Warenbetrag gesondert bestätigt")
+        val historicalId = store.saveHistoricalPaidPrice("positive-paid-price", basis, true)
+        assertEquals(historicalId,
+            store.saveHistoricalPaidPrice("positive-paid-price", basis, true))
+        val historical = HistoricalPaidComparisonReader(db).compare(
+            HistoricalPaidComparisonScope(version, day,
+                Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()))
+        assertEquals(listOf(historicalId), historical.references.map { it.observationId })
+        assertFalse(historical.isCurrentOffer)
+        assertTrue(dao.prices().isEmpty())
+
+        val shoppingDay = LocalDate.parse(day)
+        val cutoff = OffsetDateTime.parse("2026-10-30T11:00:00Z")
+        val article = de.ernaehrung.demo.data.integration.ShoppingComparabilityKernel.Article(
+            foodTypeId = "tofu", attributes = mapOf("state" to "raw"),
+            quantity = de.ernaehrung.demo.data.integration.ShoppingUnitRateKernel.Quantity(
+                10, "g", "NET", 1, true))
+        val rights = Price.DisplayPermissionRegistry { source, ref, capability, on ->
+            source == "synthetic-licensed-source" && ref == "synthetic-host-grant" &&
+                capability == Policy.Capability.PUBLISHED_OFFER_COLLECTION && on == shoppingDay
+        }
+        val stores = OfferGate.ConfirmedStoreRegistry { retailer, storeId, region, _ ->
+            retailer == Policy.Retailer.LIDL && storeId == "canonical-test-store" &&
+                region == "berlin"
+        }
+        val articles = CompareGate.ConfirmedArticleRegistry { productVersion, checked, _, _ ->
+            productVersion == version && checked.foodTypeId == "tofu" &&
+                checked.quantity == article.quantity
+        }
+        fun observed(id: String, cents: Long, deposit: Long? = 0) : CompareGate.Input {
+            val request = Price.Request(Policy.Retailer.LIDL,
+                Policy.Capability.PUBLISHED_OFFER_COLLECTION, version, shoppingDay,
+                cutoff, "canonical-test-store", "berlin")
+            val candidate = Price.Candidate(id, version, true, Policy.Retailer.LIDL,
+                Policy.Capability.PUBLISHED_OFFER_COLLECTION, "synthetic-licensed-source",
+                Price.Origin.EXTERNAL, Price.RightsStatus.PERMITTED, "synthetic-host-grant",
+                cutoff.minusHours(1), shoppingDay, shoppingDay.plusDays(2),
+                "canonical-test-store", "berlin", cents, deposit, 10_000,
+                Price.Unit.GRAM, conditionsVerified = true)
+            return CompareGate.Input(request, candidate,
+                OfferGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE", false,
+                    "STORE_CONFIRMED", true), article, false)
+        }
+        val target = observed("synthetic-target", 250)
+        val cheaper = observed("synthetic-cheaper", 100, 25)
+        val beforeProposals = dao.operationCount()
+        val comparison = CompareGate.compare(target, listOf(cheaper),
+            permissions = rights, stores = stores, articles = articles)
+        assertTrue(comparison.targetEligible)
+        assertEquals(listOf("synthetic-cheaper"),
+            comparison.cheaper.map { it.observationId })
+        assertTrue(comparison.signals.signals.contains("RED_SAME_BIO_CHEAPER"))
+        assertFalse(comparison.marketWideBestPriceProven)
+
+        val needs = ShoppingNeedsKernel.project(ShoppingNeedsKernel.Snapshot(
+            day, emptyList(), listOf(ShoppingNeedsKernel.Demand(
+                "synthetic-need", "tofu", "2026-10-31",
+                ShoppingNeedsKernel.Quantity(10, "g", "NET", 1, true)))),
+            listOf(7))
+        val pack = SuggestGate.Offer(cheaper, shelfLifeDays = 5,
+            storageClass = "DRY", packageVolumeMl = 100)
+        fun propose(
+            offer: SuggestGate.Offer = pack,
+            permissions: Price.DisplayPermissionRegistry = rights,
+            storeRegistry: OfferGate.ConfirmedStoreRegistry = stores,
+            articleRegistry: CompareGate.ConfirmedArticleRegistry = articles
+        ) = SuggestGate.suggest(needs, 7, shoppingDay, cutoff, listOf(offer),
+            SuggestGate.Budget(500, shoppingDay, shoppingDay.plusDays(6)),
+            mapOf("DRY" to 1000L), permissions, storeRegistry, articleRegistry)
+        val positive = propose()
+        assertEquals("FEASIBLE_NOT_PURCHASED", positive.rows.single().status)
+        assertEquals("synthetic-cheaper", positive.rows.single().lines.single().observationId)
+        assertEquals(java.math.BigInteger.valueOf(100), positive.totalMerchandiseCents)
+        assertEquals(java.math.BigInteger.valueOf(125), positive.totalCheckoutCents)
+        assertEquals(java.math.BigInteger.valueOf(375), positive.budgetRemainingCents)
+        assertTrue(positive.sideEffects.isEmpty())
+        assertFalse(positive.marketWideBestPriceProven)
+
+        // Independent gates: source permission, canonical store, product version,
+        // null deposit, future observation and a different physical store.
+        assertEquals("REVIEW", propose(permissions = Price.denyAll).rows.single().status)
+        assertNull(propose(permissions = Price.denyAll).totalCheckoutCents)
+        assertEquals("REVIEW",
+            propose(storeRegistry = OfferGate.denyAllStores).rows.single().status)
+        assertEquals("REVIEW",
+            propose(articleRegistry = CompareGate.denyAllArticles).rows.single().status)
+        assertNull(propose(offer = pack.copy(input = cheaper.copy(
+            candidate = cheaper.candidate.copy(depositCents = null)))).totalCheckoutCents)
+        assertNull(propose(offer = pack.copy(input = cheaper.copy(
+            candidate = cheaper.candidate.copy(observedAt = cutoff.plusMinutes(1)))))
+            .totalCheckoutCents)
+        assertNull(propose(offer = pack.copy(input = cheaper.copy(
+            request = cheaper.request.copy(storeId = "unconfirmed-store"),
+            candidate = cheaper.candidate.copy(storeId = "unconfirmed-store"))))
+            .totalCheckoutCents)
+        assertEquals(beforeProposals, dao.operationCount())
+        assertEquals(1, dao.purchases().size)
+        assertEquals(1, dao.allPaidPrices().size)
+        assertTrue(dao.prices().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+
+        store.cancelPurchase("positive-reversal", ReversalInput(
+            "positive-payment", day, "Synthetischer Kauf storniert"), true)
+        val afterReversal = HistoricalPaidComparisonReader(db).compare(
+            HistoricalPaidComparisonScope(version, day,
+                Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()))
+        assertTrue(afterReversal.references.isEmpty())
+        assertEquals(1, dao.allPaidPrices().size) // Tombstone keeps the audit.
+        assertEquals(beforeProposals + 1, dao.operationCount())
     }
 
 }
