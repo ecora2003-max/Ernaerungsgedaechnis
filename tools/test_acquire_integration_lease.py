@@ -59,7 +59,7 @@ class AcquireSafetyTests(unittest.TestCase):
     def test_existing_active_owner_rejected(self):
         active = FREE.replace('state: "FREE"', 'state: "ACTIVE"').replace(
             "**Hier arbeitet kein Chat mehr.**",
-            "**Hier arbeitet jetzt ein Chat!")
+            "**Hier arbeitet jetzt ein Chat!**")
         self.assertEqual(acquire(active)[1], "NOT_FREE")
 
     def test_inconsistent_free_owner_rejected(self):
