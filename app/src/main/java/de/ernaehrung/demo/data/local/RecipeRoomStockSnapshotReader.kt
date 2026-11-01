@@ -24,16 +24,28 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val rows = dao.planningBatches()
         if (rows.size > MAX_ROWS || rows.map { it.batch.id }.toSet().size != rows.size) return null
         val today = capturedAt.atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
+        // A released batch in an unconfirmed storage location is not usable stock.
+        // Include location facts in the revision to invalidate a prior review if
+        // the storage evidence changes without a stock movement.
+        val locations = rows.map { it.batch.locationId }.distinct()
+            .associateWith { dao.location(it) }
         for (row in rows) {
             val batch = row.batch
             if (batch.id.isBlank() || batch.versionId.isBlank() || batch.locationId.isBlank() ||
                 row.stockAmount !in 0..Amounts.MAX) return null
+            val location = locations[batch.locationId] ?: return null
             if (row.stockAmount > 0) {
-                // Unreleased, reversed or expired food is not evidence of usable stock.
-                if (row.originReversed || batch.release != ReleaseStatus.RELEASED) return null
-                val useBy = batch.useBy
-                if (useBy != null) {
-                    val date = runCatching { LocalDate.parse(useBy) }.getOrNull() ?: return null
+                // Planning excludes unreleased, reversed, unconfirmed-location,
+                // not-yet-acquired and past-best-before stock. Recipe context
+                // must not silently advertise any of those batches as usable.
+                if (row.originReversed || batch.release != ReleaseStatus.RELEASED ||
+                    !location.confirmed) return null
+                batch.acquiredOn?.let {
+                    val date = runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
+                    if (date.isAfter(today)) return null
+                }
+                for (expiry in listOfNotNull(batch.bestBefore, batch.useBy)) {
+                    val date = runCatching { LocalDate.parse(expiry) }.getOrNull() ?: return null
                     if (date.isBefore(today)) return null
                 }
             }
@@ -49,7 +61,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 listOf(b.id, b.versionId, b.locationId, b.originOperationId,
                     b.acquiredOn, b.bestBefore, b.useBy, b.openedAt, b.thawedAt,
                     b.release.name, b.safetyNote, b.recipeVersionId, b.parentBatchId,
-                    row.originReversed, row.stockAmount, row.unit.name)
+                    row.originReversed, row.stockAmount, row.unit.name,
+                    locations[b.locationId]?.let { location ->
+                        listOf(location.id, location.name, location.confirmed,
+                            location.usableCapacityMl, location.temperatureCelsius)
+                    })
             }, movements)
         val lines = ordered.filter {
             !it.originReversed && it.batch.release == ReleaseStatus.RELEASED
