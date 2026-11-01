@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme, Fristverlängerung oder Freigabe.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261101T213007973Z-edyuvn"
-acquiredAtUtc: "2026-11-01T21:30:07.973Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Room/Host recipe context snapshot integration and FoodStore boundary regression"
-workingBranch: "integration-iv-room-stock-snapshot-20261101"
-lastReleasedAtUtc: "2026-11-01T21:07:49Z"
-lastReleasedCommit: "ad2a3e5dd6e85ac03e250eea0699f4569811b5c9"
-nextStep: "Implement actual Room/Host recipe context snapshot integration with tests"
+task: "Integration IV: merged Room STOCK context reader and transactional review revalidation (PR #42, 387 JVM tests PASS)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T21:44:40.623Z"
+lastReleasedCommit: "9e20c8d01229acde8cc0ff4759f46f9344f12ee2"
+nextStep: "Implement real Room/Host SHOPPING and OFFERS snapshots and authenticated recipe-save action provenance"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
