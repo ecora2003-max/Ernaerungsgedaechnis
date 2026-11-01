@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101T094355133Z-x6qybibs5k"`, `ownerChatId: "Integration (Chat)"`, `leaseExpiresAtUtc: "2026-11-01T09:58:55.133Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -64,11 +64,11 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 ```yaml
 state: "ACTIVE"
 ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: null
-ownerRunToken: null
+ownerChatId: "Integration (Chat)"
+ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101T094355133Z-x6qybibs5k"
 acquiredAtUtc: "2026-11-01T09:43:55.133Z"
 lastHeartbeatUtc: "2026-11-01T09:43:55.133Z"
-leaseExpiresAtUtc: null
+leaseExpiresAtUtc: "2026-11-01T09:58:55.133Z"
 task: "Android-Hauptapp-Integration fortsetzen"
 workingBranch: "codex/recipe-untrusted-json-inspection-20261101-chat-x6qybibs5k"
 lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
