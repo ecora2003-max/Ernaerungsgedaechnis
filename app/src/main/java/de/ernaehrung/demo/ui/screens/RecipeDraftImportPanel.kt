@@ -22,6 +22,10 @@ import de.ernaehrung.demo.data.integration.RecipeDraftManualReview
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
 import de.ernaehrung.demo.data.local.ProductVersionEntity
+import de.ernaehrung.demo.data.local.RecipeDraftEvidenceForm
+import de.ernaehrung.demo.data.local.RecipeDraftEncryptedEvidenceCheckpoint
+import de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedEvidenceCheckpoint
+import de.ernaehrung.demo.data.local.recipeDraftEvidenceDigest
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.Quality
@@ -42,6 +46,7 @@ internal fun RecipeDraftImportPanel(
     editingEnabled: Boolean = true,
     recordedDigest: String? = null,
     checkpointStore: RecipeDraftEncryptedImportCheckpoint? = null,
+    evidenceCheckpointStore: RecipeDraftEncryptedEvidenceCheckpoint? = null,
     onInvalidate: () -> Unit,
     onDiscardPending: () -> Unit,
     onReview: (String, Gate.Request,
@@ -52,8 +57,16 @@ internal fun RecipeDraftImportPanel(
     val checkpoint = checkpointStore ?: remember(context) {
         PrivateRecipeDraftEncryptedImportCheckpoint(context)
     }
-    // A durable consent is authoritative; no longer retain a draft checkpoint.
-    LaunchedEffect(recordedDigest) { if (recordedDigest != null) checkpoint.discard() }
+    val evidenceCheckpoint = evidenceCheckpointStore ?: remember(context) {
+        PrivateRecipeDraftEncryptedEvidenceCheckpoint(context)
+    }
+    // Durable consent supersedes both unconfirmed local checkpoints.
+    LaunchedEffect(recordedDigest) {
+        if (recordedDigest != null) {
+            checkpoint.discard()
+            evidenceCheckpoint.discard()
+        }
+    }
     var json by remember { mutableStateOf("") }
     var imported by remember { mutableStateOf<RecipeDraftV1Import.Imported?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -115,6 +128,7 @@ internal fun RecipeDraftImportPanel(
                 versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
                 allergenAnswers = emptyMap(); restrictionsText = ""
                 checkpoint.discard()
+                evidenceCheckpoint.discard()
                 onDiscardPending()
             },
             modifier = Modifier.testTag("recipe_draft_discard_pending")
@@ -128,6 +142,9 @@ internal fun RecipeDraftImportPanel(
                     error = "JSON zu groß (maximal 262144 Zeichen)."
                 } else if (next != json) {
                     checkpoint.discard()
+                    // Initial re-entry after process loss must not erase an opt-in
+                    // form for the same JSON. Subsequent edits revoke it.
+                    if (json.isNotBlank()) evidenceCheckpoint.discard()
                     invalidate()
                     imported = null
                     error = null
@@ -165,7 +182,7 @@ internal fun RecipeDraftImportPanel(
                 Text("Kontextflags aktiv: Ohne unabhängig geprüfte Bestands-, Listen- und Angebots-Snapshots ist die Übernahme gesperrt.")
             }
             OutlinedTextField(
-                restrictionsText, { invalidate(); restrictionsText = it },
+                restrictionsText, { evidenceCheckpoint.discard(); invalidate(); restrictionsText = it },
                 Modifier.fillMaxWidth().testTag("recipe_draft_restrictions"),
                 label = { Text("Bestätigte Ausschlüsse, z. B. ALLERGEN:SOY, FOOD:milk") },
                 singleLine = false, maxLines = 2
@@ -175,6 +192,64 @@ internal fun RecipeDraftImportPanel(
             val allergens = restrictions.filter { it.startsWith("ALLERGEN:") && it.length > 9 }
                 .map { it.removePrefix("ALLERGEN:") }.toSet()
             Text("Leeres Ausschlussfeld bedeutet keine erfassten Ausschlüsse, nicht geprüfte Allergenfreiheit.")
+            Text("Unbestätigte Formulareingaben nur auf ausdrücklichen Wunsch für maximal 24 Stunden verschlüsselt merken. Wiederherstellung ist KEIN Nachweis: aktuelle Katalogversionen und Room werden vor einer Buchung erneut geprüft; die Prüfbestätigung bleibt immer aus.")
+            Button(
+                modifier = Modifier.testTag("recipe_draft_evidence_save"),
+                onClick = {
+                    try {
+                        evidenceCheckpoint.save(RecipeDraftEvidenceForm(
+                            recipeDraftEvidenceDigest(json), versionIds,
+                            bases.mapValues { it.value.name },
+                            states.mapValues { it.value.name },
+                            allergenAnswers, restrictionsText
+                        ))
+                        error = "Unbestätigte Formulareingaben verschlüsselt gemerkt (maximal 24 Stunden)."
+                    } catch (_: Exception) {
+                        error = "Verschlüsselte Formularspeicherung nicht möglich."
+                    }
+                }
+            ) { Text("Unbestätigtes Prüf-Formular verschlüsselt merken") }
+            Button(
+                modifier = Modifier.testTag("recipe_draft_evidence_restore"),
+                onClick = {
+                    val saved = evidenceCheckpoint.load()
+                    if (saved == null || saved.draftHash != recipeDraftEvidenceDigest(json)) {
+                        error = "Kein gültiges Formular für genau diesen JSON-Entwurf vorhanden."
+                    } else {
+                        // Never trust saved product identities. Re-resolve current,
+                        // non-demo latest versions and require a NEW manual gesture.
+                        val ids = draft.lines.map { it.foodTypeId }.toSet()
+                        val latest = eligible.groupBy { it.productId }.mapValues { (_, rows) ->
+                            rows.filter { it.revision == rows.maxOf { row -> row.revision } }
+                                .singleOrNull()?.id
+                        }
+                        versionIds = saved.versionIds.filter { (food, version) ->
+                            food in ids && eligible.any {
+                                it.id == version && latest[it.productId] == version
+                            }
+                        }
+                        bases = saved.bases.mapNotNull { (food, basis) ->
+                            val line = draft.lines.singleOrNull { it.foodTypeId == food }
+                            if (line != null && basis == line.basis.name &&
+                                line.basis != Gate.Basis.UNKNOWN) food to line.basis else null
+                        }.toMap()
+                        states = saved.states.mapNotNull { (food, state) ->
+                            if (food in ids && state in setOf("RAW", "COOKED"))
+                                food to Gate.State.valueOf(state) else null
+                        }.toMap()
+                        val restoredAllergens = saved.restrictionsText.split(",")
+                            .map { it.trim() }.filter { it.startsWith("ALLERGEN:") }
+                            .map { it.removePrefix("ALLERGEN:") }.toSet()
+                        allergenAnswers = saved.allergens.filterKeys {
+                            it.first in ids && it.second in restoredAllergens
+                        }
+                        restrictionsText = saved.restrictionsText
+                        reviewed = false
+                        invalidate()
+                        error = "Formular nur als unbestätigte Eingabe geladen. Alle Nachweise und aktuellen Versionen erneut prüfen; neue Bestätigung erforderlich."
+                    }
+                }
+            ) { Text("Unbestätigtes Prüf-Formular laden") }
             draft.lines.forEach { line ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                     Text("${line.label} (${line.foodTypeId}) · ${line.amount ?: "Menge unbekannt"} ${line.unit} · Modellbasis ${line.basis}")
@@ -183,6 +258,7 @@ internal fun RecipeDraftImportPanel(
                         listOf("Nicht zugeordnet") + labels.values,
                         versionIds[line.foodTypeId]?.let { labels[it] } ?: "Nicht zugeordnet"
                     ) { selected ->
+                        evidenceCheckpoint.discard()
                         invalidate()
                         versionIds = versionIds + (line.foodTypeId to
                             (labels.entries.firstOrNull { it.value == selected }?.key ?: ""))
@@ -190,6 +266,7 @@ internal fun RecipeDraftImportPanel(
                     Text("Mengenbasis separat am Produkt prüfen")
                     Choices(listOf("Ungeprüft", line.basis.name),
                         bases[line.foodTypeId]?.name ?: "Ungeprüft") { selected ->
+                        evidenceCheckpoint.discard()
                         invalidate()
                         bases = if (selected == "Ungeprüft") bases - line.foodTypeId
                         else bases + (line.foodTypeId to line.basis)
@@ -197,6 +274,7 @@ internal fun RecipeDraftImportPanel(
                     Text("Zubereitungszustand separat prüfen")
                     Choices(listOf("Ungeprüft", "RAW", "COOKED"),
                         states[line.foodTypeId]?.name ?: "Ungeprüft") { selected ->
+                        evidenceCheckpoint.discard()
                         invalidate()
                         states = if (selected == "Ungeprüft") states - line.foodTypeId
                         else states + (line.foodTypeId to Gate.State.valueOf(selected))
@@ -211,6 +289,7 @@ internal fun RecipeDraftImportPanel(
                         Text("Allergen ${allergen}: unabhängige Prüfung dieser Zutat")
                         Choices(listOf("Unbekannt", "Nachweislich enthalten",
                             "Nachweislich nicht enthalten"), selected) { answer ->
+                            evidenceCheckpoint.discard()
                             invalidate()
                             allergenAnswers = allergenAnswers + (key to when (answer) {
                                 "Nachweislich enthalten" -> true
