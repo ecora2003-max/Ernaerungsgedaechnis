@@ -64,6 +64,48 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
         trustedContextSnapshotAt: java.time.OffsetDateTime? = null
     ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review = db.withTransaction {
+        reviewRecipeDraftV1InTransaction(json, request, confirmations, reviewedStates,
+            context, trustedContextSnapshotAt)
+    }
+
+    /** Always re-read current catalog and revalidate the exact previously reviewed input
+     * inside the same transaction as the new recipe write. An AI draft, stale preview,
+     * changed ingredient version or absent separate confirmation can never be saved here.
+     * This entry point only creates a new recipe; edits require a separate revision gate.
+     */
+    internal suspend fun saveReviewedRecipeDraftV1(
+        key: String,
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        expectedPreview: RecipeInput,
+        confirmed: Boolean,
+        context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+    ): String = db.withTransaction {
+        require(confirmed && request.userConfirmedRecipeSave) {
+            "Rezeptübernahme separat und ausdrücklich bestätigen."
+        }
+        val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
+            reviewedStates, context, trustedContextSnapshotAt)
+        require(current.status ==
+            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
+            current.input != null && current.input == expectedPreview) {
+            "Rezeptentwurf oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
+        }
+        kitchen.saveRecipe(key, current.input, null, "Bestätigter Rezeptentwurf v1")
+    }
+
+    /** Caller must supply independently verified confirmation facts, never model claims. */
+    private suspend fun reviewRecipeDraftV1InTransaction(
+        json: String,
+        request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
+        confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
+        reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
+        context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>?,
+        trustedContextSnapshotAt: java.time.OffsetDateTime?
+    ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review {
         val trustedNow = now()
         val clock = java.time.OffsetDateTime.ofInstant(
             java.time.Instant.ofEpochMilli(trustedNow), java.time.ZoneOffset.UTC)
@@ -75,7 +117,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
             lines, dao.allVersions(), confirmations, trustedNow)
-        de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
+        return de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
             json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
     }
 
