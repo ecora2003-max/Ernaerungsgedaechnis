@@ -25,7 +25,7 @@ class HostCatalogArticleRegistryTest {
         id = id, productId = "p1", revision = revision,
         name = "Reis", brand = "Brand", category = "Lebensmittel",
         barcode = "12345678", baseUnit = BaseUnit.GRAM,
-        packageAmount = 1000L, nutritionBasis = 1000L,
+        packageAmount = 500L, nutritionBasis = 1000L,
         energyKcal = null, proteinGrams = null, fatGrams = null, carbsGrams = null,
         source = source, sourceDetail = null, quality = quality,
         recordedAt = recorded, changeReason = "synthetic test"
@@ -74,6 +74,34 @@ class HostCatalogArticleRegistryTest {
             ShoppingUnitRateKernel.Quantity(0, "g", "NET", 1, true)), false, asOf))
         assertFalse(gate.isConfirmed("v1", article.copy(quantity =
             ShoppingUnitRateKernel.Quantity(500, "ml", "NET", 1, true)), false, asOf))
+    }
+
+    @Test fun knownCatalogPackageSizeMustMatchReviewedPerPackAmount() {
+        // Catalog version v1 describes 500 g per pack. A separately reviewed
+        // 1000 g claim for the same version must not silently change its size.
+        assertTrue(registry().isConfirmed("v1", article, false, asOf))
+        assertFalse(registry(versions = listOf(version().copy(packageAmount = 1000L)))
+            .isConfirmed("v1", article, false, asOf))
+        assertFalse(registry(versions = listOf(version().copy(packageAmount = 0L)))
+            .isConfirmed("v1", article, false, asOf))
+        assertFalse(registry(versions = listOf(version().copy(packageAmount = -500L)))
+            .isConfirmed("v1", article, false, asOf))
+
+        // An unknown catalog package size is not fabricated as zero; an
+        // independent positive reviewed amount can still be considered.
+        assertTrue(registry(versions = listOf(version().copy(packageAmount = null)))
+            .isConfirmed("v1", article, false, asOf))
+
+        // packageCount multiplies the reviewed 500 g pack, not the catalog
+        // per-pack size: two 500 g packs are not a new 1000 g SKU.
+        val twoPacks = article.copy(quantity =
+            ShoppingUnitRateKernel.Quantity(500, "g", "NET", 2, true))
+        assertTrue(registry(evidence = confirmed(item = twoPacks))
+            .isConfirmed("v1", twoPacks, false, asOf))
+        assertFalse(registry(
+            versions = listOf(version().copy(packageAmount = 1000L)),
+            evidence = confirmed(item = twoPacks)
+        ).isConfirmed("v1", twoPacks, false, asOf))
     }
 
     @Test fun latestKnownRevisionIsHistoricalAndAmbiguityFailsClosed() {
