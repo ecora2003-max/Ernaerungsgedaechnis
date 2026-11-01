@@ -32,7 +32,7 @@ Nach bestätigter eigener `ACTIVE`-Sperre **kurz** `AGENTS.md`, den **kompakten*
 **Verbindlich für alle vier Integrations-Chats:** Es gibt eine einzige gemeinsame Sperre im letzten operativen YAML-Block am Ende dieser Datei auf GitHub-`main`. `ACTIVE` bedeutet „Hier arbeitet jetzt ein Chat!“ (in progress); `FREE` bedeutet „Hier arbeitet kein Chat mehr.“ **Die Chats selbst** setzen diese Zustände. Es gibt keine automatische Sperrenübernahme, keine GitHub-Actions-Verlängerung, keine zeitgesteuerte Freigabe, keine Run-ID-Pflicht und keine automatisierte Recovery. Die dafür zeitweise eingeführten Workflows/Hilfsskripte sind entfernt.
 
 1. **Vor dem Arbeiten:** Die vollständige Datei frisch von `main` lesen. Bei `ACTIVE` eines anderen Chats: nichts schreiben, keine fremden Branches/PRs übernehmen, diesen Lauf beenden und beim nächsten geplanten Lauf erneut versuchen. Auch ein älterer Zeitstempel macht `ACTIVE` nicht automatisch zu `FREE`.
-2. **FREE übernehmen:** Aus der aktuellen Automatisierungs-/Chatkennung und einer neu erzeugten, eindeutigen Ausführungskennung einen `ownerRunToken` bilden. Eine ChatGPT-interne Run-ID ist **nicht erforderlich**; `ownerRunId` bleibt `null`, falls nicht verfügbar. Im letzten operativen YAML-Block ausschließlich `state: "ACTIVE"`, passende `ownerAutomationId`, `ownerChatId`, `ownerRunToken`, `acquiredAtUtc`, Aufgabe und `workingBranch` eintragen; `lastHeartbeatUtc` und `leaseExpiresAtUtc` bleiben `null`. Den Schlussmarker zugleich auf **„Hier arbeitet jetzt ein Chat!“** ändern. Ausschließlich mit dem **frisch gelesenen GitHub-Datei-SHA** bedingt aktualisieren (CAS); bei 409/Konflikt neu prüfen, nichts überschreiben.
+2. **FREE übernehmen:** Aus der aktuellen Automatisierungs-/Chatkennung und einer neu erzeugten, eindeutigen Ausführungskennung einen `ownerRunToken` bilden. Eine ChatGPT-interne Run-ID ist **nicht erforderlich**; `ownerRunId` bleibt `null`, falls nicht verfügbar. Im letzten operativen YAML-Block ausschließlich `state: "FREE"`, passende `ownerAutomationId`, `ownerChatId`, `ownerRunToken`, `acquiredAtUtc`, Aufgabe und `workingBranch` eintragen; `lastHeartbeatUtc` und `leaseExpiresAtUtc` bleiben `null`. Den Schlussmarker zugleich auf **„Hier arbeitet jetzt ein Chat!“** ändern. Ausschließlich mit dem **frisch gelesenen GitHub-Datei-SHA** bedingt aktualisieren (CAS); bei 409/Konflikt neu prüfen, nichts überschreiben.
 3. **Eigentum verifizieren:** Nach dem Commit `main` erneut lesen. Nur wenn `ACTIVE` und der eigene Token exakt stimmen, darf dieser Chat entwickeln. Den eigenen Arbeitsbranch im Sperrblock registrieren. Branch/PR/CI/Tests nach `AGENTS.md` durchführen; keine Änderungen in Fremdrepositories.
 4. **Solange gearbeitet wird:** Vor jedem Push, PR-Merge und anderen wichtigen Schreiboperationen `main` erneut lesen und den eigenen `ACTIVE`-Token prüfen. Es gibt **keinen automatischen Heartbeat** und keine automatische Zeitverlängerung.
 5. **Bei jedem Abschluss:** Den tatsächlichen Entwicklungs-/Teststand und den nächsten Schritt soweit möglich in `docs/STATUS.md` sichern. Danach **sofort** nur bei übereinstimmendem eigenem Token den letzten YAML-Block atomar auf `FREE` ändern: Besitzer-, Run-ID-, Token-, Branch-, Heartbeat- und Lease-Felder auf `null`; Freigabezeit und nächster Schritt dokumentieren. Schlussmarker **„Hier arbeitet kein Chat mehr.“**. Von `main` erneut lesen und `FREE` bestätigen. Auch bei Abbruch oder ohne Codeänderung freigeben.
@@ -52,18 +52,18 @@ Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML
 
 ```yaml
 state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "integration-III-6ae65fdd040081919b0a5fb1c8962104-20261101T210749Z"
-acquiredAtUtc: "2026-11-01T21:07:49Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Implement Room Host recipe context snapshot integration"
+task: "Integration III incomplete: no productive code change"
 workingBranch: null
-lastReleasedAtUtc: "2026-11-01T21:05:24.141Z"
+lastReleasedAtUtc: "2026-11-01T21:07:49Z"
 lastReleasedCommit: "ad2a3e5dd6e85ac03e250eea0699f4569811b5c9"
 nextStep: "Implement actual Room/Host recipe context snapshot integration with tests"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
