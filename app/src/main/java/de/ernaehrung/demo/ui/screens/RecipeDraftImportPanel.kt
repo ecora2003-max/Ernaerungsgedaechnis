@@ -113,7 +113,7 @@ internal fun RecipeDraftImportPanel(
                     Picker(
                         "Unabhängig geprüfte Katalogversion",
                         listOf("Nicht zugeordnet") + labels.values,
-                        labels[versionIds[line.foodTypeId]] ?: "Nicht zugeordnet"
+                        versionIds[line.foodTypeId]?.let { labels[it] } ?: "Nicht zugeordnet"
                     ) { selected ->
                         invalidate()
                         versionIds = versionIds + (line.foodTypeId to
