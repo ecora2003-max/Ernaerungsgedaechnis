@@ -50,7 +50,7 @@ Die Sperre steht **ausschließlich im letzten Abschnitt dieser Datei auf dem Git
 ### C. Immer am Ende / Freigabe
 
 - Vor dem regulären Ende, auch nach technischem Fehler, soweit die Werkzeuge noch erreichbar sind: aktuellen Code, konkrete Testresultate und Wiederaufnahmeort in `docs/STATUS.md` dokumentieren, unvollständige CI als **PENDING** belassen, eigene Branch-/PR-Arbeit nachvollziehbar hinterlassen. **Danach** Sperre aktualisieren.
-- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101135048038-chat"`, `ownerChatId: "Integration (Chat)"`, `leaseExpiresAtUtc: "2026-11-01T14:05:48.038Z"`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
+- Sperre **nur dann** per frischem File-SHA freigeben, wenn `ownerRunToken` auf `main` noch exakt dein Token ist. Setze `state: FREE`, Text **„Hier arbeitet kein Chat mehr.“**, `ownerRunToken: null`, `ownerChatId: null`, `leaseExpiresAtUtc: null`; letzter Arbeits-/Release-SHA, `lastReleasedAtUtc` und `nextStep` für Nachfolger dokumentieren. Kein fremdes Eigentum löschen.
 - Bei Absturz kann diese abschließende Freigabe **nicht garantiert** werden; deshalb Lease + geprüfte Recovery. Eine Datei allein ersetzt keine serverseitig erzwungene Schreibsperre oder technische GitHub-Berechtigungsbeschränkung.
 
 ## 4. Gemeinsamer Arbeitsstand und offene Pflichtgates
@@ -64,12 +64,12 @@ Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zus
 ```yaml
 state: "ACTIVE"
 ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: null
-ownerRunToken: null
+ownerChatId: "Integration (Chat)"
+ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261101135048038-chat"
 acquiredAtUtc: "2026-11-01T13:50:48.038Z"
-lastHeartbeatUtc: "2026-11-01T13:50:48.038Z"
-leaseExpiresAtUtc: null
-task: "Continue integration and roadmap coherence check"
+lastHeartbeatUtc: "2026-11-01T13:55:41.720Z"
+leaseExpiresAtUtc: "2026-11-01T14:10:41.720Z"
+task: "Continue integration; repair own malformed lock acquisition"
 workingBranch: "codex/integration-chat-draft-expiry-20261101-1352"
 lastReleasedAtUtc: "2026-11-01T13:47:12.355Z"
 lastReleasedCommit: "0f4afa997a830a01d715574a96dcdf31d7de8e44"
