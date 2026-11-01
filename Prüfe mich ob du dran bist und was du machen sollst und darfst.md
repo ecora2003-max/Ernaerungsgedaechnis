@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T09:43:55.133Z"
 lastHeartbeatUtc: "2026-11-01T09:43:55.133Z"
 leaseExpiresAtUtc: null
 task: "Android-Hauptapp-Integration fortsetzen"
-workingBranch: null
+workingBranch: "codex/recipe-untrusted-json-inspection-20261101-chat-x6qybibs5k"
 lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
 lastReleasedCommit: "607ddc8f4c73bc6bb819b0883f16f998cdbff88d"
 nextStep: "PR #12 gemergt; unabhängige Main-CI 41292191448 334/334 JVM, 7/7 Room erfolgreich. Docs-only STATUS-Commit 607ddc8 CI PENDING. Als Nächstes echte Host-Evidence-Akquise, persistente Session-/Operation-Key-Wiederaufnahme und authentifizierte Nutzeraktion."
