@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T11:31:28.094Z"
 lastHeartbeatUtc: "2026-11-01T11:31:28.094Z"
 leaseExpiresAtUtc: "2026-11-01T11:46:28.094Z"
 task: "Host integration coherence: Room/FoodStore, Kotlin ports, E2E, versioned history"
-workingBranch: null
+workingBranch: "codex/integration-iv-recipe-consent-replay-20261101-1131"
 lastReleasedAtUtc: "2026-11-01T11:30:28.334Z"
 lastReleasedCommit: "c0285316baf07d514333caa9c0793d0cf4b427e8"
 nextStep: "PR #14 gemergt als ba43a8468f25456ba39490fc2647df138c77feb8; PR-CI 41301504362 PASS 342/342 JVM, 7/7 Room. Main-Push-CI für ba43a846 PENDING (PR-gefilterte Abfrage). Danach persistente replay-sichere Consent-Session/Operation-Key-Wiederaufnahme, typisierte Kontext-Digests und echte Geräte-E2E."
