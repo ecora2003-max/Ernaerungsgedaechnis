@@ -70,7 +70,7 @@ acquiredAtUtc: "2026-11-01T11:18:47.375Z"
 lastHeartbeatUtc: "2026-11-01T11:18:47.375Z"
 leaseExpiresAtUtc: "2026-11-01T11:33:47.375Z"
 task: "Android-Hauptapp-Integration fortsetzen; Recovery: vorheriger Automatisierungslauf 95350fb5-a720-832d-a5c2-e8c46cc66803 am 2026-11-01T10:48:11.372776Z abgeschlossen"
-workingBranch: null
+workingBranch: "codex/recipe-consent-inflight-guard-20261101-ii-v8f0yf79k"
 lastReleasedAtUtc: "2026-11-01T09:19:21.955Z"
 lastReleasedCommit: "607ddc8f4c73bc6bb819b0883f16f998cdbff88d"
 nextStep: "PR #13 und CI prüfen, sichere Host-Integration fortsetzen"
