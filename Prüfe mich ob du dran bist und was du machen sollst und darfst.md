@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunToken: null
-acquiredAtUtc: "2026-11-01T15:51:06.737Z"
-lastHeartbeatUtc: "2026-11-01T16:04:52.422Z"
-leaseExpiresAtUtc: null
-task: "Released after PR #25 verified and merged"
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Ernährungsgedächtnis Integration II"
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261101T161931508Z-048esz423y"
+acquiredAtUtc: "2026-11-01T16:19:31.508Z"
+lastHeartbeatUtc: "2026-11-01T16:19:31.508Z"
+leaseExpiresAtUtc: "2026-11-01T16:34:31.508Z"
+task: "Continue four-module Android integration; synthetic purchase-price-shopping E2E"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-01T16:09:22.553Z"
 lastReleasedCommit: "4f4c5253c6e8f5b7faff6e2c89120cbfbab13272"
-nextStep: "PR #25 merged 523999f952f066f423f9f54c534e831941d43e5b; final PR-CI 41323991492 PASS and independent merge main CI 41324438967 PASS (363/363 JVM, 7/7 Room, pinned references, lint/schema/androidTest compilation). Roadmap 34118c62, STATUS 4f4c5253; following docs-only main CI PENDING. Next: synthetic positive authorized purchase-price-shopping E2E with retry/reversal/null/store/time/rights and no bookings, or typed recipe context digests; device/privacy/full module gates OPEN."
+nextStep: "Read STATUS/roadmap and select next bounded integration work"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
