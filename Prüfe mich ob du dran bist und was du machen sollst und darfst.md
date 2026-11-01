@@ -62,18 +62,18 @@ Letzter bei Einrichtung tatsächlich geprüfter Hoststand: **Room 8, 36 Tabellen
 Dieser Block ist der operative Zustand und muss beim Sperren und Freigeben **zusammen** geändert werden. **Nur den letzten operativen YAML-Block bearbeiten, niemals gleichnamige Felder in den Erklärungen durch Textersetzung ändern.** Die Erläuterungen oben unverändert erhalten. Die unten stehenden Felder sind ausschließlich der laufend aktualisierte operative Zustand. Frühere Besitzerkennungen, Zeitstempel und Freigabe-Commits sind historische Angaben; nur `state`, `ownerRunToken` und `leaseExpiresAtUtc` im zuletzt gelesenen Block entscheiden gemeinsam über die aktuelle Schreibberechtigung. Bei `ACTIVE` mit abgelaufener Lease gilt die geprüfte Vorbesitzer-Recovery aus Abschnitt A; ein aktiver oder unklarer Vorbesitzer darf nicht übergangen werden.
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration-III-automation-run-1"
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-run1-20261101T190220148Z-qddyh5ni5"
-acquiredAtUtc: "2026-11-01T19:02:20.148Z"
-lastHeartbeatUtc: "2026-11-01T19:09:59.682Z"
-leaseExpiresAtUtc: "2026-11-01T19:19:59.682Z"
-task: "Recover completed Integration-II run; verify PR #32 CI, continue four-module Android integration"
-workingBranch: "codex/integration-iii-context-evidence-20261101-r1-qddyh5ni5"
-lastReleasedAtUtc: "2026-11-01T18:18:14.671Z"
-lastReleasedCommit: "282924cb82dbe54b7b746200e8cb5d7cdf6a0ac5"
-nextStep: "Review PR #32 CI and merge if verified; proceed with next scoped Android integration task."
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
+ownerRunToken: null
+acquiredAtUtc: null
+lastHeartbeatUtc: null
+leaseExpiresAtUtc: null
+task: null
+workingBranch: null
+lastReleasedAtUtc: "2026-11-01T19:15:51.503Z"
+lastReleasedCommit: "1e654de5f082e80059461f0bab39994c552427be"
+nextStep: "PR #33 code merged 0c2def14, PR-CI 41339878473 PASS 378 JVM/7 Room; PR #34 STATUS evidence merged 1e654de5. Independent main-push CI on 0c2def14 remains PENDING/unverified with available connector. Next: verify main CI and implement typed recipe context content digests or persistent reviewed article/store UI evidence; four modules and Android-device gates OPEN."
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
