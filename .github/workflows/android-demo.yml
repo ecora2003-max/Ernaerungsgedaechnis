@@ -9,9 +9,9 @@ on:
         type: boolean
   push:
     branches: [main]
-    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml']
+    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md']
   pull_request:
-    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml']
+    paths: ['app/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md']
 permissions:
   contents: read
 concurrency:
