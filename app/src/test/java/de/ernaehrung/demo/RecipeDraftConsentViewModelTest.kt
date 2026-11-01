@@ -225,6 +225,73 @@ class RecipeDraftConsentViewModelTest {
         }
     }
 
+    @Test fun retypingAfterRestartPreservesOpaqueKeyButNotOldGesture() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val keys = PrivateRecipeDraftPendingKeyStore(context) { at }
+        keys.discard()
+        try {
+            val originalVm = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
+            originalVm.prepareRecipeDraftConsent(json, request, facts, states)
+            val original = withTimeout(10_000) {
+                originalVm.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            val digest = requireNotNull(original.review?.approvalBasisDigest)
+            val oldSession = requireNotNull(original.sessionId)
+            val firstKey = keys.resumeOrCreate(digest)
+
+            val restarted = LocalDataViewModel(FoodStore(db) { at },
+                pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
+            // The import panel invalidates its preview on every typed character.
+            repeat(4) { restarted.clearRecipeDraftConsent() }
+            assertEquals(firstKey, keys.resumeOrCreate(digest))
+            restarted.prepareRecipeDraftConsent(json, request, facts, states)
+            val restored = withTimeout(10_000) {
+                restarted.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            assertEquals(digest, restored.review?.approvalBasisDigest)
+            assertNotEquals(oldSession, restored.sessionId)
+            restarted.confirmRecipeDraftConsent(digest, oldSession)
+            assertEquals(1, db.foodDao().operationCount())
+            restarted.confirmRecipeDraftConsent(digest, restored.sessionId)
+            withTimeout(10_000) {
+                restarted.recipeDraftConsentState.first { it.recordedDigest == digest }
+            }
+            assertEquals(firstKey, FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
+            assertEquals(2, db.foodDao().operationCount())
+            assertEquals(0, db.foodDao().consumptionCount())
+        } finally {
+            keys.discard()
+        }
+    }
+
+    @Test fun explicitDiscardRotatesPendingKeyAndRejectsOldSession() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val keys = PrivateRecipeDraftPendingKeyStore(context) { at }
+        keys.discard()
+        try {
+            val controlled = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
+            controlled.prepareRecipeDraftConsent(json, request, facts, states)
+            val old = withTimeout(10_000) {
+                controlled.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            val digest = requireNotNull(old.review?.approvalBasisDigest)
+            val keyBefore = keys.resumeOrCreate(digest)
+            controlled.discardPendingRecipeDraftConsent()
+            assertNull(controlled.recipeDraftConsentState.value.sessionId)
+            controlled.confirmRecipeDraftConsent(digest, old.sessionId)
+            assertEquals(1, db.foodDao().operationCount())
+            controlled.prepareRecipeDraftConsent(json, request, facts, states)
+            val next = withTimeout(10_000) {
+                controlled.recipeDraftConsentState.first { !it.busy && it.review != null }
+            }
+            assertNotEquals(keyBefore, keys.resumeOrCreate(digest))
+            assertNotEquals(old.sessionId, next.sessionId)
+            assertEquals(1, db.foodDao().operationCount())
+        } finally {
+            keys.discard()
+        }
+    }
+
     @Test fun changingImportEvidenceInvalidatesOldSessionBeforeConsent() = runBlocking {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val old = ready()
