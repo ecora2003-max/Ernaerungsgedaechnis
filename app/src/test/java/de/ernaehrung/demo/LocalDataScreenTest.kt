@@ -537,6 +537,54 @@ class LocalDataScreenTest {
         }
     }
 
+    @Test fun shoppingUiReadsPrivatePaidHistoryWithoutCreatingAnOfferOrBooking() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val version = runBlocking {
+            val store = FoodStore(database) { clock }
+            val v = store.rememberProduct("paid-product", ProductInput("Testtofu"))
+            store.savePlan("paid-plan", PlanInput("Woche", "2026-10-30", "2026-11-05",
+                listOf(PlanEntryInput("need", "2026-10-30",
+                    PlanKind.DIRECT_CONSUMPTION, v, amount = 350_000, unit = BaseUnit.GRAM)),
+                "Synthetischer Bedarf"))
+            val receipt = store.savePurchase("paid-buy",
+                PurchaseInput("Testmarkt", "2026-10-30", 398L,
+                    listOf(PurchaseLineInput("TOFU", "Tofu", v, totalCents = 398L)),
+                    "Synthetisch bezahlt"), true)
+            val lineId = database.foodDao().receiptLines(receipt).single().id
+            store.saveHistoricalPaidPrice("paid-price",
+                PaidPriceBasisReview("paid-buy", lineId, v, 2L, 0L, null,
+                    discountReconciled = true, amountExcludesDeposit = true,
+                    unitsConfirmed = true, foodAndProductConfirmed = true,
+                    basisReason = "Zwei Einheiten, Rabatt und Warenpreis bestätigt"), true)
+            v
+        }
+        val initialOperations = runBlocking { database.foodDao().operationCount() }
+        val model = mount(database, now = clock)
+        tap("Einkauf")
+        field("Bedarf ab JJJJ-MM-TT", "2026-10-30")
+        field("Geplanter Einkaufstag JJJJ-MM-TT", "2026-10-30")
+        tap("Einkaufsliste anzeigen")
+        rule.waitUntil(15_000) {
+            rule.waitForIdle()
+            model.shopping.value.report?.items?.any { it.need.versionId == version } == true
+        }
+        tap("Eigene vergangene Bezahlpreise ansehen")
+        rule.waitUntil(15_000) {
+            rule.waitForIdle()
+            model.historicalPaid.value.report?.references?.size == 1
+        }
+        rule.onNodeWithTag("shopping_paid_history_$version")
+            .assertTextContains("1 belegte Positionen", substring = true)
+        rule.onNodeWithText("Kein aktuelles Angebot", substring = true).assertExists()
+        runBlocking {
+            assertEquals(initialOperations, database.foodDao().operationCount())
+            assertTrue(database.foodDao().prices().isEmpty())
+            assertTrue(database.foodDao().shoppingMarks("2026-10-30", "2026-11-05", "2026-10-30").isEmpty())
+            assertEquals(0, database.foodDao().consumptionCount())
+        }
+    }
+
     @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
     fun manualPurchaseUiKeepsUnresolvedLinesAndBooksOnlyOneExplicitlyConfirmedUsableQuantity() {
         val database = database(); db = database
