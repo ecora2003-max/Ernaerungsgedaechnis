@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-01T20:56:20.529Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Clarify development instructions"
-workingBranch: "pending"
+workingBranch: "codex/docs-fast-start-20261101"
 lastReleasedAtUtc: null
 lastReleasedCommit: null
 nextStep: "Finish documentation and release"
