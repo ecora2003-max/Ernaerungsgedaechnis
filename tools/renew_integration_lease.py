@@ -12,7 +12,7 @@ import urllib.request
 
 PATH = "Prüfe mich ob du dran bist und was du machen sollst und darfst.md"
 UTC = dt.timezone.utc
-FIFTEEN = dt.timedelta(minutes=15)
+TEN = dt.timedelta(minutes=10)
 FIELDS = ("state", "ownerAutomationId", "ownerRunToken", "acquiredAtUtc", "lastHeartbeatUtc", "leaseExpiresAtUtc", "workingBranch")
 
 def parse_time(value):
@@ -69,8 +69,8 @@ def propose(document, branch, run_created, now):
         return None, "OLD_CI_RUN"
     if now < acquired or now > expiry or heartbeat > now:
         return None, "EXPIRED_OR_INVALID_LEASE"
-    # Max 15 minutes after the current CI event, without shortening an existing lease.
-    new_expiry = max(expiry, now + FIFTEEN)
+    # At most 10 minutes after the current CI event, preserving longer valid leases.
+    new_expiry = max(expiry, now + TEN)
     updated = block
     for key, value in (("lastHeartbeatUtc", utc_text(now)), ("leaseExpiresAtUtc", utc_text(new_expiry))):
         updated, count = re.subn(r"(?m)^" + key + r": .*?$",
