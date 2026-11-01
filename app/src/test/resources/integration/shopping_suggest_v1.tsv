@@ -1,0 +1,8 @@
+id	demands	offers	budget	capacity	status	mix	merchandise	checkout	remaining
+single	milk:10	p1:milk:10:100:25:1	300	1000	FEASIBLE_NOT_PURCHASED	p1:1	100	125	175
+two-foodtypes	milk:10;oat:5	p1:milk:10:100:25:1;p2:oat:5:50:0:1	300	1000	FEASIBLE_NOT_PURCHASED;FEASIBLE_NOT_PURCHASED	p1:1;p2:1	150	175	125
+cheaper-mix	milk:10	a:milk:5:40:0:1;b:milk:10:100:0:1	300	1000	FEASIBLE_NOT_PURCHASED	a:2	80	80	220
+verified-multibuy	milk:10	multi:milk:5:50:0:2	300	1000	FEASIBLE_NOT_PURCHASED	multi:2	100	100	200
+zero-merchandise	milk:10	free:milk:10:0:0:1	300	1000	FEASIBLE_NOT_PURCHASED	free:1	0	0	300
+zero-budget-free	milk:10	free:milk:10:0:0:1	0	1000	FEASIBLE_NOT_PURCHASED	free:1	0	0	0
+budget-unknown	milk:10	p1:milk:10:100:25:1	-	1000	REVIEW	p1:1	100	125	-

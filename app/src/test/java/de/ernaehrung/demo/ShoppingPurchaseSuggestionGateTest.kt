@@ -265,4 +265,58 @@ class ShoppingPurchaseSuggestionGateTest {
         assertNull(result.budgetRemainingCents)
         assertTrue(result.sideEffects.isEmpty())
     }
+
+    /**
+     * Bounded cross-language contract: only fully verified synthetic in-store
+     * offers with known deposit and confirmed NET quantities. Python runs in
+     * RESEARCH_ONLY; Kotlin requires independent APP_DISPLAY host grants.
+     * This tests monetary/mix parity, not identical authorization semantics.
+     */
+    @Test fun sharedPinnedPythonSuggestPurchasesMoneyAndMixVectors() {
+        val stream = requireNotNull(javaClass.classLoader!!.getResourceAsStream(
+            "integration/shopping_suggest_v1.tsv"))
+        val lines = stream.bufferedReader().use { it.readLines() }
+            .filter { it.isNotBlank() }
+        assertEquals(10, lines.first().split('\t').size)
+        var count = 0
+        for (line in lines.drop(1)) {
+            val p = line.split('\t')
+            assertEquals("columns", 10, p.size)
+            val planned = p[1].split(';').mapIndexed { index, entry ->
+                val fields = entry.split(':')
+                assertEquals(2, fields.size)
+                demand("planned-$index", fields[0], fields[1].toLong())
+            }
+            val available = p[2].split(';').map { entry ->
+                val fields = entry.split(':')
+                assertEquals(6, fields.size)
+                val minimum = fields[5].toLong()
+                offer(fields[0], fields[1], fields[2].toLong(),
+                    fields[3].toLong(), fields[4].toLong()).copy(
+                    minPacks = minimum,
+                    multibuyTermsConfirmedByHost = minimum > 1)
+            }
+            val selectedBudget = p[3].takeUnless { it == "-" }?.toLong()
+                ?.let { budget.copy(amountCents = it) }
+            val selectedCapacity = p[4].takeUnless { it == "-" }?.toLong()
+                ?.let { mapOf<String, Long?>("DRY" to it) }
+            val result = suggest(needs(*planned.toTypedArray()), available,
+                budget = selectedBudget, capacity = selectedCapacity)
+            assertEquals(p[0] + " status", p[5],
+                result.rows.joinToString(";") { it.status })
+            assertEquals(p[0] + " mix", p[6],
+                result.rows.flatMap { it.lines }.joinToString(";") {
+                    "${it.observationId}:${it.packs}"
+                })
+            assertEquals(p[0] + " merchandise", p[7],
+                result.totalMerchandiseCents?.toString() ?: "-")
+            assertEquals(p[0] + " checkout", p[8],
+                result.totalCheckoutCents?.toString() ?: "-")
+            assertEquals(p[0] + " remaining", p[9],
+                result.budgetRemainingCents?.toString() ?: "-")
+            assertTrue(p[0] + " side effects", result.sideEffects.isEmpty())
+            count++
+        }
+        assertEquals(7, count)
+    }
 }
