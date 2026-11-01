@@ -294,4 +294,51 @@ class RecipeDraftCatalogSaveTest {
             context.deleteDatabase(name)
         }
     }
+
+    @Test fun futureDatedDraftCannotBeConfirmedOrSavedBeforeItsCreationInstant() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val futureJson = json.replace(
+            "\"createdAt\":\"2026-11-01T04:00:00Z\"",
+            "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
+        // The importer tolerates a small producer-clock skew for display only.
+        val ready = preview(futureJson)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
+        val before = dao.operationCount()
+        rejected { consent("future-consent", ready, text = futureJson) }
+        rejected { save("future-consent", ready, text = futureJson) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:future-consent"))
+        assertNull(dao.operation("future-consent"))
+        trustedClock = at + 120_000L
+        assertEquals(ready.approvalBasisDigest, preview(futureJson).approvalBasisDigest)
+        assertEquals(ready.approvalBasisDigest,
+            consent("future-consent", ready, text = futureJson))
+        val saved = save("future-consent", ready, text = futureJson)
+        assertNotNull(dao.recipeVersion(saved))
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
+
+    @Test fun consentUsesOneTrustedInstantEvenIfDeviceClockChangesDuringTransaction() = runBlocking {
+        val futureJson = json.replace(
+            "\"createdAt\":\"2026-11-01T04:00:00Z\"",
+            "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
+        val ready = preview(futureJson)
+        var clockReads = 0
+        store = FoodStore(db) {
+            if (clockReads++ == 0) at + 120_000L else at
+        }
+        val digest = consent("clock-shift", ready, text = futureJson)
+        assertEquals(ready.approvalBasisDigest, digest)
+        val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:clock-shift"))
+        assertEquals(at + 120_000L, checkpoint.recordedAt)
+        assertEquals(1, clockReads)
+        // A clock rollback must not let the subsequent save predate creation.
+        rejected { save("clock-shift", ready, text = futureJson) }
+        assertNull(dao.operation("clock-shift"))
+        store = FoodStore(db) { at + 120_000L }
+        assertNotNull(dao.recipeVersion(save("clock-shift", ready, text = futureJson)))
+        assertEquals(0, dao.consumptionCount())
+    }
 }
