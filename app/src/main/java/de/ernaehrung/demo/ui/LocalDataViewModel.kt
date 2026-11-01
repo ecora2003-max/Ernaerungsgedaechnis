@@ -203,6 +203,18 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
     private var recipeConsentJob: kotlinx.coroutines.Job? = null
 
+    /** A changed import or independent evidence selection invalidates a previous preview.
+     * An already committed consent remains in the durable ledger and cannot be undone here.
+     */
+    internal fun clearRecipeDraftConsent() {
+        // An explicit consent already in-flight must finish or fail transactionally.
+        // Editing cannot silently cancel an action that may have committed to Room.
+        if (recipeConsentJob?.isActive == true) return
+        recipePreviewJob?.cancel()
+        pendingRecipeDraft = null
+        recipeDraftConsent.value = RecipeDraftConsentUiState()
+    }
+
     /** Caller must gather independently confirmed mapping, basis, state and allergen facts.
      * This does not accept generator-provided confirmations or auto-enable a draft.
      */

@@ -1,0 +1,83 @@
+package de.ernaehrung.demo
+
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
+import de.ernaehrung.demo.ui.DemoTheme
+import de.ernaehrung.demo.ui.screens.RecipeDraftImportPanel
+import java.time.OffsetDateTime
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], qualifiers = "w360dp-h800dp-mdpi")
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class RecipeDraftImportPanelTest {
+    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+    @Test fun malformedJsonNeverOpensEvidenceOrConsent() {
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput("{invalid")
+        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
+    @Test fun parsedModelClaimCannotBypassMissingIndependentCatalogEvidence() {
+        val now = OffsetDateTime.now().toString()
+        val json = """
+            {"contractVersion":"1.0.0-draft","messageType":"recipe.draft",
+             "meta":{"producer":"synthetic","traceId":"compose","createdAt":"$now"},
+             "payload":{"draftId":"draft-compose","title":"Reis","portionCount":2,
+               "ingredients":[{"label":"Reis","foodTypeId":"rice","sourceStatus":"CONFIRMED",
+                 "quantity":{"amount":200,"unit":"g","basis":"NET","confirmed":true}}],
+               "steps":["Kochen"],"flags":{"considerStock":false,
+                 "considerShopping":false,"considerOffers":false},
+               "warnings":[],"status":"DRAFT"}}
+        """.trimIndent()
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
+        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
+        rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+}
