@@ -207,8 +207,10 @@ class LocalDataViewModel(private val store: FoodStore, private val productLookup
      * An already committed consent remains in the durable ledger and cannot be undone here.
      */
     internal fun clearRecipeDraftConsent() {
+        // An explicit consent already in-flight must finish or fail transactionally.
+        // Editing cannot silently cancel an action that may have committed to Room.
+        if (recipeConsentJob?.isActive == true) return
         recipePreviewJob?.cancel()
-        recipeConsentJob?.cancel()
         pendingRecipeDraft = null
         recipeDraftConsent.value = RecipeDraftConsentUiState()
     }
