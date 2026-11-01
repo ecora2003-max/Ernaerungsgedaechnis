@@ -22,8 +22,12 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
         Panel {
             draftConsent.review?.let { review ->
                 RecipeDraftConsentReview(review,
-                    sessionKey = "${draftConsent.sessionId}:${draftConsent.attemptVersion}") { digest ->
-                    model.confirmRecipeDraftConsent(digest, draftConsent.sessionId)
+                    sessionKey = draftConsent.sessionId?.let { "${it}:${draftConsent.attemptVersion}" },
+                    actionEnabled = !draftConsent.busy && draftConsent.recordedDigest == null &&
+                        draftConsent.sessionId != null) { digest, renderedSessionKey ->
+                    // The retry version is a UI key, never the durable operation identity.
+                    val renderedSessionId = renderedSessionKey?.substringBefore(':')
+                    model.confirmRecipeDraftConsent(digest, renderedSessionId)
                 }
             }
             if (draftConsent.busy) CircularProgressIndicator()
