@@ -107,6 +107,51 @@ class RecipeDraftCatalogSaveTest {
         assertNull(dao.operation("request-no-confirm"))
     }
 
+    @Test fun productOperationKeyCannotCreateARecipeConsentCheckpoint() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        // setup() already used product-rice as an actual PRODUCT operation key.
+        assertEquals("PRODUCT", dao.operation("product-rice")?.kind)
+        val before = dao.operationCount()
+        rejected { consent("product-rice", ready) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:product-rice"))
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun laterUnrelatedOperationCannotResurrectOrReplayRecipeConsent() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("occupied-after-consent", ready)
+        assertEquals("occupied-after-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+        store.rememberProduct("occupied-after-consent", ProductInput("Other",
+            source = Source.USER, quality = Quality.CONFIRMED))
+        val before = dao.operationCount()
+        assertEquals("PRODUCT", dao.operation("occupied-after-consent")?.kind)
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("occupied-after-consent", ready) }
+        rejected { save("occupied-after-consent", ready) }
+        assertEquals(before, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun legitimateSavedRecipeRetainsIdempotentConsentAndRecipeReplay() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("completed-recipe-key", ready)
+        val recipeId = save("completed-recipe-key", ready)
+        val before = dao.operationCount()
+        assertEquals("completed-recipe-key", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(digest, consent("completed-recipe-key", ready))
+        assertEquals(recipeId, save("completed-recipe-key", ready))
+        assertEquals(before, dao.operationCount())
+        assertEquals("RECIPE", dao.operation("completed-recipe-key")?.kind)
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun changedDraftOrChangedHostAllergenEvidenceCannotReusePreview() = runBlocking {
         val expected = preview()
         listOf("changed-title", "changed-amount", "changed-allergen").forEach {
