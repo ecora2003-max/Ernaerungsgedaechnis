@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T01:59:00.625Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Room stock snapshot rejects future-dated movements and binds movement evidence"
-workingBranch: "integration-iii-stock-movement-asof-20261102"
+workingBranch: "integration-iii-stock-movement-status-20261102"
 lastReleasedAtUtc: "2026-11-02T01:54:36.198Z"
 lastReleasedCommit: "ebd1f6655ca8cb4b2efd3270203f903444feec24"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
