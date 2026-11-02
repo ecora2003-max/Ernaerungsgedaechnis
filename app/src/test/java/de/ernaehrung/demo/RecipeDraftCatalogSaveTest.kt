@@ -248,6 +248,55 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun reviewedRecipeSaveUsesExactlyTheInstantThatPassedConsentAndContextReview() = runBlocking {
+        val ready = preview()
+        consent("single-instant-save", ready)
+        val consentAt = dao.operation("RECIPE_DRAFT_CONSENT_V1:single-instant-save")!!.recordedAt
+        val saveAt = consentAt + 60_000L
+        var clockReads = 0
+        // A second clock read would cross the validity boundary or throw,
+        // leaving recipe history inconsistent with the approved snapshot.
+        store = FoodStore(db) {
+            clockReads++
+            if (clockReads == 1) saveAt else error("Recipe save sampled the clock twice")
+        }
+        val before = dao.operationCount()
+        val version = save("single-instant-save", ready)
+        assertEquals(1, clockReads)
+        assertEquals(saveAt, dao.operation("single-instant-save")!!.recordedAt)
+        assertEquals(saveAt, dao.recipeVersion(version)!!.recordedAt)
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+
+        // A valid retry must retain the original physical timestamp and version.
+        store = FoodStore(db) { saveAt + 60_000L }
+        assertEquals(version, save("single-instant-save", ready))
+        assertEquals(saveAt, dao.recipeVersion(version)!!.recordedAt)
+        assertEquals(before + 1, dao.operationCount())
+    }
+
+    @Test fun invalidFirstSaveInstantCannotBeReplacedByALaterClockReading() = runBlocking {
+        val ready = preview()
+        consent("invalid-first-instant", ready)
+        val before = dao.operationCount()
+        var clockReads = 0
+        store = FoodStore(db) {
+            clockReads++
+            if (clockReads == 1) -1L else at
+        }
+        rejected { save("invalid-first-instant", ready) }
+        assertEquals(1, clockReads)
+        assertNull(dao.operation("invalid-first-instant"))
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+
+        store = FoodStore(db) { at }
+        assertNotNull(dao.recipeVersion(save("invalid-first-instant", ready)))
+        assertEquals(before + 1, dao.operationCount())
+    }
+
     @Test fun missingSeparateConfirmationCannotWriteAnything() = runBlocking {
         val expected = preview()
         val before = dao.operationCount()
