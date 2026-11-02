@@ -51,6 +51,8 @@ class RecipeAuthorizedOffersSnapshotTest {
     private lateinit var scope: RecipeAuthorizedOffersReader.Scope
     private var priceCents: Long? = 199L
     private var permitted = true
+    private var hostAvailability: String? = "AVAILABLE"
+    private var hostDataQuality = "CONFIRMED"
 
     @Before fun setup() = runBlocking {
         db = Room.inMemoryDatabaseBuilder(
@@ -91,7 +93,7 @@ class RecipeAuthorizedOffersSnapshotTest {
         db.foodDao(),
         ExternalPriceCandidateSupplier { listOf(candidate()) },
         RecipeAuthorizedOffersReader.HostFactsRegistry {
-            ShoppingOfferGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE",
+            ShoppingOfferGate.HostFacts("SALE", hostDataQuality, hostAvailability,
                 false, "STORE_CONFIRMED", verifiedByHost = true)
         },
         Price.DisplayPermissionRegistry { source, ref, capability, day ->
@@ -166,6 +168,37 @@ class RecipeAuthorizedOffersSnapshotTest {
         val absent = review(original, null)
         assertEquals(Gate.Status.REVIEW_REQUIRED, absent.status)
         assertNull(absent.input)
+    }
+
+    @Test fun independentlyVerifiedHostFactsChangeInvalidatesEligibleOfferReview() = runBlocking {
+        val original = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
+        val before = db.foodDao().operationCount()
+
+        // Both availability values are eligible, but represent different host
+        // evidence. A prior approval cannot silently inherit the newer facts.
+        hostAvailability = "LIMITED"
+        val changedAvailability = requireNotNull(
+            store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(original.lines, changedAvailability.lines)
+        assertNotEquals(original.revision, changedAvailability.revision)
+        val staleAvailability = review(original)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, staleAvailability.status)
+        assertTrue("HOST_OFFERS_SNAPSHOT_STALE_OR_UNAUTHORIZED" in staleAvailability.gaps)
+        assertNull(staleAvailability.input)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(changedAvailability).status)
+
+        // A separately host-verified quality downgrade is still eligible, but
+        // must also require a fresh preview instead of reusing the old digest.
+        hostDataQuality = "SOURCED"
+        val changedQuality = requireNotNull(
+            store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(changedAvailability.lines, changedQuality.lines)
+        assertNotEquals(changedAvailability.revision, changedQuality.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(changedAvailability).status)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(changedQuality).status)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
     }
 
     @Test fun knownZeroOfferIsNotUnknownAndStaleSnapshotExpires() = runBlocking {
