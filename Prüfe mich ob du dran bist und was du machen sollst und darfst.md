@@ -59,8 +59,8 @@ ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102T002919828Z-589fazidhn"
 acquiredAtUtc: "2026-11-02T00:29:19.828Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Authenticated recipe save FoodStore boundary and host/Room E2E regression"
-workingBranch: null
+task: "Berlin-local date consistency in Room planning and shopping snapshot"
+workingBranch: "integration-iv/berlin-shopping-date-boundary-20261102"
 lastReleasedAtUtc: "2026-11-02T00:19:21.876Z"
 lastReleasedCommit: "614e88bd4a6d2cdadba5d9020f3f91bfb5eae533"
 nextStep: "Independent authenticated user-action attestation at FoodStore recipe save; real Android credential/privacy E2E; recipe generator/revalidator parity"
