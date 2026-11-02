@@ -121,6 +121,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 movement.operationRecordedAt !in 0L..asOfMillis ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||
+                // A stock movement cannot have been committed before its
+                // independently persisted author operation existed. Merely
+                // advancing the snapshot clock must not legitimize a legacy
+                // row whose two recorded timestamps contradict one another.
+                movement.operationRecordedAt > movement.recordedAt ||
                 // The event's actual timestamp may be more precise than its
                 // Berlin-local day. A future or invalid occurrence is not
                 // already available physical stock at this snapshot instant.
