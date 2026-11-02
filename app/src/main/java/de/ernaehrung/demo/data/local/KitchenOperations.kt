@@ -22,7 +22,9 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
     suspend fun saveRecipe(
         key: String, input: RecipeInput, recipeId: String?, reason: String,
         /** Only for a separately reviewed recipe.draft; null preserves all legacy retry hashes. */
-        approvalBasisDigest: String? = null
+        approvalBasisDigest: String? = null,
+        /** The timestamp already used for an approved draft's transactional revalidation. */
+        approvedAt: Long? = null
     ): String = db.withTransaction {
         require(input.name.isNotBlank() && reason.isNotBlank()) { "Rezeptname und Änderungsgrund fehlen." }
         Amounts.positive(input.yieldPortions)
@@ -43,7 +45,13 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         replay(dao, key, hash)?.let { return@withTransaction it }
         // One physical timestamp for the recipe, its version and the operation.
         // Preserve the existing idempotent replay without another clock read.
-        val recordedAt = now()
+        // The approved-draft gate has already captured and validated its save instant.
+        // Reading the clock again here could persist a different instant from the
+        // consent/context validity check (including after a midnight or clock jump).
+        require(approvedAt == null || approvalBasisDigest != null) {
+            "Nur ein geprüfter Rezeptentwurf darf seinen validierten Speicherzeitpunkt übergeben."
+        }
+        val recordedAt = approvedAt ?: now()
         require(recordedAt >= 0L) { "Ungültiger Rezept-Erfassungszeitpunkt." }
         val previous = recipeId?.let { requireNotNull(dao.latestRecipeVersion(it)) { "Rezept nicht gefunden." } }
         // A new revision must not predate the persisted version it supersedes.

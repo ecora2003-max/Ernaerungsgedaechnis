@@ -303,8 +303,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         // Bind the persisted operation fingerprint to the exact approved preview.
         // A second draft with the same projected recipe must not replay this key.
+        // Persist the same physical instant that authorized consent freshness and
+        // the current host/catalog review; never sample a second clock value.
         kitchen.saveRecipe(key, current.input, null, "Bestätigter Rezeptentwurf v1",
-            current.approvalBasisDigest)
+            current.approvalBasisDigest, approvedAt = saveAt)
     }
 
     /** Caller must supply independently verified confirmation facts, never model claims. */
