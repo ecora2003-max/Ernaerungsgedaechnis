@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV 2026-11-02 22:26 CET"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-mvzrrq34-dsjuek1w6k"
-acquiredAtUtc: "2026-11-02T21:27:01.840Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV: FoodStore recipe-save provenance and Host/Room regressions"
-workingBranch: "integration-iv/status-batch-state-day-20261102"
-lastReleasedAtUtc: "2026-11-02T21:20:08.794Z"
-lastReleasedCommit: "a2840241a36ba42955b9783e057b95ace3da7dbc"
-nextStep: "Independent authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; all four modules remain partial"
+task: "Integration IV: batch state acquisition-day check merged in PR #150; CI 41528721574 PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T21:35:54.111Z"
+lastReleasedCommit: "30789989f6cf4b653528145f8c1b921b3490b59c"
+nextStep: "Docs-only PR #151 awaits independent CI/merge; authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
