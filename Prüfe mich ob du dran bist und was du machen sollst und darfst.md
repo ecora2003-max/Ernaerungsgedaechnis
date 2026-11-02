@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T12:09:50.991Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe context snapshot consistency and Room regression"
-workingBranch: "integration-ii-consumption-occurrence-provenance-20261102-1209"
+workingBranch: "integration-ii-occurrence-provenance-evidence-20261102"
 lastReleasedAtUtc: "2026-11-02T12:08:13.801Z"
 lastReleasedCommit: "3dc9816561c9ec6db5999341e769ccb86f30ed98"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
