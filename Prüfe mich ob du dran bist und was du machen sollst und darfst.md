@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793600162441-iricmykea"
 acquiredAtUtc: "2026-11-02T06:16:02.441Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Implement next testable Android recipe/host integration"
-workingBranch: null
+task: "Fail-closed Room stock snapshot on future product-version and batch-origin evidence"
+workingBranch: "integration-ii/room-stock-evidence-time-20261102-0616"
 lastReleasedAtUtc: "2026-11-02T06:10:21.864Z"
 lastReleasedCommit: "1e5356d44a47ff7ff2c7770976245ae1eb70f835"
 nextStep: "Cryptographically authenticated FoodStore recipe-save user action; generator/revalidator parity; Android credential/privacy E2E"
