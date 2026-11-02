@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T13:30:42.318Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: FoodStore recipe action provenance / Room boundary invariant"
-workingBranch: null
+workingBranch: "integration-iv-recipe-replay-version-time-20261102-1430"
 lastReleasedAtUtc: "2026-11-02T13:00:03.222Z"
 lastReleasedCommit: "969825cfa2bf722b0e780e247bbdf6aae2473100"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
