@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T05:43:46.686Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save user-action provenance hardening"
-workingBranch: null
+workingBranch: "codex/chat-recipe-clock-failclosed-20261102"
 lastReleasedAtUtc: "2026-11-02T05:31:58.735Z"
 lastReleasedCommit: "da1cf6a70ebaa163e29562b2dd7adca057f7c0a3"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android credential/privacy device E2E"
