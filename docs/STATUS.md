@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: abgelaufener Rezept-Consent blockiert keinen neuen Gerätebestätigungsversuch (02.11.2026)
+
+- **Code `ebd436a3a5b7cd2a0bab6a8a12466ee8a5ce8eb3`, ViewModel `0c98e658222e62dc642607a9609084dba1fc33ca`, Tests `7dbd669ebf51e9942861c6a19fe6fb991c077aa4`; PR-/CI-Prüfung PENDING:** Vor einer neuen, ausdrücklich auszulösenden Gerätebestätigung prüft die Haupt-App in Room, ob der aus privatem Pending-Key-Speicher wiederaufgenommene Schlüssel bereits als Consent oder sonstige Operation verwendet wurde. Nach Crash zwischen Consent-Commit und privater Bereinigung sowie nach Ablauf des fünfminütigen Consent-Fensters wird der alte Schlüssel verworfen und ein neuer erzeugt; der alte unveränderliche Room-Beleg bleibt bestehen. Zwei ViewModel→FoodStore→Room-Regressionen prüfen Crash-Rest, Ablauf, neuen UI-Gestus, fremde Operation-Key-Kollision, fehlende Rezept-/Ist-Buchung. Keine Authentifizierungs-Attestation an der FoodStore-Save-Grenze, keine Schemaänderung, keine APK.
+- **Weiter:** unabhängige kryptographische Nutzeraktionsprovenienz beim Rezept-Save, vollständige Generator-/Revalidator-Parität, echte Android-Credential-/Privacy-E2E. Alle vier Module weiterhin TEILWEISE/OFFEN.
+
+
 ## Integration II: abgelaufene Rezeptbestätigung kann nicht als neu bestätigt erscheinen (02.11.2026)
 
 - [PR #76](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/76), **Code-Commit `1f148c06059ea28e37e1d8c0e1d614fc5f434b3f`, Test-/PR-HEAD `82ce7a467bd54546041f98ad98a518e6829084c1`, Squash-Merge `65bab87a601ec76bca9b8f7de478d943bc51a8ef`**: `FoodStore.recordReviewedRecipeDraftV1Consent` weist eine Wiederholung eines unveränderlichen Bestätigungs-Checkpoints nach Ablauf von fünf Minuten jetzt ausdrücklich zurück, statt eine scheinbar erfolgreiche neue Bestätigung zurückzugeben. Neuer Vorgangsschlüssel ermöglicht eine neue Bestätigung; ein bereits gespeichertes Rezept bleibt mit ursprünglichem Schlüssel idempotent wiederholbar. Positive/negative Room-/Robolectric-Regression für exakte Fristgrenze, abgelaufene Wiederholung, Rollback und neuen Schlüssel; bestehende Replay-Regression erweitert. Keine Schema-/Vertragsänderung oder APK.
