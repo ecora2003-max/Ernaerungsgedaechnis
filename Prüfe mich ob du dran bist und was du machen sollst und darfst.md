@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793592729098-433n1yfon8"
 acquiredAtUtc: "2026-11-02T04:12:09.098Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Implement next verified Android recipe/FoodStore integration and regression tests"
-workingBranch: null
+task: "Fail closed on expired durable recipe consent replay; Room regression"
+workingBranch: "integration-ii-consent-expired-replay-20261102-0413"
 lastReleasedAtUtc: "2026-11-02T03:52:09.103Z"
 lastReleasedCommit: "c364e1590515e33ac135e2e49e489a405656b580"
 nextStep: "Independently authenticated FoodStore recipe-save action provenance; generator/revalidator parity; real Android credential/privacy E2E"
