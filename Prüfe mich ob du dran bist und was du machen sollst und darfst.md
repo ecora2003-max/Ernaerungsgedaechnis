@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III scheduled run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261102155933082-mesn9exs37"
-acquiredAtUtc: "2026-11-02T15:59:33.082Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Continue pending integration and implement FoodStore provenance validation"
-workingBranch: "integration-iii/stock-movement-batch-origin-time-20261102-run11"
-lastReleasedAtUtc: "2026-11-02T15:48:07.978Z"
-lastReleasedCommit: "308edace79e4b4b3d85ac8d9d63d26d088807789"
+task: "Integration III: Room stock movement author cannot predate batch creation; PR #121 CI PASS, docs PR #122"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T16:06:17.838Z"
+lastReleasedCommit: "33e2396e8058e2ffd4a9051feb9d2aa9cf65a1ee"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; full generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
