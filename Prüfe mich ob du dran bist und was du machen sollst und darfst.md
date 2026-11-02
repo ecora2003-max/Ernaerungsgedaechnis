@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102160702044-p55sv8pll"
 acquiredAtUtc: "2026-11-02T16:07:02.044Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save validation and temporal consistency"
-workingBranch: null
+task: "Reject physically impossible pre-origin stock movements in Room recipe snapshots"
+workingBranch: "integration-ii-stock-physical-origin-20261102-1707"
 lastReleasedAtUtc: "2026-11-02T16:06:17.838Z"
 lastReleasedCommit: "33e2396e8058e2ffd4a9051feb9d2aa9cf65a1ee"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; full generator/revalidator parity; Android/privacy E2E"
