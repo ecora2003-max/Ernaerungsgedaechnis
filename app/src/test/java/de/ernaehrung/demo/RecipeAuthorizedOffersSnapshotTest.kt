@@ -309,6 +309,40 @@ class RecipeAuthorizedOffersSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun cancelledStoreOrRightsVerificationAbortsRoomReviewWithoutBooking() = runBlocking {
+        val before = db.foodDao().operationCount()
+        for (cancelStore in listOf(true, false)) {
+            val source = RecipeAuthorizedOffersReader(
+                db.foodDao(),
+                ExternalPriceCandidateSupplier { listOf(candidate()) },
+                RecipeAuthorizedOffersReader.HostFactsRegistry {
+                    ShoppingOfferGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE",
+                        false, "STORE_CONFIRMED", verifiedByHost = true)
+                },
+                permissions = Price.DisplayPermissionRegistry { _, _, _, _ ->
+                    if (!cancelStore) throw CancellationException("rights cancelled")
+                    true
+                },
+                stores = ShoppingOfferGate.ConfirmedStoreRegistry { _, _, _, _ ->
+                    if (cancelStore) throw CancellationException("store cancelled")
+                    true
+                },
+                articles = RecipeAuthorizedOffersReader.ArticleRegistry { _, _, _ -> true }
+            )
+            try {
+                store.readRecipeAuthorizedOffersSnapshot(scope, source)
+                fail("Cancellation from a host trust registry must propagate")
+            } catch (cancelled: CancellationException) {
+                assertEquals(if (cancelStore) "store cancelled" else "rights cancelled",
+                    cancelled.message)
+            }
+        }
+        val recovered = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(recovered).status)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun ordinaryHostEvidenceFailureStillFailsClosedAndValidSourceRecovers() = runBlocking {
         val before = db.foodDao().operationCount()
         assertNull(store.readRecipeAuthorizedOffersSnapshot(scope,
