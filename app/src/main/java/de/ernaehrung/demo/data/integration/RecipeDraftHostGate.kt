@@ -160,6 +160,13 @@ internal object RecipeDraftHostGate {
             blockers += "AMBIGUOUS_FOOD_TYPE"
         }
 
+        // Host evidence must belong only to this draft. A mixed current/stale
+        // fact map cannot silently authorize a save by ignoring foreign entries.
+        val draftFoodTypes = draft.lines.mapTo(mutableSetOf()) { it.foodTypeId }
+        if (facts.keys.any { it !in draftFoodTypes }) {
+            blockers += "FOREIGN_INGREDIENT_EVIDENCE"
+        }
+
         val allergies = linkedSetOf<String>()
         val bannedFoods = linkedSetOf<String>()
         for (code in request.confirmedRestrictions) {
