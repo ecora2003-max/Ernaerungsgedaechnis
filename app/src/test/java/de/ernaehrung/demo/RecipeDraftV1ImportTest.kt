@@ -54,6 +54,37 @@ class RecipeDraftV1ImportTest {
         trustedSnapshot: OffsetDateTime? = null
     ) = Import.review(json, req, host, state, now, context, trustedSnapshot)
 
+    @Test fun importRejectsDuplicateIngredientsAndForeignReviewedStatesBeforePreview() {
+        val duplicated = change(
+            "\"sourceStatus\":\"CONFIRMED\",\"allergenNotes\":\"allergen-free claimed\"}]",
+            "\"sourceStatus\":\"CONFIRMED\",\"allergenNotes\":\"allergen-free claimed\"}," +
+                "{\"label\":\"Reis doppelt\",\"foodTypeId\":\"rice\"," +
+                "\"quantity\":{\"amount\":100,\"unit\":\"g\",\"basis\":\"NET\"," +
+                "\"confirmed\":false},\"sourceStatus\":\"UNKNOWN\"}]"
+        )
+        try {
+            Import.read(duplicated, states, now)
+            fail("duplicate foodTypeId must fail at import")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(Gate.Status.BLOCKED, reviewed(duplicated).status)
+        assertNull(reviewed(duplicated).input)
+
+        val foreignStates = states + ("other-food" to Gate.State.COOKED)
+        try {
+            Import.read(sample, foreignStates, now)
+            fail("foreign reviewed state must fail at import")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(Gate.Status.BLOCKED, reviewed(state = foreignStates).status)
+        assertNull(reviewed(state = foreignStates).input)
+
+        // A wholly unrelated review state is not applied to this recipe:
+        // missing per-ingredient state remains UNKNOWN, not a false approval.
+        val onlyForeign = mapOf("other-food" to Gate.State.COOKED)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, reviewed(state = onlyForeign).status)
+        assertEquals("synthetic-1", Import.read(sample, emptyMap(), now).draftId)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, reviewed(state = emptyMap()).status)
+    }
+
     @Test fun validV1DraftRequiresIndependentHostFactsAndExplicitSave() {
         val result = reviewed()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)

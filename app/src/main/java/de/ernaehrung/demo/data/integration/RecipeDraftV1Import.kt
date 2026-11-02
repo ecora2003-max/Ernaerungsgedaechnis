@@ -192,6 +192,17 @@ internal object RecipeDraftV1Import {
                 reviewedStates[id] ?: Gate.State.UNKNOWN)
         }
         require(lines.isNotEmpty()) { "no ingredients" }
+        // The import boundary must not hand ambiguous ingredient identities to
+        // preview/consent UI, even if a later host review would reject them.
+        val ingredientIds = lines.map { it.foodTypeId }.toSet()
+        require(ingredientIds.size == lines.size) { "duplicate ingredient food type" }
+        // Unmatched review states alone are never forwarded (the ingredient
+        // remains UNKNOWN). But a partly matching map must not mix current
+        // selections with stale entries from a different draft.
+        require(reviewedStates.keys.none { it in ingredientIds } ||
+            reviewedStates.keys.all { it in ingredientIds }) {
+            "mixed review states from different ingredient scopes"
+        }
         return Imported(draftId, created, snapshot, Gate.Draft(
             Gate.CONTRACT, "recipe.draft", title, steps.joinToString("\n"),
             portions.toInt(), flags, lines
