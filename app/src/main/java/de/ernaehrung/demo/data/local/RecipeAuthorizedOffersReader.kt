@@ -131,8 +131,12 @@ internal class RecipeAuthorizedOffersReader(
         val ordered = approved.sortedBy { it.second.observationId }
         val revision = WriteRules.fingerprint(
             "RECIPE_AUTHORIZED_OFFERS_REVISION_V1",
-            scopeId(scope), version.id, version.revision, version.recordedAt,
-            version.baseUnit.name,
+            // Independently persisted product identity and provenance are part
+            // of the reviewed offer context, even when the version ID and
+            // visible offer lines stay unchanged after a legacy data repair.
+            scopeId(scope), version.id, version.productId, version.revision,
+            version.recordedAt, version.baseUnit.name,
+            version.source.name, version.quality.name,
             ordered.map { (candidate, visible, facts) ->
                 listOf(candidate.observationId, candidate.sourceId,
                     candidate.rightsStatus.name, candidate.rightsEvidenceRef,
