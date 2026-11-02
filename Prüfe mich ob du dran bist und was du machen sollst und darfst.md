@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T09:20:06.039Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save provenance and history consistency"
-workingBranch: null
+workingBranch: "integration-iv-production-recipe-chronology-20261102"
 lastReleasedAtUtc: "2026-11-02T09:17:13.922Z"
 lastReleasedCommit: "d525de63e2e71b8b6492da0dca8cf63fcca71999"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
