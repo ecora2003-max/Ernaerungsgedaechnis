@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261102T010034Z-III4"
 acquiredAtUtc: "2026-11-02T01:00:50.547Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Independent authenticated FoodStore recipe-save action attestation"
-workingBranch: null
+task: "Freeze Berlin-local shopping snapshot time at capturedAt across Room reads"
+workingBranch: "integration-iii-shopping-snapshot-clock-20261102"
 lastReleasedAtUtc: "2026-11-02T00:53:18.399Z"
 lastReleasedCommit: "fa157020513a9a410037c0b1fde92cf1838a9e5c"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; recipe generator/revalidator parity"
