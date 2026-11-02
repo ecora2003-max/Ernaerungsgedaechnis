@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "integration-iii-automation-run-11"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzqk1hm-z3w9etp8o7"
+acquiredAtUtc: "2026-11-02T20:53:03.755Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV: reject stock movement before acquisition; code PR #145 and status PR #146 merged"
+task: "Integration III: continue open recipe-import PR #144, verify CI and finish validated code integration"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-02T20:40:29.577Z"
 lastReleasedCommit: "d91801b8a2ae9d7a1e0ce3b54fc5ca394248bb68"
 nextStep: "Independent authenticated recipe-save user-action provenance; generator/revalidator parity and Android/privacy E2E; monitor remaining PR #144 only through its owning integration"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
