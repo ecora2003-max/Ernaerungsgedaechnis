@@ -70,6 +70,26 @@ class RecipeCatalogEvidenceTest {
         assertTrue(dao.allVersions().size == 1)
     }
 
+    @Test fun mixedForeignCatalogConfirmationCannotAuthorizeCurrentDraft() = runBlocking {
+        val confirmed = confirmation()
+        val before = dao.operationCount()
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview(confirmed).status)
+        val foreign = confirmed.copy(foodTypeId = "unrelated-food")
+        val mixed = store.previewRecipeDraftV1(json, request,
+            mapOf("rice" to confirmed, "unrelated-food" to foreign), states)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, mixed.status)
+        assertNull(mixed.input)
+        // A completely unrelated map is also not evidence for the ingredient.
+        assertEquals(Gate.Status.REVIEW_REQUIRED,
+            store.previewRecipeDraftV1(json, request,
+                mapOf("unrelated-food" to foreign), states).status)
+        // A fresh, correctly scoped review can recover without any actual write.
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview(confirmed).status)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
+
     @Test fun absentOrStaleIdentityAndUnconfirmedAllergensCannotSave() = runBlocking {
         val original = confirmation()
         assertEquals(Gate.Status.REVIEW_REQUIRED, preview(null).status)

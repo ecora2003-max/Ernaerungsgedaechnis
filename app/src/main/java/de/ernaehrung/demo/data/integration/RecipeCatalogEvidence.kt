@@ -36,6 +36,11 @@ internal object RecipeCatalogEvidence {
         // Room normally enforces unique IDs; this boundary must remain safe for
         // injected, migrated or otherwise inconsistent catalog snapshots as well.
         if (nowMillis < 0L) return emptyMap()
+        // A host review must not mix confirmations from another draft into the
+        // current ingredient scope. Otherwise a stale, unrelated confirmation
+        // can travel through preview and consent as if it belonged to this draft.
+        val requestedFoodTypes = lines.mapTo(mutableSetOf()) { it.foodTypeId }
+        if (confirmations.keys.any { it !in requestedFoodTypes }) return emptyMap()
         val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
             versions.singleOrNull()?.let { id to it }
         }.toMap()
