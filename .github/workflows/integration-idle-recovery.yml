@@ -1,4 +1,4 @@
-name: Integration idle lock recovery (35 minutes)
+name: Integration idle lock recovery (30 minutes)
 
 on:
   schedule:
