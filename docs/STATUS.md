@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration III: Room-Shopping-Snapshot mit einheitlicher Berlin-Zeit (02.11.2026)
+
+- [PR #58](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/58), **Code-/Test-HEAD `8be3947b9335397efe28f773f11f3719832417d3`**, Squash-Merge `2e43660d5c43e7d3e026b0e295a40abe044c4068`: Die echte Room-Shopping-Lesestrecke und die transaktionale Rezept-Kontextrevalidierung verwenden für verschachtelte Shopping-/Planungslesungen exakt den einmal erfassten `capturedAt`-Zeitpunkt. Ein Berlin-Mitternachtswechsel während der Transaktion kann dadurch weder einen gültigen Einkaufstag fälschlich verwerfen noch einen rückdatierten Einkaufstag durch Uhrenrücksprung legitimieren. Zwei neue positive/negative Room/Robolectric-Regressionen; keine Schemaänderung oder Ist-Buchung.
+- **[PR-CI 41370554107](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41370554107) PASS auf exakt `8be3947b9335397efe28f773f11f3719832417d3`**: **415/415 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, gepinnte Rezept-v1-Schema-/Produkt-/Shopping-Python-Referenzgates und Android-Testkompilierung PASS. **0 ausgeführte Android-Geräte-/Emulatortests**, keine APK. Die Änderung ist eine zeitliche Snapshot-Kohärenzkorrektur, **keine** unabhängige authentifizierte FoodStore-Nutzeraktionsattestation.
+- **Weiter:** Unabhängig authentifizierte, an den konkreten Rezept-Save gebundene Nutzeraktionsprovenienz; reale Android-Credential-/Privacy-E2E und vollständige Rezept-Generator-/Revalidator-Parität. Alle Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
 ## Integration (Chat): Berlin-lokale Android-Formular- und ViewModel-Datumsdefaults (02.11.2026)
 
 - [PR #57](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/57), **Code-/Test-Commit `a43f7d70c6837522c7614ba1a9f9ed89e972978d`**: Ein gemeinsamer `AppCalendar.today()`-Tag in `Europe/Berlin` ersetzt 26 gerätezeitzonenabhängige `LocalDate.now()`-Defaults in realen Android-Formularen und `LocalDataViewModel` (Planung, Shopping, Kauf-/Ausgabenansicht, Ernährung, Küche und Lager). Damit widersprechen voreingestellte UI-Tage den bereits Berlin-lokalen Room-Planungs-/Shopping-/Ist-Ereignisgrenzen bei Mitternacht oder Sommer-/Winterzeitwechsel nicht mehr. Zwei neue positive/negative JVM-Regressionen prüfen fremde Gerätezeitzonen sowie beide DST-Umstellungen; keine Datenbankschemaänderung, keine neue Buchung.
