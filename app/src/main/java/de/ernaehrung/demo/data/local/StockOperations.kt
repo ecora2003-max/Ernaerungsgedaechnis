@@ -22,19 +22,21 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
         Amounts.positive(input.amount)
         val hash = fingerprint("TRANSFER", input.batchId, input.targetLocationId, input.amount, input.date, input.reason, input.conditionsConfirmed)
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now())
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Bestandsbuchungszeitpunkt." }
+        actualDate(input.date, recordedAt)
         val from = available(dao, input.batchId, input.amount, input.date, false)
         val target = requireNotNull(dao.location(input.targetLocationId)) { "Ziellager nicht gefunden." }
         require(target.confirmed) { "Ziellager ist nicht als vorhanden bestätigt." }
         require(from.locationId != target.id) { "Quell- und Ziellager müssen verschieden sein." }
         val destination = id()
-        dao.insertOperation(OperationEntity(key, "TRANSFER", hash, now(), destination))
+        dao.insertOperation(OperationEntity(key, "TRANSFER", hash, recordedAt, destination))
         val release = if (from.release == ReleaseStatus.RELEASED && !input.conditionsConfirmed) ReleaseStatus.UNCHECKED else from.release
         dao.insertBatch(from.copy(id = destination, locationId = target.id, originOperationId = key, parentBatchId = from.id,
             release = release, safetyNote = listOfNotNull(from.safetyNote,
                 if (input.conditionsConfirmed) "Zielbedingungen ausdrücklich geprüft: ${input.reason}" else "Lagerbedingungen am Ziel ungeklärt").joinToString("\n")))
-        movement(key, from.id, -input.amount, MovementKind.TRANSFER, input.date, input.reason)
-        movement(key, destination, input.amount, MovementKind.TRANSFER, input.date, input.reason)
+        movement(key, from.id, -input.amount, MovementKind.TRANSFER, input.date, input.reason, recordedAt)
+        movement(key, destination, input.amount, MovementKind.TRANSFER, input.date, input.reason, recordedAt)
         destination
     }
 
@@ -42,9 +44,12 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
         validate(input.date, input.reason, confirmed); Amounts.positive(input.amount)
         val hash = fingerprint("WASTE", input.batchId, input.amount, input.date, input.reason)
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now()); available(dao, input.batchId, input.amount, input.date, false)
-        dao.insertOperation(OperationEntity(key, "WASTE", hash, now(), input.batchId))
-        movement(key, input.batchId, -input.amount, MovementKind.WASTE, input.date, input.reason)
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Bestandsbuchungszeitpunkt." }
+        actualDate(input.date, recordedAt)
+        available(dao, input.batchId, input.amount, input.date, false)
+        dao.insertOperation(OperationEntity(key, "WASTE", hash, recordedAt, input.batchId))
+        movement(key, input.batchId, -input.amount, MovementKind.WASTE, input.date, input.reason, recordedAt)
         input.batchId
     }
 
@@ -53,14 +58,16 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
         require(input.expectedBefore in 0..Amounts.MAX && input.countedAmount in 0..Amounts.MAX) { "Bestand außerhalb des zulässigen Bereichs." }
         val hash = fingerprint("STOCK_COUNT", input.batchId, input.expectedBefore, input.countedAmount, input.date, input.reason)
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now())
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Bestandsbuchungszeitpunkt." }
+        actualDate(input.date, recordedAt)
         val batch = requireNotNull(dao.batch(input.batchId)) { "Charge nicht gefunden." }
         batchDate(dao, batch, input.date)
         require(dao.balance(batch.id) == input.expectedBefore) { "Bestand hat sich geändert. Aktuellen Bestand erneut prüfen." }
         val delta = input.countedAmount - input.expectedBefore
         require(delta != 0L) { "Gezählter und gespeicherter Bestand sind bereits gleich." }
-        dao.insertOperation(OperationEntity(key, "STOCK_COUNT", hash, now(), batch.id))
-        movement(key, batch.id, delta, MovementKind.CORRECTION, input.date, input.reason)
+        dao.insertOperation(OperationEntity(key, "STOCK_COUNT", hash, recordedAt, batch.id))
+        movement(key, batch.id, delta, MovementKind.CORRECTION, input.date, input.reason, recordedAt)
         batch.id
     }
 
@@ -68,7 +75,9 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
         validate(input.date, input.reason, confirmed)
         val hash = fingerprint("REVERSAL", input.originalOperationId, input.date, input.reason)
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now())
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Bestandsbuchungszeitpunkt." }
+        actualDate(input.date, recordedAt)
         val original = requireNotNull(dao.operation(input.originalOperationId)) { "Ursprungsvorgang nicht gefunden." }
         require(original.kind in setOf("RECEIPT", "TRANSFER", "WASTE", "STOCK_COUNT", "PRODUCTION", "CONSUMPTION")) { "Dieser Vorgang kann nicht storniert werden." }
         require(dao.reversal(original.id) == null) { "Ursprungsvorgang wurde bereits storniert." }
@@ -84,19 +93,19 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
             val delta = entries.sumOf { it.delta }
             require(dao.balance(batchId) - delta in 0..Amounts.MAX) { "Storno würde einen unzulässigen Bestand erzeugen. Abhängige Buchungen zuerst prüfen." }
         }
-        dao.insertOperation(OperationEntity(key, "REVERSAL", hash, now(), original.id))
+        dao.insertOperation(OperationEntity(key, "REVERSAL", hash, recordedAt, original.id))
         dao.insertReversal(OperationReversalEntity(original.id, key, input.date, input.reason))
         movements.forEach { old ->
             dao.insertMovement(StockMovementEntity(id(), old.batchId, key, -old.delta, MovementKind.CORRECTION,
-                null, Source.USER, input.reason, now(), reversesId = old.id, occurredOn = input.date))
+                null, Source.USER, input.reason, recordedAt, reversesId = old.id, occurredOn = input.date))
         }
         meal?.let { dao.saveDay(DiaryDayEntity(it.date, DayStatus.PARTIAL, null)) }
         original.id
     }
 
-    private suspend fun movement(key: String, batch: String, delta: Long, kind: MovementKind, date: String, reason: String) {
+    private suspend fun movement(key: String, batch: String, delta: Long, kind: MovementKind, date: String, reason: String, recordedAt: Long) {
         require(dao.balance(batch) + delta in 0..Amounts.MAX) { "Unzulässiger Bestand. Es wurde nichts gebucht." }
-        dao.insertMovement(StockMovementEntity(id(), batch, key, delta, kind, null, Source.USER, reason, now(), occurredOn = date))
+        dao.insertMovement(StockMovementEntity(id(), batch, key, delta, kind, null, Source.USER, reason, recordedAt, occurredOn = date))
     }
     private fun validate(date: String, reason: String, confirmed: Boolean) {
         require(confirmed) { "Tatsächlichen Vorgang ausdrücklich bestätigen." }

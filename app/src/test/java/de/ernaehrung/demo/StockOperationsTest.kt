@@ -11,6 +11,7 @@ import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -115,5 +116,61 @@ class StockOperationsTest {
         store.reverse("undo-buy", ReversalInput("buy", "2026-10-31", "Irrtum"), true)
         rejects { store.correctStock("resurrect", StockCountInput(batch, 0, 100_000, "2026-10-31", "Doch vorhanden"), true) }
         assertEquals(0L, dao.balance(batch)); assertNull(dao.operation("resurrect"))
+    }
+
+    @Test fun stockLedgerUsesOnePhysicalTimeAcrossBerlinMidnightForEveryMovement() = runBlocking {
+        val beforeMidnight = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
+        val afterMidnight = beforeMidnight + 1L // Berlin changes from 30 to 31 October.
+        suspend fun verify(key: String, action: suspend () -> Unit) {
+            var clockReads = 0
+            store = FoodStore(db) {
+                clockReads++
+                if (clockReads == 1) beforeMidnight else afterMidnight
+            }
+            action()
+            assertEquals("One clock read for $key", 1, clockReads)
+            assertEquals(beforeMidnight, dao.operation(key)!!.recordedAt)
+            val movements = dao.movements(key)
+            assertTrue("Expected stock movements for $key", movements.isNotEmpty())
+            assertTrue("Operation and movements must share the same time", movements.all { it.recordedAt == beforeMidnight })
+        }
+        verify("move") {
+            store.transfer("move", TransferInput(batch, target, 20_000, "2026-10-30", "Umräumen"), true)
+        }
+        verify("waste") {
+            store.waste("waste", WasteInput(batch, 10_000, "2026-10-30", "Verdorben"), true)
+        }
+        verify("count") {
+            store.correctStock("count", StockCountInput(batch, 170_000, 160_000, "2026-10-30", "Nachgezählt"), true)
+        }
+        verify("undo") {
+            store.reverse("undo", ReversalInput("waste", "2026-10-30", "Doch nicht entsorgt"), true)
+        }
+        assertEquals(170_000L, dao.balance(batch))
+        assertEquals(20_000L, dao.movements("move").filter { it.delta > 0 }.single().delta)
+    }
+
+    @Test fun invalidStockClockRollsBackAllKindsButCommittedRetryDoesNotReadClock() = runBlocking {
+        val input = TransferInput(batch, target, 20_000, "2026-10-30", "Umräumen")
+        val moved = store.transfer("good", input, true)
+        val originalCount = dao.operationCount()
+        val originalBalance = dao.balance(batch)
+        var clockReads = 0
+        store = FoodStore(db) { clockReads++; -1L }
+        rejects { store.transfer("invalid-transfer", TransferInput(batch, target, 5_000, "2026-10-30", "Nochmals"), true) }
+        rejects { store.waste("invalid-waste", WasteInput(batch, 5_000, "2026-10-30", "Verdorben"), true) }
+        rejects { store.correctStock("invalid-count", StockCountInput(batch, 180_000, 175_000, "2026-10-30", "Nachgezählt"), true) }
+        rejects { store.reverse("invalid-undo", ReversalInput("good", "2026-10-30", "Irrtum"), true) }
+        assertEquals(4, clockReads)
+        assertEquals(originalCount, dao.operationCount())
+        assertEquals(originalBalance, dao.balance(batch))
+        assertEquals(20_000L, dao.balance(moved))
+        assertNull(dao.reversal("good"))
+        for (key in listOf("invalid-transfer", "invalid-waste", "invalid-count", "invalid-undo")) {
+            assertNull(dao.operation(key))
+            assertTrue(dao.movements(key).isEmpty())
+        }
+        assertEquals(moved, store.transfer("good", input, true))
+        assertEquals("Idempotent replay must not consult the invalid clock", 4, clockReads)
     }
 }
