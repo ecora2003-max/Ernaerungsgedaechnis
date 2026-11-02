@@ -38,9 +38,12 @@ internal object RecipeCatalogEvidence {
         val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
             versions.singleOrNull()?.let { id to it }
         }.toMap()
+        // Resolve identity as of the host's trusted review time, not the newest
+        // revision ever present in a possibly future-dated Room/catalog snapshot.
         val latest = catalog.groupBy { it.productId }.mapValues { (_, versions) ->
-            val highest = versions.maxOfOrNull { it.revision }
-            versions.filter { it.revision == highest }.singleOrNull()
+            val known = versions.filter { it.recordedAt <= nowMillis }
+            val highest = known.maxOfOrNull { it.revision }
+            known.filter { it.revision == highest }.singleOrNull()
                 ?.takeIf { byVersion[it.id] == it }?.id
         }
         return lines.mapNotNull { line ->
