@@ -134,6 +134,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 // before its creating operation existed. A later recording or
                 // snapshot must not turn that impossible history into stock.
                 (movement.occurredAt != null && movement.occurredAt < batchCreatedAt) ||
+                // Legacy movements may have only a Berlin-local occurrence day.
+                // That day cannot precede the day their batch first existed;
+                // a later recording or review cannot repair physical history.
+                (day != null && day.isBefore(Instant.ofEpochMilli(batchCreatedAt)
+                    .atZone(ZoneId.of("Europe/Berlin")).toLocalDate())) ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||
                 // A stock movement cannot have been committed before its
