@@ -153,10 +153,11 @@ class LocalDataViewModel internal constructor(
             require(versionId.isNotBlank() && nowMillis >= 0L)
             val day = java.time.LocalDate.parse(purchaseOn)
             require(day.toString() == purchaseOn)
-            val endOfPurchaseDayUtc = day.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC)
-                .toInstant().toEpochMilli() - 1L
+            // A purchase date is Berlin-local, not UTC. Never admit observations
+            // learned after the local day ended (including DST transitions).
+            val endOfPurchaseDayBerlin = AppCalendar.endOfDayMillis(day)
             HistoricalPaidComparisonScope(versionId, purchaseOn,
-                minOf(nowMillis, endOfPurchaseDayUtc))
+                minOf(nowMillis, endOfPurchaseDayBerlin))
         } catch (_: Exception) {
             historicalPaidResult.value = HistoricalPaidUiState(
                 error = "Kaufdatum oder Produktversion für den privaten Preisvergleich ungültig.")

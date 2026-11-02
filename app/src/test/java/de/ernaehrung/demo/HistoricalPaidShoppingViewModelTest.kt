@@ -73,13 +73,42 @@ class HistoricalPaidShoppingViewModelTest {
         assertEquals(199L, paid.lowestHistoricalUnitPriceCents)
         assertEquals("HISTORICAL_PAID", paid.priceKind)
         assertFalse(paid.isCurrentOffer)
-        assertEquals(Instant.parse("2026-10-30T23:59:59.999Z").toEpochMilli(),
+        assertEquals(Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli(),
             paid.scope.knownAtMillis)
         model.showHistoricalPaidForShopping(version, "2026-10-29", afterPaid)
         assertTrue(result().report!!.references.isEmpty())
         assertEquals(initial, db.foodDao().operationCount())
         assertTrue(db.foodDao().prices().isEmpty())
         assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun berlinKnowledgeCutoffNeverIncludesNextLocalDayAcrossDst() = runBlocking {
+        val initial = db.foodDao().operationCount()
+        val previousZone = java.util.TimeZone.getDefault()
+        try {
+            val cases = listOf(
+                "2026-03-29" to "2026-03-29T21:59:59.999Z",
+                "2026-10-25" to "2026-10-25T22:59:59.999Z",
+                "2026-10-30" to "2026-10-30T22:59:59.999Z"
+            )
+            for (zone in listOf("UTC", "America/Los_Angeles", "Asia/Tokyo")) {
+                java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(zone))
+                for ((day, end) in cases) {
+                    model.showHistoricalPaidForShopping(version, day,
+                        Instant.parse("2026-11-01T12:00:00Z").toEpochMilli())
+                    assertEquals(Instant.parse(end).toEpochMilli(),
+                        result().scope!!.knownAtMillis)
+                }
+            }
+            // Before local midnight the caller's actual knowledge time wins.
+            val stillToday = Instant.parse("2026-10-30T22:30:00Z").toEpochMilli()
+            model.showHistoricalPaidForShopping(version, "2026-10-30", stillToday)
+            assertEquals(stillToday, result().scope!!.knownAtMillis)
+            assertEquals(initial, db.foodDao().operationCount())
+            assertEquals(0, db.foodDao().consumptionCount())
+        } finally {
+            java.util.TimeZone.setDefault(previousZone)
+        }
     }
 
     @Test fun malformedDateOrUnknownVersionNeverCreatesAHistoryOrBooking() = runBlocking {

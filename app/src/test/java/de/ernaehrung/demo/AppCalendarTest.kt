@@ -27,6 +27,23 @@ class AppCalendarTest {
         }
     }
 
+    @Test fun berlinEndOfDayCutoffUsesLocalMidnightEvenAcrossDst() {
+        val previous = TimeZone.getDefault()
+        try {
+            for (zone in listOf("UTC", "America/Los_Angeles", "Asia/Tokyo")) {
+                TimeZone.setDefault(TimeZone.getTimeZone(zone))
+                assertEquals(Instant.parse("2026-03-29T21:59:59.999Z").toEpochMilli(),
+                    AppCalendar.endOfDayMillis(LocalDate.parse("2026-03-29")))
+                assertEquals(Instant.parse("2026-10-25T22:59:59.999Z").toEpochMilli(),
+                    AppCalendar.endOfDayMillis(LocalDate.parse("2026-10-25")))
+                assertEquals(Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli(),
+                    AppCalendar.endOfDayMillis(LocalDate.parse("2026-10-30")))
+            }
+        } finally {
+            TimeZone.setDefault(previous)
+        }
+    }
+
     @Test fun berlinDayFollowsDstTransitionsWithoutSkippedOrRepeatedDates() {
         assertEquals(LocalDate.parse("2026-03-29"), AppCalendar.today(Instant.parse("2026-03-29T00:59:59Z")))
         assertEquals(LocalDate.parse("2026-03-29"), AppCalendar.today(Instant.parse("2026-03-29T01:00:00Z")))
