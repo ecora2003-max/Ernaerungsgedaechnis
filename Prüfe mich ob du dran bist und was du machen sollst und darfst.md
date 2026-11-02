@@ -59,8 +59,8 @@ ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-mvyp9yk4-lwjsrl8s4i"
 acquiredAtUtc: "2026-11-02T03:29:27.604Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore authenticated recipe-save provenance and regression"
-workingBranch: null
+task: "FoodStore paid-price history: one coherent nonnegative record timestamp"
+workingBranch: "integration-iv-paid-price-timestamp-20261102"
 lastReleasedAtUtc: "2026-11-02T03:20:33.660Z"
 lastReleasedCommit: "8573d52db4fddbadab0739077a021c0a185f17a8"
 nextStep: "Independent authenticated FoodStore recipe-save action provenance; generator/revalidator parity; real Android credential/privacy E2E"
