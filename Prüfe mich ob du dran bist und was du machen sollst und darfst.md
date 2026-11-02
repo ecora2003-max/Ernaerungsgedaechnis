@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T06:30:05.963Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: FoodStore recipe-save history and transaction regression"
-workingBranch: null
+workingBranch: "codex/integration-iv-stock-ledger-clock-20261102-0630"
 lastReleasedAtUtc: "2026-11-02T06:23:07.378Z"
 lastReleasedCommit: "9189e7fb8b18f90927fb22b2824670b17abd0138"
 nextStep: "Cryptographically authenticated FoodStore recipe-save action; generator/revalidator parity; Android credential/privacy E2E"
