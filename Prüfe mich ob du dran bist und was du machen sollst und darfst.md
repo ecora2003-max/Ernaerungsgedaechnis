@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102001118307-0ks7gqrnq4"
 acquiredAtUtc: "2026-11-02T00:11:18.307Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Next verified Kotlin FoodStore recipe authentication integration"
-workingBranch: null
+task: "Recheck secure Android keyguard at credential-result boundary"
+workingBranch: "integration-ii-credential-recheck-20261102-0011"
 lastReleasedAtUtc: "2026-11-02T00:09:58.917Z"
 lastReleasedCommit: "ee0afde663c428ceba3809100be68d1a3cf0cddb"
 nextStep: "Independently authenticated user-action attestation at FoodStore recipe save; Android credential/privacy device E2E; recipe parity"
