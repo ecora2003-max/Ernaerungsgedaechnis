@@ -652,20 +652,26 @@ class RecipeDraftCatalogSaveTest {
         val futureJson = json.replace(
             "\"createdAt\":\"2026-11-01T04:00:00Z\"",
             "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
-        // The importer tolerates a small producer-clock skew for display only.
-        val ready = preview(futureJson)
-        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
+        // The importer tolerates producer clock skew for display only, but
+        // an ingredient confirmation cannot predate this future draft.
+        val premature = preview(futureJson)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, premature.status)
         val before = dao.operationCount()
-        rejected { consent("future-consent", ready, text = futureJson) }
-        rejected { save("future-consent", ready, text = futureJson) }
+        rejected { consent("future-consent", premature, text = futureJson) }
+        rejected { save("future-consent", premature, text = futureJson) }
         assertEquals(before, dao.operationCount())
         assertNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:future-consent"))
         assertNull(dao.operation("future-consent"))
         trustedClock = at + 120_000L
-        assertEquals(ready.approvalBasisDigest, preview(futureJson).approvalBasisDigest)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, preview(futureJson).status)
+        val freshFacts = confirmed().mapValues { (_, fact) ->
+            fact.copy(confirmedAt = trustedClock)
+        }
+        val ready = preview(futureJson, freshFacts)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
         assertEquals(ready.approvalBasisDigest,
-            consent("future-consent", ready, text = futureJson))
-        val saved = save("future-consent", ready, text = futureJson)
+            consent("future-consent", ready, text = futureJson, facts = freshFacts))
+        val saved = save("future-consent", ready, text = futureJson, facts = freshFacts)
         assertNotNull(dao.recipeVersion(saved))
         assertEquals(0, dao.consumptionCount())
         assertTrue(dao.allPaidPrices().isEmpty())
@@ -675,21 +681,27 @@ class RecipeDraftCatalogSaveTest {
         val futureJson = json.replace(
             "\"createdAt\":\"2026-11-01T04:00:00Z\"",
             "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
-        val ready = preview(futureJson)
+        store = FoodStore(db) { at + 120_000L }
+        val freshFacts = confirmed().mapValues { (_, fact) ->
+            fact.copy(confirmedAt = at + 120_000L)
+        }
+        val ready = preview(futureJson, freshFacts)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
         var clockReads = 0
         store = FoodStore(db) {
             if (clockReads++ == 0) at + 120_000L else at
         }
-        val digest = consent("clock-shift", ready, text = futureJson)
+        val digest = consent("clock-shift", ready, text = futureJson, facts = freshFacts)
         assertEquals(ready.approvalBasisDigest, digest)
         val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:clock-shift"))
         assertEquals(at + 120_000L, checkpoint.recordedAt)
         assertEquals(1, clockReads)
         // A clock rollback must not let the subsequent save predate creation.
-        rejected { save("clock-shift", ready, text = futureJson) }
+        rejected { save("clock-shift", ready, text = futureJson, facts = freshFacts) }
         assertNull(dao.operation("clock-shift"))
         store = FoodStore(db) { at + 120_000L }
-        assertNotNull(dao.recipeVersion(save("clock-shift", ready, text = futureJson)))
+        assertNotNull(dao.recipeVersion(save("clock-shift", ready,
+            text = futureJson, facts = freshFacts)))
         assertEquals(0, dao.consumptionCount())
     }
 
