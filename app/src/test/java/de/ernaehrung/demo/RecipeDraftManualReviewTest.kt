@@ -125,6 +125,27 @@ class RecipeDraftManualReviewTest {
         rejects { Manual.prepare(imported(contextJson), listOf(catalog()),
             mapOf("rice" to choice(false)), setOf("ALLERGEN:SOY"), true, nowMillis) }
     }
+    @Test fun futureDatedDraftCannotBeManuallyConfirmedBeforeItsCreation() {
+        // Import tolerates a one-minute generator clock lead; independent
+        // host confirmation must still occur after the claimed draft creation.
+        val future = imported(json().replace(
+            "2026-11-01T04:00:00Z", "2026-11-01T04:01:00Z"
+        ))
+        val versions = listOf(catalog(recordedAt = nowMillis - 10_000L))
+        val choices = mapOf("rice" to choice(false))
+        val restrictions = setOf("ALLERGEN:SOY")
+        rejects {
+            Manual.prepare(future, versions, choices, restrictions, true, nowMillis)
+        }
+        val approvedAt = nowMillis + 60_000L
+        val prepared = Manual.prepare(future, versions, choices, restrictions,
+            true, approvedAt)
+        assertEquals(approvedAt, prepared.confirmations["rice"]?.confirmedAt)
+        val facts = RecipeCatalogEvidence.resolve(future.draft.lines, versions,
+            prepared.confirmations, approvedAt)
+        assertEquals("v1", facts["rice"]?.productVersionId)
+    }
+
     @Test fun negativeCatalogAndReviewTimestampsNeverCreateHostConfirmation() {
         val parsed = imported()
         val reviewed = mapOf("rice" to choice(false))
