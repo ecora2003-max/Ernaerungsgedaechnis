@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzdmgaz-7y7vok"
 acquiredAtUtc: "2026-11-02T14:51:01.259Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore typed Room/recipe context validation regression"
-workingBranch: null
+task: "Room stock movement author chronology fail-closed"
+workingBranch: "integration-iii/stock-author-chronology-20261102-run11"
 lastReleasedAtUtc: "2026-11-02T14:44:54.693Z"
 lastReleasedCommit: "c495c6f2c576760ff5e8d826daee2d68078354ee"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
