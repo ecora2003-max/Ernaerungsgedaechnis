@@ -66,7 +66,11 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
             input.storageChecked, input.storageNote, input.release, input.deviationNote, input.bestBefore, input.useBy,
             input.allocations.sortedBy { it.batchId }.map { listOf(it.batchId, it.amount) })
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now())
+        // Capture one physical time for date authorization and every ledger row.
+        // A moving clock must not split one confirmed production across Berlin days.
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Herstellungszeitpunkt." }
+        actualDate(input.date, recordedAt)
         require(input.storageChecked && input.storageNote.isNotBlank()) { "Geeignete Lagerbedingungen, Behälter und tatsächlich verfügbaren Platz ausdrücklich prüfen und beschreiben." }
         require(input.release != ReleaseStatus.RELEASED || input.useBy == null || input.useBy >= input.date) { "Abgelaufene Fertigportionen können nicht freigegeben werden." }
         val recipe = requireNotNull(dao.recipeVersion(input.recipeVersionId)) { "Rezeptversion nicht gefunden." }
@@ -86,10 +90,10 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         require(!differs || !input.deviationNote.isNullOrBlank()) { "Abweichende oder ungeklärte Mengen/Ausbeute begründen." }
 
         val outputBatch = id()
-        dao.insertOperation(OperationEntity(key, "PRODUCTION", hash, now(), outputBatch))
+        dao.insertOperation(OperationEntity(key, "PRODUCTION", hash, recordedAt, outputBatch))
         var outputProduct = dao.outputProduct(recipe.recipeId)
         if (outputProduct == null) {
-            val product = id(); dao.insertProduct(ProductEntity(product, now()))
+            val product = id(); dao.insertProduct(ProductEntity(product, recordedAt))
             outputProduct = RecipeOutputProductEntity(recipe.recipeId, product); dao.insertOutputProduct(outputProduct)
         }
         val previous = dao.latestVersion(outputProduct.productId)
@@ -98,17 +102,17 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         dao.insertVersion(ProductVersionEntity(outputVersion, outputProduct.productId, (previous?.revision ?: 0) + 1,
             recipe.name, null, "Zubereitung", null, BaseUnit.PORTION, null, 1000,
             null, null, null, null, source = Source.USER, sourceDetail = "Herstellung $key · Rezeptversion ${recipe.id}",
-            quality = Quality.UNKNOWN, recordedAt = now(), changeReason = "Tatsächlicher Produktionsansatz"))
+            quality = Quality.UNKNOWN, recordedAt = recordedAt, changeReason = "Tatsächlicher Produktionsansatz"))
         dao.insertBatch(BatchEntity(outputBatch, outputVersion, input.locationId, key, input.date, input.bestBefore, input.useBy,
             release = input.release, safetyNote = input.storageNote, recipeVersionId = recipe.id))
         dao.insertProduction(ProductionEntity(key, recipe.id, outputBatch, input.actualPortions, input.date, input.storageNote, input.deviationNote))
         for (allocation in input.allocations) {
             available(dao, allocation.batchId, allocation.amount, input.date, true)
             dao.insertMovement(StockMovementEntity(id(), allocation.batchId, key, -allocation.amount,
-                MovementKind.PRODUCTION_INPUT, null, Source.USER, "Herstellung ${recipe.name}", now(), occurredOn = input.date))
+                MovementKind.PRODUCTION_INPUT, null, Source.USER, "Herstellung ${recipe.name}", recordedAt, occurredOn = input.date))
         }
         dao.insertMovement(StockMovementEntity(id(), outputBatch, key, input.actualPortions,
-            MovementKind.PRODUCTION_OUTPUT, null, Source.USER, "Tatsächlich hergestellte Portionen", now(), occurredOn = input.date))
+            MovementKind.PRODUCTION_OUTPUT, null, Source.USER, "Tatsächlich hergestellte Portionen", recordedAt, occurredOn = input.date))
         outputBatch
     }
 }

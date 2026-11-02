@@ -1,6 +1,7 @@
 package de.ernaehrung.demo
 
 import android.content.Context
+import java.time.Instant
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.ernaehrung.demo.data.local.*
@@ -103,6 +104,45 @@ class ProductionTest {
         store.reverse("undo-cook", ReversalInput("cook", "2026-10-30", "Irrtum"), true)
         assertEquals(300_000L, dao.balance(a)); assertEquals(500_000L, dao.balance(b)); assertEquals(0L, dao.balance(output))
         assertNotNull(dao.production("cook")); assertEquals(3, dao.movements("undo-cook").size)
+    }
+
+    @Test fun productionCrossingBerlinMidnightUsesOneRecordedAtAndRetryDoesNotAdvanceClock() = runBlocking {
+        // 22:59:59.999 UTC is 23:59:59.999 in Berlin on 1 November.
+        val instant = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
+        var clock = instant
+        val movingStore = FoodStore(db) { clock++ }
+        val production = input().copy(date = "2026-11-01")
+        val before = dao.operationCount()
+        val output = movingStore.produce("production-midnight", production, true)
+        assertEquals(instant + 1L, clock)
+        assertEquals(output, movingStore.produce("production-midnight", production, true))
+        assertEquals(instant + 1L, clock)
+        val operation = requireNotNull(dao.operation("production-midnight"))
+        val movements = dao.movements("production-midnight")
+        val outputVersion = requireNotNull(dao.version(requireNotNull(dao.batch(output)).versionId))
+        assertEquals(instant, operation.recordedAt)
+        assertEquals(instant, outputVersion.recordedAt)
+        assertEquals(3, movements.size)
+        assertTrue(movements.all { it.recordedAt == instant && it.occurredOn == "2026-11-01" })
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(0L, dao.balance(a))
+        assertEquals(0L, dao.balance(b))
+        assertEquals(6000L, dao.balance(output))
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun invalidNegativeProductionClockRollsBackEveryPhysicalEffect() = runBlocking {
+        val before = dao.operationCount()
+        val invalidStore = FoodStore(db) { -1L }
+        val outcome = runCatching { invalidStore.produce("production-negative-time", input(), true) }
+        assertTrue(outcome.isFailure)
+        assertNull(dao.operation("production-negative-time"))
+        assertNull(dao.production("production-negative-time"))
+        assertTrue(dao.movements("production-negative-time").isEmpty())
+        assertEquals(before, dao.operationCount())
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+        assertEquals(0, dao.consumptionCount())
     }
 
     @Test fun concurrentProductionCannotCreatePortionsTwiceFromSameRawStock() = runBlocking {
