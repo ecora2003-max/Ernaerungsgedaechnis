@@ -21,7 +21,8 @@ internal class ShoppingReader(private val db: FoodDatabase, private val now: () 
     suspend fun report(scope: ShoppingScope, choiceOverrides: Map<String, String?> = emptyMap()): ShoppingReport = db.withTransaction {
         listOf(scope.startsOn, scope.endsOn, scope.purchaseOn).forEach(WriteRules::date)
         require(ChronoUnit.DAYS.between(LocalDate.parse(scope.startsOn), LocalDate.parse(scope.endsOn)) in 0..55) { "Einkaufsausschnitt zwischen einem und 56 Tagen wählen." }
-        val today = Instant.ofEpochMilli(now()).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+        // Purchase-date and planning cutoffs must share one Berlin-local day.
+        val today = Instant.ofEpochMilli(now()).atZone(ZoneId.of("Europe/Berlin")).toLocalDate().toString()
         require(scope.purchaseOn >= today) { "Einkaufsplanung mit heutigem Bestand nicht auf einen vergangenen Einkaufstag rückdatieren." }
         val planning = PlanningReader(db, now).report(scope.startsOn, scope.endsOn)
         val prices = dao.prices(); val budgets = dao.budgets()

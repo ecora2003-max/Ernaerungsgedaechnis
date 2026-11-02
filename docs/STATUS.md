@@ -1,5 +1,13 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+
+## Integration IV: Berlin-lokale Datumsgrenze für Room-/Shopping-/FoodStore (02.11.2026)
+
+- [PR #56](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/56), **Code-/Test-HEAD `492034c09e934d96a4db2cb96475d2897fdc04eb`**: `PlanningReader`, `ShoppingReader` und `WriteRules.actualDate` verwenden für Planungs-, Einkaufstags- und tatsächliche Ereignisgrenzen konsistent `Europe/Berlin` statt der veränderlichen Gerätezeitzone. Damit stimmen Shopping-/Room-Snapshots mit der bereits Berlin-lokalen Stock-Lesestrecke überein. Drei neue positive/negative Robolectric-Regressionen prüfen UTC→Berlin-Mitternacht, unveränderte Shopping-Revision bei Gerätezeitzonenwechsel, rückdatierte Käufe und künftige Ist-Ereignisse. Kein neues Ist-Ereignis, keine Schemaänderung.
+- **[PR-CI 41367693200](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41367693200) PASS auf exakt `492034c09e934d`**: **411/411 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, gepinnte Rezept-v1-Schema-/Produkt-/Shopping-Python-Referenzgates und Android-Testkompilierung PASS; **0 ausgeführte Android-Geräte-/Emulatortests**, keine APK. Dies ist ein Datums-/Historien-Kohärenzfix, **keine** unabhängige FoodStore-Rezeptsave-Aktionsattestation.
+- **Weiter:** Unabhängig verifizierbare, konkrete Rezept-Save-Nutzeraktionsprovenienz; echte Android-/Privacy-E2E und vollständige Generator-/Revalidator-Parität. Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
 **Arbeitsauftrag: Produktiven Integrationscode entwickeln.** Die vier Zuliefermodule werden schrittweise in die Android-Haupt-App `Ernaerungsgedaechnis` eingebunden; keine isolierte Status- oder Dokumentationsrunde statt Implementierung. Maßgeblich sind der tatsächliche GitHub-`main`-HEAD, [AGENTS.md](../AGENTS.md), [ACCEPTANCE.md](ACCEPTANCE.md), [INTEGRATION.md](INTEGRATION.md) und die flexible [INTEGRATION_ROADMAP.md](INTEGRATION_ROADMAP.md). Die alte Acht-Phasen-Planung und die frühere Pause sind überholt.
 
 > **Historie vollständig erhalten:** [Integration-Statusarchiv vom 01.11.2026](archive/INTEGRATION_STATUS_HISTORY_2026-11-01.md) enthält die vorherigen rund 308.000 Zeichen **unverändert** samt chronologischen Entwicklungsschritten, Commit-/CI-Belegen und früheren Entscheidungspunkten. Dieses Dokument ist nur der kurze aktive Einstieg; beim Nachprüfen älterer Schritte gezielt das Archiv lesen. Alte Nachweise sind kein Ersatz für aktuelle Tests.

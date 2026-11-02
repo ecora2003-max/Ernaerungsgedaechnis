@@ -135,4 +135,67 @@ class RecipeRoomShoppingSnapshotTest {
         assertTrue("ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED" in stale.gaps)
         assertNull(stale.input)
     }
+
+    @Test fun berlinDayBoundaryKeepsRoomShoppingAndPlanningStableAcrossDeviceTimezones() = runBlocking {
+        val previousZone = java.util.TimeZone.getDefault()
+        try {
+            // 23:30 UTC is already the next calendar day in Berlin.
+            clock = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+            val berlinDay = "2026-11-02"
+            val berlinScope = ShoppingScope(berlinDay, "2026-11-07", berlinDay)
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            store.savePlan("berlin-day-plan", PlanInput("Berlin-Tag", berlinDay,
+                "2026-11-07", listOf(PlanEntryInput("berlin-rice", berlinDay,
+                    PlanKind.DIRECT_CONSUMPTION, versionId,
+                    amount = 200_000L, unit = BaseUnit.GRAM)), "Planung"))
+            val firstReport = store.shoppingReport(berlinScope)
+            assertEquals(berlinDay, firstReport.asOf)
+            assertEquals(200_000L, firstReport.items.single().need.knownMissing)
+            val first = requireNotNull(store.readRecipeRoomShoppingSnapshot(berlinScope))
+            assertEquals(200_000L, first.lines.single().amountMilli)
+
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Los_Angeles"))
+            val secondReport = store.shoppingReport(berlinScope)
+            val second = requireNotNull(store.readRecipeRoomShoppingSnapshot(berlinScope))
+            assertEquals(berlinDay, secondReport.asOf)
+            assertEquals(first.revision, second.revision)
+            assertEquals(first.lines, second.lines)
+            assertEquals(0, db.foodDao().consumptionCount())
+        } finally {
+            java.util.TimeZone.setDefault(previousZone)
+        }
+    }
+
+    @Test fun berlinPastPurchaseIsRejectedEvenWhenDeviceClockZoneStillShowsYesterday() = runBlocking {
+        val previousZone = java.util.TimeZone.getDefault()
+        try {
+            clock = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            // At this instant Berlin is on 2 November: a 1 November shopping
+            // purchase cannot use the current Room stock as a historical quote.
+            val past = ShoppingScope("2026-11-01", "2026-11-07", "2026-11-01")
+            assertNull(store.readRecipeRoomShoppingSnapshot(past))
+            assertEquals(0, db.foodDao().consumptionCount())
+        } finally {
+            java.util.TimeZone.setDefault(previousZone)
+        }
+    }
+
+    @Test fun actualEventDateUsesSameBerlinDayAsRoomShopping() {
+        val previousZone = java.util.TimeZone.getDefault()
+        try {
+            val midnightBoundary = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            // An actual event dated 2 November is today in Berlin, not future.
+            WriteRules.actualDate("2026-11-02", midnightBoundary)
+            try {
+                WriteRules.actualDate("2026-11-03", midnightBoundary)
+                fail("A genuinely future Berlin event must be rejected")
+            } catch (_: IllegalArgumentException) {
+                // Expected: no implicit future event even if the device zone changes.
+            }
+        } finally {
+            java.util.TimeZone.setDefault(previousZone)
+        }
+    }
 }
