@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration II: Zeitgültiger tatsächlicher Bewegungszeitpunkt im Room-Rezeptbestand (02.11.2026)
+
+- [PR #66](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/66), **Code-/Test-HEAD `8f0fbd406182e7141170224bad2fb796bce9e843`**, Squash-Merge `06f52f8b01613a09ddfb9a9abf014e4a69a98d8a`: Die echte transaktionale `RecipeRoomStockSnapshotReader`-Lesestrecke prüft neben Erfassungszeit und Berliner Ereignistag jetzt auch das optionale `occurredAt` der Bestandsbewegung gegen den exakten Snapshot-Zeitpunkt. Zukunfts- und negative Zeitwerte sperren den gesamten Snapshot, statt zukünftige physische Bewegung als aktuellen Bestand zu projizieren. `occurredAt` ist im Revisionsdigest gebunden. Zwei neue positive/negative Room-/Robolectric-Regressionen; keine Schemaänderung, keine Ist-Buchung.
+- **[PR-CI 41376589727](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41376589727) PASS** auf Code-/Test-HEAD `8f0fbd406182e7141170224bad2fb796bce9e843`: **424/424 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, gepinnte Rezept-v1-/Produkt-/Shopping-Python-Referenzgates, Room-8-Schema und Android-Testkompilierung PASS. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). **0 ausgeführte Android-Geräte-/Emulatortests**, keine APK.
+- **Weiter:** Unabhängig authentifizierte FoodStore-Rezeptsave-Aktionsprovenienz; reale Android-Credential-/Privacy-E2E und vollständige Rezept-Generator-/Revalidator-Parität. Vier Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
+
 ## Integration III: Zeitgültige Room-Bestandsbewegungen im Rezeptkontext (02.11.2026)
 
 - [PR #64](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/64), **Code-/Test-HEAD `0a9fb4f2004f69cd72f5c7cfd6c358020e3e4d66`**, Squash-Merge `9439bd18e389fa7a6336db0fae7fb6ae66a4d724`: Die echte transaktionale `RecipeRoomStockSnapshotReader`-Lesestrecke verweigert nun Bestandsprojektionen, wenn zugrunde liegende Bewegungen erst nach dem Snapshot-Zeitpunkt erfasst wurden, einen zukünftigen Berliner Ereignistag oder ein ungültiges Datum tragen. Bewegungsmenge und Zeitbelege fließen in den Revisionsdigest ein; alte Verbrauchstage werden über den bestehenden Room-Verbrauchsbeleg aufgelöst. Drei positive/negative Room-/Robolectric-Regressionen; keine Schemaänderung und keine Ist-Buchung durch den Leser.
