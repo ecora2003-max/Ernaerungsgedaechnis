@@ -250,6 +250,41 @@ class ProductionTest {
     }
 
 
+    @Test fun productionRejectsFutureRecordedBatchOriginAndAcceptsLaterRetry() = runBlocking {
+        val recipeAt = requireNotNull(dao.recipeVersion(recipe)).recordedAt
+        val lateAt = recipeAt + 60_000L
+        val lateStore = FoodStore(db) { lateAt }
+        val lateBatch = lateStore.receive("late-batch-purchase",
+            BatchInput(lentil, location, 300_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
+        val production = input().copy(allocations = listOf(
+            Allocation(lateBatch, 300_000), Allocation(b, 500_000)))
+        val before = dao.operationCount()
+        val earlierStore = FoodStore(db) { recipeAt + 1L }
+
+        // Same acquired calendar date is not enough: the purchase was recorded later.
+        rejects { earlierStore.produce("cook-after-late-purchase", production, true) }
+        assertNull(dao.operation("cook-after-late-purchase"))
+        assertNull(dao.production("cook-after-late-purchase"))
+        assertTrue(dao.movements("cook-after-late-purchase").isEmpty())
+        assertEquals(before, dao.operationCount())
+        assertEquals(300_000L, dao.balance(lateBatch))
+        assertEquals(500_000L, dao.balance(b))
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(0, dao.consumptionCount())
+
+        val output = lateStore.produce("cook-after-late-purchase", production, true)
+        assertEquals(lateAt, dao.operation("cook-after-late-purchase")!!.recordedAt)
+        assertEquals(0L, dao.balance(lateBatch))
+        assertEquals(0L, dao.balance(b))
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(6000L, dao.balance(output))
+        assertEquals(0, dao.consumptionCount())
+        val replay = FoodStore(db) { error("Replay must not consult a moved clock") }
+        assertEquals(output, replay.produce("cook-after-late-purchase", production, true))
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(3, dao.movements("cook-after-late-purchase").size)
+    }
+
     @Test fun productionCannotAppendAnEarlierRecipeOutputProductRevision() = runBlocking {
         val firstTime = Instant.parse("2026-10-31T12:01:00Z").toEpochMilli()
         val firstStore = FoodStore(db) { firstTime }
