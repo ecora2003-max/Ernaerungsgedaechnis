@@ -38,8 +38,14 @@ internal object RecipeDraftManualReview {
         // A separately confirmed review must not predate the draft it approves.
         // The JSON importer tolerates limited generator clock skew, but that
         // tolerance cannot turn a future draft into an already reviewed one.
-        require(imported.createdAt.toInstant().toEpochMilli() <= nowMillis) {
+        val createdAtMillis = imported.createdAt.toInstant().toEpochMilli()
+        require(createdAtMillis in 0L..nowMillis) {
             "manual review predates draft creation"
+        }
+        // A previously parsed draft must not acquire a fresh user confirmation
+        // after the import's 24-hour freshness window has expired.
+        require(nowMillis - createdAtMillis <= 86_400_000L) {
+            "manual review of stale draft"
         }
         val draft = imported.draft
         // No stock/list/offer snapshot or digest has been independently acquired here.
@@ -80,8 +86,9 @@ internal object RecipeDraftManualReview {
             require(selectedVersionIds.add(version.id)) { "duplicate product version" }
             require(choice.basis != null && choice.basis == line.basis &&
                 choice.basis != Gate.Basis.UNKNOWN &&
-                choice.state in setOf(Gate.State.RAW, Gate.State.COOKED)) {
-                "basis and preparation state must be manually reviewed"
+                choice.state in setOf(Gate.State.RAW, Gate.State.COOKED) &&
+                (line.state == Gate.State.UNKNOWN || choice.state == line.state)) {
+                "basis and preparation state must be manually reviewed consistently"
             }
             val expectedUnit = when (line.unit) {
                 Gate.UnitCode.G, Gate.UnitCode.PIECE -> BaseUnit.GRAM
