@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T21:56:42.267Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe review persistence and context validation continuation"
-workingBranch: "integration-iii/recipe-review-freshness-20261102-2258"
+workingBranch: "integration-iii/docs-review-freshness-20261102-2305"
 lastReleasedAtUtc: "2026-11-02T21:45:37.312Z"
 lastReleasedCommit: "45c49073530a30f461b0278f106aee2aa6a5b972"
 nextStep: "Docs-only status PR #153 open; Android workflow excludes STATUS.md so no PR CI auto-trigger. Next code: authenticated FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
