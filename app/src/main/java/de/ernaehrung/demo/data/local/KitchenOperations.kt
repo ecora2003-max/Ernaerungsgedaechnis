@@ -50,13 +50,22 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         require(previous == null || previous.recordedAt in 0L..recordedAt) {
             "Rezeptrevision liegt vor ihrer Vorgängerversion."
         }
+        // A recipe cannot depend on a product version that was not yet known at
+        // the physical recipe-save instant. Validate all ingredients before any
+        // recipe rows are inserted; a retry remains handled by replay above.
+        val resolvedIngredients = input.ingredients.map { ingredient ->
+            val product = requireNotNull(dao.version(ingredient.versionId)) { "Artikelversion der Zutat nicht gefunden." }
+            require(product.recordedAt in 0L..recordedAt) {
+                "Rezeptzutat verweist auf eine erst später erfasste oder ungültig datierte Artikelversion."
+            }
+            ingredient to product
+        }
         val identity = recipeId ?: id()
         val version = id()
         if (previous == null) dao.insertRecipe(RecipeEntity(identity, recordedAt))
         dao.insertRecipeVersion(RecipeVersionEntity(version, identity, (previous?.revision ?: 0) + 1, input.name.trim(),
             input.yieldPortions, null, input.steps, null, null, true, input.storageInstructions, input.safetySource, Quality.UNKNOWN, recordedAt, reason))
-        input.ingredients.forEachIndexed { position, ingredient ->
-            val product = requireNotNull(dao.version(ingredient.versionId)) { "Artikelversion der Zutat nicht gefunden." }
+        resolvedIngredients.forEachIndexed { position, (ingredient, product) ->
             dao.insertIngredient(RecipeIngredientEntity(version, position, product.id, ingredient.amount, product.baseUnit, ingredient.note))
         }
         dao.insertOperation(OperationEntity(key, "RECIPE", hash, recordedAt, version))
