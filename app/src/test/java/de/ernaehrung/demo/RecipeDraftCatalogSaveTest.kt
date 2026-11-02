@@ -438,7 +438,7 @@ class RecipeDraftCatalogSaveTest {
         assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
         rejected { save("expired-consent", ready) }
         // Repeating the same caller-supplied Boolean cannot refresh a stale ledger row.
-        assertEquals(digest, consent("expired-consent", ready))
+        rejected { consent("expired-consent", ready) }
         rejected { save("expired-consent", ready) }
         assertEquals(before, dao.operationCount())
         assertNull(dao.operation("expired-consent"))
@@ -458,10 +458,36 @@ class RecipeDraftCatalogSaveTest {
 
         trustedClock = at + 86_400_000L
         assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("fresh-boundary", ready) }
         assertEquals(saved, save("fresh-boundary", ready))
         assertEquals(count, dao.operationCount())
         assertEquals(1, dao.ingredients(saved).size)
         assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun expiredCheckpointCannotBeRefreshedButNewConsentKeyWorks() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val ready = preview()
+        val digest = consent("old-checkpoint", ready)
+        trustedClock = at + 300_000L
+        // A retry at the exact boundary is still idempotent, not a new checkpoint.
+        assertEquals(digest, consent("old-checkpoint", ready))
+        val before = dao.operationCount()
+        trustedClock += 1L
+        rejected { consent("old-checkpoint", ready) }
+        assertEquals(before, dao.operationCount())
+        assertEquals(at, dao.operation("RECIPE_DRAFT_CONSENT_V1:old-checkpoint")?.recordedAt)
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertNull(dao.operation("old-checkpoint"))
+
+        // A genuinely new action uses a new key; no expired row is rewritten.
+        assertEquals(digest, consent("new-checkpoint", ready))
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals("new-checkpoint", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(at, dao.operation("RECIPE_DRAFT_CONSENT_V1:old-checkpoint")?.recordedAt)
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
     }
 
     @Test fun expiredConsentCannotReplayUnrelatedManualRecipeOperation() = runBlocking {
