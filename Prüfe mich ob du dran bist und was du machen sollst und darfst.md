@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T08:01:35.628Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Change GitHub inactivity watchdog from 35m to 30m"
-workingBranch: null
+workingBranch: "maintenance/integration-idle-recovery-30m-20261102"
 lastReleasedAtUtc: "2026-11-02T07:58:23.740Z"
 lastReleasedCommit: "4c88c6a58a991ef81dda18e45e97f37b265f7f48"
 nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
