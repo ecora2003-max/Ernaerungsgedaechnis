@@ -99,7 +99,7 @@ class PurchaseDatabaseTest {
         assertEquals(batch, FoodStore(db) {
             error("Stock booking replay must not read the clock")
         }.bookPurchaseLine("stock-single-instant", stock, true))
-        assertEquals(1, dao.receiptBooking(stock.lineId)?.let { 1 })
+        assertNotNull(dao.receiptBooking(stock.lineId))
         assertEquals(0, dao.consumptionCount())
     }
 
