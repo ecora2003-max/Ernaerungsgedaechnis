@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T18:13:59.277Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration II: nächste konkrete Room-Rezept-Kontext-Validierung mit Regressionstest"
-workingBranch: "integration-ii-offer-version-evidence-digest-20261102-1814"
+workingBranch: "integration-ii-offer-provenance-status-20261102-1824"
 lastReleasedAtUtc: "2026-11-02T18:06:02.844Z"
 lastReleasedCommit: "234d21f39e66ef7df2f9d8e086ed85c606305aca"
 nextStep: "Unabhängige authentifizierte Nutzeraktionsprovenienz beim Rezeptsave, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
