@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.Flow
 data class CatalogRow(@Embedded val version: ProductVersionEntity, val stockAmount: Long)
 data class BatchRow(@Embedded val batch: BatchEntity, val productName: String, val unit: BaseUnit,
     val locationName: String, val stockAmount: Long, val originReversed: Boolean)
+/** Minimal immutable movement evidence for a time-consistent Room stock projection. */
+data class StockMovementSnapshotRow(val id: String, val batchId: String, val delta: Long,
+    val recordedAt: Long, val occurredOn: String?)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
 data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
 data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
@@ -161,8 +164,11 @@ internal interface FoodDao {
         FROM batches b JOIN product_versions v ON v.id = b.versionId
         JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     suspend fun planningBatches(): List<BatchRow>
-    /** Read-only stock history token for optimistic recipe-context revalidation. */
-    @Query("SELECT id FROM stock_movements ORDER BY id") suspend fun stockMovementIds(): List<String>
+    /** Effective movement day falls back to the linked legacy consumption date. */
+    @Query("""SELECT m.id, m.batchId, m.delta, m.recordedAt,
+        COALESCE(m.occurredOn, c.date) AS occurredOn FROM stock_movements m
+        LEFT JOIN consumption_events c ON c.operationId = m.operationId ORDER BY m.id""")
+    suspend fun stockMovementSnapshotRows(): List<StockMovementSnapshotRow>
 
     @Query("SELECT * FROM storage_locations ORDER BY name") fun observeLocations(): Flow<List<StorageLocationEntity>>
     @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
