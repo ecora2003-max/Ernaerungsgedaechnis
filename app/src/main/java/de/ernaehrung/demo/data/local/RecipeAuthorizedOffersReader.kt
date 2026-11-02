@@ -94,8 +94,8 @@ internal class RecipeAuthorizedOffersReader(
         }
         if (candidates.isEmpty() || candidates.size > MAX_OFFERS ||
             candidates.map { it.observationId }.toSet().size != candidates.size) return null
-        val approved = mutableListOf<Pair<ExternalPriceBridge.Candidate,
-            ExternalPriceBridge.VisiblePrice>>()
+        val approved = mutableListOf<Triple<ExternalPriceBridge.Candidate,
+            ExternalPriceBridge.VisiblePrice, ShoppingOfferGate.HostFacts>>()
         for (candidate in candidates) {
             if (candidate.productVersionId != version.id) return null
             val confirmedArticle = try {
@@ -119,14 +119,14 @@ internal class RecipeAuthorizedOffersReader(
                 ExternalPriceBridge.Unit.PORTION -> version.baseUnit == BaseUnit.PORTION
             }
             if (!unitMatches) return null
-            approved += candidate to visible
+            approved += Triple(candidate, visible, facts)
         }
         val ordered = approved.sortedBy { it.second.observationId }
         val revision = WriteRules.fingerprint(
             "RECIPE_AUTHORIZED_OFFERS_REVISION_V1",
             scopeId(scope), version.id, version.revision, version.recordedAt,
             version.baseUnit.name,
-            ordered.map { (candidate, visible) ->
+            ordered.map { (candidate, visible, facts) ->
                 listOf(candidate.observationId, candidate.sourceId,
                     candidate.rightsStatus.name, candidate.rightsEvidenceRef,
                     candidate.observedAt.toInstant().toString(),
@@ -134,12 +134,16 @@ internal class RecipeAuthorizedOffersReader(
                     candidate.merchandiseCents, candidate.depositCents,
                     candidate.quantityMilli, candidate.unit?.name,
                     candidate.currency, candidate.conditionsVerified,
+                    // Independently verified host facts can change while an offer
+                    // remains eligible. Such changes must invalidate old reviews.
+                    facts.priceKind, facts.dataQuality, facts.availability,
+                    facts.conditional, facts.scopeType, facts.verifiedByHost,
                     visible.merchandiseCents, visible.depositCents,
                     visible.checkoutCents, visible.validUntil.toString(),
                     visible.storeId, visible.regionId)
             }
         )
-        val lines = ordered.map { (_, visible) ->
+        val lines = ordered.map { (_, visible, _) ->
             RecipeContextContentBinding.Line(
                 identity = "offer:${visible.observationId}",
                 versionId = visible.productVersionId,
