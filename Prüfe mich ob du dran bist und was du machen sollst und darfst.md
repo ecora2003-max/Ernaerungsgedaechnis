@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T19:23:07.561Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: Room/FoodStore recipe-save provenance validation"
-workingBranch: "integration-iv/recipe-context-ttl-ms-20261102-1924"
+workingBranch: "integration-iv/docs-context-ttl-ms-20261102-1931"
 lastReleasedAtUtc: "2026-11-02T19:17:54.947Z"
 lastReleasedCommit: "551c170e052309211cb1fe692f59270d7e11add2"
 nextStep: "Unabhängige FoodStore-Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
