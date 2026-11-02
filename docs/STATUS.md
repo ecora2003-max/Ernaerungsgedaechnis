@@ -1,5 +1,13 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+
+## Integration II: Berlin-lokaler Kenntnis-Cutoff für private Bezahlpreishistorie (02.11.2026)
+
+- [PR #60](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/60), **Code-/Test-HEAD `080dfba016d4250d2fe30b90836d3ecaf14c9e55`**, Squash-Merge `bf59761d2e84cf91e192f7c2aa953b8a501c2d6c`: Der reale `LocalDataViewModel.showHistoricalPaidForShopping` begrenzt historische Bezahlpreisbelege nun am Ende des **Berliner Einkaufstags** statt am UTC-Tagesende. Damit werden später am Folgetag bekannt gewordene historische Belege nicht rückwirkend als zum Einkaufstag bekannte Alternative angezeigt. `AppCalendar.endOfDayMillis` berücksichtigt 23-/25-Stunden-Tage bei Sommer-/Winterzeitwechsel; die tatsächliche frühere `nowMillis`-Grenze bleibt erhalten. Zwei neue positive/negative JVM-/Room-ViewModel-Regressionen prüfen DST, Gerätezeitzonen, Kenntnis-Cutoff und unveränderte Ist-Buchungen. Keine Schemaänderung, kein neuer Kauf, keine Angebots- oder Ist-Buchung.
+- **[PR-CI 41371657635](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41371657635) PASS auf exakt `080dfba016d4250d2fe30b90836d3ecaf14c9e55`**: **417/417 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, gepinnte v1-Rezept-/Produkt-/Shopping-Python-Referenzgates, Room-Schema und Android-Testkompilierung PASS; **0 ausgeführte Android-Geräte-/Emulatortests**, keine APK. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` unverändert; v1.1 nicht freigegeben.
+- **Weiter:** unabhängig authentifizierte, an den konkreten FoodStore-Rezeptsave gebundene Nutzeraktionsprovenienz; echte Android-/Privacy-E2E und vollständige Rezept-Generator-/Revalidator-Parität. Alle vier Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
 ## Integration III: Room-Shopping-Snapshot mit einheitlicher Berlin-Zeit (02.11.2026)
 
 - [PR #58](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/58), **Code-/Test-HEAD `8be3947b9335397efe28f773f11f3719832417d3`**, Squash-Merge `2e43660d5c43e7d3e026b0e295a40abe044c4068`: Die echte Room-Shopping-Lesestrecke und die transaktionale Rezept-Kontextrevalidierung verwenden für verschachtelte Shopping-/Planungslesungen exakt den einmal erfassten `capturedAt`-Zeitpunkt. Ein Berlin-Mitternachtswechsel während der Transaktion kann dadurch weder einen gültigen Einkaufstag fälschlich verwerfen noch einen rückdatierten Einkaufstag durch Uhrenrücksprung legitimieren. Zwei neue positive/negative Room/Robolectric-Regressionen; keine Schemaänderung oder Ist-Buchung.
