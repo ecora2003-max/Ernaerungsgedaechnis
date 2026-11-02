@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T11:55:18.079Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement and test FoodStore recipe-confirmation integrity regression"
-workingBranch: "codex/integration-iii-receipt-consumption-origin-20261102-1155"
+workingBranch: "codex/integration-iii-receipt-consumption-evidence-20261102-1203"
 lastReleasedAtUtc: "2026-11-02T11:41:01.431Z"
 lastReleasedCommit: "888ee55eaa8451802ee4557792eaf57a1186a00b"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
