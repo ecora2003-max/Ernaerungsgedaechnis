@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T07:21:33.200Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement next real Android Room/FoodStore regression and tests"
-workingBranch: null
+workingBranch: "integration-ii-movement-operation-provenance-20261102"
 lastReleasedAtUtc: "2026-11-02T07:13:41.311Z"
 lastReleasedCommit: "1440d18e2369c8cf005939ee4cb3c699ff0c7466"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
