@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): ablaufende Rezeptbestätigung vor erstem Save (02.11.2026)
+
+- **Code-HEAD `d39953ca2aeb390a8a60c7e79ad8e7b10c4b1944`, CI PENDING:** Ein dauerhaft gespeicherter `RECIPE_DRAFT_CONSENT_V1`-Checkpoint berechtigt nur innerhalb von fünf Minuten zu einem *neuen* Rezept-Save. Nach Ablauf wird der Checkpoint nicht als wiederaufnehmbarer Consent angezeigt; ein bereits erfolgreich geschriebenes Rezept darf mit unverändertem Key und identischem Freigabedigest weiterhin idempotent wiederholt werden. Drei positive/negative Room-/Robolectric-Regressionen für Frist, Rollback und unveränderte Replay-Fingerprints ergänzt. Keine authentifizierte FoodStore-Aktionsprovenienz, keine Schemaänderung, keine APK; Android-/Privacy-E2E weiterhin offen.
+- **Weiter:** unabhängige Android-Keystore-/Credential-Attestation an der FoodStore-Save-Grenze, Generator-/Revalidator-Parität und echte Android-/Privacy-E2E. Gesamtmodule bleiben TEILWEISE/OFFEN.
+
 ## Integration IV: kohärenter Erfassungszeitpunkt privater Bezahlpreisbelege (02.11.2026)
 
 - **Code-Commit `4e194096b4d7195ea14a5b239100f06bbcd40ca0`, Test-Commit `a5d4ff5bc0362d69b4a0fc4d79c1a01f9c89f67f` (CI bis zur PR-Prüfung PENDING):** `FoodStore.saveHistoricalPaidPrice` liest nach idempotentem Replay nur einen nichtnegativen Erfassungszeitpunkt und verwendet ihn identisch für Operation und unveränderliche private Preisbeobachtung. Zwei Room-/Robolectric-Regressionen prüfen Mitternachtswechsel, Retry ohne zusätzliche Uhrabfrage, negative Zeit mit Rollback und fehlende Ist-/Angebotsbuchung. Keine Schema-/Vertragsänderung, kein Livefeed, keine APK.
