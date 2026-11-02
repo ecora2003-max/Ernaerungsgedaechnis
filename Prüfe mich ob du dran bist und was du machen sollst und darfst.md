@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T17:07:58.047Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Rezept-Kontext: Room-Snapshot-Konsistenz und Regressionstests"
-workingBranch: "integration-ii-batch-handling-times-20261102-1708"
+workingBranch: "integration-ii-status-batch-times-20261102-1715"
 lastReleasedAtUtc: "2026-11-02T17:05:52.828Z"
 lastReleasedCommit: "0450169f7c3342b5f3b2fac90ac2c38ce89abf49"
 nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
