@@ -63,6 +63,12 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val day = movement.occurredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
+            // Legacy rows can carry both a physical instant and a calendar
+            // day. They must agree in Berlin before either can authorize an
+            // as-of stock projection. Null occurrence remains unknown, not zero.
+            if (day != null && movement.occurredAt != null &&
+                Instant.ofEpochMilli(movement.occurredAt)
+                    .atZone(ZoneId.of("Europe/Berlin")).toLocalDate() != day) return null
             if (movement.id.isBlank() || movement.batchId !in knownBatches ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||

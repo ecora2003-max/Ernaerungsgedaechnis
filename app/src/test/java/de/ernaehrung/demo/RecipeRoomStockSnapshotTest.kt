@@ -370,4 +370,59 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(before, db.foodDao().operationCount())
         assertNotNull(store.readRecipeRoomStockSnapshot())
     }
+
+    @Test fun confirmedConsumptionRejectsMismatchedBerlinOccurrenceDayAtomically() = runBlocking {
+        val before = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val recorded = Instant.parse("2026-11-02T00:10:00Z").toEpochMilli()
+        // UTC still says 1 November, but Berlin already says 2 November.
+        val occurred = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+        val later = FoodStore(db) { recorded }
+        val input = ConsumptionInput(versionId, "2026-11-01", "Abendessen", 100L,
+            listOf(Allocation(batchId, 100L)), occurredAt = occurred)
+        assertTrue(runCatching {
+            later.consume("mismatched-berlin-consumption", input, true)
+        }.isFailure)
+        assertNull(db.foodDao().operation("mismatched-berlin-consumption"))
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+        val unchanged = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(before.revision, unchanged.revision)
+        assertEquals(before.lines, unchanged.lines)
+    }
+
+    @Test fun confirmedConsumptionAcceptsMatchingBerlinDayAcrossUtcMidnightAndReplays() = runBlocking {
+        val recorded = Instant.parse("2026-11-02T00:10:00Z").toEpochMilli()
+        val occurred = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+        val later = FoodStore(db) { recorded }
+        val input = ConsumptionInput(versionId, "2026-11-02", "Frühstück", 100L,
+            listOf(Allocation(batchId, 100L)), occurredAt = occurred)
+        val before = db.foodDao().operationCount()
+        val result = later.consume("valid-berlin-consumption", input, true)
+        assertEquals(result, later.consume("valid-berlin-consumption", input, true))
+        val movement = db.foodDao().movements("valid-berlin-consumption").single()
+        assertEquals("2026-11-02", movement.occurredOn)
+        assertEquals(occurred, movement.occurredAt)
+        assertEquals(recorded, movement.recordedAt)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+        assertEquals(1_900L, requireNotNull(later.readRecipeRoomStockSnapshot())
+            .lines.single().amountMilli)
+    }
+
+    @Test fun contradictoryLegacyMovementDayCannotEnterRecipeStockContext() = runBlocking {
+        val recorded = Instant.parse("2026-11-02T00:10:00Z").toEpochMilli()
+        val occurred = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+        val operation = "legacy-contradictory-berlin-day"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT",
+            operation, recorded, batchId))
+        db.foodDao().insertMovement(StockMovementEntity("legacy-contradictory-movement",
+            batchId, operation, 100L, MovementKind.RECEIPT, occurred,
+            Source.USER, "Contradictory legacy physical date", recorded,
+            occurredOn = "2026-11-01"))
+        val later = FoodStore(db) { recorded }
+        assertNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertEquals(0, db.foodDao().movements(operation).count { it.delta < 0L })
+    }
 }
