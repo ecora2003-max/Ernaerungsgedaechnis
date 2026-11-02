@@ -91,6 +91,27 @@ class RecipeContextContentBindingTest {
         assertNull(unapproved.stock)
     }
 
+    @Test fun negativeEpochCannotBindAnyContextCombinationEvenWithMatchingSourceTimes() {
+        val negative = Instant.EPOCH.minusMillis(1)
+        for (bits in 0..7) {
+            val f = flags(bits)
+            val s = stock.copy(capturedAt = negative)
+            val l = shopping.copy(capturedAt = negative)
+            val o = offers.copy(capturedAt = negative)
+            assertNull(Binding.bind(f, negative, s, l, o))
+            val context = Gate.typedContext(f, negative,
+                Gate.Evidence(s, true), Gate.Evidence(l, true), Gate.Evidence(o, true))
+            assertNull(context.contentBinding)
+            val review = Gate.review(draft(f),
+                Gate.Request(f, 2, userConfirmedRecipeSave = true), facts(), context)
+            assertEquals(Gate.Status.REVIEW_REQUIRED, review.status)
+            assertTrue("CONTEXT_CONTENT_UNVERIFIED" in review.gaps)
+            assertNull(review.input)
+        }
+        val epochStock = stock.copy(capturedAt = Instant.EPOCH)
+        assertNotNull(Binding.bind(flags(1), Instant.EPOCH, epochStock, null, null))
+    }
+
     @Test fun invalidOrRemovedTypedBindingCannotClaimReadyForSave() {
         val f = flags(1)
         val invalid = Gate.typedContext(f, at,
