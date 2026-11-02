@@ -665,4 +665,32 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun movementAuthorBeforeBatchCreationFailsClosedEvenAfterClockAdvances() = runBlocking {
+        store.correctStock("stock-before-origin-author", StockCountInput(
+            batchId, 2_000L, 1_400L, "2026-11-01", "Bestätigte Zählung"), true)
+        val valid = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        assertEquals(1_400L, valid.lines.single().amountMilli)
+
+        // The correction movement was recorded at the snapshot instant, but
+        // its independently stored author claims to predate the batch receipt.
+        // A later as-of instant cannot legitimize this impossible history.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.minusSeconds(60).toEpochMilli(), "stock-before-origin-author"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
+        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        assertNull(later.readRecipeRoomStockSnapshot())
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), "stock-before-origin-author"))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(valid.lines, restored.lines)
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }

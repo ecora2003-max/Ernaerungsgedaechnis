@@ -66,6 +66,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val origins = rows.map { it.batch.originOperationId }.distinct()
             .associateWith { dao.operation(it) }
         val eligibleBatchIds = mutableSetOf<String>()
+        val batchOriginRecordedAt = mutableMapOf<String, Long>()
         for (row in rows) {
             val batch = row.batch
             if (batch.id.isBlank() || batch.versionId.isBlank() || batch.locationId.isBlank() ||
@@ -81,6 +82,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 origin.recordedAt < version.recordedAt ||
                 origin.kind !in setOf("RECEIPT", "TRANSFER", "PRODUCTION") ||
                 origin.resultId != batch.id) return null
+            batchOriginRecordedAt[batch.id] = origin.recordedAt
             // A zero balance is known zero, but an expired, future-acquired or
             // unconfirmed batch is not a current stock line even when empty.
             // Malformed dates remain an unavailable snapshot, never an assumption.
@@ -105,6 +107,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         // future-dated rows. Never expose those as current physical stock.
         // A legacy consumption date is resolved by the DAO when occurredOn is null.
         for (movement in movements) {
+            // A movement's own author must not predate the batch-creating
+            // operation. Later recording of the movement cannot make an
+            // impossible correction, consumption or transfer legitimate.
+            val batchCreatedAt = batchOriginRecordedAt[movement.batchId] ?: return null
             val day = movement.occurredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
@@ -123,6 +129,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 !authorMatchesMovement(movement) ||
                 movement.operationRecordedAt == null ||
                 movement.operationRecordedAt !in 0L..asOfMillis ||
+                movement.operationRecordedAt < batchCreatedAt ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||
                 // A stock movement cannot have been committed before its
