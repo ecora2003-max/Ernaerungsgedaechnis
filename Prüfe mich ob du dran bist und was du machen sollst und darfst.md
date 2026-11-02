@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV automation run 7"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-mvyp9yk4-lwjsrl8s4i"
-acquiredAtUtc: "2026-11-02T03:29:27.604Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore paid-price history: one coherent nonnegative record timestamp"
-workingBranch: "integration-iv-paid-price-timestamp-20261102"
-lastReleasedAtUtc: "2026-11-02T03:20:33.660Z"
-lastReleasedCommit: "8573d52db4fddbadab0739077a021c0a185f17a8"
-nextStep: "Independent authenticated FoodStore recipe-save action provenance; generator/revalidator parity; real Android credential/privacy E2E"
+task: "Integration IV: paid-price timestamp coherence, PR #74 merged; CI 434/434 PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T03:36:38.421Z"
+lastReleasedCommit: "62db1c6ddf3886fa9191682f6cb72ab552d1a887"
+nextStep: "Independent authenticated FoodStore recipe-save provenance; generator/revalidator parity; real Android credential/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
