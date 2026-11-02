@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T22:25:37.649Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: Room/FoodStore provenance and snapshot consistency regression"
-workingBranch: null
+workingBranch: "integration-iv/stock-occurrence-recorded-chronology-20261102"
 lastReleasedAtUtc: "2026-11-02T22:15:39.003Z"
 lastReleasedCommit: "3e7b6fd49422fdb2cd31e368aec9fb372fdc5a18"
 nextStep: "PR #157 docs-only status update remains open (no PR CI run); next code: independently authenticated recipe-save user action, generator/revalidator parity and Android/privacy E2E; modules partial"
