@@ -176,6 +176,41 @@ class RecipeRoomStockSnapshotTest {
             at.toEpochMilli(), occurredOn = "2026-11-02"))
         assertNull(store.readRecipeRoomStockSnapshot())
     }
+    @Test fun movementBeforeBatchAcquisitionDayCannotAuthorizeLaterRecipeStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val later = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val receiptOperation = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+
+        // The receipt's persisted movement occurred on 1 November. A legacy
+        // acquisition date of 2 November cannot make that physical movement
+        // legitimate merely because the snapshot is captured on 2 November.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET acquiredOn = ? WHERE id = ?",
+            arrayOf("2026-11-02", batchId))
+        assertNull(later.readRecipeRoomStockSnapshot())
+
+        // A legacy movement can have an instant but no calendar day. That
+        // instant must still be checked against the acquisition's Berlin day.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredOn = NULL, occurredAt = ? WHERE operationId = ?",
+            arrayOf(at.toEpochMilli(), receiptOperation))
+        assertNull(later.readRecipeRoomStockSnapshot())
+
+        // Repair the inconsistent history without writing another Ist-event.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET acquiredOn = ? WHERE id = ?",
+            arrayOf("2026-11-01", batchId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredOn = ?, occurredAt = NULL WHERE operationId = ?",
+            arrayOf("2026-11-01", receiptOperation))
+        val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(original.lines, recovered.lines)
+        assertEquals(original.revision, recovered.revision)
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun expiredZeroBalanceIsExcludedWithoutHidingCurrentKnownZero() = runBlocking {
         val expiring = store.receive("room-stock-expiring-zero",
             BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
