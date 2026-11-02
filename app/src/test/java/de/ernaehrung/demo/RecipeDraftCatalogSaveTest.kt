@@ -802,4 +802,38 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(before, dao.operationCount())
         assertEquals(0, dao.consumptionCount())
     }
+
+    @Test fun staleCatalogConfirmationBeforeDraftCreationCannotReachConsentOrSave() = runBlocking {
+        // A product may have existed earlier, but a confirmation of that product
+        // is not consent for a recipe draft created only later.
+        val draftCreatedAt = at + 60_000L
+        store = FoodStore(db) { at + 120_000L }
+        val laterDraft = json.replace("2026-11-01T04:00:00Z",
+            "2026-11-01T04:01:00Z")
+        val staleFacts = confirmed() // confirmation at 'at', before this draft exists
+        val before = dao.operationCount()
+        val stalePreview = preview(laterDraft, staleFacts)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, stalePreview.status)
+        assertNull(stalePreview.input)
+        assertNull(stalePreview.approvalBasisDigest)
+        rejected { consent("pre-draft-consent", stalePreview, laterDraft, staleFacts) }
+        rejected { save("pre-draft-save", stalePreview, laterDraft, staleFacts) }
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+
+        // A fresh, separately recorded ingredient review at the draft's creation
+        // instant restores the existing consent -> save flow without an Ist-booking.
+        val currentFacts = staleFacts.mapValues { (_, fact) ->
+            fact.copy(confirmedAt = draftCreatedAt)
+        }
+        val ready = preview(laterDraft, currentFacts)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
+        assertNotNull(ready.approvalBasisDigest)
+        consent("fresh-draft-consent", ready, laterDraft, currentFacts)
+        val saved = save("fresh-draft-consent", ready, laterDraft, currentFacts)
+        assertNotNull(dao.recipeVersion(saved))
+        assertEquals(saved, save("fresh-draft-consent", ready, laterDraft, currentFacts))
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
 }
