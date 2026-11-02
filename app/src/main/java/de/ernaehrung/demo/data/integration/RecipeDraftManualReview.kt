@@ -35,6 +35,12 @@ internal object RecipeDraftManualReview {
     ): Prepared {
         require(explicitlyReviewed) { "explicit manual review required" }
         require(nowMillis >= 0L) { "invalid review timestamp" }
+        // A separately confirmed review must not predate the draft it approves.
+        // The JSON importer tolerates limited generator clock skew, but that
+        // tolerance cannot turn a future draft into an already reviewed one.
+        require(imported.createdAt.toInstant().toEpochMilli() <= nowMillis) {
+            "manual review predates draft creation"
+        }
         val draft = imported.draft
         // No stock/list/offer snapshot or digest has been independently acquired here.
         require(!draft.flags.considerStock && !draft.flags.considerShopping &&
