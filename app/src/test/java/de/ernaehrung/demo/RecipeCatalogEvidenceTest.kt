@@ -105,6 +105,34 @@ class RecipeCatalogEvidenceTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED,
             preview(original.copy(state = null)).status)
     }
+    @Test fun futureProductRevisionIsNotKnownAtEarlierReviewButInvalidatesLater() = runBlocking {
+        val current = requireNotNull(dao.version(versionId))
+        val future = current.copy(id = "future-v2", revision = 2, recordedAt = at + 60_000L)
+        val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        val currentConfirmation = confirmation()
+        val versions = listOf(current, future)
+        // Exercise the actual FoodStore -> Room catalog read, not only a pure adapter.
+        dao.insertVersion(future)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview(currentConfirmation).status)
+        val afterRevision = FoodStore(db) { at + 60_000L }
+        assertEquals(Gate.Status.REVIEW_REQUIRED, afterRevision.previewRecipeDraftV1(
+            json, request, mapOf("rice" to currentConfirmation), states).status)
+        assertEquals(versionId, Catalog.resolve(listOf(line), versions,
+            mapOf("rice" to currentConfirmation), at)["rice"]?.productVersionId)
+        assertTrue(Catalog.resolve(listOf(line), versions,
+            mapOf("rice" to currentConfirmation), at + 60_000L).isEmpty())
+        val futureConfirmation = currentConfirmation.copy(
+            productVersionId = future.id, productRevision = future.revision,
+            versionRecordedAt = future.recordedAt, confirmedAt = future.recordedAt)
+        assertTrue(Catalog.resolve(listOf(line), versions,
+            mapOf("rice" to futureConfirmation), at).isEmpty())
+        assertEquals(future.id, Catalog.resolve(listOf(line), versions,
+            mapOf("rice" to futureConfirmation), at + 60_000L)["rice"]?.productVersionId)
+        assertEquals(0, dao.consumptionCount())
+        assertEquals(1, dao.operationCount()) // Only the setup product operation.
+    }
+
     @Test fun ambiguousCatalogIdsAndLatestRevisionsFailClosed() = runBlocking {
         val version = requireNotNull(dao.version(versionId))
         val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,

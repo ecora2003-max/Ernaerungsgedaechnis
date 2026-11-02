@@ -49,9 +49,12 @@ internal object RecipeDraftManualReview {
                 (it.startsWith("FOOD:") && it.length > 5)
         }) { "unsupported restriction" }
         val byId = catalog.groupBy { it.id }
+        // Select the latest version known at this review instant. A future-dated
+        // revision must neither displace a currently valid row nor authorize itself.
         val latestByProduct = catalog.groupBy { it.productId }.mapValues { (_, versions) ->
-            versions.filter { it.revision == versions.maxOf { row -> row.revision } }
-                .singleOrNull()?.id
+            val known = versions.filter { it.recordedAt <= nowMillis }
+            val highest = known.maxOfOrNull { it.revision }
+            known.filter { it.revision == highest }.singleOrNull()?.id
         }
         val confirmations = linkedMapOf<String, RecipeCatalogEvidence.ConfirmedLine>()
         val reviewedStates = linkedMapOf<String, Gate.State>()

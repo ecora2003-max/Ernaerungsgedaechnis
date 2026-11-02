@@ -84,6 +84,27 @@ class RecipeDraftManualReviewTest {
             mapOf("rice" to choice()), setOf("ALLERGEN:SOY"), true, nowMillis) }
     }
 
+    @Test fun futureRevisionDoesNotDisplaceCurrentVersionUntilItsOwnRecordedTime() {
+        val versions = listOf(catalog(), catalog("v2", 2, recordedAt = nowMillis + 1_000L))
+        val before = Manual.prepare(imported(), versions,
+            mapOf("rice" to choice(false)), setOf("ALLERGEN:SOY"), true, nowMillis)
+        assertEquals("v1", before.confirmations["rice"]?.productVersionId)
+        assertEquals("v1", RecipeCatalogEvidence.resolve(imported().draft.lines,
+            versions, before.confirmations, nowMillis)["rice"]?.productVersionId)
+
+        // Once the new revision is known, the old confirmation becomes stale.
+        rejects { Manual.prepare(imported(), versions,
+            mapOf("rice" to choice(false)), setOf("ALLERGEN:SOY"), true,
+            nowMillis + 1_000L) }
+        assertTrue(RecipeCatalogEvidence.resolve(imported().draft.lines,
+            versions, before.confirmations, nowMillis + 1_000L).isEmpty())
+        val after = Manual.prepare(imported(), versions,
+            mapOf("rice" to choice(false).copy(versionId = "v2")),
+            setOf("ALLERGEN:SOY"), true, nowMillis + 1_000L)
+        assertEquals("v2", RecipeCatalogEvidence.resolve(imported().draft.lines,
+            versions, after.confirmations, nowMillis + 1_000L)["rice"]?.productVersionId)
+    }
+
     @Test fun unknownAllergenNeverBecomesAbsentAndContextIsNotSilentlyDropped() {
         val prepared = Manual.prepare(imported(), listOf(catalog()),
             mapOf("rice" to choice(null)), setOf("ALLERGEN:SOY"), true, nowMillis)
