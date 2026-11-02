@@ -904,4 +904,56 @@ class RecipeRoomStockSnapshotTest {
     }
 
 
+
+    @Test fun openingAndThawingBeforeAcquisitionDayRemainInvalidAtLaterSnapshots() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val operations = db.foodDao().operationCount()
+        val later = FoodStore(db) { at.plusSeconds(2 * 86_400).toEpochMilli() }
+
+        // Simulate a legacy import whose recorded receipt precedes its physical
+        // acquisition day. The receipt movement's calendar day is consistent.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET acquiredOn = ? WHERE id = ?",
+            arrayOf("2026-11-02", batchId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredOn = ? WHERE batchId = ?",
+            arrayOf("2026-11-02", batchId))
+
+        for (column in listOf("openedAt", "thawedAt")) {
+            // A state event after the acquisition day is valid and must remain
+            // visible to a later read-only recipe preview.
+            db.openHelper.writableDatabase.execSQL(
+                "UPDATE batches SET $column = ? WHERE id = ?",
+                arrayOf(at.plusSeconds(86_400).toEpochMilli(), batchId))
+            val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
+            assertEquals(2_000L, valid.lines.single().amountMilli)
+
+            // Same timestamp as the recorded receipt, but one Berlin day
+            // before acquisition: later snapshots must never legitimize it.
+            db.openHelper.writableDatabase.execSQL(
+                "UPDATE batches SET $column = ? WHERE id = ?",
+                arrayOf(at.toEpochMilli(), batchId))
+            assertNull(later.readRecipeRoomStockSnapshot())
+            assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+            assertEquals(operations, db.foodDao().operationCount())
+            assertEquals(0, db.foodDao().consumptionCount())
+
+            db.openHelper.writableDatabase.execSQL(
+                "UPDATE batches SET $column = NULL WHERE id = ?", arrayOf(batchId))
+            assertNotNull(later.readRecipeRoomStockSnapshot())
+        }
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET acquiredOn = ? WHERE id = ?",
+            arrayOf("2026-11-01", batchId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredOn = ? WHERE batchId = ?",
+            arrayOf("2026-11-01", batchId))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(original.lines, restored.lines)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
