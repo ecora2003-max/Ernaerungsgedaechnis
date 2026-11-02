@@ -59,8 +59,8 @@ ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102T213628Z-11"
 acquiredAtUtc: "2026-11-02T21:36:45.193Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration Chat: real Android host integration with positive/negative regression tests"
-workingBranch: null
+task: "Fail-closed recipe manual review when user confirmation predates draft creation"
+workingBranch: "integration-chat/draft-review-chronology-20261102-2136"
 lastReleasedAtUtc: "2026-11-02T21:35:54.111Z"
 lastReleasedCommit: "30789989f6cf4b653528145f8c1b921b3490b59c"
 nextStep: "Docs-only PR #151 awaits independent CI/merge; authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
