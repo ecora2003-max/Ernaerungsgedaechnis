@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat) 2026-11-03 run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102233800982-w8kv16oidy"
-acquiredAtUtc: "2026-11-02T23:38:00.982Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save action provenance and context regression"
-workingBranch: "integration-chat/recipe-import-host-bounds-20261103-0039"
-lastReleasedAtUtc: "2026-11-02T23:27:12.858Z"
-lastReleasedCommit: "fb06e1dd70378c200486f757c84fe174b264396f"
-nextStep: "Code PR #164 merged with CI 41544749395 PASS (531 JVM, 7 Room); docs PR #165 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
+task: "Recipe import host preview bounds and positive/negative regressions"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T23:44:55.818Z"
+lastReleasedCommit: "6e6dd4a29b39897c3cf83fe9dbf9288ea2ec2505"
+nextStep: "Code PR #166 merged with CI 41547137130 PASS (532 JVM, 7 Room); docs PR #167 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
