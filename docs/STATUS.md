@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: einheitlicher Rezept-Speicherzeitpunkt (02.11.2026)
+
+- **Code `e335596faf72ac24c885c641096e55b0c15ae9f9`, Tests `0f3038f2080acb826f5b8d70a81e79344e928f3e`, CI PENDING:** `KitchenOperations.saveRecipe` erfasst nach idempotentem Replay genau einen nichtnegativen Zeitpunkt für Rezept, Rezeptversion und unveränderliche RECIPE-Operation. Zwei positive/negative Room-/Robolectric-Regressionen für UTC-Mitternachtswechsel, unveränderten Retry und Rollback bei ungültiger Uhr. Keine Schema-/Vertragsänderung, keine APK oder Gerätetests. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft).
+- **Weiter:** unabhängig kryptographisch authentifizierte Nutzeraktionsprovenienz an der FoodStore-Rezept-Save-Grenze, Generator-/Revalidator-Parität und echte Android-/Privacy-E2E; alle vier Gesamtmodule TEILWEISE/OFFEN.
+
+
 
 ## Integration II: physischer Verzehrzeitpunkt und Berliner Ereignistag konsistent (02.11.2026)
 
