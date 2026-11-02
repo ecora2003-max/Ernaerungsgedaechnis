@@ -67,6 +67,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             .associateWith { dao.operation(it) }
         val eligibleBatchIds = mutableSetOf<String>()
         val batchOriginRecordedAt = mutableMapOf<String, Long>()
+        val batchAcquiredOn = mutableMapOf<String, LocalDate?>()
         for (row in rows) {
             val batch = row.batch
             if (batch.id.isBlank() || batch.versionId.isBlank() || batch.locationId.isBlank() ||
@@ -96,6 +97,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val acquired = batch.acquiredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
+            batchAcquiredOn[batch.id] = acquired
             val expiries = listOfNotNull(batch.bestBefore, batch.useBy).map {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
@@ -121,6 +123,18 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val day = movement.occurredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
+            // A movement cannot physically precede the batch's recorded
+            // acquisition day. A later review must not legitimize legacy
+            // stock activity from before the acquisition, even if the batch
+            // is now released and the movement's author operation exists.
+            val acquiredOn = batchAcquiredOn[movement.batchId]
+            if (acquiredOn != null && (
+                    day?.isBefore(acquiredOn) == true ||
+                    movement.occurredAt?.let { eventAt ->
+                        Instant.ofEpochMilli(eventAt)
+                            .atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
+                            .isBefore(acquiredOn)
+                    } == true)) return null
             // Legacy rows can carry both a physical instant and a calendar
             // day. They must agree in Berlin before either can authorize an
             // as-of stock projection. Null occurrence remains unknown, not zero.
