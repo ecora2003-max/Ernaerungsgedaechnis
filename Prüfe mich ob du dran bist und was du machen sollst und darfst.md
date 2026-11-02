@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II automated run 8"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-mvyt2o7o-k6dtr2i37x"
-acquiredAtUtc: "2026-11-02T05:15:46.068Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Implement next testable FoodStore/recipe Android integration"
-workingBranch: "integration-ii-status-berlin-consumption-mvyt"
-lastReleasedAtUtc: "2026-11-02T05:04:15.236Z"
-lastReleasedCommit: "9cacae2da3638846f2058285b96b1d5fbd2d5135"
+task: "Integration II: Berlin consumption occurrence/day consistency; PR #81 merged; 446/446 JVM PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T05:22:36.072Z"
+lastReleasedCommit: "93c4f1513f4a6bfa79b8e71ff099254a79ae4b16"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android credential/privacy device E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
