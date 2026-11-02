@@ -142,6 +142,11 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 // Reject retry rather than silently accepting a clock rollback.
                 "Bestätigungs-ID wurde bereits für einen anderen Rezeptentwurf verwendet."
             }
+            // Replaying an immutable checkpoint cannot renew its five-minute approval.
+            // A new confirmation after expiry must use a new operation key.
+            require(actionAt - previous.recordedAt <= recipeDraftConsentTtlMs) {
+                "Rezeptbestätigung abgelaufen; neue Vorgangs-ID und Gerätebestätigung erforderlich."
+            }
             return@withTransaction previous.resultId
         }
         dao.insertOperation(OperationEntity(consentKey, "RECIPE_DRAFT_CONSENT_V1",
