@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III turn 4"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261102T010034Z-III4"
-acquiredAtUtc: "2026-11-02T01:00:50.547Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Freeze Berlin-local shopping snapshot time at capturedAt across Room reads"
-workingBranch: "integration-iii-shopping-snapshot-clock-20261102"
-lastReleasedAtUtc: "2026-11-02T00:53:18.399Z"
-lastReleasedCommit: "fa157020513a9a410037c0b1fde92cf1838a9e5c"
-nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; recipe generator/revalidator parity"
+task: "Room shopping snapshot Berlin-midnight consistency merged PR #58; 415/415 JVM CI"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T01:12:24.101Z"
+lastReleasedCommit: "06ffd7ba34683eacc9e9ea3ded66b560cc97f1c6"
+nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
