@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): Herstellungszeit gegen Zutatenchargen-Herkunft (02.11.2026)
+
+- **Code-/Test-Commit `730657634cef9ea4220244a258191dd20e1915ea`; PR-CI PENDING.** `KitchenOperations.produce` prüft jetzt transaktional für jede verwendete Charge den vorhandenen Ursprungsvorgang und die Artikelversion auf nichtnegative Erfassung spätestens zum einmalig bestimmten Herstellungszeitpunkt. Eine Rückstellung der Geräteuhr darf auch bei gleichem Kalendertag keinen erst später gebuchten Kauf als Herstellungszutat verwenden. Neue Room-/Robolectric-Regression prüft Ablehnung ohne Buchung, spätere gültige Herstellung und idempotenten Replay ohne Uhrabfrage. Keine Schema-/Vertragsänderung; Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). Android-Geräte-/Privacy-E2E und unabhängige kryptographische Rezeptsave-Aktionsprovenienz bleiben OFFEN. Keine APK.
+
+
 
 ## Integration IV: ein einziger validierter Rezept-Speicherzeitpunkt (02.11.2026)
 
