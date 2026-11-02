@@ -123,13 +123,16 @@ class RecipeDraftCatalogSaveTest {
     }
 
     @Test fun recoveredConsentRejectsRecipeOperationWithMissingVersion() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("valid-consent", ready)
+        clock += 30_000L
         consent("orphan-recipe", ready)
-        // An operation kind alone cannot prove that a recipe was actually saved.
+        // A newer operation kind alone cannot prove a recipe was saved.
         dao.insertOperation(OperationEntity("orphan-recipe", "RECIPE",
-            "synthetic-invalid-fingerprint", at, "missing-recipe-version"))
+            "synthetic-invalid-fingerprint", clock, "missing-recipe-version"))
         val count = dao.operationCount()
 
         assertEquals("valid-consent", store.recordedRecipeDraftV1ConsentKey(digest))
