@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T00:39:26.108Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement independently authenticated FoodStore recipe-save boundary or next verified Android integration"
-workingBranch: null
+workingBranch: "integration/chat-berlin-calendar-ui-20261102"
 lastReleasedAtUtc: "2026-11-02T00:36:46.367Z"
 lastReleasedCommit: "6543e04c98c328c6d6c4d74b6da21b81fcb76a7c"
 nextStep: "Independent authenticated user-action attestation at FoodStore recipe save; real Android credential/privacy E2E; recipe generator/revalidator parity"
