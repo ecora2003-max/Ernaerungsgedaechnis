@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III automation turn 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzmhyv0-8nokitmy"
-acquiredAtUtc: "2026-11-02T18:59:28.572Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration III: FoodStore recipe-save action provenance and validation"
-workingBranch: "integration-iii/context-binding-epoch-status-20261102-1908"
-lastReleasedAtUtc: "2026-11-02T18:45:43.287Z"
-lastReleasedCommit: "c28c18f63de6350fa9f151c3194925f8dd87184a"
+task: "Integration III: negative Rezept-Kontextzeit gesperrt; Code-PR #137 und Status-PR #138 gemergt"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T19:07:15.754Z"
+lastReleasedCommit: "8f21a7f7d3d1a33f07cc7878dad9e70caa8f08bd"
 nextStep: "Unabhängige FoodStore-Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
