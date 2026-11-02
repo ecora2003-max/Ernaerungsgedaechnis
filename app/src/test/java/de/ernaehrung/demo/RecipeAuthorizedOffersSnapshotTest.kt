@@ -160,6 +160,41 @@ class RecipeAuthorizedOffersSnapshotTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(current).status)
     }
 
+    @Test fun roomProductProvenanceChangesInvalidatePreviouslyAuthorizedOffers() = runBlocking {
+        val before = db.foodDao().operationCount()
+        val original = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
+
+        // A repaired source can leave every visible offer line and the
+        // immutable version ID unchanged. Old review evidence is still stale.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET source = ? WHERE id = ?",
+            arrayOf(Source.LABEL.name, versionId))
+        val sourceChanged = requireNotNull(
+            store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(original.lines, sourceChanged.lines)
+        assertNotEquals(original.revision, sourceChanged.revision)
+        val staleSource = review(original)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, staleSource.status)
+        assertTrue("HOST_OFFERS_SNAPSHOT_STALE_OR_UNAUTHORIZED" in staleSource.gaps)
+        assertNull(staleSource.input)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(sourceChanged).status)
+
+        // Both quality values remain independently eligible. A provenance
+        // downgrade must nevertheless invalidate the earlier approval.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET quality = ? WHERE id = ?",
+            arrayOf(Quality.SOURCED.name, versionId))
+        val qualityChanged = requireNotNull(
+            store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(sourceChanged.lines, qualityChanged.lines)
+        assertNotEquals(sourceChanged.revision, qualityChanged.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(sourceChanged).status)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(qualityChanged).status)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun revokedRightsOrMissingHostReaderFailClosed() = runBlocking {
         val original = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
         permitted = false
