@@ -226,4 +226,39 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
         assertEquals(operationsBefore, db.foodDao().operationCount())
     }
+    @Test fun futureProductVersionCannotAuthorizeEarlierShoppingContext() = runBlocking {
+        store.savePlan("future-version-shopping-plan", plan(200_000L))
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        val before = db.foodDao().operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), versionId))
+        // A planning need alone cannot prove that its product version was
+        // known when the recipe context was captured.
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        clock = at.plusSeconds(61).toEpochMilli()
+        val later = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, later.lines)
+        assertNotEquals(original.revision, later.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidProductVersionTimestampFailsClosedUntilCorrected() = runBlocking {
+        store.savePlan("invalid-version-shopping-plan", plan(200_000L))
+        val before = db.foodDao().operationCount()
+        val recordedAt = requireNotNull(db.foodDao().version(versionId)).recordedAt
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = -1 WHERE id = ?",
+            arrayOf(versionId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(recordedAt, versionId))
+        val recovered = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(200_000L, recovered.lines.single().amountMilli)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
