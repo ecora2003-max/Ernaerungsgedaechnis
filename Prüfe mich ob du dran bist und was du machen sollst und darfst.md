@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T22:53:56.647Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Resume open Integration III code PR or implement next recipe/Room guard"
-workingBranch: "integration-iii/recipe-catalog-unique-version-20261102-2354"
+workingBranch: "integration-iii/docs-catalog-unique-version-20261102-2300"
 lastReleasedAtUtc: "2026-11-02T22:52:38.038Z"
 lastReleasedCommit: "a42887a46e1f791e57b3bebb1ef6176e015f8dad"
 nextStep: "Status-only PR #161 remains open (no CI); next code: independent authenticated FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
