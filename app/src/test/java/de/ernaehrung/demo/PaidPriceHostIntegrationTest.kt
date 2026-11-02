@@ -338,4 +338,51 @@ class PaidPriceHostIntegrationTest {
         assertEquals(beforeProposals + 1, dao.operationCount())
     }
 
+
+    @Test fun paidPriceOperationAndObservationShareOneClockInstantAcrossMidnight() = runBlocking {
+        val version = tofu()
+        val receipt = store.savePurchase("paid-clock-buy", purchase(version), true)
+        val line = dao.receiptLines(receipt).single()
+        val basis = review("paid-clock-buy", line.id, version)
+            .copy(basisReason = "Bezahlte Menge und Warenpreis separat geprüft")
+        val instant = Instant.parse("2026-10-30T23:59:59Z").toEpochMilli()
+        var clockReads = 0
+        val writer = FoodStore(db) {
+            clockReads++
+            if (clockReads == 1) instant else instant + 86_400_000L
+        }
+
+        val evidenceId = writer.saveHistoricalPaidPrice("paid-clock-evidence", basis, true)
+        val observation = dao.allPaidPrices().single()
+        assertEquals(evidenceId, observation.id)
+        assertEquals(1, clockReads)
+        assertEquals(instant, observation.recordedAt)
+        assertEquals(instant, dao.operation("paid-clock-evidence")?.recordedAt)
+        assertEquals(evidenceId, writer.saveHistoricalPaidPrice("paid-clock-evidence", basis, true))
+        assertEquals(1, clockReads) // Idempotent retry does not consult the clock.
+        assertTrue(dao.prices().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun invalidPaidPriceClockRollsBackLedgerAndObservationBeforeValidRetry() = runBlocking {
+        val version = tofu()
+        val receipt = store.savePurchase("paid-negative-buy", purchase(version), true)
+        val line = dao.receiptLines(receipt).single()
+        val basis = review("paid-negative-buy", line.id, version)
+            .copy(basisReason = "Bestätigte bezahlte Einheiten")
+        val before = dao.operationCount()
+        val invalidClockStore = FoodStore(db) { -1L }
+        try {
+            invalidClockStore.saveHistoricalPaidPrice("paid-negative-evidence", basis, true)
+            fail("Negative physical time must not create immutable price evidence")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("paid-negative-evidence"))
+        assertTrue(dao.allPaidPrices().isEmpty())
+
+        val evidenceId = store.saveHistoricalPaidPrice("paid-negative-evidence", basis, true)
+        assertEquals(evidenceId, dao.allPaidPrices().single().id)
+        assertEquals(before + 1, dao.operationCount())
+        assertTrue(dao.prices().isEmpty())
+    }
 }

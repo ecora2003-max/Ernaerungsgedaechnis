@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: kohärenter Erfassungszeitpunkt privater Bezahlpreisbelege (02.11.2026)
+
+- **Code-Commit `4e194096b4d7195ea14a5b239100f06bbcd40ca0`, Test-Commit `a5d4ff5bc0362d69b4a0fc4d79c1a01f9c89f67f` (CI bis zur PR-Prüfung PENDING):** `FoodStore.saveHistoricalPaidPrice` liest nach idempotentem Replay nur einen nichtnegativen Erfassungszeitpunkt und verwendet ihn identisch für Operation und unveränderliche private Preisbeobachtung. Zwei Room-/Robolectric-Regressionen prüfen Mitternachtswechsel, Retry ohne zusätzliche Uhrabfrage, negative Zeit mit Rollback und fehlende Ist-/Angebotsbuchung. Keine Schema-/Vertragsänderung, kein Livefeed, keine APK.
+- **Weiter:** unabhängig authentifizierte Nutzeraktionsprovenienz am Rezept-Save, Generator-/Revalidator-Parität, reale Android-/Privacy-E2E. Gesamtmodule TEILWEISE/OFFEN.
+
+
 ## Integration II: einheitlicher Produktionszeitpunkt (02.11.2026)
 
 - [PR #72](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/72), **Code-/Test-HEAD `59c372827eb8cb2cbbdeaea9b037fc2077247181`**, Squash-Merge `83add8b45cff48fa1ad8045a3d25506df62eefef`: `KitchenOperations.produce` verwendet für Berlin-Tagsprüfung, Produktionsoperation, Output-Produkt/-Version und alle Input-/Output-Bestandsbewegungen einen einzigen nichtnegativen `recordedAt`-Zeitpunkt innerhalb der Room-Transaktion. Zwei positive/negative Room-/Robolectric-Regressionen prüfen Mitternachtswechsel, Retry ohne zusätzliche Uhrabfrage und Rollback bei ungültiger Zeit. Keine Schema-/Vertragsänderung oder APK.
