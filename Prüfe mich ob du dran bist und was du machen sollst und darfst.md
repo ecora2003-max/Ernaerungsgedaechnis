@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Integration-II-2026-11-02T17:07:58.047Z"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102T170758047Z-cb1j1re7pq"
+acquiredAtUtc: "2026-11-02T17:07:58.047Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Automatische Freigabe nach >=30 Minuten ohne GitHub-Aktivität"
+task: "Rezept-Kontext: Room-Snapshot-Konsistenz und Regressionstests"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-02T17:05:52.828Z"
 lastReleasedCommit: "0450169f7c3342b5f3b2fac90ac2c38ce89abf49"
 nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
