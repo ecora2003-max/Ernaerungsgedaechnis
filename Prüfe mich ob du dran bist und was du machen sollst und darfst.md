@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-1793613568376-lw5srvg2vj"
 acquiredAtUtc: "2026-11-02T09:59:28.376Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Android FoodStore recipe-save validation and regression tests"
-workingBranch: null
+task: "Prevent backwards-dated production output article revisions; Room regression"
+workingBranch: "codex/integration-iii-output-revision-chronology-20261102-1059"
 lastReleasedAtUtc: "2026-11-02T09:54:05.946Z"
 lastReleasedCommit: "ab5c50877653084cc050552dfe4e68bd66bcec78"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; generator/revalidator parity; Android credential/privacy E2E"
