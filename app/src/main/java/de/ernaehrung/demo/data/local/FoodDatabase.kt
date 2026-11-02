@@ -9,7 +9,7 @@ data class BatchRow(@Embedded val batch: BatchEntity, val productName: String, v
     val locationName: String, val stockAmount: Long, val originReversed: Boolean)
 /** Minimal immutable movement evidence for a time-consistent Room stock projection. */
 data class StockMovementSnapshotRow(val id: String, val batchId: String, val delta: Long,
-    val recordedAt: Long, val occurredOn: String?)
+    val recordedAt: Long, val occurredAt: Long?, val occurredOn: String?)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
 data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
 data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
@@ -165,7 +165,7 @@ internal interface FoodDao {
         JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     suspend fun planningBatches(): List<BatchRow>
     /** Effective movement day falls back to the linked legacy consumption date. */
-    @Query("""SELECT m.id, m.batchId, m.delta, m.recordedAt,
+    @Query("""SELECT m.id, m.batchId, m.delta, m.recordedAt, m.occurredAt,
         COALESCE(m.occurredOn, c.date) AS occurredOn FROM stock_movements m
         LEFT JOIN consumption_events c ON c.operationId = m.operationId ORDER BY m.id""")
     suspend fun stockMovementSnapshotRows(): List<StockMovementSnapshotRow>
