@@ -313,7 +313,19 @@ class LocalDataViewModel internal constructor(
                 if (ready && recordedKey == null) {
                     // Only an opaque key survives process death. The new UI session
                     // must still require a fresh, independent explicit gesture.
-                    val key = pendingKeyStore.resumeOrCreate(requireNotNull(review.approvalBasisDigest))
+                    val digest = requireNotNull(review.approvalBasisDigest)
+                    var key = pendingKeyStore.resumeOrCreate(digest)
+                    // A crash may leave a 24h pending key even though its Room
+                    // consent was committed and has since expired (5 min).
+                    // Never present a fresh device gesture for a consumed key:
+                    // FoodStore would reject it as an attempted consent renewal.
+                    if (store.isRecipeDraftOperationKeyUnavailable(key)) {
+                        pendingKeyStore.discard()
+                        key = pendingKeyStore.resumeOrCreate(digest)
+                        check(!store.isRecipeDraftOperationKeyUnavailable(key)) {
+                            "Neue Rezeptvorgangs-ID konnte nicht sicher erstellt werden."
+                        }
+                    }
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     pendingRecipeDraft = PendingRecipeDraft(
                         key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
