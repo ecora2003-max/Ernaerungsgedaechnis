@@ -59,8 +59,8 @@ ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb:yqv7oh4883imvzbahh4"
 acquiredAtUtc: "2026-11-02T13:45:43.672Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save confirmation provenance validation"
-workingBranch: null
+task: "Room stock snapshot movement-operation provenance validation"
+workingBranch: "codex/chat-stock-movement-operation-20261102-1345"
 lastReleasedAtUtc: "2026-11-02T13:42:00.057Z"
 lastReleasedCommit: "033ca29c87715c6284a2438638e0c5ffcf83974b"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
