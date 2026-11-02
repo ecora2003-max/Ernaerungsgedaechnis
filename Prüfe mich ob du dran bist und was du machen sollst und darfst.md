@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T22:38:33.085Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe save authenticated action and context revalidation"
-workingBranch: null
+workingBranch: "integration-chat/recipe-confirmation-chronology-20261102-2238"
 lastReleasedAtUtc: "2026-11-02T22:33:56.998Z"
 lastReleasedCommit: "31ace7ec1d9b4acaa942fc557a785a92b7afd5df"
 nextStep: "PR #159 docs-only status remains open (no PR CI); next code: independent authenticated recipe-save user action, generator/revalidator parity and Android/privacy E2E; all modules partial"
