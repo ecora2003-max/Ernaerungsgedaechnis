@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T02:23:45.870Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Host/FoodStore recipe-save action provenance and transactional regression"
-workingBranch: null
+workingBranch: "integration-iv-consumption-occurrence-time-20261102"
 lastReleasedAtUtc: "2026-11-02T02:21:44.680Z"
 lastReleasedCommit: "090f97638772cfa5464569470aa676e1a773ff6d"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; recipe generator/revalidator parity"
