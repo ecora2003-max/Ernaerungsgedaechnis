@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-mvykfsm0-9aqo1co5b2"
 acquiredAtUtc: "2026-11-02T01:14:01.752Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Next testable Android integration code unit"
-workingBranch: null
+task: "Fix Berlin-local historical paid-price knowledge cutoff across DST"
+workingBranch: "integration-ii/berlin-paid-history-cutoff-20261102"
 lastReleasedAtUtc: "2026-11-02T01:12:24.101Z"
 lastReleasedCommit: "06ffd7ba34683eacc9e9ea3ded66b560cc97f1c6"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
