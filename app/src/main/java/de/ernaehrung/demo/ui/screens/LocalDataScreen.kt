@@ -17,7 +17,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 import java.util.UUID
 
 @Composable
@@ -239,7 +238,7 @@ private fun ReceiptEditor(state: LocalDataState, busy: Boolean, operationId: Str
 private fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId: String, model: LocalDataViewModel) {
     var batchId by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
-    var day by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var day by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     Fold("Testverzehr aus einer Charge") {
         val batches = state.batches.filter { it.stockAmount > 0 }

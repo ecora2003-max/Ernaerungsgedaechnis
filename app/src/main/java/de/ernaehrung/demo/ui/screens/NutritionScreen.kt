@@ -16,7 +16,6 @@ import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.time.LocalDate
 
 @Composable
 internal fun NutritionScreen(state: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
@@ -57,7 +56,7 @@ internal fun NutritionScreen(state: LocalDataState, blocked: Boolean, operationI
     } }
     reverseId?.let { original ->
         var reason by rememberSaveable(original) { mutableStateOf("") }
-        var date by rememberSaveable(original) { mutableStateOf(LocalDate.now().toString()) }
+        var date by rememberSaveable(original) { mutableStateOf(AppCalendar.today().toString()) }
         AlertDialog(onDismissRequest = { reverseId = null }, modifier = Modifier.testTag("nutrition_storno_dialog"),
             title = { Text("Verzehr stornieren") }, text = { Column(Modifier.heightIn(max = (LocalConfiguration.current.screenHeightDp * .5f).dp).verticalScroll(rememberScrollState())) {
                 Text("Verzehr aus der aktiven Bilanz entfernen und zugehörige Entnahmen gemeinsam zurückbuchen. Die Historie bleibt erhalten.")

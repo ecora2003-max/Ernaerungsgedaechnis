@@ -8,14 +8,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 
 @Composable
 internal fun LocalPurchaseScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
     val ui by model.expenses.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
-    var start by rememberSaveable { mutableStateOf(LocalDate.now().withDayOfMonth(1).toString()) }
-    var end by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var start by rememberSaveable { mutableStateOf(AppCalendar.today().withDayOfMonth(1).toString()) }
+    var end by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     Heading("Käufe und Ausgaben", "Manuelle Testereignisse · EUR")
     Hint("Ein bestätigter bezahlter Einkauf zählt einmal als Ausgabe. Belegpositionen werden getrennt ins Lager gebucht. Leere Beträge und Kaufdaten bleiben unbekannt.", Sage)
     key(operationId) { PurchaseEditor(guard, operation, model) }
@@ -185,7 +184,7 @@ private fun PurchaseStockEditor(line: ReceiptLineEntity, purchasedOn: String?, d
 
 @Composable
 private fun PurchaseReversalEditor(original: String, payment: Boolean, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
-    var day by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var day by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     val name = if (payment) "Kaufbuchung" else "Positionszugang"

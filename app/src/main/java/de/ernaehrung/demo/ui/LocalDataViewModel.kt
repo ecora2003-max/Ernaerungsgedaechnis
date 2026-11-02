@@ -118,7 +118,7 @@ class LocalDataViewModel internal constructor(
             finally { cleanup() }
         }
     }
-    private val expenseQuery = MutableStateFlow(java.time.LocalDate.now().let {
+    private val expenseQuery = MutableStateFlow(AppCalendar.today().let {
         ExpenseScope(it.withDayOfMonth(1).toString(), it.toString()) to 0L
     })
     val expenses: StateFlow<ExpenseUiState> = expenseQuery.flatMapLatest { (scope, _) ->
@@ -128,7 +128,7 @@ class LocalDataViewModel internal constructor(
     fun showExpenses(start: String, end: String) {
         expenseQuery.value = ExpenseScope(start.trim(), end.trim()) to expenseQuery.value.second + 1
     }
-    private val shoppingQuery = MutableStateFlow(java.time.LocalDate.now().let {
+    private val shoppingQuery = MutableStateFlow(AppCalendar.today().let {
         ShoppingScope(it.toString(), it.plusDays(6).toString(), it.toString()) to 0L
     })
     val shopping: StateFlow<ShoppingUiState> = shoppingQuery.flatMapLatest { (query, _) ->
@@ -185,7 +185,7 @@ class LocalDataViewModel internal constructor(
             .onStart { emit(ExecutionUiState()) }.catch { emit(ExecutionUiState(error = "Ist-Zuordnung konnte nicht gelesen werden: ${it.message}")) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExecutionUiState())
     fun showExecution(entryId: String) { chosenExecutionEntry.value = entryId }
-    private val planRange = MutableStateFlow(java.time.LocalDate.now().let { it.toString() to it.plusDays(6).toString() })
+    private val planRange = MutableStateFlow(AppCalendar.today().let { it.toString() to it.plusDays(6).toString() })
     val planning: StateFlow<PlanningUiState> = planRange.flatMapLatest { (start, end) ->
         store.watchPlanning(start, end).map { PlanningUiState(it) }.onStart { emit(PlanningUiState()) }
             .catch { emit(PlanningUiState(error = "Planung konnte nicht gelesen werden: ${it.message}")) }
@@ -195,7 +195,7 @@ class LocalDataViewModel internal constructor(
         val end = runCatching { java.time.LocalDate.parse(first).plusDays(days - 1).toString() }.getOrDefault(first)
         planRange.value = first to end
     }
-    private val chosenDay = MutableStateFlow(java.time.LocalDate.now().toString())
+    private val chosenDay = MutableStateFlow(AppCalendar.today().toString())
     val selectedDay = chosenDay.asStateFlow()
     val daily: StateFlow<DayUiState> = chosenDay.flatMapLatest { date ->
         store.watchDay(date).map { DayUiState(date, it) }.onStart { emit(DayUiState(date)) }
