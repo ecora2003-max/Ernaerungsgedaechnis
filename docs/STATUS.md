@@ -1,6 +1,13 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
 
+## Integration IV: ein einziger validierter Rezept-Speicherzeitpunkt (02.11.2026)
+
+- **[PR #102](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/102), Code-/Test-HEAD `55e034002984f868f0f04546a2dfdabd680fb96f`; [PR-CI 41428671775](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41428671775) PASS auf exakt diesem SHA: 472/472 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen, Lint, v1-Schema, gepinnte Python-Referenzprüfungen, Room-8-Schema und Android-Testkompilierung.** `FoodStore.saveReviewedRecipeDraftV1` übergibt jetzt den einzigen bereits für Consent-/Host-Kontextprüfung validierten `saveAt` an `KitchenOperations.saveRecipe`, statt beim Persistieren eine zweite, möglicherweise abweichende Uhrzeit zu lesen. Zwei neue Room-/Robolectric-Regressionen prüfen exakt einen Uhrzugriff, Operation-/Rezeptversionschronologie, Rollback bei negativer Uhr und idempotente Wiederholung. Manueller Rezeptsave unverändert. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft); keine Schema-/Vertragsänderung, keine APK, **keine ausgeführten Android-Gerätetests**.
+- **Weiter:** unabhängig kryptographisch authentifizierte Nutzeraktionsprovenienz beim FoodStore-Rezept-Save, Generator-/Revalidator-Parität und Android-/Privacy-E2E. Alle vier Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
+
 ## Integration III: chronologisch geordnete Herstellungs-Ausgabeversionen (02.11.2026)
 
 - **[PR #101](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/101), Code-/Test-Commit `ee680881d91dd312a2a5edd07dbb21cc967f27b4`; [PR-CI 41425388370](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41425388370) PASS auf Code-/Test-/Status-HEAD `e725ad32ec17e772af7c4a0bcc36496708be1e3b`: 470/470 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen, Lint, gepinnte v1-Schema-/Python-Referenzen, Room-8-Schema und Android-Testkompilierung.** `KitchenOperations.produce` verweigert eine rückwärts datierte neue Artikelversion des bereits vorhandenen Rezept-Ausgabeprodukts, vor jeder Ist-Buchung. Zwei Room-/Robolectric-Regressionen prüfen Rollback ohne Nebenbuchung, spätere gültige Revision und idempotente Wiederholung ohne erneute Uhrabfrage. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft); keine Vertrags-/Schemaänderung, keine APK oder ausgeführten Android-Gerätetests.
