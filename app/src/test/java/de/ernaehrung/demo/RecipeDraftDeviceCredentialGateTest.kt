@@ -23,7 +23,7 @@ class RecipeDraftDeviceCredentialGateTest {
         approvalBasisDigest = digest
     )
     private val challenge get() = RecipeCredentialChallenge(digest, "session-1",
-        requireNotNull(ready.input), 7)
+        requireNotNull(ready.input), 7, 1_000L)
 
     private fun accepts(
         code: Int = Activity.RESULT_OK,
@@ -31,12 +31,27 @@ class RecipeDraftDeviceCredentialGateTest {
         session: String? = "session-1",
         resetVersion: Int = 7,
         enabled: Boolean = true,
-        pending: RecipeCredentialChallenge? = challenge
+        pending: RecipeCredentialChallenge? = challenge,
+        nowElapsedRealtimeMs: Long = 1_000L
     ) = RecipeCredentialResultGate.accepts(pending, code, current, session,
-        resetVersion, enabled)
+        resetVersion, enabled, nowElapsedRealtimeMs)
 
     @Test fun successfulSystemResultMatchesOnlyLiveBoundSession() {
         assertTrue(accepts())
+    }
+
+    @Test fun credentialResultExpiresAfterFiveMinutesOfMonotonicTime() {
+        assertTrue(accepts(nowElapsedRealtimeMs = 301_000L))
+        assertFalse(accepts(nowElapsedRealtimeMs = 301_001L))
+        assertFalse(accepts(nowElapsedRealtimeMs = 999L))
+        assertFalse(accepts(nowElapsedRealtimeMs = -1L))
+    }
+
+    @Test fun wallClockOrForgedChallengeAgeCannotExtendApproval() {
+        assertFalse(accepts(pending = challenge.copy(issuedAtElapsedRealtimeMs = -1L)))
+        assertFalse(accepts(pending = challenge.copy(
+            issuedAtElapsedRealtimeMs = 2_000L)))
+        assertFalse(accepts(nowElapsedRealtimeMs = Long.MAX_VALUE))
     }
 
     @Test fun cancelledOrAbsentSystemResultNeverAuthorizesConsent() {
