@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T17:56:57.479Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Transaktionale Rezept-Snapshot-Kontextvalidierung und Regression"
-workingBranch: "integration-iii/recipe-catalog-nonnegative-time-20261102-1758"
+workingBranch: "integration-iii/recipe-catalog-time-status-20261102-1805"
 lastReleasedAtUtc: "2026-11-02T17:40:27.521Z"
 lastReleasedCommit: "a3763c1bd04d477641831773fa80d9f09e083fff"
 nextStep: "Unabhängige kryptographische Rezeptsave-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
