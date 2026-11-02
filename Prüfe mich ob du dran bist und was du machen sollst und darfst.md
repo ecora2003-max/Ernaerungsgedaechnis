@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T01:26:37.815Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Hostports Room FoodStore recipe-save boundary integration"
-workingBranch: null
+workingBranch: "integration-iv-offer-host-facts-revision-20261102"
 lastReleasedAtUtc: "2026-11-02T01:23:35.343Z"
 lastReleasedCommit: "69529dff5fbfa530f462440662951fdf4756b001"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
