@@ -160,6 +160,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 movement.operationRecordedAt == null ||
                 movement.operationRecordedAt !in 0L..asOfMillis ||
                 movement.operationRecordedAt < batchCreatedAt ||
+                // A confirmed physical event cannot happen after the operation
+                // that already committed it. A later review time must not
+                // legitimize a legacy future-occurrence movement.
+                (movement.occurredAt != null &&
+                    movement.occurredAt > movement.operationRecordedAt) ||
                 // A backdated physical event cannot consume or change a batch
                 // before its creating operation existed. A later recording or
                 // snapshot must not turn that impossible history into stock.
