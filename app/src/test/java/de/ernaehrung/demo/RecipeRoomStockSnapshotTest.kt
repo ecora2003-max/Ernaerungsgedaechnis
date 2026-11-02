@@ -255,6 +255,46 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun futureMovementAuthorOperationCannotAuthorizeCurrentStock() = runBlocking {
+        store.correctStock("movement-author-future", StockCountInput(
+            batchId, 2_000L, 1_500L, "2026-11-01", "Bestätigte Zählung"), true)
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        assertEquals(1_500L, original.lines.single().amountMilli)
+        // The movement row remains backdated, but its separate author operation
+        // was not recorded when this Room snapshot was captured.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), "movement-author-future"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(original.lines, recovered.lines)
+        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidMovementAuthorOperationTimeFailsClosedUntilRepaired() = runBlocking {
+        store.correctStock("movement-author-invalid", StockCountInput(
+            batchId, 2_000L, 1_000L, "2026-11-01", "Bestätigte Zählung"), true)
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = -1 WHERE id = ?",
+            arrayOf("movement-author-invalid"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), "movement-author-invalid"))
+        val recovered = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, recovered.revision)
+        assertEquals(original.lines, recovered.lines)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun futureRecordedMovementCannotInflateCurrentStockSnapshot() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
