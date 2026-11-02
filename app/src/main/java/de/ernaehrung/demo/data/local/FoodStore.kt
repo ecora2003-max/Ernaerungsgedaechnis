@@ -461,13 +461,17 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val line = requireNotNull(dao.receiptLine(input.receiptLineId))
         val receipt = requireNotNull(dao.receipt(line.receiptId))
         val observationId = requireNotNull(preview.observationId)
-        dao.insertOperation(OperationEntity(key, "HISTORICAL_PAID", hash, now(), observationId))
+        // One physical write time for the immutable operation and its private
+        // paid-price evidence, even if the clock crosses midnight mid-transaction.
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Erfassungszeitpunkt für historischen Preis." }
+        dao.insertOperation(OperationEntity(key, "HISTORICAL_PAID", hash, recordedAt, observationId))
         dao.insertPaidPrice(PaidPriceObservationEntity(observationId, key, input.purchaseOperationId,
             line.id, requireNotNull(preview.productVersionId), requireNotNull(receipt.merchant),
             null, requireNotNull(preview.purchasedOn), requireNotNull(input.purchaseUnits),
             requireNotNull(preview.unitPriceCents), requireNotNull(preview.linePaidCents),
             requireNotNull(input.allocatedDiscountCents), preview.depositPerUnitCents,
-            requireNotNull(input.basisReason), now()))
+            requireNotNull(input.basisReason), recordedAt))
         observationId
     }
     /** Private historical evidence only, not current retailer offers. */
