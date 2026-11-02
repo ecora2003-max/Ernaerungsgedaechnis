@@ -267,8 +267,13 @@ class RecipeDraftV1ImportTest {
             reviewed(change("\"unit\":\"g\"", "\"unit\":\"piece\"")).status)
         assertEquals(Gate.Status.REVIEW_REQUIRED,
             reviewed(host = emptyMap()).status)
-        assertEquals(Gate.Status.REVIEW_REQUIRED,
-            reviewed(change("\"foodTypeId\":\"rice\"", "\"foodTypeId\":\"unknown\"")).status)
+        // An unknown ingredient with an old ingredient's host evidence is a
+        // cross-draft scope mismatch, not merely an unresolved current version.
+        val mismatched = reviewed(change("\"foodTypeId\":\"rice\"",
+            "\"foodTypeId\":\"unknown\""))
+        assertEquals(Gate.Status.BLOCKED, mismatched.status)
+        assertTrue("FOREIGN_INGREDIENT_EVIDENCE" in mismatched.blockers)
+        assertNull(mismatched.input)
     }
 
     @Test fun unsupportedSourceStatusOrQuantityFlagsFailClosed() {
