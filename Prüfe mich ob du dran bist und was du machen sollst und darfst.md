@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T22:07:19.719Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Next small Room recipe-save confirmation validation with regression tests"
-workingBranch: "integration-ii-recipe-evidence-duplicate-scope-20261102-2207"
+workingBranch: "integration-ii-recipe-evidence-scope-status-20261102-2214"
 lastReleasedAtUtc: "2026-11-02T22:05:34.805Z"
 lastReleasedCommit: "5cf6f317756c4e75a6ed31daa7c59d63cc4649e9"
 nextStep: "PR #153 docs-only remains open from another integrator; next code: authenticated FoodStore recipe-save user action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
