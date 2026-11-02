@@ -140,7 +140,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // a recipe approval merely because its prefixed consent key is unused.
         val existingSaveOperation = dao.operation(key)
         if (previous != null) {
-            require(existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") {
+            require(recipeDraftSaveOperationCompatible(existingSaveOperation, previous.recordedAt)) {
                 "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
             }
             require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
@@ -190,7 +190,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                     val existingSaveOperation = dao.operation(key)
                     key.isNotBlank() && key.length <= 200 &&
                         !key.startsWith(prefix) &&
-                        (existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") &&
+                        recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
                         operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
@@ -198,6 +198,17 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             }?.id?.substring(prefix.length)
         }
     }
+
+    /** A recovered consent cannot refer to a recipe operation without a real
+     * persisted version or to a recipe written before that consent existed.
+     * This checks ledger chronology and referential integrity, not cryptographic
+     * provenance or the recipe's complete approval fingerprint.
+     */
+    private suspend fun recipeDraftSaveOperationCompatible(
+        saved: OperationEntity?, consentAt: Long
+    ): Boolean = saved == null || (saved.kind == "RECIPE" &&
+        saved.recordedAt >= consentAt &&
+        dao.recipeVersion(saved.resultId) != null)
 
     /**
      * A resumed opaque pending key is not necessarily unused: the previous
