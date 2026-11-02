@@ -52,8 +52,22 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             if (row.stockAmount > 0 && !eligible) return null
             if (eligible) eligibleBatchIds += batch.id
         }
-        val movements = dao.stockMovementIds()
+        val movements = dao.stockMovementSnapshotRows()
         if (movements.size > MAX_MOVEMENTS) return null
+        val asOfMillis = capturedAt.toEpochMilli()
+        val knownBatches = rows.map { it.batch.id }.toSet()
+        // Planning balances sum every stored movement, including legacy or
+        // future-dated rows. Never expose those as current physical stock.
+        // A legacy consumption date is resolved by the DAO when occurredOn is null.
+        for (movement in movements) {
+            val day = movement.occurredOn?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
+            }
+            if (movement.id.isBlank() || movement.batchId !in knownBatches ||
+                movement.delta !in -Amounts.MAX..Amounts.MAX ||
+                movement.recordedAt !in 0L..asOfMillis ||
+                (day != null && day.isAfter(today))) return null
+        }
         val ordered = rows.sortedBy { it.batch.id }
         // Include non-visible batches and movement identities in the revision:
         // a release, reversal or compensating movement must invalidate an old review.
@@ -68,7 +82,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
                     })
-            }, movements, eligibleBatchIds.sorted())
+            }, movements.map { listOf(it.id, it.batchId, it.delta, it.recordedAt, it.occurredOn) },
+            eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
         }.map { row ->
