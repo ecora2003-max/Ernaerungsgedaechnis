@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II scheduled development"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102211053050-eikf11bxe8"
-acquiredAtUtc: "2026-11-02T21:10:53.050Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Room recipe context / FoodStore provenance regression"
-workingBranch: "integration-ii-docs-catalog-scope-20261102-2118"
-lastReleasedAtUtc: "2026-11-02T21:01:26.134Z"
-lastReleasedCommit: "b0b9fa25539a22776780234f9f36fffdb89702f0"
+task: "Integration II: recipe catalog confirmation scope code PR #148 and status PR #149 merged; CI 41526249184 PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T21:20:08.794Z"
+lastReleasedCommit: "a2840241a36ba42955b9783e057b95ace3da7dbc"
 nextStep: "Independent authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; all four modules remain partial"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
