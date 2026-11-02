@@ -121,6 +121,12 @@ class StockOperationsTest {
     @Test fun stockLedgerUsesOnePhysicalTimeAcrossBerlinMidnightForEveryMovement() = runBlocking {
         val beforeMidnight = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
         val afterMidnight = beforeMidnight + 1L // Berlin changes from 30 to 31 October.
+        // The shared fixture was created later; this source must physically exist
+        // before the moving-clock transfer, not just on the same calendar date.
+        val sourceStore = FoodStore(db) { beforeMidnight - 60_000L }
+        val sourceVersion = sourceStore.rememberProduct("midnight-product", ProductInput("Tofu vor Mitternacht"))
+        batch = sourceStore.receive("midnight-receipt",
+            BatchInput(sourceVersion, source, 200_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
         suspend fun verify(key: String, action: suspend () -> Unit) {
             var clockReads = 0
             store = FoodStore(db) {
@@ -148,6 +154,46 @@ class StockOperationsTest {
         }
         assertEquals(170_000L, dao.balance(batch))
         assertEquals(20_000L, dao.movements("move").filter { it.delta > 0 }.single().delta)
+    }
+
+    @Test fun transferRejectsFutureSourceOriginButAllowsLaterTransferAndClockFreeReplay() = runBlocking {
+        val base = 1_800_000_000_000L
+        val late = FoodStore(db) { base + 120_000L }
+        val futureBatch = late.receive("future-receipt",
+            BatchInput(version, source, 40_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
+        val input = TransferInput(futureBatch, target, 10_000, "2026-10-30", "Später umräumen")
+        val count = dao.operationCount()
+        rejects { FoodStore(db) { base }.transfer("before-receipt", input, true) }
+        assertNull(dao.operation("before-receipt"))
+        assertTrue(dao.movements("before-receipt").isEmpty())
+        assertEquals(count, dao.operationCount())
+        assertEquals(40_000L, dao.balance(futureBatch))
+
+        val moved = late.transfer("after-receipt", input, true)
+        assertEquals(30_000L, dao.balance(futureBatch))
+        assertEquals(10_000L, dao.balance(moved))
+        assertEquals(moved, FoodStore(db) {
+            error("Idempotent transfer replay must not consult the clock")
+        }.transfer("after-receipt", input, true))
+    }
+
+    @Test fun transferRejectsUnrelatedOriginEvenWhenTimestampIsValid() = runBlocking {
+        val other = store.receive("other-receipt",
+            BatchInput(version, source, 20_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
+        assertNotEquals(batch, other)
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET originOperationId = 'other-receipt' WHERE id = ?", arrayOf(batch))
+        val before = dao.operationCount()
+        rejects { store.transfer("forged-origin", TransferInput(batch, target,
+            10_000, "2026-10-30", "Umräumen"), true) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("forged-origin"))
+        assertTrue(dao.movements("forged-origin").isEmpty())
+        assertEquals(200_000L, dao.balance(batch))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET originOperationId = 'buy' WHERE id = ?", arrayOf(batch))
+        assertNotNull(store.transfer("valid-origin", TransferInput(batch, target,
+            10_000, "2026-10-30", "Umräumen"), true))
     }
 
     @Test fun invalidStockClockRollsBackAllKindsButCommittedRetryDoesNotReadClock() = runBlocking {
