@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261102T025746Z-turn6-8f32c6"
 acquiredAtUtc: "2026-11-02T02:57:59.924Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save provenance hardening"
-workingBranch: null
+task: "Consistent product/version/operation event timestamps and rollback regressions"
+workingBranch: "integration-iii-product-timestamp-20261102-turn6"
 lastReleasedAtUtc: "2026-11-02T02:45:31.456Z"
 lastReleasedCommit: "9801b45c71c2cf7a80aeb570b7467ec421c7f3cc"
 nextStep: "Independent authenticated FoodStore recipe-save action provenance; Android credential/privacy E2E; generator/revalidator parity"
