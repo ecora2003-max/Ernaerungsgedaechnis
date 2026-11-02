@@ -159,4 +159,27 @@ class RecipeRoomStockSnapshotTest {
             at.toEpochMilli(), occurredOn = "2026-11-02"))
         assertNull(store.readRecipeRoomStockSnapshot())
     }
+    @Test fun expiredZeroBalanceIsExcludedWithoutHidingCurrentKnownZero() = runBlocking {
+        val expiring = store.receive("room-stock-expiring-zero",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                bestBefore = "2026-11-01", release = ReleaseStatus.RELEASED), true)
+        store.correctStock("room-stock-expiring-zero-count", StockCountInput(
+            expiring, 100L, 0L, "2026-11-01", "Bestätigte Nullzählung"), true)
+
+        // On the best-before date, zero is a known amount in a valid batch.
+        val today = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2, today.lines.size)
+        assertEquals(0L, today.lines.single { it.identity == "batch:$expiring" }.amountMilli)
+
+        // The following Berlin day must not expose an expired batch as current
+        // stock merely because its amount is zero. Valid positive stock remains.
+        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val next = requireNotNull(nextDay.readRecipeRoomStockSnapshot())
+        assertEquals(1, next.lines.size)
+        assertEquals("batch:$batchId", next.lines.single().identity)
+        assertEquals(2_000L, next.lines.single().amountMilli)
+        assertNotEquals(today.revision, next.revision)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }

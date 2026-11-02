@@ -29,26 +29,28 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         // the storage evidence changes without a stock movement.
         val locations = rows.map { it.batch.locationId }.distinct()
             .associateWith { dao.location(it) }
+        val eligibleBatchIds = mutableSetOf<String>()
         for (row in rows) {
             val batch = row.batch
             if (batch.id.isBlank() || batch.versionId.isBlank() || batch.locationId.isBlank() ||
                 row.stockAmount !in 0..Amounts.MAX) return null
             val location = locations[batch.locationId] ?: return null
-            if (row.stockAmount > 0) {
-                // Planning excludes unreleased, reversed, unconfirmed-location,
-                // not-yet-acquired and past-best-before stock. Recipe context
-                // must not silently advertise any of those batches as usable.
-                if (row.originReversed || batch.release != ReleaseStatus.RELEASED ||
-                    !location.confirmed) return null
-                batch.acquiredOn?.let {
-                    val date = runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
-                    if (date.isAfter(today)) return null
-                }
-                for (expiry in listOfNotNull(batch.bestBefore, batch.useBy)) {
-                    val date = runCatching { LocalDate.parse(expiry) }.getOrNull() ?: return null
-                    if (date.isBefore(today)) return null
-                }
+            // A zero balance is known zero, but an expired, future-acquired or
+            // unconfirmed batch is not a current stock line even when empty.
+            // Malformed dates remain an unavailable snapshot, never an assumption.
+            val acquired = batch.acquiredOn?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
+            val expiries = listOfNotNull(batch.bestBefore, batch.useBy).map {
+                runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
+            }
+            val eligible = !row.originReversed &&
+                batch.release == ReleaseStatus.RELEASED && location.confirmed &&
+                (acquired == null || !acquired.isAfter(today)) &&
+                expiries.none { it.isBefore(today) }
+            // Positive but unusable stock makes the entire context unknown.
+            if (row.stockAmount > 0 && !eligible) return null
+            if (eligible) eligibleBatchIds += batch.id
         }
         val movements = dao.stockMovementIds()
         if (movements.size > MAX_MOVEMENTS) return null
@@ -66,9 +68,9 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
                     })
-            }, movements)
+            }, movements, eligibleBatchIds.sorted())
         val lines = ordered.filter {
-            !it.originReversed && it.batch.release == ReleaseStatus.RELEASED
+            it.batch.id in eligibleBatchIds
         }.map { row ->
             RecipeContextContentBinding.Line(
                 identity = "batch:${row.batch.id}",
