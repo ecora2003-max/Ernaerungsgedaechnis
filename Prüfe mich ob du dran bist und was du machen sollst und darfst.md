@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T19:58:33.451Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration III: targeted Kotlin/Room recipe-context regression"
-workingBranch: null
+workingBranch: "integration-iii/recipe-import-identity-scope-20261102-2058"
 lastReleasedAtUtc: "2026-11-02T19:55:41.235Z"
 lastReleasedCommit: "57d446705e0a30a871738c7f2f352764c6775146"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
