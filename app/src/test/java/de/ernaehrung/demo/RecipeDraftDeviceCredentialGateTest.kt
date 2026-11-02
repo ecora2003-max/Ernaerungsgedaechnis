@@ -31,10 +31,11 @@ class RecipeDraftDeviceCredentialGateTest {
         session: String? = "session-1",
         resetVersion: Int = 7,
         enabled: Boolean = true,
+        deviceSecure: Boolean = true,
         pending: RecipeCredentialChallenge? = challenge,
         nowElapsedRealtimeMs: Long = 1_000L
     ) = RecipeCredentialResultGate.accepts(pending, code, current, session,
-        resetVersion, enabled, nowElapsedRealtimeMs)
+        resetVersion, enabled, deviceSecure, nowElapsedRealtimeMs)
 
     @Test fun successfulSystemResultMatchesOnlyLiveBoundSession() {
         assertTrue(accepts())
@@ -52,6 +53,11 @@ class RecipeDraftDeviceCredentialGateTest {
         assertFalse(accepts(pending = challenge.copy(
             issuedAtElapsedRealtimeMs = 2_000L)))
         assertFalse(accepts(nowElapsedRealtimeMs = Long.MAX_VALUE))
+    }
+
+    @Test fun removingSecureDeviceLockWhileCredentialDialogIsOpenInvalidatesResult() {
+        assertTrue(accepts(deviceSecure = true))
+        assertFalse(accepts(deviceSecure = false))
     }
 
     @Test fun cancelledOrAbsentSystemResultNeverAuthorizesConsent() {
