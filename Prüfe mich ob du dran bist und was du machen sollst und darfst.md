@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T02:57:59.924Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Consistent product/version/operation event timestamps and rollback regressions"
-workingBranch: "integration-iii-product-timestamp-20261102-turn6"
+workingBranch: "integration-iii-product-timestamp-status-20261102-turn6"
 lastReleasedAtUtc: "2026-11-02T02:45:31.456Z"
 lastReleasedCommit: "9801b45c71c2cf7a80aeb570b7467ec421c7f3cc"
 nextStep: "Independent authenticated FoodStore recipe-save action provenance; Android credential/privacy E2E; generator/revalidator parity"
