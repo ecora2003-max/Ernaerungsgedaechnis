@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T01:14:01.752Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Fix Berlin-local historical paid-price knowledge cutoff across DST"
-workingBranch: "integration-ii/berlin-paid-history-cutoff-20261102"
+workingBranch: "integration-ii/berlin-paid-history-status-20261102"
 lastReleasedAtUtc: "2026-11-02T01:12:24.101Z"
 lastReleasedCommit: "06ffd7ba34683eacc9e9ea3ded66b560cc97f1c6"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
