@@ -35,13 +35,14 @@ internal object RecipeCatalogEvidence {
         // catalog projection contains duplicate IDs or conflicting latest revisions.
         // Room normally enforces unique IDs; this boundary must remain safe for
         // injected, migrated or otherwise inconsistent catalog snapshots as well.
+        if (nowMillis < 0L) return emptyMap()
         val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
             versions.singleOrNull()?.let { id to it }
         }.toMap()
         // Resolve identity as of the host's trusted review time, not the newest
         // revision ever present in a possibly future-dated Room/catalog snapshot.
         val latest = catalog.groupBy { it.productId }.mapValues { (_, versions) ->
-            val known = versions.filter { it.recordedAt <= nowMillis }
+            val known = versions.filter { it.recordedAt in 0L..nowMillis }
             val highest = known.maxOfOrNull { it.revision }
             known.filter { it.revision == highest }.singleOrNull()
                 ?.takeIf { byVersion[it.id] == it }?.id
@@ -55,7 +56,9 @@ internal object RecipeCatalogEvidence {
                 version.revision <= 0 ||
                 confirmed.productRevision != version.revision ||
                 confirmed.versionRecordedAt != version.recordedAt ||
+                version.recordedAt !in 0L..nowMillis ||
                 latest[version.productId] != version.id ||
+                confirmed.confirmedAt !in 0L..nowMillis ||
                 confirmed.confirmedAt < version.recordedAt ||
                 confirmed.confirmedAt > nowMillis ||
                 confirmed.unit != version.baseUnit ||
