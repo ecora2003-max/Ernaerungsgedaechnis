@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T21:27:01.840Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: FoodStore recipe-save provenance and Host/Room regressions"
-workingBranch: null
+workingBranch: "integration-iv/batch-state-acquisition-day-20261102"
 lastReleasedAtUtc: "2026-11-02T21:20:08.794Z"
 lastReleasedCommit: "a2840241a36ba42955b9783e057b95ace3da7dbc"
 nextStep: "Independent authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; all four modules remain partial"
