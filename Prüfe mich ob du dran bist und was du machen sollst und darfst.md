@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T05:23:24.505Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save attestation and host/Room boundary integration"
-workingBranch: "integration-iv-recipe-save-single-timestamp-20261102"
+workingBranch: "integration-iv-recipe-save-ci-evidence-20261102"
 lastReleasedAtUtc: "2026-11-02T05:22:36.072Z"
 lastReleasedCommit: "93c4f1513f4a6bfa79b8e71ff099254a79ae4b16"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android credential/privacy device E2E"
