@@ -59,8 +59,8 @@ ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV-20261102042836169-3nxqs1"
 acquiredAtUtc: "2026-11-02T04:28:36.169Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save action attestation and host boundary tests"
-workingBranch: null
+task: "Rotate occupied pending recipe consent keys after expiry; ViewModel/Room regression"
+workingBranch: "integration-iv/expired-recipe-consent-key-20261102-0428"
 lastReleasedAtUtc: "2026-11-02T04:21:45.023Z"
 lastReleasedCommit: "80499083481a1e56913bc2b42de9f6d8cd415a08"
 nextStep: "Independent FoodStore recipe-save action attestation; generator/revalidator parity; Android credential/privacy device E2E"
