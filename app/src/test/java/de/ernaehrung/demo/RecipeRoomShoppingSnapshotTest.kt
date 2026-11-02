@@ -180,4 +180,22 @@ class RecipeRoomShoppingSnapshotTest {
             java.util.TimeZone.setDefault(previousZone)
         }
     }
+
+    @Test fun actualEventDateUsesSameBerlinDayAsRoomShopping() {
+        val previousZone = java.util.TimeZone.getDefault()
+        try {
+            val midnightBoundary = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            // An actual event dated 2 November is today in Berlin, not future.
+            WriteRules.actualDate("2026-11-02", midnightBoundary)
+            try {
+                WriteRules.actualDate("2026-11-03", midnightBoundary)
+                fail("A genuinely future Berlin event must be rejected")
+            } catch (_: IllegalArgumentException) {
+                // Expected: no implicit future event even if the device zone changes.
+            }
+        } finally {
+            java.util.TimeZone.setDefault(previousZone)
+        }
+    }
 }
