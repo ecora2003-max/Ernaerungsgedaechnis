@@ -119,7 +119,7 @@ class StockOperationsTest {
     }
 
     @Test fun stockLedgerUsesOnePhysicalTimeAcrossBerlinMidnightForEveryMovement() = runBlocking {
-        val beforeMidnight = Instant.parse("2026-10-30T21:59:59.999Z").toEpochMilli()
+        val beforeMidnight = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
         val afterMidnight = beforeMidnight + 1L // Berlin changes from 30 to 31 October.
         suspend fun verify(key: String, action: suspend () -> Unit) {
             var clockReads = 0
