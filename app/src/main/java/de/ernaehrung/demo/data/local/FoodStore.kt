@@ -545,8 +545,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         replay(operationId, fingerprint)?.let { return@withTransaction it }
         val previous = productId?.let { requireNotNull(dao.latestVersion(it)) { "Produkt nicht gefunden." } }
         require(previous == null || previous.baseUnit == input.unit) { "Basiseinheit einer Produktidentität darf nicht geändert werden." }
+        // One confirmed product revision is one physical event. Keep its creation,
+        // version and operation timestamps identical even across clock changes.
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Produktzeitpunkt ist ungültig." }
         val identity = productId ?: id()
-        if (previous == null) dao.insertProduct(ProductEntity(identity, now()))
+        if (previous == null) dao.insertProduct(ProductEntity(identity, recordedAt))
         val version = id()
         dao.insertVersion(ProductVersionEntity(version, identity, (previous?.revision ?: 0) + 1,
             input.name.trim(), input.brand?.trim()?.takeIf { it.isNotEmpty() }, if (input.metadata != null) input.metadata.category else previous?.category,
@@ -558,8 +562,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             vitaminB12Micrograms = input.vitaminB12Micrograms, vitaminDMicrograms = input.vitaminDMicrograms,
             ingredients = if (input.metadata != null) input.metadata.ingredients else previous?.ingredients,
             allergens = if (input.metadata != null) input.metadata.allergens else previous?.allergens, source = input.source, sourceDetail = input.sourceDetail,
-            quality = input.quality, recordedAt = now(), changeReason = reason))
-        dao.insertOperation(OperationEntity(operationId, "PRODUCT", fingerprint, now(), version))
+            quality = input.quality, recordedAt = recordedAt, changeReason = reason))
+        dao.insertOperation(OperationEntity(operationId, "PRODUCT", fingerprint, recordedAt, version))
         version
     }
 

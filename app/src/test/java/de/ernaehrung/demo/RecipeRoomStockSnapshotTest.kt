@@ -340,4 +340,34 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(original.lines, current.lines)
         assertEquals(0, db.foodDao().consumptionCount())
     }
+
+    @Test fun productRevisionKeepsOneRecordedAtAcrossBerlinMidnightAndRetry() = runBlocking {
+        val instant = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
+        var clock = instant
+        val movingClockStore = FoodStore(db) { clock++ }
+        val input = ProductInput("Haferflocken", source = Source.USER, quality = Quality.CONFIRMED)
+        val before = db.foodDao().operationCount()
+        val versionId = movingClockStore.rememberProduct("product-revision-midnight", input)
+        val version = requireNotNull(db.foodDao().version(versionId))
+        val operation = requireNotNull(db.foodDao().operation("product-revision-midnight"))
+        assertEquals(instant, version.recordedAt)
+        assertEquals(version.recordedAt, operation.recordedAt)
+        assertEquals(instant + 1L, clock)
+        assertEquals(versionId, movingClockStore.rememberProduct("product-revision-midnight", input))
+        assertEquals(instant + 1L, clock)
+        assertEquals(before + 1, db.foodDao().operationCount())
+    }
+
+    @Test fun negativeProductEventTimeRollsBackWithoutCreatingRevision() = runBlocking {
+        val before = db.foodDao().operationCount()
+        val invalidClockStore = FoodStore(db) { -1L }
+        val result = runCatching {
+            invalidClockStore.rememberProduct("product-negative-timestamp",
+                ProductInput("Unzulässiger Zeitbeleg", quality = Quality.CONFIRMED))
+        }
+        assertTrue(result.isFailure)
+        assertNull(db.foodDao().operation("product-negative-timestamp"))
+        assertEquals(before, db.foodDao().operationCount())
+        assertNotNull(store.readRecipeRoomStockSnapshot())
+    }
 }
