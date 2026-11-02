@@ -199,6 +199,44 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun wrongOriginResultCannotAuthorizeRoomRecipeStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET resultId = ? WHERE id = ?",
+            arrayOf("unrelated-batch", origin))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET resultId = ? WHERE id = ?",
+            arrayOf(batchId, origin))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(original.lines, restored.lines)
+    }
+
+    @Test fun nonCreatingOriginKindCannotAuthorizeRoomRecipeStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET kind = ? WHERE id = ?",
+            arrayOf("CONSUMPTION", origin))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET kind = ? WHERE id = ?",
+            arrayOf("RECEIPT", origin))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(original.lines, restored.lines)
+    }
+
     @Test fun futureOriginOperationCannotAuthorizeEarlierRoomStock() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()

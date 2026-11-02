@@ -47,7 +47,9 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val version = versions[batch.versionId] ?: return null
             val origin = origins[batch.originOperationId] ?: return null
             if (version.recordedAt !in 0L..asOfMillis ||
-                origin.recordedAt !in 0L..asOfMillis) return null
+                origin.recordedAt !in 0L..asOfMillis ||
+                origin.kind !in setOf("RECEIPT", "TRANSFER", "PRODUCTION") ||
+                origin.resultId != batch.id) return null
             // A zero balance is known zero, but an expired, future-acquired or
             // unconfirmed batch is not a current stock line even when empty.
             // Malformed dates remain an unavailable snapshot, never an assumption.
@@ -101,7 +103,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     b.release.name, b.safetyNote, b.recipeVersionId, b.parentBatchId,
                     row.originReversed, row.stockAmount, row.unit.name,
                     versions[b.versionId]?.let { listOf(it.revision, it.recordedAt) },
-                    origins[b.originOperationId]?.recordedAt,
+                    origins[b.originOperationId]?.let { listOf(it.kind, it.resultId, it.recordedAt) },
                     locations[b.locationId]?.let { location ->
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
