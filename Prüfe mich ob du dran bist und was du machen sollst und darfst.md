@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV autonomous run"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102T002919828Z-589fazidhn"
-acquiredAtUtc: "2026-11-02T00:29:19.828Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Berlin-local date consistency in Room planning and shopping snapshot"
-workingBranch: "integration-iv/berlin-shopping-date-boundary-20261102"
-lastReleasedAtUtc: "2026-11-02T00:19:21.876Z"
-lastReleasedCommit: "614e88bd4a6d2cdadba5d9020f3f91bfb5eae533"
+task: "Berlin-local Room planning/shopping/FoodStore date coherence merged PR #56; 411/411 CI"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T00:36:46.367Z"
+lastReleasedCommit: "6543e04c98c328c6d6c4d74b6da21b81fcb76a7c"
 nextStep: "Independent authenticated user-action attestation at FoodStore recipe save; real Android credential/privacy E2E; recipe generator/revalidator parity"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
