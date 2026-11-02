@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration II: einheitlicher Produktionszeitpunkt (02.11.2026)
+
+- [PR #72](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/72), **Code-/Test-HEAD `59c372827eb8cb2cbbdeaea9b037fc2077247181`**, Squash-Merge `83add8b45cff48fa1ad8045a3d25506df62eefef`: `KitchenOperations.produce` verwendet für Berlin-Tagsprüfung, Produktionsoperation, Output-Produkt/-Version und alle Input-/Output-Bestandsbewegungen einen einzigen nichtnegativen `recordedAt`-Zeitpunkt innerhalb der Room-Transaktion. Zwei positive/negative Room-/Robolectric-Regressionen prüfen Mitternachtswechsel, Retry ohne zusätzliche Uhrabfrage und Rollback bei ungültiger Zeit. Keine Schema-/Vertragsänderung oder APK.
+- **[PR-CI 41381887941](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41381887941) PASS** auf dem exakten Code-/Test-HEAD: **432/432 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, Rezept-v1-Schema (9/14), gepinnte Produkt-/Shopping-Python-Referenzgates, Room-8-Schema und Android-Testkompilierung PASS. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). **0 ausgeführte Android-Geräte-/Emulatortests**.
+- **Weiter:** unabhängig authentifizierte FoodStore-Rezeptsave-Aktionsprovenienz, vollständige Generator-/Revalidator-Parität und reale Android-/Privacy-E2E. Alle vier Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
 
 ## Integration III: einheitlicher Produkt-Revisionszeitpunkt (02.11.2026)
 
