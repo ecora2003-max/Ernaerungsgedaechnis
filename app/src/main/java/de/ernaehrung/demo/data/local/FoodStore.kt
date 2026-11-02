@@ -674,6 +674,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             require(occurred in 0L..recordedAt) {
                 "Tatsächlicher Verzehrzeitpunkt liegt außerhalb der gültigen Vergangenheit."
             }
+            // The optional physical instant and the confirmed event day describe
+            // the same consumption. Resolve in Berlin, never the device timezone.
+            // Reject a mismatched day before creating any operation or movement.
+            require(java.time.Instant.ofEpochMilli(occurred)
+                .atZone(java.time.ZoneId.of("Europe/Berlin"))
+                .toLocalDate().toString() == input.date) {
+                "Verzehrzeitpunkt und bestätigter Berliner Ereignistag widersprechen sich."
+            }
         }
         requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
         val consumptionId = id()
