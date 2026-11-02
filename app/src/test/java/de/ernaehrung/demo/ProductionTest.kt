@@ -201,4 +201,52 @@ class ProductionTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun recipeCannotUseProductVersionCreatedAfterItsSaveTime() = runBlocking {
+        val recipeTime = requireNotNull(dao.version(lentil)).recordedAt
+        val futureStore = FoodStore(db) { recipeTime + 60_000L }
+        val futureIngredient = futureStore.rememberProduct("future-ingredient", ProductInput("Zukunftszutat"))
+        val input = RecipeInput("Chronologisch geprüft", 2,
+            listOf(RecipeItemInput(lentil, 10_000), RecipeItemInput(futureIngredient, 20_000)), "Garen")
+        val beforeOperations = dao.operationCount()
+        val beforeRecipes = store.recipes().first().size
+
+        rejects { store.saveRecipe("future-ingredient-recipe", input) }
+        assertNull(dao.operation("future-ingredient-recipe"))
+        assertEquals(beforeOperations, dao.operationCount())
+        assertEquals(beforeRecipes, store.recipes().first().size)
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+        assertEquals(0, dao.consumptionCount())
+
+        val saved = futureStore.saveRecipe("future-ingredient-recipe", input)
+        assertEquals(recipeTime + 60_000L, dao.recipeVersion(saved)!!.recordedAt)
+        // An already committed identical retry must not be rejected after a clock rollback.
+        assertEquals(saved, store.saveRecipe("future-ingredient-recipe", input))
+        assertEquals(beforeOperations + 1, dao.operationCount())
+        assertEquals(beforeRecipes + 1, store.recipes().first().size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun recipeRevisionCannotReferenceFutureProductVersion() = runBlocking {
+        val original = requireNotNull(dao.recipeVersion(recipe))
+        val futureStore = FoodStore(db) { original.recordedAt + 120_000L }
+        val futureIngredient = futureStore.rememberProduct("revision-future-product", ProductInput("Neue Zutat"))
+        val revised = RecipeInput("Überarbeitete Linsen", 3,
+            listOf(RecipeItemInput(lentil, 30_000), RecipeItemInput(futureIngredient, 10_000)), "Garen")
+        val before = dao.operationCount()
+
+        rejects { store.saveRecipe("revision-future-ingredient", revised, original.recipeId, "Neue Zutat") }
+        assertNull(dao.operation("revision-future-ingredient"))
+        assertEquals(original.id, dao.latestRecipeVersion(original.recipeId)!!.id)
+        assertEquals(before, dao.operationCount())
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+
+        val accepted = futureStore.saveRecipe("revision-future-ingredient", revised, original.recipeId, "Neue Zutat")
+        assertEquals(accepted, store.saveRecipe("revision-future-ingredient", revised, original.recipeId, "Neue Zutat"))
+        assertEquals(accepted, dao.latestRecipeVersion(original.recipeId)!!.id)
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
+
 }
