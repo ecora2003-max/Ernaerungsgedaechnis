@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV scheduled 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102T1225-82ufs7fe"
-acquiredAtUtc: "2026-11-02T12:25:53.730Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save action provenance or targeted host/Room integrity regression"
-workingBranch: "integration-iv-stock-origin-identity-20261102"
-lastReleasedAtUtc: "2026-11-02T12:25:01.182Z"
-lastReleasedCommit: "18c6a24ddd753ae5dd49c384d0cee0fdafe04dfd"
+task: "Integration IV: Room recipe stock origin identity (PR #110, 486 JVM/7 Room PASS)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T12:38:11.665Z"
+lastReleasedCommit: "a74edad9e3ffa5a39c99e1d38e358d3dcf44439a"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
