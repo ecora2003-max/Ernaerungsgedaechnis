@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T20:30:24.889Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration IV: FoodStore/Room provenance and snapshot integrity"
-workingBranch: "integration-iv/stock-acquisition-day-provenance-20261102-2131"
+workingBranch: "integration-iv/stock-acquisition-day-status-20261102"
 lastReleasedAtUtc: "2026-11-02T20:09:28.599Z"
 lastReleasedCommit: "57d446705e0a30a871738c7f2f352764c6775146"
 nextStep: "Resume own open PR #144 branch integration-iii/recipe-import-identity-scope-20261102-2058 at HEAD 94140b2ad69e619f849788cc4d877613fee2e7b2; check CI 41516147841, fix failures or merge only on PASS; then record STATUS; continue generator/revalidator parity and Android E2E"
