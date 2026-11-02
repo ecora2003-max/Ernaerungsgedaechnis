@@ -317,6 +317,17 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             current.approvalBasisDigest, approvedAt = saveAt)
     }
 
+    /** The five-minute host evidence window is millisecond-exact. Duration.seconds
+     * truncates fractions and otherwise accepts a snapshot up to 999 ms too old.
+     * This only validates freshness; it never authenticates user consent.
+     */
+    private fun recipeContextSnapshotFresh(
+        capturedAt: java.time.Instant, checkedAt: java.time.Instant
+    ): Boolean {
+        val age = java.time.Duration.between(capturedAt, checkedAt)
+        return !age.isNegative && age <= java.time.Duration.ofMinutes(5)
+    }
+
     /** Caller must supply independently verified confirmation facts, never model claims. */
     private suspend fun reviewRecipeDraftV1InTransaction(
         json: String,
@@ -363,14 +374,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot
             val fresh = RecipeRoomStockSnapshotReader(dao)
                 .read(java.time.Instant.ofEpochMilli(trustedNow))
-            val ageSeconds = if (binding != null && fresh != null)
-                runCatching {
-                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
-                }.getOrNull() else null
+            val ageValid = binding != null && fresh != null &&
+                recipeContextSnapshotFresh(binding.snapshotAt, fresh.capturedAt)
             val valid = context?.contentBindingRequired == true &&
                 binding?.stockDigest != null && original != null && fresh != null &&
                 original.capturedAt == binding.snapshotAt &&
-                ageSeconds != null && ageSeconds in 0L..300L &&
+                ageValid &&
                 original == fresh.copy(capturedAt = original.capturedAt)
             if (!valid) {
                 return review.copy(
@@ -398,14 +407,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 RecipeRoomShoppingSnapshotReader(db)
                     .read(it, java.time.Instant.ofEpochMilli(trustedNow))
             }
-            val ageSeconds = if (binding != null && fresh != null)
-                runCatching {
-                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
-                }.getOrNull() else null
+            val ageValid = binding != null && fresh != null &&
+                recipeContextSnapshotFresh(binding.snapshotAt, fresh.capturedAt)
             val valid = context?.contentBindingRequired == true &&
                 binding?.shoppingDigest != null && original != null && fresh != null &&
                 original.capturedAt == binding.snapshotAt &&
-                ageSeconds != null && ageSeconds in 0L..300L &&
+                ageValid &&
                 original == fresh.copy(capturedAt = original.capturedAt)
             if (!valid) {
                 return review.copy(
@@ -430,14 +437,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 original?.scopeId == RecipeAuthorizedOffersReader.scopeId(offersScope)) {
                 offersReader.read(offersScope, java.time.Instant.ofEpochMilli(trustedNow))
             } else null
-            val ageSeconds = if (binding != null && fresh != null)
-                runCatching {
-                    java.time.Duration.between(binding.snapshotAt, fresh.capturedAt).seconds
-                }.getOrNull() else null
+            val ageValid = binding != null && fresh != null &&
+                recipeContextSnapshotFresh(binding.snapshotAt, fresh.capturedAt)
             val valid = context?.contentBindingRequired == true &&
                 binding?.offersDigest != null && original != null && fresh != null &&
                 original.capturedAt == binding.snapshotAt &&
-                ageSeconds != null && ageSeconds in 0L..300L &&
+                ageValid &&
                 original == fresh.copy(capturedAt = original.capturedAt)
             if (!valid) {
                 return review.copy(
