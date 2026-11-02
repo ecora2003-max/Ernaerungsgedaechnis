@@ -66,6 +66,12 @@ internal object RecipeContextContentBinding {
         // Negative epoch times are not valid persisted host events. Even an
         // otherwise internally consistent snapshot must not be approval evidence.
         if (snapshotAt.isBefore(Instant.EPOCH)) return null
+        // A caller must not smuggle a broader host snapshot into a narrower
+        // consent scope. Ignore nothing silently at the content-binding boundary;
+        // only RecipeDraftHostGate.context may project explicitly approved flags.
+        if ((!flags.considerStock && stock != null) ||
+            (!flags.considerShopping && shopping != null) ||
+            (!flags.considerOffers && offers != null)) return null
         val s = if (flags.considerStock) digest(Source.STOCK, snapshotAt, stock) else null
         val l = if (flags.considerShopping) digest(Source.SHOPPING, snapshotAt, shopping) else null
         val o = if (flags.considerOffers) digest(Source.OFFERS, snapshotAt, offers) else null
