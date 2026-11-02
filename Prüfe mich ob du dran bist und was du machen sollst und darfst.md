@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T20:53:03.755Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration III: continue open recipe-import PR #144, verify CI and finish validated code integration"
-workingBranch: "integration-iii/recipe-import-identity-scope-20261102-2058"
+workingBranch: "integration-iii/status-recipe-import-20261102-2101"
 lastReleasedAtUtc: "2026-11-02T20:40:29.577Z"
 lastReleasedCommit: "d91801b8a2ae9d7a1e0ce3b54fc5ca394248bb68"
 nextStep: "Independent authenticated recipe-save user-action provenance; generator/revalidator parity and Android/privacy E2E; monitor remaining PR #144 only through its owning integration"
