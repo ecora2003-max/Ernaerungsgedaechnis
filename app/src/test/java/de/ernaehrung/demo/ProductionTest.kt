@@ -249,4 +249,50 @@ class ProductionTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+
+    @Test fun productionCannotAppendAnEarlierRecipeOutputProductRevision() = runBlocking {
+        val firstTime = Instant.parse("2026-10-31T12:01:00Z").toEpochMilli()
+        val firstStore = FoodStore(db) { firstTime }
+        val half = input().copy(actualPortions = 3000,
+            allocations = listOf(Allocation(a, 150_000), Allocation(b, 250_000)))
+        val firstBatch = firstStore.produce("chronology-first-output", half, true)
+        val firstVersion = requireNotNull(dao.version(requireNotNull(dao.batch(firstBatch)).versionId))
+        val beforeOperations = dao.operationCount()
+
+        val earlierStore = FoodStore(db) { firstTime - 1L }
+        rejects { earlierStore.produce("chronology-backdated-output", half, true) }
+        assertNull(dao.operation("chronology-backdated-output"))
+        assertNull(dao.production("chronology-backdated-output"))
+        assertTrue(dao.movements("chronology-backdated-output").isEmpty())
+        assertEquals(firstVersion.id, dao.latestVersion(firstVersion.productId)!!.id)
+        assertEquals(beforeOperations, dao.operationCount())
+        assertEquals(150_000L, dao.balance(a))
+        assertEquals(250_000L, dao.balance(b))
+        assertEquals(3000L, dao.balance(firstBatch))
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun laterRecipeOutputRevisionAndIdempotentReplayRemainValid() = runBlocking {
+        val firstTime = Instant.parse("2026-10-31T12:01:00Z").toEpochMilli()
+        val half = input().copy(actualPortions = 3000,
+            allocations = listOf(Allocation(a, 150_000), Allocation(b, 250_000)))
+        val firstBatch = FoodStore(db) { firstTime }.produce("chronology-first-valid", half, true)
+        val firstVersion = requireNotNull(dao.version(requireNotNull(dao.batch(firstBatch)).versionId))
+        val secondStore = FoodStore(db) { firstTime + 1L }
+        val secondBatch = secondStore.produce("chronology-second-valid", half, true)
+        val secondVersion = requireNotNull(dao.version(requireNotNull(dao.batch(secondBatch)).versionId))
+        assertEquals(firstVersion.productId, secondVersion.productId)
+        assertEquals(firstVersion.revision + 1, secondVersion.revision)
+        assertEquals(firstTime + 1L, secondVersion.recordedAt)
+        assertEquals(secondVersion.id, dao.latestVersion(firstVersion.productId)!!.id)
+        val beforeReplay = dao.operationCount()
+        val replayWithoutClock = FoodStore(db) { error("Idempotent replay must not read the clock") }
+        assertEquals(secondBatch, replayWithoutClock.produce("chronology-second-valid", half, true))
+        assertEquals(beforeReplay, dao.operationCount())
+        assertEquals(0L, dao.balance(a))
+        assertEquals(0L, dao.balance(b))
+        assertEquals(3000L, dao.balance(firstBatch))
+        assertEquals(3000L, dao.balance(secondBatch))
+        assertEquals(0, dao.consumptionCount())
+    }
 }
