@@ -66,6 +66,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             if (movement.id.isBlank() || movement.batchId !in knownBatches ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||
+                // The event's actual timestamp may be more precise than its
+                // Berlin-local day. A future or invalid occurrence is not
+                // already available physical stock at this snapshot instant.
+                (movement.occurredAt != null && movement.occurredAt !in 0L..asOfMillis) ||
                 (day != null && day.isAfter(today))) return null
         }
         val ordered = rows.sortedBy { it.batch.id }
@@ -82,7 +86,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
                     })
-            }, movements.map { listOf(it.id, it.batchId, it.delta, it.recordedAt, it.occurredOn) },
+            }, movements.map { listOf(it.id, it.batchId, it.delta, it.recordedAt, it.occurredAt, it.occurredOn) },
             eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
