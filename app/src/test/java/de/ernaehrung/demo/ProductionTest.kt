@@ -285,6 +285,28 @@ class ProductionTest {
         assertEquals(3, dao.movements("cook-after-late-purchase").size)
     }
 
+    @Test fun productionRejectsBatchLinkedToUnrelatedReceiptEvenWithValidTimestamp() = runBlocking {
+        // A corrupt historical origin link must not turn another receipt's
+        // timestamp into evidence that this ingredient batch was created.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET originOperationId = 'buy-b' WHERE id = ?", arrayOf(a))
+        val before = dao.operationCount()
+        rejects { store.produce("cook-wrong-origin", input(), true) }
+        assertNull(dao.operation("cook-wrong-origin"))
+        assertNull(dao.production("cook-wrong-origin"))
+        assertTrue(dao.movements("cook-wrong-origin").isEmpty())
+        assertEquals(before, dao.operationCount())
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET originOperationId = 'buy-a' WHERE id = ?", arrayOf(a))
+        val output = store.produce("cook-correct-origin", input(), true)
+        assertEquals(6000L, dao.balance(output))
+        assertEquals(output, FoodStore(db) {
+            error("Idempotent production replay must not consult the clock")
+        }.produce("cook-correct-origin", input(), true))
+    }
+
     @Test fun productionCannotAppendAnEarlierRecipeOutputProductRevision() = runBlocking {
         val firstTime = Instant.parse("2026-10-31T12:01:00Z").toEpochMilli()
         val firstStore = FoodStore(db) { firstTime }

@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: physische Chargenherkunft bei Transfer und Herstellung (02.11.2026)
+
+- **[PR #105](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/105), Code-/Test-HEAD `092831f1b258d885af9b8f0ece91b2f1f24b6f7b`; [PR-CI 41437178290](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41437178290) PASS auf Code-/Test-/Status-HEAD `8e4e50ae0a73fd6517674a221cb6d958cd683bc3`: **481/481 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzen, Room-8-Schema und Android-Testkompilierung.** `WriteRules.batchOriginAt` prüft für tatsächlichen Transfer und Herstellung, dass die Charge zu ihrem Herkunftsvorgang (RECEIPT/TRANSFER/PRODUCTION) und dessen Ergebnis-ID gehört und dass Herkunft und Artikelversion spätestens zum einzigen physischen Ereigniszeitpunkt existierten. Neue positive/negative Room-/Robolectric-Regressionen für künftigen Zugang, falsche Herkunfts-ID, Rollback, spätere gültige Buchung und idempotente Wiederholung; bestehende Mitternachts-Fixture zeitkorrekt gemacht. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft); kein Schema-/Vertragswechsel. **CI belegt; keine ausgeführten Android-Geräte-/Privacy-E2E und keine APK.**
+- **Weiter:** Vor Merge main-HEAD und eigene ACTIVE-Sperre neu prüfen; nur bei grünem PR-CI mergen; kryptographisch unabhängig authentifizierte Nutzeraktionsprovenienz beim FoodStore-Rezeptsave, Generator-/Revalidator-Parität und Android-/Privacy-E2E bleiben offen.
+
+
 
 ## Integration III: einheitlicher physischer Zeitpunkt für Einkaufsbuchungen (02.11.2026)
 
