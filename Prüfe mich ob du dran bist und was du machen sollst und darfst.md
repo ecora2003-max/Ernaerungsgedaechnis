@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II automation 2026-11-02 17:06 CET"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102160702044-p55sv8pll"
-acquiredAtUtc: "2026-11-02T16:07:02.044Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Reject physically impossible pre-origin stock movements in Room recipe snapshots"
-workingBranch: "integration-ii-stock-physical-origin-20261102-1707"
-lastReleasedAtUtc: "2026-11-02T16:06:17.838Z"
-lastReleasedCommit: "33e2396e8058e2ffd4a9051feb9d2aa9cf65a1ee"
+task: "Integration II: physical stock occurrence cannot predate batch origin; PR #123 CI PASS, docs PR #124"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T16:14:25.382Z"
+lastReleasedCommit: "143ad28c861ce619d7ee11d175574e1350ae1c95"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; full generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
