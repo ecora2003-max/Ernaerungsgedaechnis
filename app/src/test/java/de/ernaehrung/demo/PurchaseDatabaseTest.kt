@@ -43,6 +43,114 @@ class PurchaseDatabaseTest {
         try { block(); fail("Expected rejected transaction") } catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun confirmedPurchaseUsesOneInstantAcrossBerlinMidnightAndRetryNeedsNoClock() = runBlocking {
+        // 22:59:59.999Z is 23:59:59.999 in Berlin on 30 October.
+        val instant = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
+        var reads = 0
+        val moving = FoodStore(db) {
+            reads++
+            if (reads == 1) instant else error("Purchase must not sample a second clock instant")
+        }
+        val receiptId = moving.savePurchase("purchase-single-instant", purchase(), true)
+        assertEquals(1, reads)
+        assertEquals(instant, dao.operation("purchase-single-instant")!!.recordedAt)
+        assertEquals(instant, dao.receipt(receiptId)!!.recordedAt)
+        assertEquals(1, dao.purchases().size)
+        val retry = FoodStore(db) { error("Idempotent purchase retry must not read the clock") }
+        assertEquals(receiptId, retry.savePurchase("purchase-single-instant", purchase(), true))
+        assertEquals(1, dao.purchases().size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun legacyPaymentConfirmationUsesOneInstantAndRetryNeedsNoClock() = runBlocking {
+        dao.insertReceipt(ReceiptEntity("legacy-single-instant", "Altmarkt", day, 0,
+            Source.RETAILER, Quality.CONFIRMED, clock))
+        val instant = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
+        var reads = 0
+        val moving = FoodStore(db) {
+            reads++
+            if (reads == 1) instant else error("Payment confirmation must read the clock once")
+        }
+        assertEquals("legacy-single-instant", moving.confirmReceiptPayment("legacy-pay-once",
+            "legacy-single-instant", "Zahlung geprüft", true))
+        assertEquals(1, reads)
+        assertEquals(instant, dao.operation("legacy-pay-once")!!.recordedAt)
+        assertEquals("legacy-single-instant", FoodStore(db) {
+            error("Payment replay must not read the clock")
+        }.confirmReceiptPayment("legacy-pay-once", "legacy-single-instant", "Zahlung geprüft", true))
+        assertEquals(1, dao.purchases().size)
+    }
+
+    @Test fun receiptStockBookingUsesOneInstantForOperationAndMovement() = runBlocking {
+        val stock = prepareStock()
+        val instant = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
+        var reads = 0
+        val moving = FoodStore(db) {
+            reads++
+            if (reads == 1) instant else error("Stock booking must not sample another instant")
+        }
+        val batch = moving.bookPurchaseLine("stock-single-instant", stock, true)
+        assertEquals(1, reads)
+        assertEquals(instant, dao.operation("stock-single-instant")!!.recordedAt)
+        val movements = dao.movements("stock-single-instant")
+        assertEquals(1, movements.size)
+        assertEquals(instant, movements.single().recordedAt)
+        assertEquals(200_000L, dao.balance(batch))
+        assertEquals(batch, FoodStore(db) {
+            error("Stock booking replay must not read the clock")
+        }.bookPurchaseLine("stock-single-instant", stock, true))
+        assertNotNull(dao.receiptBooking(stock.lineId))
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun purchaseCancellationUsesOneInstantAndRetryNeedsNoClock() = runBlocking {
+        store.savePurchase("purchase-to-cancel-once", purchase(), true)
+        val instant = Instant.parse("2026-10-30T22:59:59.999Z").toEpochMilli()
+        var reads = 0
+        val moving = FoodStore(db) {
+            reads++
+            if (reads == 1) instant else error("Cancellation must read the clock once")
+        }
+        val input = ReversalInput("purchase-to-cancel-once", day, "Fehler korrigiert")
+        assertEquals("purchase-to-cancel-once", moving.cancelPurchase("cancel-single-instant", input, true))
+        assertEquals(1, reads)
+        assertEquals(instant, dao.operation("cancel-single-instant")!!.recordedAt)
+        assertNotNull(dao.reversal("purchase-to-cancel-once"))
+        assertEquals("purchase-to-cancel-once", FoodStore(db) {
+            error("Cancellation replay must not read the clock")
+        }.cancelPurchase("cancel-single-instant", input, true))
+        assertEquals(1, dao.purchases().size)
+    }
+
+    @Test fun negativeClockRejectsEveryPurchaseWriteWithoutPartialLedgerEffects() = runBlocking {
+        val invalid = FoodStore(db) { -1L }
+        val initial = dao.operationCount()
+        rejects { invalid.savePurchase("negative-purchase", purchase(), true) }
+        assertEquals(initial, dao.operationCount())
+        assertTrue(dao.receipts().isEmpty())
+
+        dao.insertReceipt(ReceiptEntity("negative-legacy", "Altmarkt", day, 0,
+            Source.RETAILER, Quality.CONFIRMED, clock))
+        rejects { invalid.confirmReceiptPayment("negative-payment", "negative-legacy",
+            "Zahlung geprüft", true) }
+        assertNull(dao.operation("negative-payment"))
+        assertNull(dao.purchaseForReceipt("negative-legacy"))
+
+        val stock = prepareStock("negative-stock-source")
+        val beforeStock = dao.operationCount()
+        rejects { invalid.bookPurchaseLine("negative-stock", stock, true) }
+        assertEquals(beforeStock, dao.operationCount())
+        assertNull(dao.receiptBooking(stock.lineId))
+        assertTrue(dao.planningBatches().isEmpty())
+
+        rejects { invalid.cancelPurchase("negative-cancel",
+            ReversalInput("negative-stock-source", day, "Fehler"), true) }
+        assertNull(dao.operation("negative-cancel"))
+        assertNull(dao.reversal("negative-stock-source"))
+        assertEquals(beforeStock, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun paymentCountsOnceDespiteUnresolvedLinesAndPreservesOriginalAndSource() = runBlocking {
         val input = purchase().copy(source = Source.RETAILER)
         val receipt = store.savePurchase("buy", input, true)
