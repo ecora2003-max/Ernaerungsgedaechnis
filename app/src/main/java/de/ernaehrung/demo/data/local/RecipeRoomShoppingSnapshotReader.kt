@@ -80,6 +80,10 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             // Planning reports may still show it; this evidence port fails closed.
             if (version.recordedAt !in 0L..asOfMillis ||
                 version.productId.isBlank() || version.revision <= 0 ||
+                // A synthetic or unverified catalog row is not independently
+                // confirmed recipe-planning evidence, even if a plan references it.
+                version.source == Source.DEMO ||
+                version.quality !in setOf(Quality.SOURCED, Quality.CONFIRMED) ||
                 latestRevisionByProduct[version.productId] != version.revision ||
                 version.baseUnit != need.unit) return null
             versions[need.versionId] = version
@@ -93,7 +97,8 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             rows.map { row ->
                 val need = row.need
                 val version = versions.getValue(need.versionId)
-                listOf(need.versionId, version.revision, version.recordedAt,
+                listOf(need.versionId, version.productId, version.revision,
+                    version.recordedAt, version.source.name, version.quality.name,
                     version.baseUnit.name, need.knownMissing, need.unit.name,
                     row.firstNeededOn, row.lastNeededOn, row.checked,
                     row.staleCheck, row.snapshot, row.contentToken,
