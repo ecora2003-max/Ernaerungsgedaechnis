@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T00:01:17.867Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Bound Android recipe credential challenge to monotonic five-minute validity"
-workingBranch: "codex/integration-iii-credential-challenge-ttl-20261102-0002"
+workingBranch: "codex/integration-iii-credential-challenge-evidence-20261102-0009"
 lastReleasedAtUtc: "2026-11-01T23:51:23.832Z"
 lastReleasedCommit: "661a5a12393d48f9696cf1dfa0530c377b40bea2"
 nextStep: "Authenticated action attestation at FoodStore recipe save; actual Android credential/privacy E2E; recipe parity"
