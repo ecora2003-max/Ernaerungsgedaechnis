@@ -59,8 +59,8 @@ ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102151430827-t8pwq2xwag"
 acquiredAtUtc: "2026-11-02T15:14:30.827Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration II: FoodStore recipe-save provenance / replay consistency"
-workingBranch: null
+task: "Integration II: propagate cancellation in authorized recipe-offer host evidence"
+workingBranch: "integration-ii-recipe-offer-cancellation-20261102-1514"
 lastReleasedAtUtc: "2026-11-02T15:05:01.098Z"
 lastReleasedCommit: "dfd2e6937f5634d7ccb60e4202ab9378e747350a"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
