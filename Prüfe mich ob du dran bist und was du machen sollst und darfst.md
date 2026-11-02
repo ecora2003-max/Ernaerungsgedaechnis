@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat) automation turn 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102194219152-2660afs"
-acquiredAtUtc: "2026-11-02T19:42:19.152Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Reject unrequested context snapshots in recipe content binding"
-workingBranch: "integration-chat/context-scope-failclosed-20261102"
-lastReleasedAtUtc: "2026-11-02T19:32:36.969Z"
-lastReleasedCommit: "27a7175b7e243d53a23879a6d3a643883be1c294"
-nextStep: "Independently authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E"
+task: "Integration (Chat): reject unrequested recipe context snapshots; PR #143 merged; 518 JVM and 7 migrations PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T19:55:41.235Z"
+lastReleasedCommit: "57d446705e0a30a871738c7f2f352764c6775146"
+nextStep: "Independent cryptographic FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
