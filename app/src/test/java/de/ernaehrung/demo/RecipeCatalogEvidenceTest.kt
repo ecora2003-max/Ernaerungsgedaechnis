@@ -257,4 +257,52 @@ class RecipeCatalogEvidenceTest {
         assertEquals(before, dao.operationCount())
         assertEquals(0, dao.consumptionCount())
     }
+
+    @Test fun reusedProductVersionCannotApproveTwoDifferentFoodTypeIngredients() = runBlocking {
+        val version = requireNotNull(dao.version(versionId))
+        val rice = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        val side = rice.copy(foodTypeId = "rice-side", label = "Reisbeilage")
+        val confirmedRice = confirmation()
+        val duplicate = confirmedRice.copy(foodTypeId = "rice-side")
+        val confirmations = mapOf("rice" to confirmedRice, "rice-side" to duplicate)
+        val before = dao.operationCount()
+
+        // The manual-review entry point already rejects duplicate selected
+        // versions. Direct FoodStore callers must not bypass that constraint.
+        assertTrue(Catalog.resolve(listOf(rice, side), listOf(version),
+            confirmations, at).isEmpty())
+        val extraIngredient = """
+            {"label":"Reisbeilage","foodTypeId":"rice-side","sourceStatus":"UNKNOWN",
+             "quantity":{"amount":100,"unit":"g","basis":"NET","confirmed":false}}
+        """.trimIndent().replace("\n", " ")
+        val twoLineJson = json.replace("\"ingredients\":[",
+            "\"ingredients\":[$extraIngredient,")
+        val states = mapOf("rice" to Gate.State.RAW, "rice-side" to Gate.State.RAW)
+        val blocked = store.previewRecipeDraftV1(twoLineJson, request,
+            confirmations, states)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, blocked.status)
+        assertNull(blocked.input)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+
+        // Two independently identified catalog products still support a
+        // positive read-only preview; no purchase or consumption is recorded.
+        val sideVersionId = store.rememberProduct("product-rice-side",
+            ProductInput("Reisbeilage", source = Source.USER,
+                quality = Quality.CONFIRMED))
+        val sideVersion = requireNotNull(dao.version(sideVersionId))
+        val distinct = duplicate.copy(productVersionId = sideVersion.id,
+            productRevision = sideVersion.revision,
+            versionRecordedAt = sideVersion.recordedAt,
+            unit = sideVersion.baseUnit)
+        val count = dao.operationCount()
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+            store.previewRecipeDraftV1(twoLineJson, request,
+                mapOf("rice" to confirmedRice, "rice-side" to distinct),
+                states).status)
+        assertEquals(count, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
 }
