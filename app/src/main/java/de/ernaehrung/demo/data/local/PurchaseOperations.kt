@@ -30,7 +30,9 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
                 else false
             require(!matching || distinctPurchaseConfirmed) { "Passender bezahlter Einkauf mit gleichem Händler, Datum und Betrag existiert. Beleg prüfen; einen wirklich weiteren Einkauf gesondert bestätigen." }
         }
-        input.purchasedOn?.let { actualDate(it, now()) }
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Einkaufs-Erfassungszeitpunkt." }
+        input.purchasedOn?.let { actualDate(it, recordedAt) }
         for (line in input.lines) {
             line.amount?.let(Amounts::positive); line.totalCents?.let(Money::valid)
             require(line.amount == null || line.unit != null) { "Zur Positionsmenge gehört eine Einheit." }
@@ -40,10 +42,10 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
             }
         }
         val receiptId = id()
-        dao.insertOperation(OperationEntity(key, "PURCHASE", hash, now(), receiptId))
+        dao.insertOperation(OperationEntity(key, "PURCHASE", hash, recordedAt, receiptId))
         // The overall payment is confirmed. Individual stock interpretations remain unconfirmed.
         dao.insertReceipt(ReceiptEntity(receiptId, input.merchant?.trim()?.takeIf(String::isNotEmpty), input.purchasedOn,
-            input.paidCents, input.source, Quality.CONFIRMED, now()))
+            input.paidCents, input.source, Quality.CONFIRMED, recordedAt))
         for (line in input.lines) dao.insertReceiptLine(ReceiptLineEntity(id(), receiptId, line.originalText, line.interpretedName,
             line.versionId, line.amount, line.unit, line.totalCents, Quality.UNKNOWN, null))
         dao.insertPurchase(PurchaseEventEntity(key, receiptId, "EUR", input.reason))
@@ -57,9 +59,11 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
         val hash = fingerprint("RECEIPT_PAYMENT_1", receiptId, reason, "EUR")
         replay(dao, key, hash)?.let { return@withTransaction it }
         val receipt = requireNotNull(dao.receipt(receiptId)) { "Beleg fehlt." }
-        receipt.purchasedOn?.let { actualDate(it, now()) }; receipt.totalCents?.let(Money::valid)
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Zahlungsbestätigungszeitpunkt." }
+        receipt.purchasedOn?.let { actualDate(it, recordedAt) }; receipt.totalCents?.let(Money::valid)
         require(dao.purchaseForReceipt(receiptId) == null) { "Dieser Beleg besitzt bereits eine Zahlungsbestätigung einschließlich Historie." }
-        dao.insertOperation(OperationEntity(key, "PURCHASE", hash, now(), receiptId))
+        dao.insertOperation(OperationEntity(key, "PURCHASE", hash, recordedAt, receiptId))
         dao.insertPurchase(PurchaseEventEntity(key, receiptId, "EUR", reason))
         receiptId
     }
@@ -80,15 +84,17 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
         val receipt = requireNotNull(dao.receipt(line.receiptId))
         // No invented date and no automatic conversion from gross package weight to usable stock.
         require(receipt.purchasedOn != null && b.acquiredOn == receipt.purchasedOn) { "Bekanntes Kaufdatum als Zugangsdatum verwenden." }
-        actualDate(receipt.purchasedOn, now())
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Lagerzugangszeitpunkt." }
+        actualDate(receipt.purchasedOn, recordedAt)
         requireNotNull(dao.version(b.versionId)) { "Konkrete Produktversion wählen." }
         require(dao.location(b.locationId)?.confirmed == true) { "Tatsächlich vorhandenen Lagerort wählen." }
         val batchId = id()
-        dao.insertOperation(OperationEntity(key, "RECEIPT", hash, now(), batchId))
+        dao.insertOperation(OperationEntity(key, "RECEIPT", hash, recordedAt, batchId))
         dao.insertBatch(BatchEntity(batchId, b.versionId, b.locationId, key, b.acquiredOn, b.bestBefore, b.useBy,
             release = b.release, safetyNote = b.safetyNote))
         dao.insertMovement(StockMovementEntity(id(), batchId, key, b.amount, MovementKind.RECEIPT, null,
-            Source.USER, "Bestätigte Belegposition: ${input.reason}", now(), occurredOn = b.acquiredOn))
+            Source.USER, "Bestätigte Belegposition: ${input.reason}", recordedAt, occurredOn = b.acquiredOn))
         dao.insertReceiptBooking(ReceiptStockBookingEntity(line.id, key, input.basisDescription, input.reason))
         batchId
     }
@@ -98,7 +104,9 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
         confirmation(confirmed, input.reason); date(input.date)
         val hash = fingerprint("PURCHASE_CANCEL_1", input.originalOperationId, input.date, input.reason)
         replay(dao, key, hash)?.let { return@withTransaction it }
-        actualDate(input.date, now())
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Einkaufsstornozeitpunkt." }
+        actualDate(input.date, recordedAt)
         val purchase = requireNotNull(dao.purchase(input.originalOperationId)) { "Einkaufsereignis fehlt." }
         require(dao.reversal(purchase.operationId) == null) { "Einkaufsereignis bereits storniert." }
         val receipt = requireNotNull(dao.receipt(purchase.receiptId))
@@ -107,7 +115,7 @@ internal class PurchaseOperations(private val db: FoodDatabase, private val now:
             val stockId = dao.receiptBooking(line.id)?.operationId ?: line.stockOperationId
             require(stockId == null || dao.reversal(stockId) != null) { "Gebuchte Lagerzugänge zuerst samt abhängigen Vorgängen prüfen und stornieren." }
         }
-        dao.insertOperation(OperationEntity(key, "REVERSAL", hash, now(), purchase.operationId))
+        dao.insertOperation(OperationEntity(key, "REVERSAL", hash, recordedAt, purchase.operationId))
         dao.insertReversal(OperationReversalEntity(purchase.operationId, key, input.date, input.reason))
         purchase.operationId
     }
