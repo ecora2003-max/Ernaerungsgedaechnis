@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II scheduled run 4"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-mvykfsm0-9aqo1co5b2"
-acquiredAtUtc: "2026-11-02T01:14:01.752Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Fix Berlin-local historical paid-price knowledge cutoff across DST"
-workingBranch: "integration-ii/berlin-paid-history-status-20261102"
-lastReleasedAtUtc: "2026-11-02T01:12:24.101Z"
-lastReleasedCommit: "06ffd7ba34683eacc9e9ea3ded66b560cc97f1c6"
+task: "Berlin paid-price knowledge cutoff merged PR #60; 417/417 JVM and 7/7 Room CI"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T01:23:35.343Z"
+lastReleasedCommit: "69529dff5fbfa530f462440662951fdf4756b001"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; real Android credential/privacy E2E; generator/revalidator parity"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
