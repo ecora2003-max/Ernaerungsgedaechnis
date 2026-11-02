@@ -35,9 +35,13 @@ internal object RecipeCredentialResultGate {
         sessionId: String?,
         resetVersion: Int,
         actionEnabled: Boolean,
+        deviceSecure: Boolean,
         nowElapsedRealtimeMs: Long = SystemClock.elapsedRealtime()
     ): Boolean = challenge != null &&
         resultCode == Activity.RESULT_OK &&
+        // A successful result cannot be reused if the secure device lock was removed
+        // while the system confirmation Activity was in flight.
+        deviceSecure &&
         // Elapsed realtime cannot be set by a wall-clock change. A delayed OS
         // callback or a challenge from a different boot must not approve a draft.
         challenge.issuedAtElapsedRealtimeMs >= 0L &&
@@ -87,9 +91,11 @@ internal fun RecipeDraftDeviceCredentialReview(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val completed = challenge
         challenge = null // Consume every result, including cancellation and stale results.
+        val stillSecure = (context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)
+            ?.isDeviceSecure == true
         if (RecipeCredentialResultGate.accepts(
                 completed, result.resultCode, latestReview, latestSession,
-                latestResetVersion, latestEnabled
+                latestResetVersion, latestEnabled, stillSecure
             )) {
             error = null
             latestCallback(requireNotNull(completed).digest, completed.sessionId)
@@ -118,7 +124,7 @@ internal fun RecipeDraftDeviceCredentialReview(
         if (intent == null ||
             !RecipeCredentialResultGate.accepts(
                 candidate, Activity.RESULT_OK, review, sessionKey,
-                resetVersion, actionEnabled
+                resetVersion, actionEnabled, keyguard?.isDeviceSecure == true
             )
         ) {
             error = "Eine sichere Gerätesperre und eine aktuelle Rezeptvorschau sind erforderlich."
