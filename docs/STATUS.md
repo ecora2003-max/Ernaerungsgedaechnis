@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: tatsächlicher Verzehrzeitpunkt an FoodStore-Grenze (02.11.2026)
+
+- **Code `15b77206b85b3bc30df1ebeb07193e9df5aa8ba1`, Test `084622ebe100a4ef3f07f5a2c301aaa5ad503efa` (CI PENDING):** `FoodStore.consume` verwirft neu bestätigte Verzehrereignisse mit negativem oder zukünftigem `occurredAt` innerhalb der Room-Transaktion. Operation und zugehörige Bestandsbewegung erhalten denselben einmal erfassten `recordedAt`-Zeitpunkt. Zwei positive/negative Room-/Robolectric-Regressionen prüfen Rollback, unveränderten Bestand, zulässige Vergangenheit, identische Ereigniszeit und idempotenten Retry. Bestehende Operation-Keys bleiben replay-kompatibel. Keine Schemaänderung, keine APK, keine Gerätefreigabe.
+- **Weiter:** unabhängig authentifizierte Rezept-Save-Nutzeraktionsprovenienz, vollständige Generator-/Revalidator-Parität und tatsächlich ausgeführte Android-/Privacy-E2E; Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
 ## Integration II: Zeitgültiger tatsächlicher Bewegungszeitpunkt im Room-Rezeptbestand (02.11.2026)
 
 - [PR #66](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/66), **Code-/Test-HEAD `8f0fbd406182e7141170224bad2fb796bce9e843`**, Squash-Merge `06f52f8b01613a09ddfb9a9abf014e4a69a98d8a`: Die echte transaktionale `RecipeRoomStockSnapshotReader`-Lesestrecke prüft neben Erfassungszeit und Berliner Ereignistag jetzt auch das optionale `occurredAt` der Bestandsbewegung gegen den exakten Snapshot-Zeitpunkt. Zukunfts- und negative Zeitwerte sperren den gesamten Snapshot, statt zukünftige physische Bewegung als aktuellen Bestand zu projizieren. `occurredAt` ist im Revisionsdigest gebunden. Zwei neue positive/negative Room-/Robolectric-Regressionen; keine Schemaänderung, keine Ist-Buchung.
