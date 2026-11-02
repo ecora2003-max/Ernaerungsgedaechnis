@@ -167,7 +167,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 key.isNotBlank() && key.length <= 200 &&
                     !key.startsWith(prefix) &&
                     operation.recordedAt in 0L..checkedAt &&
-                    checkedAt - operation.recordedAt <= RECIPE_DRAFT_CONSENT_TTL_MS &&
+                    checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
                     operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
             }
         }?.id?.substring(prefix.length)
@@ -182,7 +182,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
 
     // Bound a durable host checkpoint to a recent action, not an indefinite approval.
     // A completed recipe operation may still replay idempotently after this window.
-    private val RECIPE_DRAFT_CONSENT_TTL_MS = 5L * 60L * 1000L
+    private val recipeDraftConsentTtlMs = 5L * 60L * 1000L
 
     private fun recipeDraftConsentKey(key: String) = "RECIPE_DRAFT_CONSENT_V1:$key"
 
@@ -237,7 +237,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // A checkpoint alone must not authorize a *new* recipe hours or days later.
         // Preserve safe idempotent replay of an already written recipe; KitchenOperations
         // still checks its full input+approval fingerprint before returning the result.
-        require(saveAt - consent.recordedAt <= RECIPE_DRAFT_CONSENT_TTL_MS ||
+        require(saveAt - consent.recordedAt <= recipeDraftConsentTtlMs ||
             dao.operation(key)?.kind == "RECIPE") {
             "Rezeptbestätigung abgelaufen; neue Gerätebestätigung erforderlich."
         }
