@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II automated run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102T1909Z-mws4c4vyk7p"
-acquiredAtUtc: "2026-11-02T19:09:32.704Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Room-Rezeptkontext: nächste transaktionale Validierung und Regression"
-workingBranch: "integration-ii-shopping-provenance-20261102-1909"
-lastReleasedAtUtc: "2026-11-02T19:07:15.754Z"
-lastReleasedCommit: "8f21a7f7d3d1a33f07cc7878dad9e70caa8f08bd"
+task: "Integration II: Room-Shopping-Provenienz geprüft; Code-PR #139 und Status-PR #140 gemergt"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T19:17:54.947Z"
+lastReleasedCommit: "551c170e052309211cb1fe692f59270d7e11add2"
 nextStep: "Unabhängige FoodStore-Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
