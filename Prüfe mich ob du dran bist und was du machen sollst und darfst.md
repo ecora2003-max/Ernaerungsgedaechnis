@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T03:40:20.667Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save authentication provenance boundary"
-workingBranch: null
+workingBranch: "integrate/recipe-consent-freshness-20261102-chat"
 lastReleasedAtUtc: "2026-11-02T03:36:38.421Z"
 lastReleasedCommit: "62db1c6ddf3886fa9191682f6cb72ab552d1a887"
 nextStep: "Independent authenticated FoodStore recipe-save provenance; generator/revalidator parity; real Android credential/privacy E2E"
