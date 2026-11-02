@@ -125,4 +125,17 @@ class RecipeDraftManualReviewTest {
         rejects { Manual.prepare(imported(contextJson), listOf(catalog()),
             mapOf("rice" to choice(false)), setOf("ALLERGEN:SOY"), true, nowMillis) }
     }
+    @Test fun negativeCatalogAndReviewTimestampsNeverCreateHostConfirmation() {
+        val parsed = imported()
+        val reviewed = mapOf("rice" to choice(false))
+        val restrictions = setOf("ALLERGEN:SOY")
+        rejects { Manual.prepare(parsed, listOf(catalog()), reviewed,
+            restrictions, true, -1L) }
+        rejects { Manual.prepare(parsed, listOf(catalog(recordedAt = -1L)),
+            reviewed, restrictions, true, nowMillis) }
+        val valid = Manual.prepare(parsed, listOf(catalog()), reviewed,
+            restrictions, true, nowMillis)
+        assertEquals("v1", valid.confirmations["rice"]?.productVersionId)
+    }
+
 }
