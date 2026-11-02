@@ -43,6 +43,9 @@ internal class PrivateRecipeDraftPendingKeyStore(
     override fun resumeOrCreate(approvalDigest: String): String = synchronized(lock) {
         require(DIGEST.matches(approvalDigest)) { "Ungültige Rezept-Freigabebasis." }
         val time = now()
+        // Invalid wall clocks must not create or overwrite an opaque pending key.
+        // The last valid checkpoint remains available if the clock recovers.
+        require(time >= 0L) { "Ungültiger Rezeptbestätigungszeitpunkt." }
         val previous = read()
         if (previous != null && previous.digest == approvalDigest &&
             time >= previous.issuedAt && time - previous.issuedAt <= MAX_AGE_MS) {
