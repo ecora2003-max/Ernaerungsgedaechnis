@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T17:29:08.120Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Rezept-Speichern: überprüfbare Nutzeraktionsprovenienz und FoodStore-Kohärenz"
-workingBranch: "integration-iv/recipe-catalog-asof-20261102-1729"
+workingBranch: "integration-iv/recipe-asof-status-20261102-1740"
 lastReleasedAtUtc: "2026-11-02T17:16:25.700Z"
 lastReleasedCommit: "75340ef68435cc9dd183d114c3b45a13e02a4019"
 nextStep: "FoodStore-Rezeptsave unabhängig authentifizieren; Generator-/Revalidator-Parität und Android-/Privacy-E2E weiterentwickeln"
