@@ -105,6 +105,39 @@ class LocalDatabaseTest {
         assertEquals(1, dao.consumptionCount())
     }
 
+    @Test fun sameDayConsumptionOccurrenceCannotPrecedeBatchReceipt() = runBlocking {
+        val productAt = Instant.parse("2026-11-02T09:00:00Z").toEpochMilli()
+        val receiptAt = Instant.parse("2026-11-02T11:00:00Z").toEpochMilli()
+        val bookedAt = Instant.parse("2026-11-02T13:00:00Z").toEpochMilli()
+        store = FoodStore(db) { productAt }
+        val v = store.rememberProduct("occurrence-product", ProductInput("Linsen"))
+        val l = store.addLocation("occurrence-location", "Vorrat", true)
+        store = FoodStore(db) { receiptAt }
+        val b = store.receive("occurrence-receipt",
+            BatchInput(v, l, 100_000, release = ReleaseStatus.RELEASED), true)
+        store = FoodStore(db) { bookedAt }
+        val beforeReceipt = ConsumptionInput(v, "2026-11-02", "Mittag", 50_000,
+            listOf(Allocation(b, 50_000)), occurredAt = receiptAt - 1)
+        val operationsBefore = dao.operationCount()
+
+        // All three instants are on the same Berlin day. Recording the meal
+        // after the receipt cannot authorize a meal physically eaten before it.
+        rejects { store.consume("premature-occurrence", beforeReceipt, true) }
+        assertNull(dao.operation("premature-occurrence"))
+        assertEquals(operationsBefore, dao.operationCount())
+        assertEquals(100_000L, dao.balance(b))
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.movements("premature-occurrence").isEmpty())
+
+        val valid = beforeReceipt.copy(occurredAt = receiptAt + 1)
+        val meal = store.consume("valid-occurrence", valid, true)
+        assertEquals(50_000L, dao.balance(b))
+        store = FoodStore(db) { -1L }
+        assertEquals(meal, store.consume("valid-occurrence", valid, true))
+        assertEquals(1, dao.consumptionCount())
+        assertEquals(1, dao.movements("valid-occurrence").size)
+    }
+
     @Test fun idempotentReceiptsSurviveRetriesButRejectChangedPayload() = runBlocking {
         val v = product(); val l = location()
         val batch = received(v, l)
