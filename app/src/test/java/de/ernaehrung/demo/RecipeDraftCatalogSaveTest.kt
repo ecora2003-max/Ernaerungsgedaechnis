@@ -165,6 +165,58 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun recoveredConsentRejectsRecipeOperationPointingAtAnEarlierVersion() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("genuine-save", ready)
+        val savedVersion = save("genuine-save", ready)
+        val validOperation = requireNotNull(dao.operation("genuine-save"))
+
+        clock += 60_000L
+        consent("repointed-save", ready)
+        // The operation appears to follow consent and has the correct replay
+        // fingerprint, but its result was persisted before this operation.
+        dao.insertOperation(OperationEntity("repointed-save", "RECIPE",
+            validOperation.fingerprint, clock, savedVersion))
+        val count = dao.operationCount()
+
+        assertEquals("genuine-save", store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("repointed-save", ready) }
+        rejected { save("repointed-save", ready) }
+        assertEquals(count, dao.operationCount())
+        assertEquals(at, dao.recipeVersion(savedVersion)?.recordedAt)
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun replayCannotPromoteAnUnrelatedLaterRecipeRevisionToFirstDraftSave() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        consent("original-draft", ready)
+        val firstVersion = save("original-draft", ready)
+        val originalOperation = requireNotNull(dao.operation("original-draft"))
+        val recipeId = requireNotNull(dao.recipeVersion(firstVersion)).recipeId
+
+        clock += 60_000L
+        val revisedVersion = store.saveRecipe("manual-revision",
+            requireNotNull(ready.input), recipeId, "Manuelle Revision")
+        assertEquals(2, dao.recipeVersion(revisedVersion)?.revision)
+        consent("forged-revision-replay", ready)
+        // Matching timestamps and hash are not enough: the consent authorizes
+        // a new first recipe version, not a later manually edited revision.
+        dao.insertOperation(OperationEntity("forged-revision-replay", "RECIPE",
+            originalOperation.fingerprint, clock, revisedVersion))
+        val count = dao.operationCount()
+
+        rejected { consent("forged-revision-replay", ready) }
+        rejected { save("forged-revision-replay", ready) }
+        assertEquals(count, dao.operationCount())
+        assertEquals(2, dao.recipeVersion(revisedVersion)?.revision)
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun saveRejectsOrphanRecipeReplayEvenWithMatchingApprovalFingerprint() = runBlocking {
         val ready = preview()
         consent("valid-recipe", ready)
