@@ -46,6 +46,10 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         val recordedAt = now()
         require(recordedAt >= 0L) { "Ungültiger Rezept-Erfassungszeitpunkt." }
         val previous = recipeId?.let { requireNotNull(dao.latestRecipeVersion(it)) { "Rezept nicht gefunden." } }
+        // A new revision must not predate the persisted version it supersedes.
+        require(previous == null || previous.recordedAt in 0L..recordedAt) {
+            "Rezeptrevision liegt vor ihrer Vorgängerversion."
+        }
         val identity = recipeId ?: id()
         val version = id()
         if (previous == null) dao.insertRecipe(RecipeEntity(identity, recordedAt))
@@ -78,6 +82,10 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         require(input.storageChecked && input.storageNote.isNotBlank()) { "Geeignete Lagerbedingungen, Behälter und tatsächlich verfügbaren Platz ausdrücklich prüfen und beschreiben." }
         require(input.release != ReleaseStatus.RELEASED || input.useBy == null || input.useBy >= input.date) { "Abgelaufene Fertigportionen können nicht freigegeben werden." }
         val recipe = requireNotNull(dao.recipeVersion(input.recipeVersionId)) { "Rezeptversion nicht gefunden." }
+        // The confirmed production cannot be recorded before its recipe existed.
+        require(recipe.recordedAt in 0L..recordedAt) {
+            "Herstellung liegt vor der erfassten Rezeptversion."
+        }
         val ingredients = dao.ingredients(recipe.id)
         require(ingredients.isNotEmpty()) { "Rezept enthält keine Zutaten." }
         requireNotNull(dao.location(input.locationId)) { "Lagerort nicht gefunden." }.also { require(it.confirmed) { "Lagerort ist nicht als vorhanden bestätigt." } }

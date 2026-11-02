@@ -28,7 +28,8 @@ class ProductionTest {
     private val dao get() = db.foodDao()
     @Before fun setup() = runBlocking {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
-        store = FoodStore(db) { 1_800_000_000_000L }
+        // Keep fixture creation before the Berlin-midnight production regression.
+        store = FoodStore(db) { Instant.parse("2026-10-31T12:00:00Z").toEpochMilli() }
         lentil = store.rememberProduct("l", ProductInput("Linsen", energyKcal = 340.0))
         tomato = store.rememberProduct("t", ProductInput("Tomaten", energyKcal = null))
         location = store.addLocation("loc", "Kühlschrank", true)
@@ -154,4 +155,50 @@ class ProductionTest {
         assertEquals(1, outputs.size); assertEquals(6000L, outputs.single().stockAmount)
         assertEquals(0L, dao.balance(a)); assertEquals(0L, dao.balance(b)); assertEquals(0, dao.consumptionCount())
     }
+
+    @Test fun recipeRevisionCannotBeRecordedBeforeItsPredecessor() = runBlocking {
+        val first = requireNotNull(dao.recipeVersion(recipe))
+        val revisionInput = RecipeInput("Linsengericht überarbeitet", 6000,
+            listOf(RecipeItemInput(lentil, 300_000), RecipeItemInput(tomato, 500_000)), "Garen")
+        val earlier = FoodStore(db) { first.recordedAt - 1L }
+        val before = dao.operationCount()
+        rejects { earlier.saveRecipe("revision-chronology", revisionInput, first.recipeId, "Überarbeitet") }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("revision-chronology"))
+        assertEquals(first.id, dao.latestRecipeVersion(first.recipeId)!!.id)
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+
+        val later = FoodStore(db) { first.recordedAt + 1L }
+        val revised = later.saveRecipe("revision-chronology", revisionInput, first.recipeId, "Überarbeitet")
+        assertEquals(first.recordedAt + 1L, dao.recipeVersion(revised)!!.recordedAt)
+        // An already persisted retry is valid even when the device clock moves back.
+        assertEquals(revised, earlier.saveRecipe("revision-chronology", revisionInput, first.recipeId, "Überarbeitet"))
+        assertEquals(before + 1, dao.operationCount())
+        assertEquals(revised, dao.latestRecipeVersion(first.recipeId)!!.id)
+    }
+
+    @Test fun productionCannotBeRecordedBeforeItsRecipeVersion() = runBlocking {
+        val recipeTime = requireNotNull(dao.recipeVersion(recipe)).recordedAt
+        val earlier = FoodStore(db) { recipeTime - 1L }
+        val before = dao.operationCount()
+        rejects { earlier.produce("cook-before-recipe", input(), true) }
+        assertNull(dao.operation("cook-before-recipe"))
+        assertNull(dao.production("cook-before-recipe"))
+        assertTrue(dao.movements("cook-before-recipe").isEmpty())
+        assertEquals(before, dao.operationCount())
+        assertEquals(300_000L, dao.balance(a))
+        assertEquals(500_000L, dao.balance(b))
+        assertEquals(0, dao.consumptionCount())
+
+        val output = store.produce("cook-before-recipe", input(), true)
+        assertEquals(output, earlier.produce("cook-before-recipe", input(), true))
+        assertEquals(recipeTime, dao.operation("cook-before-recipe")!!.recordedAt)
+        assertEquals(0L, dao.balance(a))
+        assertEquals(0L, dao.balance(b))
+        assertEquals(6000L, dao.balance(output))
+        assertEquals(3, dao.movements("cook-before-recipe").size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
 }
