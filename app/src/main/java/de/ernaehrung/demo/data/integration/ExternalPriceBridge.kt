@@ -2,6 +2,7 @@ package de.ernaehrung.demo.data.integration
 
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.concurrent.CancellationException
 
 /** ADR-016/018: scope is not a licence to fetch, cache or display retailer data.
  * Pinned EG-Architecture@18794be978cc324e5366996178d368929a4a0fa4
@@ -131,6 +132,9 @@ object ExternalPriceBridge {
                 !ref.isNullOrBlank()) {
                 try {
                     permissions.permits(candidate.sourceId, ref, request.capability, request.purchaseOn)
+                } catch (cancelled: CancellationException) {
+                    // Never swallow coroutine cancellation at the host rights boundary.
+                    throw cancelled
                 } catch (_: RuntimeException) { false }
             } else false
             if (!permitted) {
