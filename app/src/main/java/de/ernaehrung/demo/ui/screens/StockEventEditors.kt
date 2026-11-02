@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 
 @Composable
@@ -18,7 +17,7 @@ internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: Stri
     var target by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("") }
     var expected by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     var conditions by rememberSaveable { mutableStateOf(false) }
@@ -58,7 +57,7 @@ internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: Stri
 @Composable
 internal fun ReversalEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
     var selected by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     var details by remember { mutableStateOf<OperationDetails?>(null) }

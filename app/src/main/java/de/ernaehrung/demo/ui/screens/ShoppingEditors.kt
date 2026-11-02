@@ -5,12 +5,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 
 @Composable
 internal fun ShoppingPriceEditor(data: LocalDataState, report: State<ShoppingReport>, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
     var previous by rememberSaveable { mutableStateOf("") }; var version by rememberSaveable { mutableStateOf("") }
-    var merchant by rememberSaveable { mutableStateOf("") }; var observed by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var merchant by rememberSaveable { mutableStateOf("") }; var observed by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var amount by rememberSaveable { mutableStateOf("") }; var price by rememberSaveable { mutableStateOf("") }
     var whole by rememberSaveable { mutableStateOf(false) }; var basis by rememberSaveable { mutableStateOf(false) }
     var description by rememberSaveable { mutableStateOf("") }; var priceChecked by rememberSaveable { mutableStateOf(false) }
@@ -22,7 +21,7 @@ internal fun ShoppingPriceEditor(data: LocalDataState, report: State<ShoppingRep
             it.id to "${it.merchant ?: "Händler unbekannt"} · ${it.observedOn} · ${it.id.take(8)}"
         }, previous) { id ->
             val old = prices.find { it.id == id }; previous = id; version = old?.versionId.orEmpty()
-            merchant = old?.merchant.orEmpty(); observed = old?.observedOn ?: LocalDate.now().toString()
+            merchant = old?.merchant.orEmpty(); observed = old?.observedOn ?: AppCalendar.today().toString()
             amount = old?.amount?.let(Amounts::format).orEmpty(); price = old?.totalCents?.let { Money.format(it).removeSuffix(" €") }.orEmpty()
             whole = old?.wholePack == true; basis = false; priceChecked = false; description = old?.basisDescription.orEmpty()
             validFrom = old?.validFrom.orEmpty(); validUntil = old?.validUntil.orEmpty(); reason = ""
@@ -56,7 +55,7 @@ internal fun ShoppingPriceEditor(data: LocalDataState, report: State<ShoppingRep
 @Composable
 internal fun ShoppingBudgetEditor(report: State<ShoppingReport>, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
     var previous by rememberSaveable { mutableStateOf("") }; var label by rememberSaveable { mutableStateOf("") }
-    var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }; var end by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(6).toString()) }
+    var start by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }; var end by rememberSaveable { mutableStateOf(AppCalendar.today().plusDays(6).toString()) }
     var amount by rememberSaveable { mutableStateOf("") }; var confirmed by rememberSaveable { mutableStateOf(false) }
     var reason by rememberSaveable { mutableStateOf("") }
     Fold("Budgetobergrenze speichern") {
@@ -65,7 +64,7 @@ internal fun ShoppingBudgetEditor(report: State<ShoppingReport>, blocked: State<
             it.id to "${it.label ?: "Altes Budget"} · ${it.startsOn}–${it.endsOn} · ${it.id.take(8)}"
         }, previous) { id ->
             val old = budgets.find { it.id == id }; previous = id; label = old?.label.orEmpty()
-            start = old?.startsOn ?: LocalDate.now().toString(); end = old?.endsOn ?: LocalDate.now().plusDays(6).toString()
+            start = old?.startsOn ?: AppCalendar.today().toString(); end = old?.endsOn ?: AppCalendar.today().plusDays(6).toString()
             amount = old?.amountCents?.let { Money.format(it).removeSuffix(" €") }.orEmpty(); confirmed = false; reason = ""
         }
         Field("Budgetname", label, { label = it })

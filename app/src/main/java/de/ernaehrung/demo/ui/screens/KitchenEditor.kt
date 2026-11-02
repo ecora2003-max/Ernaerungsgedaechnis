@@ -7,7 +7,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -117,7 +116,7 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var portions by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var storageNote by rememberSaveable { mutableStateOf("") }
     var deviation by rememberSaveable { mutableStateOf("") }
     var useBy by rememberSaveable { mutableStateOf("") }

@@ -8,14 +8,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 
 @Composable
 internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
     val ui by model.shopping.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
-    var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var purchase by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var start by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
+    var purchase by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var horizon by rememberSaveable { mutableStateOf("7 Tage") }
     var budget by rememberSaveable { mutableStateOf("") }
     Heading("Einkaufsvorschläge", "Offener Restbedarf · Packungen · Preisangaben")

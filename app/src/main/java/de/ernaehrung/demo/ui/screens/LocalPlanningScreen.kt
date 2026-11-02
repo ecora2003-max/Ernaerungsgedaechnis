@@ -8,7 +8,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
-import java.time.LocalDate
 import java.util.UUID
 
 @Composable
@@ -17,7 +16,7 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
     val currentBlocked = rememberUpdatedState(blocked)
     val currentOperation = rememberUpdatedState(operationId)
     val ui by model.planning.collectAsStateWithLifecycle()
-    var starts by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var starts by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var horizon by rememberSaveable { mutableStateOf("7 Tage") }
     Heading("Planung & Bedarf", "Gemeinsame Einträge für Tag, Woche und acht Wochen")
     Hint("Planen verändert keinen Bestand und zählt nicht zur Ernährung. Alle aktiven Pläne teilen sich rechnerisch denselben Vorrat. Neue Versionen ersetzen nur die bisherige Planung.", Sage)
@@ -114,12 +113,12 @@ private fun planKindLabel(kind: PlanKind) = when (kind) {
 private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
     var previousId by remember { mutableStateOf("") }
     var title by rememberSaveable { mutableStateOf("") }
-    var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
-    var end by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(6).toString()) }
+    var start by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
+    var end by rememberSaveable { mutableStateOf(AppCalendar.today().plusDays(6).toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
     var draft by remember { mutableStateOf<List<PlanEntryInput>>(emptyList()) }
     var editedAmounts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var date by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var amount by rememberSaveable { mutableStateOf("") }
     var label by rememberSaveable { mutableStateOf("") }
     var kind by rememberSaveable { mutableStateOf(PlanKind.DIRECT_CONSUMPTION.name) }
@@ -133,8 +132,8 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
         }, previousId) { id ->
             val record = report.plans.find { it.version.id == id }
             previousId = id; title = record?.version?.title.orEmpty()
-            start = record?.version?.startsOn ?: LocalDate.now().toString()
-            end = record?.version?.endsOn ?: LocalDate.now().plusDays(6).toString()
+            start = record?.version?.startsOn ?: AppCalendar.today().toString()
+            end = record?.version?.endsOn ?: AppCalendar.today().plusDays(6).toString()
             reason = ""; draft = record?.entries?.map(PlanEntryInput::from).orEmpty(); error = null; carry = false; editedAmounts = emptyMap()
         }
         Field("Plantitel", title, { title = it })
