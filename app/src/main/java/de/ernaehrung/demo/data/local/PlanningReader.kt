@@ -19,7 +19,8 @@ internal class PlanningReader(private val db: FoodDatabase, private val now: () 
     suspend fun report(startsOn: String, endsOn: String): PlanningReport = db.withTransaction {
         WriteRules.date(startsOn); WriteRules.date(endsOn)
         require(startsOn <= endsOn) { "Ende liegt vor dem Beginn." }
-        // Planning and stock snapshots use the canonical Berlin day, not device settings.\n        val asOf = Instant.ofEpochMilli(now()).atZone(ZoneId.of("Europe/Berlin")).toLocalDate().toString()
+        // Planning and stock snapshots use the canonical Berlin day, not device settings.
+        val asOf = Instant.ofEpochMilli(now()).atZone(ZoneId.of("Europe/Berlin")).toLocalDate().toString()
         val executions = ExecutionLedger.load(dao)
         val versions = dao.allPlans()
         val entriesByPlan = dao.allPlannedEntries().groupBy { it.planId }
