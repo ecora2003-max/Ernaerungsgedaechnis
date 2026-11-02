@@ -59,8 +59,8 @@ ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102T1125Z-IV11-7c42f9"
 acquiredAtUtc: "2026-11-02T11:25:52.593Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save user-action provenance boundary"
-workingBranch: null
+task: "Stock batch-origin chronology and identity in transfer/production"
+workingBranch: "integration-iv/stock-origin-chronology-20261102"
 lastReleasedAtUtc: "2026-11-02T11:12:19.076Z"
 lastReleasedCommit: "623f24c7efaf68c21666ff4ac49eaab57d67aca7"
 nextStep: "Independently authenticated FoodStore recipe-save user-action provenance; generator/revalidator parity; Android/privacy E2E"
