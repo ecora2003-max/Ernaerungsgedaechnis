@@ -131,6 +131,9 @@ internal object RecipeDraftV1Import {
         require(p["status"] == "DRAFT") { "only unconfirmed DRAFT status allowed" }
         val draftId = str(p["draftId"], "draftId")
         val title = str(p["title"], "title")
+        // Reject content exceeding the host preview limits before it reaches UI or
+        // manual confirmation. The later review gate is not the import boundary.
+        require(title.length <= 200) { "recipe title exceeds host preview limit" }
         val portions = number(p["portionCount"], "portionCount")!!
         require(portions in 1..1000) { "portion count outside host bounds" }
         val f = obj(p["flags"], "flags")
@@ -149,6 +152,8 @@ internal object RecipeDraftV1Import {
             str(it, "step")
         }
         require(steps.isNotEmpty()) { "empty recipe steps" }
+        val stepText = steps.joinToString("\n")
+        require(stepText.length <= 20_000) { "recipe steps exceed host preview limit" }
         list(p["warnings"], "warnings").forEach {
             require(it is String) { "warnings must contain strings" }
         }
@@ -160,7 +165,9 @@ internal object RecipeDraftV1Import {
         val extension = p["xRecipeKi"]?.let { obj(it, "xRecipeKi") }
         extension?.get("mealPrep")?.let { obj(it, "mealPrep") }
 
-        val lines = list(p["ingredients"], "ingredients").mapIndexed { index, value ->
+        val ingredients = list(p["ingredients"], "ingredients")
+        require(ingredients.size in 1..64) { "recipe ingredient count exceeds host preview limit" }
+        val lines = ingredients.mapIndexed { index, value ->
             val line = obj(value, "ingredient " + index)
             val id = str(line["foodTypeId"], "ingredient.foodTypeId")
             val label = str(line["label"], "ingredient.label")
@@ -204,7 +211,7 @@ internal object RecipeDraftV1Import {
             "mixed review states from different ingredient scopes"
         }
         return Imported(draftId, created, snapshot, Gate.Draft(
-            Gate.CONTRACT, "recipe.draft", title, steps.joinToString("\n"),
+            Gate.CONTRACT, "recipe.draft", title, stepText,
             portions.toInt(), flags, lines
         ))
     }
