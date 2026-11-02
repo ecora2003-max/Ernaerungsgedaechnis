@@ -206,9 +206,17 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
      */
     private suspend fun recipeDraftSaveOperationCompatible(
         saved: OperationEntity?, consentAt: Long
-    ): Boolean = saved == null || (saved.kind == "RECIPE" &&
-        saved.recordedAt >= consentAt &&
-        dao.recipeVersion(saved.resultId) != null)
+    ): Boolean {
+        if (saved == null) return true
+        if (saved.kind != "RECIPE" || saved.recordedAt < consentAt) return false
+        val version = dao.recipeVersion(saved.resultId) ?: return false
+        // A recipe-save operation and its first persisted version are written
+        // atomically at one physical instant. An unrelated later revision or
+        // an operation pointing at a version created at another time is not a
+        // completed replay of this consent, even if its fingerprint matches.
+        // This is ledger integrity, NOT cryptographic user-action provenance.
+        return version.revision == 1 && version.recordedAt == saved.recordedAt
+    }
 
     /**
      * A resumed opaque pending key is not necessarily unused: the previous
