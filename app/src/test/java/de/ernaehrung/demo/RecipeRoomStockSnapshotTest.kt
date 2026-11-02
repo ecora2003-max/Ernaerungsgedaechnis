@@ -226,4 +226,34 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun futureOccurredAtCannotInflateAsOfStockEvenOnSameBerlinDay() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val operation = "future-occurrence-stock"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("future-occurrence-movement",
+            batchId, operation, 500L, MovementKind.RECEIPT,
+            at.plusSeconds(120).toEpochMilli(), Source.USER,
+            "Legacy occurrence after snapshot", at.toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val later = FoodStore(db) { at.plusSeconds(121).toEpochMilli() }
+        val current = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(2_500L, current.lines.single().amountMilli)
+        assertNotEquals(original.revision, current.revision)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidNegativeOccurredAtFailsClosedInsteadOfAssumingCurrent() = runBlocking {
+        val operation = "negative-occurrence-stock"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("negative-occurrence-movement",
+            batchId, operation, 100L, MovementKind.RECEIPT, -1L, Source.USER,
+            "Legacy invalid occurrence", at.toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
