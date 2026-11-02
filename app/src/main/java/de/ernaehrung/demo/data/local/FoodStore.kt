@@ -286,11 +286,19 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             consent.recordedAt in 0L..saveAt) {
             "Keine passende dauerhaft gespeicherte Rezeptbestätigung vorhanden."
         }
+        // An existing RECIPE operation can only bypass consent expiry if it
+        // actually follows this consent and points to a persisted recipe version.
+        // Otherwise KitchenOperations' idempotent replay could return an orphan
+        // version or a recipe recorded before the alleged authorization.
+        val existingSaveOperation = dao.operation(key)
+        require(recipeDraftSaveOperationCompatible(existingSaveOperation, consent.recordedAt)) {
+            "Rezeptvorgang liegt vor der Bestätigung oder verweist auf fehlende Rezeptversion."
+        }
         // A checkpoint alone must not authorize a *new* recipe hours or days later.
         // Preserve safe idempotent replay of an already written recipe; KitchenOperations
         // still checks its full input+approval fingerprint before returning the result.
         require(saveAt - consent.recordedAt <= recipeDraftConsentTtlMs ||
-            dao.operation(key)?.kind == "RECIPE") {
+            existingSaveOperation?.kind == "RECIPE") {
             "Rezeptbestätigung abgelaufen; neue Gerätebestätigung erforderlich."
         }
         // Bind the persisted operation fingerprint to the exact approved preview.

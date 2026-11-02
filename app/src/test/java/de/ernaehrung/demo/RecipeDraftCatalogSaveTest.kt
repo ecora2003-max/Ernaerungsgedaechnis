@@ -165,6 +165,48 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun saveRejectsOrphanRecipeReplayEvenWithMatchingApprovalFingerprint() = runBlocking {
+        val ready = preview()
+        consent("valid-recipe", ready)
+        val savedVersion = save("valid-recipe", ready)
+        val validOperation = requireNotNull(dao.operation("valid-recipe"))
+        consent("orphan-save", ready)
+        // A matching replay hash is insufficient when the referenced version is absent.
+        dao.insertOperation(OperationEntity("orphan-save", "RECIPE",
+            validOperation.fingerprint, at, "missing-recipe-version"))
+        val count = dao.operationCount()
+
+        rejected { save("orphan-save", ready) }
+        assertEquals(count, dao.operationCount())
+        assertEquals("missing-recipe-version", dao.operation("orphan-save")?.resultId)
+        assertNotNull(dao.recipeVersion(savedVersion))
+        assertEquals(1, dao.observeRecipes().first().size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun saveRejectsMatchingRecipeReplayRecordedBeforeConsent() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        consent("valid-recipe", ready)
+        val savedVersion = save("valid-recipe", ready)
+        val validOperation = requireNotNull(dao.operation("valid-recipe"))
+        clock += 60_000L
+        consent("predated-save", ready)
+        // The recipe really exists and the hash matches, but the operation
+        // predates the distinct confirmation for this key.
+        dao.insertOperation(OperationEntity("predated-save", "RECIPE",
+            validOperation.fingerprint, at, savedVersion))
+        val count = dao.operationCount()
+
+        rejected { save("predated-save", ready) }
+        assertEquals(count, dao.operationCount())
+        assertEquals(at, dao.operation("predated-save")?.recordedAt)
+        assertNotNull(dao.recipeVersion(savedVersion))
+        assertEquals(1, dao.observeRecipes().first().size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun futureDatedNewerCheckpointCannotShadowValidConsent() = runBlocking {
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
