@@ -292,6 +292,86 @@ class RecipeDraftConsentViewModelTest {
         }
     }
 
+    @Test fun expiredCommittedConsentWithCrashLeftPendingKeyRequiresNewKeyAndGesture() = runBlocking {
+        var clock = at
+        // Simulate process death after Room commit but before private-key cleanup.
+        val keys = object : RecipeDraftPendingKeyStore {
+            var key: String? = null
+            var generation = 0
+            override fun resumeOrCreate(approvalDigest: String): String =
+                key ?: "crash-pending-${++generation}".also { key = it }
+            override fun discard() { key = null }
+            override fun finish(approvalDigest: String, operationKey: String) = Unit
+        }
+        val firstVm = LocalDataViewModel(FoodStore(db) { clock }, pendingKeyStore = keys)
+        firstVm.prepareRecipeDraftConsent(json, request, facts, states)
+        val first = withTimeout(10_000) {
+            firstVm.recipeDraftConsentState.first { !it.busy && it.review != null }
+        }
+        val digest = requireNotNull(first.review?.approvalBasisDigest)
+        val oldKey = requireNotNull(keys.key)
+        val oldSession = requireNotNull(first.sessionId)
+        firstVm.confirmRecipeDraftConsent(digest, oldSession)
+        withTimeout(10_000) {
+            firstVm.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        assertEquals(oldKey, keys.key) // cleanup intentionally lost
+        assertEquals(2, db.foodDao().operationCount())
+        assertTrue(FoodStore(db) { clock }.isRecipeDraftOperationKeyUnavailable(oldKey))
+
+        clock += 300_001L // consent expired; pending-key retention is still 24h
+        val restarted = LocalDataViewModel(FoodStore(db) { clock }, pendingKeyStore = keys)
+        restarted.prepareRecipeDraftConsent(json, request, facts, states)
+        val fresh = withTimeout(10_000) {
+            restarted.recipeDraftConsentState.first { !it.busy && it.review != null }
+        }
+        assertEquals(digest, fresh.review?.approvalBasisDigest)
+        assertNull(fresh.recordedDigest)
+        assertNotEquals(oldKey, keys.key)
+        assertNotEquals(oldSession, fresh.sessionId)
+        restarted.confirmRecipeDraftConsent(digest, oldSession)
+        assertEquals(2, db.foodDao().operationCount())
+        restarted.confirmRecipeDraftConsent(digest, fresh.sessionId)
+        withTimeout(10_000) {
+            restarted.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        assertEquals(3, db.foodDao().operationCount()) // two immutable consent rows
+        assertEquals(digest, db.foodDao()
+            .operation("RECIPE_DRAFT_CONSENT_V1:$oldKey")?.resultId)
+        assertEquals(digest, db.foodDao()
+            .operation("RECIPE_DRAFT_CONSENT_V1:${keys.key}")?.resultId)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun unrelatedExistingOperationKeyCannotBecomeRecipeConsent() = runBlocking {
+        val keys = object : RecipeDraftPendingKeyStore {
+            var key: String? = "ui-product" // already used for product creation
+            override fun resumeOrCreate(approvalDigest: String): String =
+                key ?: "fresh-pending-after-collision".also { key = it }
+            override fun discard() { key = null }
+            override fun finish(approvalDigest: String, operationKey: String) = Unit
+        }
+        val controlled = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
+        assertTrue(FoodStore(db) { at }.isRecipeDraftOperationKeyUnavailable("ui-product"))
+        assertFalse(FoodStore(db) { at }.isRecipeDraftOperationKeyUnavailable("unused-key"))
+        controlled.prepareRecipeDraftConsent(json, request, facts, states)
+        val state = withTimeout(10_000) {
+            controlled.recipeDraftConsentState.first { !it.busy && it.review != null }
+        }
+        assertEquals("fresh-pending-after-collision", keys.key)
+        assertEquals(1, db.foodDao().operationCount())
+        val digest = requireNotNull(state.review?.approvalBasisDigest)
+        controlled.confirmRecipeDraftConsent(digest, state.sessionId)
+        withTimeout(10_000) {
+            controlled.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        assertEquals("PRODUCT", db.foodDao().operation("ui-product")?.kind)
+        assertNull(db.foodDao().operation("RECIPE_DRAFT_CONSENT_V1:ui-product"))
+        assertEquals(2, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+    }
+
     @Test fun changingImportEvidenceInvalidatesOldSessionBeforeConsent() = runBlocking {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val old = ready()
