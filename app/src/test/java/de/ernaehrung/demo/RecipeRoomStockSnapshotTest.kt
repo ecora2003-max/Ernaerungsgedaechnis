@@ -539,4 +539,63 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
         assertEquals(0, db.foodDao().movements(operation).count { it.delta < 0L })
     }
+    @Test fun unrelatedRecipeOperationCannotAuthorAReceiptMovement() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val operation = "forged-recipe-receipt-movement"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECIPE", operation,
+            at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("forged-recipe-receipt-row",
+            batchId, operation, 100L, MovementKind.RECEIPT, null, Source.USER,
+            "Legacy movement with wrong operation kind", at.toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val blocked = review(original)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, blocked.status)
+        assertTrue("ROOM_STOCK_SNAPSHOT_STALE_OR_CHANGED" in blocked.gaps)
+        assertNull(blocked.input)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+
+        // Repairing only the independent author evidence restores the projection.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET kind = 'RECEIPT' WHERE id = ?", arrayOf(operation))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2_100L, restored.lines.single().amountMilli)
+        assertNotEquals(original.revision, restored.revision)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(restored).status)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun wrongReceiptResultAndMovementDirectionFailClosed() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val operation = "forged-receipt-result"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.toEpochMilli(), "other-batch"))
+        db.foodDao().insertMovement(StockMovementEntity("forged-receipt-result-row",
+            batchId, operation, 100L, MovementKind.RECEIPT, null, Source.USER,
+            "Legacy movement with wrong result scope", at.toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET resultId = ? WHERE id = ?",
+            arrayOf(batchId, operation))
+        assertEquals(2_100L, requireNotNull(store.readRecipeRoomStockSnapshot())
+            .lines.single().amountMilli)
+
+        // A receipt cannot subtract stock even if its operation and batch agree.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET delta = -100 WHERE id = ?",
+            arrayOf("forged-receipt-result-row"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET delta = 100 WHERE id = ?",
+            arrayOf("forged-receipt-result-row"))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2_100L, restored.lines.single().amountMilli)
+        assertNotEquals(original.revision, restored.revision)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }

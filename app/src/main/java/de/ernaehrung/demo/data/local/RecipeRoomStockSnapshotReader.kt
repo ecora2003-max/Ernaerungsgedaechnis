@@ -20,6 +20,33 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         private const val MAX_MOVEMENTS = 100_000
     }
 
+    /** A movement must belong to the kind and result scope of its author operation.
+     * Foreign-key existence alone does not prove that a stock event was authorized.
+     * The legacy reversal's result points to the original operation, not a batch.
+     */
+    private fun authorMatchesMovement(m: StockMovementSnapshotRow): Boolean {
+        val resultId = m.operationResultId ?: return false
+        return when (m.movementKind) {
+            MovementKind.RECEIPT -> m.operationKind == "RECEIPT" &&
+                resultId == m.batchId && m.delta > 0L
+            MovementKind.TRANSFER -> m.operationKind == "TRANSFER" && m.delta != 0L &&
+                ((m.delta > 0L) == (resultId == m.batchId))
+            MovementKind.PRODUCTION_INPUT -> m.operationKind == "PRODUCTION" &&
+                resultId != m.batchId && m.delta < 0L
+            MovementKind.PRODUCTION_OUTPUT -> m.operationKind == "PRODUCTION" &&
+                resultId == m.batchId && m.delta > 0L
+            MovementKind.CONSUMPTION -> m.operationKind == "CONSUMPTION" &&
+                resultId.isNotBlank() && m.delta < 0L
+            MovementKind.WASTE -> m.operationKind == "WASTE" &&
+                resultId == m.batchId && m.delta < 0L
+            MovementKind.CORRECTION -> m.delta != 0L && when (m.operationKind) {
+                "STOCK_COUNT" -> resultId == m.batchId
+                "REVERSAL" -> resultId.isNotBlank()
+                else -> false
+            }
+        }
+    }
+
     suspend fun read(capturedAt: Instant): RecipeContextContentBinding.Snapshot? {
         val asOfMillis = capturedAt.toEpochMilli()
         if (asOfMillis < 0L) return null
@@ -89,6 +116,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             if (movement.id.isBlank() || movement.batchId !in knownBatches ||
                 movement.operationId.isBlank() || movement.operationKind.isNullOrBlank() ||
                 movement.operationResultId == null ||
+                !authorMatchesMovement(movement) ||
                 movement.operationRecordedAt == null ||
                 movement.operationRecordedAt !in 0L..asOfMillis ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
@@ -115,7 +143,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
                     })
-            }, movements.map { listOf(it.id, it.batchId, it.operationId, it.operationKind,
+            }, movements.map { listOf(it.id, it.batchId, it.operationId, it.movementKind.name, it.operationKind,
                 it.operationResultId, it.operationRecordedAt, it.delta, it.recordedAt,
                 it.occurredAt, it.occurredOn) },
             eligibleBatchIds.sorted())
