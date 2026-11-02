@@ -44,6 +44,30 @@ internal object WriteRules {
         }
         return batch
     }
+    /**
+     * A physical batch is usable only after its own creating operation and
+     * concrete product version existed. A different operation's timestamp
+     * cannot stand in for the batch's provenance.
+     */
+    suspend fun batchOriginAt(dao: FoodDao, batch: BatchEntity, recordedAt: Long) {
+        val origin = requireNotNull(dao.operation(batch.originOperationId)) {
+            "Herkunftsvorgang der Charge fehlt."
+        }
+        require(origin.kind in setOf("RECEIPT", "TRANSFER", "PRODUCTION") &&
+            origin.resultId == batch.id) {
+            "Herkunftsvorgang gehört nicht zu dieser Charge."
+        }
+        require(origin.recordedAt in 0L..recordedAt) {
+            "Vorgang liegt vor der tatsächlichen Erfassung der Charge."
+        }
+        val version = requireNotNull(dao.version(batch.versionId)) {
+            "Artikelversion der Charge fehlt."
+        }
+        require(version.recordedAt in 0L..recordedAt) {
+            "Vorgang liegt vor der erfassten Artikelversion der Charge."
+        }
+    }
+
     suspend fun batchDate(dao: FoodDao, batch: BatchEntity, date: String) {
         require(dao.reversal(batch.originOperationId) == null) { "Die Herkunft dieser Charge wurde storniert. Einen neuen bestätigten Zugang erfassen." }
         require(batch.acquiredOn == null || batch.acquiredOn <= date) { "Ereignis liegt vor dem Zugang." }
