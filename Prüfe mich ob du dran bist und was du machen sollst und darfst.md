@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV scheduled run 10"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-mvyvq9hn-7gwarv5mh5"
-acquiredAtUtc: "2026-11-02T06:30:05.963Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV: FoodStore recipe-save history and transaction regression"
-workingBranch: "codex/integration-iv-stock-ledger-clock-20261102-0630"
-lastReleasedAtUtc: "2026-11-02T06:23:07.378Z"
-lastReleasedCommit: "9189e7fb8b18f90927fb22b2824670b17abd0138"
-nextStep: "Cryptographically authenticated FoodStore recipe-save action; generator/revalidator parity; Android credential/privacy E2E"
+task: "Integration IV: StockOperations single validated timestamp and Room regression; PR #90 merged"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T06:43:10.784Z"
+lastReleasedCommit: "1c7a782501411570446c3e9c922af7e9317c11d1"
+nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
