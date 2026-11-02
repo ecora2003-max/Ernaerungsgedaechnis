@@ -14,6 +14,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -46,6 +47,62 @@ class LocalDatabaseTest {
         assertTrue(store.batches().first().isEmpty())
         assertTrue(store.movements().first().isEmpty())
         assertTrue(store.catalog().first().all { it.stockAmount == 0L })
+    }
+
+
+    @Test fun receiptRejectsFutureProductVersionAndNegativeClockWithoutCreatingStock() = runBlocking {
+        val productAt = Instant.parse("2026-11-02T12:00:00Z").toEpochMilli()
+        val earlier = Instant.parse("2026-11-01T12:00:00Z").toEpochMilli()
+        store = FoodStore(db) { productAt }
+        val v = store.rememberProduct("late-product", ProductInput("Hafer"))
+        val l = store.addLocation("late-location", "Vorrat", true)
+        val input = BatchInput(v, l, 100_000, "2026-10-30", release = ReleaseStatus.RELEASED)
+
+        store = FoodStore(db) { earlier }
+        rejects { store.receive("premature-receipt", input, true) }
+        assertNull(dao.operation("premature-receipt"))
+        assertTrue(store.batches().first().isEmpty())
+
+        store = FoodStore(db) { -1L }
+        rejects { store.receive("invalid-clock-receipt", input.copy(acquiredOn = null), true) }
+        assertNull(dao.operation("invalid-clock-receipt"))
+        assertTrue(store.movements().first().isEmpty())
+
+        store = FoodStore(db) { productAt + 1 }
+        val batch = store.receive("valid-late-receipt", input, true)
+        assertEquals(100_000L, dao.balance(batch))
+        store = FoodStore(db) { -1L }
+        assertEquals(batch, store.receive("valid-late-receipt", input, true))
+        assertEquals(1, dao.movements("valid-late-receipt").size)
+    }
+
+    @Test fun consumptionRejectsFutureBatchOriginAndProductVersionWithoutSideEffects() = runBlocking {
+        val earlier = Instant.parse("2026-11-01T12:00:00Z").toEpochMilli()
+        val later = Instant.parse("2026-11-02T12:00:00Z").toEpochMilli()
+        store = FoodStore(db) { earlier }
+        val v = store.rememberProduct("early-product", ProductInput("Reis"))
+        val l = store.addLocation("early-location", "Vorrat", true)
+        store = FoodStore(db) { later }
+        val b = store.receive("later-receipt",
+            BatchInput(v, l, 100_000, "2026-10-30", release = ReleaseStatus.RELEASED), true)
+        val futureVersion = store.rememberProduct("future-version", ProductInput("Bohnen"))
+        val meal = ConsumptionInput(v, "2026-10-30", "Mittag", 50_000, listOf(Allocation(b, 50_000)))
+
+        store = FoodStore(db) { earlier }
+        rejects { store.consume("premature-meal", meal, true) }
+        rejects { store.consume("premature-version",
+            ConsumptionInput(futureVersion, "2026-10-30", "Abend", null), true) }
+        assertNull(dao.operation("premature-meal"))
+        assertNull(dao.operation("premature-version"))
+        assertEquals(100_000L, dao.balance(b))
+        assertEquals(0, dao.consumptionCount())
+
+        store = FoodStore(db) { later + 1 }
+        val mealId = store.consume("valid-later-meal", meal, true)
+        assertEquals(50_000L, dao.balance(b))
+        store = FoodStore(db) { -1L }
+        assertEquals(mealId, store.consume("valid-later-meal", meal, true))
+        assertEquals(1, dao.consumptionCount())
     }
 
     @Test fun idempotentReceiptsSurviveRetriesButRejectChangedPayload() = runBlocking {

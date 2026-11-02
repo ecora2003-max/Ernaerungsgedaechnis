@@ -668,8 +668,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // a moving clock must not make a just-received batch future-dated in
         // an as-of Room stock snapshot.
         val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Zugangszeitpunkt." }
         input.acquiredOn?.let { WriteRules.actualDate(it, recordedAt) }
-        requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
+        val version = requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
+        require(version.recordedAt in 0L..recordedAt) {
+            "Zugang liegt vor der erfassten Artikelversion."
+        }
         val location = requireNotNull(dao.location(input.locationId)) { "Lagerort nicht gefunden." }
         require(location.confirmed) { "Lagerort ist nicht als vorhanden bestätigt." }
         val batchId = id()
@@ -698,6 +702,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // movements. A future/negative occurrence must never be persisted as
         // today's stock consumption (or poison an as-of recipe snapshot).
         val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Verzehrbuchungszeitpunkt." }
         WriteRules.actualDate(input.date, recordedAt)
         input.occurredAt?.let { occurred ->
             require(occurred in 0L..recordedAt) {
@@ -712,13 +717,19 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 "Verzehrzeitpunkt und bestätigter Berliner Ereignistag widersprechen sich."
             }
         }
-        requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
+        val version = requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
+        require(version.recordedAt in 0L..recordedAt) {
+            "Verzehrbuchung liegt vor der erfassten Artikelversion."
+        }
         val consumptionId = id()
         dao.insertOperation(OperationEntity(operationId, "CONSUMPTION", fingerprint, recordedAt, consumptionId))
         dao.insertConsumption(ConsumptionEntity(consumptionId, operationId, input.versionId, input.date,
             input.occurredAt, input.meal.trim(), input.amount, Source.USER, input.quality, input.note))
         for (allocation in input.allocations) {
             val batch = WriteRules.available(dao, allocation.batchId, allocation.amount, input.date, true)
+            // A same-day calendar match cannot authorize consumption of a
+            // batch whose creating operation is still in the physical future.
+            WriteRules.batchOriginAt(dao, batch, recordedAt)
             require(batch.versionId == input.versionId) { "Charge gehört zu einer anderen Produktversion." }
             dao.insertAllocation(ConsumptionAllocationEntity(consumptionId, batch.id, allocation.amount))
             dao.insertMovement(StockMovementEntity(id(), batch.id, operationId, -allocation.amount,
