@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II scheduled run 9"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-1793600162441-iricmykea"
-acquiredAtUtc: "2026-11-02T06:16:02.441Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Fail-closed Room stock snapshot on future product-version and batch-origin evidence"
-workingBranch: "integration-ii/room-stock-evidence-status-20261102"
-lastReleasedAtUtc: "2026-11-02T06:10:21.864Z"
-lastReleasedCommit: "1e5356d44a47ff7ff2c7770976245ae1eb70f835"
-nextStep: "Cryptographically authenticated FoodStore recipe-save user action; generator/revalidator parity; Android credential/privacy E2E"
+task: "Integration II: Room stock evidence timestamp gate merged; 454/454 JVM PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T06:23:07.378Z"
+lastReleasedCommit: "9189e7fb8b18f90927fb22b2824670b17abd0138"
+nextStep: "Cryptographically authenticated FoodStore recipe-save action; generator/revalidator parity; Android credential/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
