@@ -134,7 +134,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val consentKey = recipeDraftConsentKey(key)
         val hash = recipeDraftConsentFingerprint(key, digest)
         val previous = dao.operation(consentKey)
+        // The opaque save key shares the global operation namespace. A product,
+        // purchase or other operation using that key must never be promoted to
+        // a recipe approval merely because its prefixed consent key is unused.
+        val existingSaveOperation = dao.operation(key)
         if (previous != null) {
+            require(existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") {
+                "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
+            }
             require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
                 previous.fingerprint == hash && previous.resultId == digest &&
                 previous.recordedAt in 0L..actionAt) {
@@ -148,6 +155,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 "Rezeptbestätigung abgelaufen; neue Vorgangs-ID und Gerätebestätigung erforderlich."
             }
             return@withTransaction previous.resultId
+        }
+        require(existingSaveOperation == null) {
+            "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
         }
         dao.insertOperation(OperationEntity(consentKey, "RECIPE_DRAFT_CONSENT_V1",
             hash, actionAt, digest))
@@ -169,8 +179,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             if (!operation.id.startsWith(prefix)) false
             else {
                 val key = operation.id.substring(prefix.length)
+                val existingSaveOperation = dao.operation(key)
                 key.isNotBlank() && key.length <= 200 &&
                     !key.startsWith(prefix) &&
+                    // A later unrelated operation may occupy the raw key. Do not
+                    // recover such a checkpoint as a usable recipe approval.
+                    (existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") &&
                     operation.recordedAt in 0L..checkedAt &&
                     checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
                     operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
