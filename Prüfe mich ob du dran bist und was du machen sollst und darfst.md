@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II scheduled code run"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-mvz7v6of-r6pzr9awe"
-acquiredAtUtc: "2026-11-02T12:09:50.991Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe context snapshot consistency and Room regression"
-workingBranch: "integration-ii-occurrence-provenance-evidence-20261102"
-lastReleasedAtUtc: "2026-11-02T12:08:13.801Z"
-lastReleasedCommit: "3dc9816561c9ec6db5999341e769ccb86f30ed98"
+task: "Integration II: consumption occurrence vs batch provenance (PR #108, 484 JVM/7 Room PASS; evidence PR #109)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T12:25:01.182Z"
+lastReleasedCommit: "18c6a24ddd753ae5dd49c384d0cee0fdafe04dfd"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
