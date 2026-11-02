@@ -21,6 +21,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
     }
 
     suspend fun read(capturedAt: Instant): RecipeContextContentBinding.Snapshot? {
+        val asOfMillis = capturedAt.toEpochMilli()
+        if (asOfMillis < 0L) return null
         val rows = dao.planningBatches()
         if (rows.size > MAX_ROWS || rows.map { it.batch.id }.toSet().size != rows.size) return null
         val today = capturedAt.atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
@@ -29,12 +31,23 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         // the storage evidence changes without a stock movement.
         val locations = rows.map { it.batch.locationId }.distinct()
             .associateWith { dao.location(it) }
+        // Planning balances alone do not prove that the referenced product
+        // version and originating receipt/production existed at this instant.
+        // Legacy rows with future-dated evidence must not become current stock.
+        val versions = rows.map { it.batch.versionId }.distinct()
+            .associateWith { dao.version(it) }
+        val origins = rows.map { it.batch.originOperationId }.distinct()
+            .associateWith { dao.operation(it) }
         val eligibleBatchIds = mutableSetOf<String>()
         for (row in rows) {
             val batch = row.batch
             if (batch.id.isBlank() || batch.versionId.isBlank() || batch.locationId.isBlank() ||
                 row.stockAmount !in 0..Amounts.MAX) return null
             val location = locations[batch.locationId] ?: return null
+            val version = versions[batch.versionId] ?: return null
+            val origin = origins[batch.originOperationId] ?: return null
+            if (version.recordedAt !in 0L..asOfMillis ||
+                origin.recordedAt !in 0L..asOfMillis) return null
             // A zero balance is known zero, but an expired, future-acquired or
             // unconfirmed batch is not a current stock line even when empty.
             // Malformed dates remain an unavailable snapshot, never an assumption.
@@ -54,7 +67,6 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         }
         val movements = dao.stockMovementSnapshotRows()
         if (movements.size > MAX_MOVEMENTS) return null
-        val asOfMillis = capturedAt.toEpochMilli()
         val knownBatches = rows.map { it.batch.id }.toSet()
         // Planning balances sum every stored movement, including legacy or
         // future-dated rows. Never expose those as current physical stock.
@@ -88,6 +100,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     b.acquiredOn, b.bestBefore, b.useBy, b.openedAt, b.thawedAt,
                     b.release.name, b.safetyNote, b.recipeVersionId, b.parentBatchId,
                     row.originReversed, row.stockAmount, row.unit.name,
+                    versions[b.versionId]?.let { listOf(it.revision, it.recordedAt) },
+                    origins[b.originOperationId]?.recordedAt,
                     locations[b.locationId]?.let { location ->
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
