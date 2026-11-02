@@ -581,16 +581,21 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val fingerprint = fingerprint("RECEIPT", input.versionId, input.locationId, input.amount,
             input.acquiredOn, input.bestBefore, input.useBy, input.release, input.safetyNote)
         replay(operationId, fingerprint)?.let { return@withTransaction it }
-        input.acquiredOn?.let(::actualDate)
+        // The confirmed receipt and its stock movement represent one atomic
+        // event. Freeze its physical timestamp before validating the Berlin day:
+        // a moving clock must not make a just-received batch future-dated in
+        // an as-of Room stock snapshot.
+        val recordedAt = now()
+        input.acquiredOn?.let { WriteRules.actualDate(it, recordedAt) }
         requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
         val location = requireNotNull(dao.location(input.locationId)) { "Lagerort nicht gefunden." }
         require(location.confirmed) { "Lagerort ist nicht als vorhanden bestätigt." }
         val batchId = id()
-        dao.insertOperation(OperationEntity(operationId, "RECEIPT", fingerprint, now(), batchId))
+        dao.insertOperation(OperationEntity(operationId, "RECEIPT", fingerprint, recordedAt, batchId))
         dao.insertBatch(BatchEntity(batchId, input.versionId, input.locationId, operationId,
             input.acquiredOn, input.bestBefore, input.useBy, release = input.release, safetyNote = input.safetyNote))
         dao.insertMovement(StockMovementEntity(id(), batchId, operationId, input.amount, MovementKind.RECEIPT,
-            null, Source.USER, "Bestätigter Zugang im lokalen Testbereich", recordedAt = now(), occurredOn = input.acquiredOn))
+            null, Source.USER, "Bestätigter Zugang im lokalen Testbereich", recordedAt = recordedAt, occurredOn = input.acquiredOn))
         batchId
     }
 
