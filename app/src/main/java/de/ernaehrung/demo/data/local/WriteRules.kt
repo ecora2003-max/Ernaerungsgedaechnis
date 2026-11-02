@@ -29,7 +29,7 @@ internal object WriteRules {
     }
     fun actualDate(value: String, now: Long) {
         date(value)
-        require(LocalDate.parse(value) <= Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()) {
+        require(LocalDate.parse(value) <= Instant.ofEpochMilli(now).atZone(ZoneId.of("Europe/Berlin")).toLocalDate()) {
             "Ein tatsächliches Ereignis darf nicht in der Zukunft liegen. Dafür die Planung verwenden."
         }
     }
