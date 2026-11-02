@@ -26,6 +26,9 @@ internal class StockOperations(private val db: FoodDatabase, private val now: ()
         require(recordedAt >= 0L) { "Ungültiger Bestandsbuchungszeitpunkt." }
         actualDate(input.date, recordedAt)
         val from = available(dao, input.batchId, input.amount, input.date, false)
+        // A calendar date and positive balance do not establish that the source
+        // batch already existed at this physical transfer instant.
+        WriteRules.batchOriginAt(dao, from, recordedAt)
         val target = requireNotNull(dao.location(input.targetLocationId)) { "Ziellager nicht gefunden." }
         require(target.confirmed) { "Ziellager ist nicht als vorhanden bestätigt." }
         require(from.locationId != target.id) { "Quell- und Ziellager müssen verschieden sein." }
