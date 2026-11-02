@@ -75,6 +75,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val origin = origins[batch.originOperationId] ?: return null
             if (version.recordedAt !in 0L..asOfMillis ||
                 origin.recordedAt !in 0L..asOfMillis ||
+                // A batch cannot originate before its independently persisted
+                // product version existed. Waiting until both timestamps are
+                // in the past does not repair an impossible receipt chronology.
+                origin.recordedAt < version.recordedAt ||
                 origin.kind !in setOf("RECEIPT", "TRANSFER", "PRODUCTION") ||
                 origin.resultId != batch.id) return null
             // A zero balance is known zero, but an expired, future-acquired or
