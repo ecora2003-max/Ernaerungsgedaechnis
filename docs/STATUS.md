@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration II: Room-Bestands-Snapshot prüft Produkt-/Herkunftszeit (02.11.2026)
+
+- **[PR #88](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/88), Code-/Test-HEAD `4b686beb64796758b7b91478c12130bd475201af`, Squash-Merge `ac61c44b6cf21d7a31eeeca82e64a6b79d10c687`; [PR-CI 41399032024](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41399032024) PASS auf exaktem HEAD: 454/454 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen, Lint, v1-Schema-/gepinnten Python-Referenzgates, Room-8-Schema und Android-Testkompilierung.** `RecipeRoomStockSnapshotReader` lehnt historische Bestands-Snapshots nun auch bei zukünftiger/ungültiger Produktversions- oder Chargen-Ursprungszeit ab; diese Zeitbelege sind im Revisionsdigest enthalten. Zwei neue Room-/Robolectric-Regressionen prüfen Fail-closed, spätere gültige Projektion, unveränderte Mengen und keine Buchung. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). Keine Schema-/Vertragsänderung, keine APK, **keine ausgeführten Android-Gerätetests**.
+- **Weiter:** unabhängige kryptografische Nutzeraktionsprovenienz an der FoodStore-Rezept-Save-Grenze, vollständige Generator-/Revalidator-Parität und Android-/Privacy-E2E; alle vier Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
+
+
 ## Integration III: neueste gültige Rezeptbestätigung atomar wiederaufnehmen (02.11.2026)
 
 - **[PR #86](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/86), Code-/Test-HEAD `02c3d9606fada3582b00f918e7888271695a73d7`, Squash-Merge `031e530156e6b1a6eb39abfe708da7aabbbd3630`; [PR-CI 41397615639](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41397615639) PASS auf exaktem HEAD: 452/452 JVM-Tests (0 Fehler/Skips), 7/7 Room-Migrationen, Lint, gepinnte Rezept-v1-Schema-/Python-Referenzen, Room-8-Schema und Android-Testkompilierung.** `FoodStore.recordedRecipeDraftV1ConsentKey` liest Consent-Ledger und Vorgangsschlüssel nun in einer einzigen Room-Transaktion und bevorzugt die jüngste noch gültige Bestätigung; belegte, zukünftige und abgelaufene Schlüssel werden weiterhin übersprungen. Zwei neue Room-/Robolectric-Regressionen prüfen Reihenfolge, fremde Schlüsselbelegung, zeitliche Gültigkeit und fehlende Nebenbuchung. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). Keine Schema-/Vertragsänderung, keine APK und **keine ausgeführten Android-Gerätetests**.
