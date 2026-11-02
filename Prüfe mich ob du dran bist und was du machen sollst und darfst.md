@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV 2026-11-02 18:26 CET"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102T172908120Z-vz3yitph"
-acquiredAtUtc: "2026-11-02T17:29:08.120Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Rezept-Speichern: überprüfbare Nutzeraktionsprovenienz und FoodStore-Kohärenz"
-workingBranch: "integration-iv/recipe-asof-status-20261102-1740"
-lastReleasedAtUtc: "2026-11-02T17:16:25.700Z"
-lastReleasedCommit: "75340ef68435cc9dd183d114c3b45a13e02a4019"
-nextStep: "FoodStore-Rezeptsave unabhängig authentifizieren; Generator-/Revalidator-Parität und Android-/Privacy-E2E weiterentwickeln"
+task: "Integration IV: Rezept-Katalog as-of geprüft; Code-PR #129 und Status-PR #130 gemergt"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T17:40:27.521Z"
+lastReleasedCommit: "a3763c1bd04d477641831773fa80d9f09e083fff"
+nextStep: "Unabhängige kryptographische Rezeptsave-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
