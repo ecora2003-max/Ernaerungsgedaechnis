@@ -470,10 +470,48 @@ class RecipeRoomStockSnapshotTest {
             occurredOn = "2026-11-01"))
         assertNull(store.readRecipeRoomStockSnapshot())
         val later = FoodStore(db) { at.plusSeconds(121).toEpochMilli() }
+        // The physical event was recorded as confirmed before it happened.
+        // Advancing the snapshot clock must not repair that contradiction.
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
+            arrayOf(at.toEpochMilli(), operation))
         val current = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(2_500L, current.lines.single().amountMilli)
         assertNotEquals(original.revision, current.revision)
         assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun consumptionOccurrenceAfterItsConfirmedOperationRemainsInvalid() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val recordedAt = at.plusSeconds(60).toEpochMilli()
+        val actualAt = at.plusSeconds(30).toEpochMilli()
+        val key = "late-occurrence-consumption"
+        FoodStore(db) { recordedAt }.consume(key,
+            ConsumptionInput(versionId, "2026-11-01", "Snack", 100L,
+                listOf(Allocation(batchId, 100L)), occurredAt = actualAt), true)
+        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
+        val operations = db.foodDao().operationCount()
+        assertEquals(1_900L, valid.lines.single().amountMilli)
+        assertEquals(1, db.foodDao().consumptionCount())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
+            arrayOf(at.plusSeconds(90).toEpochMilli(), key))
+        assertNull(later.readRecipeRoomStockSnapshot())
+        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        assertNull(nextDay.readRecipeRoomStockSnapshot())
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
+            arrayOf(actualAt, key))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(valid.lines, restored.lines)
+        assertNotEquals(original.revision, restored.revision)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
     }
 
     @Test fun invalidNegativeOccurredAtFailsClosedInsteadOfAssumingCurrent() = runBlocking {
