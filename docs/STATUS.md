@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+
+## Integration III: einheitlicher Produkt-Revisionszeitpunkt (02.11.2026)
+
+- [PR #70](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/70), **Code-/Test-HEAD `6ba48a725f38b11e5af63bd5fd578922ed39e3bc`**, Squash-Merge `9c0b13bb5bb16fc7ea2256f7edd3637c911b886f`: `FoodStore.rememberProduct` erfasst nach idempotentem Retry genau einen nichtnegativen physischen Zeitpunkt für Produktanlage, Versionsrevision und Operation. Ein Berliner Mitternachtswechsel während des Schreibens erzeugt keine widersprüchlichen Belege; ungültige negative Uhrzeit bricht die Transaktion ab. Zwei positive/negative Room-/Robolectric-Regressionen; keine Schema-/Vertragsänderung oder APK.
+- **[PR-CI 41380605697](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41380605697) PASS** auf dem exakten Code-/Test-HEAD: **430/430 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, Rezept-v1-Schema (9/14), gepinnte Produkt-/Shopping-Python-Referenzgates, Room-8-Schema und Android-Testkompilierung PASS. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). **0 ausgeführte Android-Geräte-/Emulatortests**.
+- **Weiter:** unabhängig authentifizierte FoodStore-Rezeptsave-Aktionsprovenienz, vollständige Generator-/Revalidator-Parität und reale Android-/Privacy-E2E. Alle vier Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
 ## Integration (Chat): einheitlicher bestätigter Zugangszeitpunkt (02.11.2026)
 
 - [PR #69](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/69), **Code-/Test-HEAD `1da2b734383ff2ae7822b2d49fc69f154e3945d1`**, Squash-Merge `4c2d9a7b63af4972363dbd6098ee7d480cd099f9`: `FoodStore.receive` erfasst bei einem ausdrücklich bestätigten Zugang nur noch einen `recordedAt`-Zeitpunkt für Berlin-Tagsprüfung, Operation und Room-Bestandsbewegung. Zwei neue positive/negative Room-/Robolectric-Regressionen prüfen Berliner Mitternachtswechsel, identische Ereigniszeit, idempotenten Retry, Zukunftstag-Abweisung und transaktionalen Rollback. Keine Schemaänderung, keine neue externe Quelle oder APK.
