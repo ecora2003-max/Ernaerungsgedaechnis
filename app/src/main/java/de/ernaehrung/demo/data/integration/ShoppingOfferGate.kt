@@ -1,6 +1,7 @@
 package de.ernaehrung.demo.data.integration
 
 import java.time.OffsetDateTime
+import java.util.concurrent.CancellationException
 
 /**
  * Fail-closed host-only chain for a single external in-store offer.
@@ -68,6 +69,9 @@ internal object ShoppingOfferGate {
         // A temporarily unavailable host registry is not a confirmed store.
         val storeConfirmed = try {
             stores.isConfirmed(request.retailer, storeId, request.regionId, request.asOf)
+        } catch (cancelled: CancellationException) {
+            // A cancelled host lookup must abort the review, not look like a denied store.
+            throw cancelled
         } catch (_: RuntimeException) { false }
         if (!storeConfirmed)
             return Result(null, setOf(Gap.STORE_NOT_CONFIRMED))
