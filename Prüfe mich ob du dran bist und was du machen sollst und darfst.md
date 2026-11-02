@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II automated run 10"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-mvyxkfmb-ek1afrw1w2"
-acquiredAtUtc: "2026-11-02T07:21:33.200Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Implement next real Android Room/FoodStore regression and tests"
-workingBranch: "integration-ii-movement-operation-provenance-20261102"
-lastReleasedAtUtc: "2026-11-02T07:13:41.311Z"
-lastReleasedCommit: "1440d18e2369c8cf005939ee4cb3c699ff0c7466"
-nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
+task: "Automatische Freigabe nach >=35 Minuten ohne GitHub-Aktivität"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T07:58:23.740Z"
+lastReleasedCommit: "4c88c6a58a991ef81dda18e45e97f37b265f7f48"
+nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
