@@ -182,4 +182,48 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun futureRecordedMovementCannotInflateCurrentStockSnapshot() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val operation = "future-recorded-stock"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.plusSeconds(60).toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("future-recorded-movement", batchId,
+            operation, 500L, MovementKind.RECEIPT, null, Source.USER,
+            "Legacy future record", at.plusSeconds(60).toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val current = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(2_500L, current.lines.single().amountMilli)
+        assertNotEquals(original.revision, current.revision)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun futureEffectiveMovementDayFailsClosedUntilBerlinDayArrives() = runBlocking {
+        val operation = "future-effective-stock"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("future-effective-movement", batchId,
+            operation, 500L, MovementKind.RECEIPT, null, Source.USER,
+            "Legacy future day", at.toEpochMilli(), occurredOn = "2026-11-02"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        assertEquals(2_500L, requireNotNull(nextDay.readRecipeRoomStockSnapshot())
+            .lines.single().amountMilli)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun malformedLegacyMovementDayCannotBeAssumedCurrent() = runBlocking {
+        val operation = "malformed-effective-stock"
+        db.foodDao().insertOperation(OperationEntity(operation, "RECEIPT", operation,
+            at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity("malformed-effective-movement",
+            batchId, operation, 100L, MovementKind.RECEIPT, null, Source.USER,
+            "Legacy malformed date", at.toEpochMilli(), occurredOn = "not-a-date"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
