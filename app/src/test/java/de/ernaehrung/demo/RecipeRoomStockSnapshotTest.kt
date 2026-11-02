@@ -269,9 +269,39 @@ class RecipeRoomStockSnapshotTest {
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
         val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        // Passing the future author timestamp is not enough: the movement
+        // still claims it was recorded before its author existed.
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), "movement-author-future"))
         val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(original.lines, recovered.lines)
-        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(original.revision, recovered.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun movementRecordedBeforeAuthorFailsClosedUntilChronologyRepaired() = runBlocking {
+        store.correctStock("movement-author-chronology", StockCountInput(
+            batchId, 2_000L, 1_700L, "2026-11-01", "Bestätigte Zählung"), true)
+        val before = db.foodDao().operationCount()
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(1_700L, original.lines.single().amountMilli)
+        val authorTime = at.plusSeconds(30).toEpochMilli()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(authorTime, "movement-author-chronology"))
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        assertNull(later.readRecipeRoomStockSnapshot())
+        // A consistent later recording is valid; no new FoodStore event or
+        // consumption may be created by repairing read-only evidence.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET recordedAt = ? WHERE operationId = ?",
+            arrayOf(authorTime, "movement-author-chronology"))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(original.lines, restored.lines)
+        assertNotEquals(original.revision, restored.revision)
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
