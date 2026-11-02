@@ -693,4 +693,42 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
+
+    @Test fun physicalConsumptionBeforeBatchCreationFailsClosedUntilEvidenceRepaired() = runBlocking {
+        val occurredAt = at.plusSeconds(30).toEpochMilli()
+        val recordedAt = at.plusSeconds(60).toEpochMilli()
+        val key = "stock-physical-before-origin"
+        val confirmed = FoodStore(db) { recordedAt }
+        val input = ConsumptionInput(versionId, "2026-11-01", "Snack", 100L,
+            listOf(Allocation(batchId, 100L)), occurredAt = occurredAt)
+        confirmed.consume(key, input, true)
+        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
+        val operations = db.foodDao().operationCount()
+        assertEquals(1_900L, valid.lines.single().amountMilli)
+        assertEquals(1, db.foodDao().consumptionCount())
+
+        // A legacy movement can claim an occurrence before the batch receipt
+        // even though its author and recording timestamps are both valid.
+        // Advancing the review clock must not legitimize that physical history.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
+            arrayOf(at.minusSeconds(30).toEpochMilli(), key))
+        assertNull(later.readRecipeRoomStockSnapshot())
+        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        assertNull(nextDay.readRecipeRoomStockSnapshot())
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+
+        // Repairing the stored occurrence restores the exact prior revision;
+        // no new physical booking or replay is performed by the reader.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
+            arrayOf(occurredAt, key))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(valid.lines, restored.lines)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+    }
 }
