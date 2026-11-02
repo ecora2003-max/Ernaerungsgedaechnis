@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: Host-Fakten in autorisiertem Angebotskontext gebunden (02.11.2026)
+
+- [PR #62](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/62), **Kotlin-/Test-Commit `724a2de6b0da5fe9adca4470ab9a3139e7fac500`**: `RecipeAuthorizedOffersReader` bindet die unabhängig bestätigten Host-Fakten zu Preisart, Quellenqualität, Verfügbarkeit, Konditionalität und Filialscope in die Revision des realen Room-/Host-Angebotssnapshots ein. Ohne diese Bindung konnte eine Änderung zwischen zwei weiterhin gültigen Angeboten den alten Rezept-Review-Digest unverändert lassen. Neue positive/negative Robolectric-Regression prüft Änderung von Verfügbarkeit und Quellenqualität, erzwungene erneute Review und ausbleibende FoodStore-Ist-Buchung.
+- **[PR-CI 41372672918](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41372672918) PASS auf Code-/Test-HEAD `241471adc12870a5064a4de8e276ca69529551f8`**: **418/418 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, v1-Rezept-Schema, gepinnte Produkt-/Shopping-Python-Referenzgates, Room-Schema und Android-Testkompilierung PASS. Keine Schema-/Vertragsänderung, keine externen Livefeeds, keine ausgeführten Android-Geräte-/Emulatortests oder APK. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft).
+- **Weiter:** unabhängig authentifizierte FoodStore-Rezeptsave-Aktionsprovenienz; reale Android-/Privacy-E2E und vollständige Generator-/Revalidator-Parität. Alle Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
+
 
 ## Integration II: Berlin-lokaler Kenntnis-Cutoff für private Bezahlpreishistorie (02.11.2026)
 
