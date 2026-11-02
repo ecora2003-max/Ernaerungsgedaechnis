@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration IV: Millisekundengenaue 5-Minuten-Grenze für Rezept-Hostkontext (02.11.2026)
+
+- **[Code-PR #141](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/141)**, Code-/Test-HEAD `aac4a6f19381406c81130e0ef0bf97ebabc8d544`, Squash-Merge `1d599089e901d9a5a34e8366fd83e524abb41fa7`; **[PR-CI 41509791140](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41509791140) PASS** auf exakt diesem HEAD: **517/517 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, v1-Rezept-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung. `FoodStore` prüft das 5-Minuten-Fenster der transaktionalen Room-Bestands-, Einkaufs- und unabhängig autorisierten Angebots-Snapshots jetzt ohne Abrundung auf ganze Sekunden. Drei positive/negative Room-/Robolectric-Grenztests belegen 300.000 ms zulässig, 300.001 ms abgelehnt und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`); keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
+- **Weiter:** Unabhängig authentifizierte Nutzeraktionsprovenienz beim FoodStore-Rezeptsave, Generator-/Revalidator-Parität und echte Android-/Privacy-E2E. Alle vier Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
+
 
 ## Integration II: Room-Shopping-Rezeptkontext bindet geprüfte Katalogprovenienz (02.11.2026)
 
