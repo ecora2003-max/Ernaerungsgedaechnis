@@ -97,6 +97,47 @@ class RecipeDraftCatalogSaveTest {
         assertTrue(dao.allPaidPrices().isEmpty())
     }
 
+    @Test fun recoveryPrefersNewestConfirmedKeyAndFallsBackWhenItIsOccupied() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("older-consent", ready)
+        clock += 30_000L
+        consent("newer-consent", ready)
+        assertEquals("newer-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+
+        // The newer opaque key was claimed by an unrelated actual operation.
+        // Recovery must fall back to the older valid consent, not that key.
+        store.rememberProduct("newer-consent", ProductInput("Unrelated product",
+            source = Source.USER, quality = Quality.CONFIRMED))
+        val count = dao.operationCount()
+        assertEquals("older-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(count, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+
+        clock += 300_001L
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(count, dao.operationCount())
+    }
+
+    @Test fun futureDatedNewerCheckpointCannotShadowValidConsent() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("valid-consent", ready)
+        val futureKey = "future-recovery"
+        dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$futureKey",
+            "RECIPE_DRAFT_CONSENT_V1",
+            WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", futureKey, digest),
+            at + 60_000L, digest))
+        val count = dao.operationCount()
+        assertEquals("valid-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(count, dao.operationCount())
+        assertNull(dao.operation(futureKey))
+        assertTrue(dao.observeRecipes().first().isEmpty())
+    }
+
     @Test fun invalidHostClockRejectsConsentAndRecipeSaveWithoutPartialWrites() = runBlocking {
         var trustedClock = at
         store = FoodStore(db) { trustedClock }

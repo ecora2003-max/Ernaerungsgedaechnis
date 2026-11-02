@@ -175,22 +175,28 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun recordedRecipeDraftV1ConsentKey(digest: String): String? {
         if (!Regex("[0-9a-f]{64}").matches(digest)) return null
         val prefix = "RECIPE_DRAFT_CONSENT_V1:"
-        val checkedAt = now()
-        return dao.recipeDraftConsentsForDigest(digest).firstOrNull { operation ->
-            if (!operation.id.startsWith(prefix)) false
-            else {
-                val key = operation.id.substring(prefix.length)
-                val existingSaveOperation = dao.operation(key)
-                key.isNotBlank() && key.length <= 200 &&
-                    !key.startsWith(prefix) &&
-                    // A later unrelated operation may occupy the raw key. Do not
-                    // recover such a checkpoint as a usable recipe approval.
-                    (existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") &&
-                    operation.recordedAt in 0L..checkedAt &&
-                    checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
-                    operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
-            }
-        }?.id?.substring(prefix.length)
+        // Read the consent ledger and the global operation namespace in one
+        // Room snapshot. A concurrent write must not change key ownership
+        // between selecting a checkpoint and checking its availability.
+        return db.withTransaction {
+            val checkedAt = now()
+            if (checkedAt < 0L) return@withTransaction null
+            // The newest still-valid explicit action wins. Older checkpoints
+            // remain immutable but must not shadow a more recent confirmation.
+            dao.recipeDraftConsentsForDigest(digest).asReversed().firstOrNull { operation ->
+                if (!operation.id.startsWith(prefix)) false
+                else {
+                    val key = operation.id.substring(prefix.length)
+                    val existingSaveOperation = dao.operation(key)
+                    key.isNotBlank() && key.length <= 200 &&
+                        !key.startsWith(prefix) &&
+                        (existingSaveOperation == null || existingSaveOperation.kind == "RECIPE") &&
+                        operation.recordedAt in 0L..checkedAt &&
+                        checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
+                        operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
+                }
+            }?.id?.substring(prefix.length)
+        }
     }
 
     /**
