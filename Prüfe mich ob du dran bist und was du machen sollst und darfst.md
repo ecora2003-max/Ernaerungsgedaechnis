@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T15:59:33.082Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Continue pending integration and implement FoodStore provenance validation"
-workingBranch: null
+workingBranch: "integration-iii/stock-movement-batch-origin-time-20261102-run11"
 lastReleasedAtUtc: "2026-11-02T15:48:07.978Z"
 lastReleasedCommit: "308edace79e4b4b3d85ac8d9d63d26d088807789"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; full generator/revalidator parity; Android/privacy E2E"
