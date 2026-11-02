@@ -7,6 +7,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.concurrent.CancellationException
 
 class ShoppingOfferGateTest {
     private val day = LocalDate.parse("2026-11-02")
@@ -150,6 +151,32 @@ class ShoppingOfferGateTest {
         assertEquals(setOf(Gate.Gap.EXTERNAL_PRICE_REJECTED), deniedRights.gaps)
         assertEquals(setOf(Price.Gap.MISSING_RIGHTS), deniedRights.externalGaps)
         assertNull(deniedRights.offer)
+    }
+
+    @Test fun cancelledStoreRegistryAbortsInsteadOfReturningMissingStore() {
+        val cancelledStore = Gate.ConfirmedStoreRegistry { _, _, _, _ ->
+            throw CancellationException("store lookup cancelled")
+        }
+        try {
+            review(stores = cancelledStore)
+            fail("Cancelled store verification must propagate")
+        } catch (cancelled: CancellationException) {
+            assertEquals("store lookup cancelled", cancelled.message)
+        }
+        assertTrue(review().eligible)
+    }
+
+    @Test fun cancelledRightsRegistryAbortsInsteadOfReturningMissingRights() {
+        val cancelledRights = Price.DisplayPermissionRegistry { _, _, _, _ ->
+            throw CancellationException("rights lookup cancelled")
+        }
+        try {
+            review(permissions = cancelledRights)
+            fail("Cancelled rights verification must propagate")
+        } catch (cancelled: CancellationException) {
+            assertEquals("rights lookup cancelled", cancelled.message)
+        }
+        assertTrue(review().eligible)
     }
 
     @Test fun knownZeroPriceRemainsDistinctFromUnknown() {
