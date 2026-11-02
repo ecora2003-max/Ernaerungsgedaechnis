@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T21:10:53.050Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Room recipe context / FoodStore provenance regression"
-workingBranch: null
+workingBranch: "integration-ii-recipe-catalog-review-scope-20261102-2112"
 lastReleasedAtUtc: "2026-11-02T21:01:26.134Z"
 lastReleasedCommit: "b0b9fa25539a22776780234f9f36fffdb89702f0"
 nextStep: "Independent authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E; all four modules remain partial"
