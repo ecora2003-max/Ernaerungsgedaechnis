@@ -59,8 +59,8 @@ ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102T023719649Z-mdkin87l"
 acquiredAtUtc: "2026-11-02T02:37:19.649Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Android FoodStore recipe-save provenance or UI integration with regression tests"
-workingBranch: null
+task: "Make FoodStore receipt timestamps atomic with Berlin-day validation and Room regressions"
+workingBranch: "integration/chat-receipt-recordedat-20261102-0237"
 lastReleasedAtUtc: "2026-11-02T02:32:25.685Z"
 lastReleasedCommit: "de35027e95f4e964ef597d5272423c9a05110da5"
 nextStep: "Independent authenticated FoodStore recipe-save action attestation; Android credential/privacy E2E; recipe generator/revalidator parity"
