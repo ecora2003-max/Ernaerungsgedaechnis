@@ -83,7 +83,14 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             if (day != null && movement.occurredAt != null &&
                 Instant.ofEpochMilli(movement.occurredAt)
                     .atZone(ZoneId.of("Europe/Berlin")).toLocalDate() != day) return null
+            // The movement row alone is not proof of an already committed
+            // stock event. Its independently stored author operation must
+            // exist and have been recorded by this exact snapshot instant.
             if (movement.id.isBlank() || movement.batchId !in knownBatches ||
+                movement.operationId.isBlank() || movement.operationKind.isNullOrBlank() ||
+                movement.operationResultId == null ||
+                movement.operationRecordedAt == null ||
+                movement.operationRecordedAt !in 0L..asOfMillis ||
                 movement.delta !in -Amounts.MAX..Amounts.MAX ||
                 movement.recordedAt !in 0L..asOfMillis ||
                 // The event's actual timestamp may be more precise than its
@@ -108,7 +115,9 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                         listOf(location.id, location.name, location.confirmed,
                             location.usableCapacityMl, location.temperatureCelsius)
                     })
-            }, movements.map { listOf(it.id, it.batchId, it.delta, it.recordedAt, it.occurredAt, it.occurredOn) },
+            }, movements.map { listOf(it.id, it.batchId, it.operationId, it.operationKind,
+                it.operationResultId, it.operationRecordedAt, it.delta, it.recordedAt,
+                it.occurredAt, it.occurredOn) },
             eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
