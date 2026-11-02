@@ -126,6 +126,21 @@ class RecipeRoomShoppingSnapshotTest {
         assertNull(store.readRecipeRoomShoppingSnapshot(scope.copy(purchaseOn = "2026-10-31")))
     }
 
+    @Test fun shoppingReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
+        store.savePlan("shopping-ttl-plan", plan(200_000L))
+        val snapshot = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        val before = db.foodDao().operationCount()
+        clock = at.plusMillis(300_000).toEpochMilli()
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(snapshot).status)
+        clock = at.plusMillis(300_001).toEpochMilli()
+        val stale = review(snapshot)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, stale.status)
+        assertTrue("ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED" in stale.gaps)
+        assertNull(stale.input)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun snapshotOlderThanFiveMinutesRequiresNewReview() = runBlocking {
         store.savePlan("shopping-plan", plan(200_000L))
         val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
