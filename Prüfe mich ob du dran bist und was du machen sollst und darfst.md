@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T23:14:38.814Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe catalog validation: reject inconsistent ingredient identities and ensure no FoodStore mutation"
-workingBranch: null
+workingBranch: "integration-ii-recipe-host-facts-scope-20261103-0016"
 lastReleasedAtUtc: "2026-11-02T23:00:48.891Z"
 lastReleasedCommit: "a4ba401f13133aa7fc0d7ae60f6a7f795b9762b4"
 nextStep: "Docs-only PR #163 pending (workflow filters docs, no CI); next code: independent authenticated FoodStore recipe-save provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
