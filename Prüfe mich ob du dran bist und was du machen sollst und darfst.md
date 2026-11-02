@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T08:54:01.825Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement next contract-safe Kotlin/Room integration with regression tests"
-workingBranch: null
+workingBranch: "codex/integration-chat-shopping-plan-time-20261102-0854"
 lastReleasedAtUtc: "2026-11-02T08:21:16.110Z"
 lastReleasedCommit: "c7f7923e8cb44e6451a8fd3305fefd8d68e219f8"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
