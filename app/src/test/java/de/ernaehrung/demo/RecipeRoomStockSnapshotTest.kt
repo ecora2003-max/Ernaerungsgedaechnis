@@ -64,11 +64,13 @@ class RecipeRoomStockSnapshotTest {
             Gate.Basis.NET, Gate.State.RAW))
     }
 
-    private suspend fun review(snapshot: de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot):
-        Gate.Review {
+    private suspend fun review(
+        snapshot: de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot,
+        reviewStore: FoodStore = store
+    ): Gate.Review {
         val context = Gate.typedContext(flags, at,
             Gate.Evidence(snapshot, true), null, null)
-        return store.previewRecipeDraftV1(json, request, confirmations(), states,
+        return reviewStore.previewRecipeDraftV1(json, request, confirmations(), states,
             context, OffsetDateTime.parse("2026-11-01T04:00:00Z"))
     }
 
@@ -84,6 +86,21 @@ class RecipeRoomStockSnapshotTest {
         assertNotNull(preview.input)
         // Active context is not yet backed by independent save-action provenance.
         assertNull(preview.approvalBasisDigest)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun stockReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
+        val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val atLimit = FoodStore(db) { at.plusMillis(300_000).toEpochMilli() }
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+            review(snapshot, atLimit).status)
+        val justExpired = FoodStore(db) { at.plusMillis(300_001).toEpochMilli() }
+        val stale = review(snapshot, justExpired)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, stale.status)
+        assertTrue("ROOM_STOCK_SNAPSHOT_STALE_OR_CHANGED" in stale.gaps)
+        assertNull(stale.input)
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }

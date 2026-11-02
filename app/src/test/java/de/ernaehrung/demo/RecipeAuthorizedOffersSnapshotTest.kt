@@ -147,6 +147,20 @@ class RecipeAuthorizedOffersSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun authorizedOfferReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
+        val snapshot = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        val before = db.foodDao().operationCount()
+        clock = at.plusMillis(300_000).toEpochMilli()
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(snapshot).status)
+        clock = at.plusMillis(300_001).toEpochMilli()
+        val stale = review(snapshot)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, stale.status)
+        assertTrue("HOST_OFFERS_SNAPSHOT_STALE_OR_UNAUTHORIZED" in stale.gaps)
+        assertNull(stale.input)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun interveningOfferPriceRevisionRequiresNewReview() = runBlocking {
         val original = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
