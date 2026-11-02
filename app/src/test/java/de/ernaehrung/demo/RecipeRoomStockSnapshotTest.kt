@@ -731,4 +731,71 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(operations, db.foodDao().operationCount())
         assertEquals(1, db.foodDao().consumptionCount())
     }
+
+    @Test fun dayOnlyLegacyCorrectionBeforeBatchOriginFailsClosedUntilRepaired() = runBlocking {
+        store.correctStock("legacy-day-only-correction", StockCountInput(
+            batchId, 2_000L, 1_500L, "2026-11-01", "Bestätigte Zählung"), true)
+        val valid = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        assertEquals(1_500L, valid.lines.single().amountMilli)
+
+        // A legacy movement has no physical instant, only an independently
+        // stored Berlin day preceding the receipt that created its batch.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = NULL, occurredOn = ? WHERE operationId = ?",
+            arrayOf("2026-10-31", "legacy-day-only-correction"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
+        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        assertNull(nextDay.readRecipeRoomStockSnapshot())
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredOn = ? WHERE operationId = ?",
+            arrayOf("2026-11-01", "legacy-day-only-correction"))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(valid.lines, restored.lines)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun legacyConsumptionFallbackDayBeforeBatchOriginFailsClosed() = runBlocking {
+        val occurredAt = at.plusSeconds(30).toEpochMilli()
+        val confirmed = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val key = "legacy-consumption-fallback-day"
+        confirmed.consume(key, ConsumptionInput(versionId, "2026-11-01", "Snack",
+            100L, listOf(Allocation(batchId, 100L)), occurredAt = occurredAt), true)
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        assertEquals(1_900L, valid.lines.single().amountMilli)
+
+        // The DAO falls back to the linked consumption date if the movement's
+        // own day is absent. That fallback must respect batch chronology too.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = NULL, occurredOn = NULL WHERE operationId = ?",
+            arrayOf(key))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET date = ? WHERE operationId = ?",
+            arrayOf("2026-10-31", key))
+        assertNull(later.readRecipeRoomStockSnapshot())
+        assertNull(FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+            .readRecipeRoomStockSnapshot())
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET date = ? WHERE operationId = ?",
+            arrayOf("2026-11-01", key))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE stock_movements SET occurredAt = ?, occurredOn = ? WHERE operationId = ?",
+            arrayOf(occurredAt, "2026-11-01", key))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(valid.lines, restored.lines)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+    }
+
 }
