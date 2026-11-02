@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV automated run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261102203024889-qqba4w2wng"
-acquiredAtUtc: "2026-11-02T20:30:24.889Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV: FoodStore/Room provenance and snapshot integrity"
-workingBranch: "integration-iv/stock-acquisition-day-status-20261102"
-lastReleasedAtUtc: "2026-11-02T20:09:28.599Z"
-lastReleasedCommit: "57d446705e0a30a871738c7f2f352764c6775146"
-nextStep: "Resume own open PR #144 branch integration-iii/recipe-import-identity-scope-20261102-2058 at HEAD 94140b2ad69e619f849788cc4d877613fee2e7b2; check CI 41516147841, fix failures or merge only on PASS; then record STATUS; continue generator/revalidator parity and Android E2E"
+task: "Integration IV: reject stock movement before acquisition; code PR #145 and status PR #146 merged"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T20:40:29.577Z"
+lastReleasedCommit: "d91801b8a2ae9d7a1e0ce3b54fc5ca394248bb68"
+nextStep: "Independent authenticated recipe-save user-action provenance; generator/revalidator parity and Android/privacy E2E; monitor remaining PR #144 only through its owning integration"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
