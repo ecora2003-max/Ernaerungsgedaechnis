@@ -28,7 +28,8 @@ class ProductionTest {
     private val dao get() = db.foodDao()
     @Before fun setup() = runBlocking {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
-        store = FoodStore(db) { 1_800_000_000_000L }
+        // Keep fixture creation before the Berlin-midnight production regression.
+        store = FoodStore(db) { Instant.parse("2026-10-31T12:00:00Z").toEpochMilli() }
         lentil = store.rememberProduct("l", ProductInput("Linsen", energyKcal = 340.0))
         tomato = store.rememberProduct("t", ProductInput("Tomaten", energyKcal = null))
         location = store.addLocation("loc", "Kühlschrank", true)
