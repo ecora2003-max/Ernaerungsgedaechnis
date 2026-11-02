@@ -11,10 +11,7 @@ import java.time.LocalDate
  *
  * Called within FoodStore's Room transaction, including at review time.
  */
-internal class RecipeRoomShoppingSnapshotReader(
-    private val db: FoodDatabase,
-    private val now: () -> Long
-) {
+internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
     companion object {
         private const val PREFIX = "LOCAL_ROOM_SHOPPING_V1"
         private const val MAX_LINES = 10_000
@@ -42,8 +39,11 @@ internal class RecipeRoomShoppingSnapshotReader(
         // ShoppingReader internally reads planning, stock, price versions and
         // checklist revisions in one Room transaction. Its price observations
         // are never promoted to approved external offers by this adapter.
+        // Freeze the clock at the same instant as the snapshot. A real clock
+        // crossing Berlin midnight between capture and nested planning reads
+        // must not mix two different days in one transactional context.
         val report = try {
-            ShoppingReader(db, now).report(scope)
+            ShoppingReader(db) { capturedAt.toEpochMilli() }.report(scope)
         } catch (_: IllegalArgumentException) {
             return null
         }
