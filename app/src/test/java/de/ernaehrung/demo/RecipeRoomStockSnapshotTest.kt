@@ -192,10 +192,41 @@ class RecipeRoomStockSnapshotTest {
         // before its recorded creation time. No stock or recipe is booked.
         assertNull(store.readRecipeRoomStockSnapshot())
         val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        // Advancing the snapshot clock must not turn a receipt predating its
+        // product version into legitimate inventory.
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), versionId))
         val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(original.lines, recovered.lines)
-        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(original.revision, recovered.revision)
         assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun oneImpossibleBatchOriginInvalidatesWholeStockContext() = runBlocking {
+        val secondVersion = store.rememberProduct("second-stock-version",
+            ProductInput("Linsen", source = Source.USER, quality = Quality.CONFIRMED))
+        store.receive("second-stock-receipt",
+            BatchInput(secondVersion, locationId, 500L, acquiredOn = "2026-11-01",
+                release = ReleaseStatus.RELEASED), true)
+        val later = FoodStore(db) { at.plusSeconds(90).toEpochMilli() }
+        val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(2, valid.lines.size)
+        val before = db.foodDao().operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(30).toEpochMilli(), secondVersion))
+        // The first batch is valid, but partial stock is not a safe context.
+        assertNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(before, db.foodDao().operationCount())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), secondVersion))
+        val restored = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(valid.lines, restored.lines)
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
