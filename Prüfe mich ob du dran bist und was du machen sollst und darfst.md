@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Integration III automation turn 11"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzstvvf-0j2678mj"
+acquiredAtUtc: "2026-11-02T21:56:42.267Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration Chat: PR #152 recipe review chronology merged; CI 41530202683 PASS"
+task: "Recipe review persistence and context validation continuation"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-02T21:45:37.312Z"
 lastReleasedCommit: "45c49073530a30f461b0278f106aee2aa6a5b972"
 nextStep: "Docs-only status PR #153 open; Android workflow excludes STATUS.md so no PR CI auto-trigger. Next code: authenticated FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
