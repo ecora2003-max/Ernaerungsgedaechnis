@@ -97,6 +97,31 @@ class RecipeDraftCatalogSaveTest {
         assertTrue(dao.allPaidPrices().isEmpty())
     }
 
+    @Test fun invalidHostClockRejectsConsentAndRecipeSaveWithoutPartialWrites() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val ready = preview()
+        val before = dao.operationCount()
+
+        trustedClock = -1L
+        rejected { consent("clock-invalid", ready) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:clock-invalid"))
+
+        trustedClock = at
+        consent("clock-invalid", ready)
+        val afterConsent = dao.operationCount()
+        trustedClock = -1L
+        rejected { save("clock-invalid", ready) }
+        assertEquals(afterConsent, dao.operationCount())
+        assertNull(dao.operation("clock-invalid"))
+        assertTrue(dao.observeRecipes().first().isEmpty())
+
+        trustedClock = at
+        assertNotNull(dao.recipeVersion(save("clock-invalid", ready)))
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun missingSeparateConfirmationCannotWriteAnything() = runBlocking {
         val expected = preview()
         val before = dao.operationCount()
