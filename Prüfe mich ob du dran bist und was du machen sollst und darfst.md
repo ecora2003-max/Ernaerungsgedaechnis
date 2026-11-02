@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T08:13:31.648Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Typed Room recipe snapshot and transactional revalidation"
-workingBranch: "integration-ii/recipe-shopping-version-asof-20261102"
+workingBranch: "integration-ii/status-shopping-version-asof-20261102"
 lastReleasedAtUtc: "2026-11-02T08:07:59.422Z"
 lastReleasedCommit: "a2f7371c39188e8d669231639e6ac1fe5e43a2b8"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
