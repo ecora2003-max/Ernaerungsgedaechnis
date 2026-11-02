@@ -721,6 +721,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(version.recordedAt in 0L..recordedAt) {
             "Verzehrbuchung liegt vor der erfassten Artikelversion."
         }
+        // An explicitly supplied occurrence is the physical consumption instant.
+        // A batch created later on the same Berlin day cannot have been eaten yet.
+        val provenanceAt = input.occurredAt ?: recordedAt
         val consumptionId = id()
         dao.insertOperation(OperationEntity(operationId, "CONSUMPTION", fingerprint, recordedAt, consumptionId))
         dao.insertConsumption(ConsumptionEntity(consumptionId, operationId, input.versionId, input.date,
@@ -729,7 +732,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             val batch = WriteRules.available(dao, allocation.batchId, allocation.amount, input.date, true)
             // A same-day calendar match cannot authorize consumption of a
             // batch whose creating operation is still in the physical future.
-            WriteRules.batchOriginAt(dao, batch, recordedAt)
+            WriteRules.batchOriginAt(dao, batch, provenanceAt)
             require(batch.versionId == input.versionId) { "Charge gehört zu einer anderen Produktversion." }
             dao.insertAllocation(ConsumptionAllocationEntity(consumptionId, batch.id, allocation.amount))
             dao.insertMovement(StockMovementEntity(id(), batch.id, operationId, -allocation.amount,

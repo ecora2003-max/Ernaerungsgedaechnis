@@ -314,21 +314,22 @@ class RecipeRoomStockSnapshotTest {
 
     @Test fun validPastConsumptionUsesOneRecordedAtAndRemainsIdempotent() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
-        var clock = at.toEpochMilli()
+        // Receipt is recorded at 'at'; occurrence is later, but precedes the single write instant.
+        var clock = at.plusSeconds(60).toEpochMilli()
         val movingClockStore = FoodStore(db) { clock++ }
         val input = ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
             listOf(Allocation(batchId, 100L)),
-            occurredAt = at.minusSeconds(30).toEpochMilli())
+            occurredAt = at.plusSeconds(30).toEpochMilli())
         val first = movingClockStore.consume("confirmed-past-consumption", input, true)
         assertEquals(first, movingClockStore.consume("confirmed-past-consumption", input, true))
         val operation = requireNotNull(db.foodDao().operation("confirmed-past-consumption"))
         val movements = db.foodDao().movements("confirmed-past-consumption")
         assertEquals(1, movements.size)
-        assertEquals(at.toEpochMilli(), operation.recordedAt)
+        assertEquals(at.plusSeconds(60).toEpochMilli(), operation.recordedAt)
         assertEquals(operation.recordedAt, movements.single().recordedAt)
         assertEquals(input.occurredAt, movements.single().occurredAt)
         assertEquals(1, db.foodDao().consumptionCount())
-        val current = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val current = requireNotNull(FoodStore(db) { at.plusSeconds(61).toEpochMilli() }.readRecipeRoomStockSnapshot())
         assertEquals(1_900L, current.lines.single().amountMilli)
         assertNotEquals(original.revision, current.revision)
     }
