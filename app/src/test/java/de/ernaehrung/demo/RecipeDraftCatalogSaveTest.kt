@@ -122,6 +122,46 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(count, dao.operationCount())
     }
 
+    @Test fun recoveredConsentRejectsRecipeOperationWithMissingVersion() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("valid-consent", ready)
+        consent("orphan-recipe", ready)
+        // An operation kind alone cannot prove that a recipe was actually saved.
+        dao.insertOperation(OperationEntity("orphan-recipe", "RECIPE",
+            "synthetic-invalid-fingerprint", at, "missing-recipe-version"))
+        val count = dao.operationCount()
+
+        assertEquals("valid-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("orphan-recipe", ready) }
+        assertEquals(count, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun recoveredConsentRejectsRecipeOperationOlderThanConfirmation() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("saved-valid", ready)
+        val savedVersion = save("saved-valid", ready)
+
+        clock += 60_000L
+        consent("later-consent", ready)
+        // This synthetic legacy/corrupt row refers to a real version, but
+        // predates the action which supposedly authorized its creation.
+        dao.insertOperation(OperationEntity("later-consent", "RECIPE",
+            "synthetic-invalid-fingerprint", at, savedVersion))
+        val count = dao.operationCount()
+
+        assertEquals("saved-valid", store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("later-consent", ready) }
+        assertEquals(count, dao.operationCount())
+        assertNotNull(dao.recipeVersion(savedVersion))
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun futureDatedNewerCheckpointCannotShadowValidConsent() = runBlocking {
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
