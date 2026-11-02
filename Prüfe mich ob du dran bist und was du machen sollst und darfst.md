@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III scheduled run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-20261102T1056-6klwj08lmur"
-acquiredAtUtc: "2026-11-02T10:56:28.217Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Purchase payment and stock-booking single-instant chronology"
-workingBranch: "integration-iii-purchase-single-instant-20261102-1056"
-lastReleasedAtUtc: "2026-11-02T10:50:09.262Z"
-lastReleasedCommit: "4fa7aa30a19e29681bb4b19be71d2fe1dbf84eca"
-nextStep: "Independently cryptographically authenticated FoodStore recipe-save user-action provenance; generator/revalidator parity; Android/privacy E2E"
+task: "Integration III: single-instant purchase/payment/stock/cancellation chronology (PR #104; 478 JVM/7 Room PASS)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T11:12:19.076Z"
+lastReleasedCommit: "623f24c7efaf68c21666ff4ac49eaab57d67aca7"
+nextStep: "Independently authenticated FoodStore recipe-save user-action provenance; generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
