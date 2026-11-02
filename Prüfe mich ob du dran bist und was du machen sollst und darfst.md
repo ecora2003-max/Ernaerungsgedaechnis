@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T18:37:57.102Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Rezept-Kontext- und FoodStore-Validierung, echte Kotlin-Regression"
-workingBranch: null
+workingBranch: "integration-chat/offer-cancellation-20261102-1837"
 lastReleasedAtUtc: "2026-11-02T18:23:54.620Z"
 lastReleasedCommit: "da4249d7c63e18bbd3cf350ab9e33fdc0fea573f"
 nextStep: "Unabhängige Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität, Android-/Privacy-E2E"
