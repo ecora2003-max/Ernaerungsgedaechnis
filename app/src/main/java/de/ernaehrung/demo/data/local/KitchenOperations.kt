@@ -112,18 +112,7 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
             // The calendar date alone does not prove that a batch existed at the
             // physical production instant. A device-clock rollback must not
             // consume a purchase or product version recorded in the future.
-            val origin = requireNotNull(dao.operation(batch.originOperationId)) {
-                "Herkunftsvorgang der Zutatencharge fehlt."
-            }
-            require(origin.recordedAt in 0L..recordedAt) {
-                "Herstellung liegt vor der tatsächlichen Erfassung der Zutatencharge."
-            }
-            val sourceVersion = requireNotNull(dao.version(batch.versionId)) {
-                "Artikelversion der Zutatencharge fehlt."
-            }
-            require(sourceVersion.recordedAt in 0L..recordedAt) {
-                "Herstellung liegt vor der erfassten Artikelversion der Zutatencharge."
-            }
+            WriteRules.batchOriginAt(dao, batch, recordedAt)
             actualByVersion[batch.versionId] = Math.addExact(actualByVersion[batch.versionId] ?: 0, allocation.amount)
         }
         require(actualByVersion.keys == ingredients.map { it.productVersionId }.toSet()) { "Tatsächliche Chargen passen nicht zu allen Artikelversionen des Rezepts. Bei anderen Zutaten eine neue Rezeptversion anlegen." }
