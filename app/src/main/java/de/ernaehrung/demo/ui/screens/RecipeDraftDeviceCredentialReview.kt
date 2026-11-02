@@ -3,6 +3,7 @@ package de.ernaehrung.demo.ui.screens
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Text
@@ -22,7 +23,8 @@ internal data class RecipeCredentialChallenge(
     val digest: String,
     val sessionId: String,
     val reviewedInput: RecipeInput,
-    val resetVersion: Int
+    val resetVersion: Int,
+    val issuedAtElapsedRealtimeMs: Long
 )
 
 internal object RecipeCredentialResultGate {
@@ -32,9 +34,15 @@ internal object RecipeCredentialResultGate {
         review: RecipeDraftHostGate.Review?,
         sessionId: String?,
         resetVersion: Int,
-        actionEnabled: Boolean
+        actionEnabled: Boolean,
+        nowElapsedRealtimeMs: Long = SystemClock.elapsedRealtime()
     ): Boolean = challenge != null &&
         resultCode == Activity.RESULT_OK &&
+        // Elapsed realtime cannot be set by a wall-clock change. A delayed OS
+        // callback or a challenge from a different boot must not approve a draft.
+        challenge.issuedAtElapsedRealtimeMs >= 0L &&
+        nowElapsedRealtimeMs >= challenge.issuedAtElapsedRealtimeMs &&
+        nowElapsedRealtimeMs - challenge.issuedAtElapsedRealtimeMs <= 300_000L &&
         actionEnabled &&
         sessionId != null &&
         sessionId == challenge.sessionId &&
@@ -104,7 +112,8 @@ internal fun RecipeDraftDeviceCredentialReview(
             )
         } else null
         val candidate = if (renderedSession != null && review.input != null) {
-            RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion)
+            RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion,
+                SystemClock.elapsedRealtime())
         } else null
         if (intent == null ||
             !RecipeCredentialResultGate.accepts(
