@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III automation run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzdmgaz-7y7vok"
-acquiredAtUtc: "2026-11-02T14:51:01.259Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Room stock movement author chronology fail-closed"
-workingBranch: "integration-iii/stock-author-chronology-20261102-run11"
-lastReleasedAtUtc: "2026-11-02T14:44:54.693Z"
-lastReleasedCommit: "c495c6f2c576760ff5e8d826daee2d68078354ee"
+task: "Integration III: Room stock author chronology, PR #116, 495 JVM/7 Room PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T15:05:01.098Z"
+lastReleasedCommit: "dfd2e6937f5634d7ccb60e4202ab9378e747350a"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
