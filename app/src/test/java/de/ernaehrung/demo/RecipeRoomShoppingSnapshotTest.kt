@@ -292,4 +292,23 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun supersededRoomProductVersionCannotSubstantiateShoppingRecipeContext() = runBlocking {
+        store.savePlan("superseded-version-shopping", plan(200_000L))
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        val before = db.foodDao().operationCount()
+        val productId = requireNotNull(db.foodDao().version(versionId)).productId
+        clock += 1_000L
+        val replacement = store.rememberProduct("shopping-version-revision",
+            ProductInput("Reis neu", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = productId)
+        assertNotEquals(versionId, replacement)
+        // The plan still points to the old version. Do not promote its need
+        // to a current host-verified recipe snapshot after a catalog revision.
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
