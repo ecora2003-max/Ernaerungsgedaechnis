@@ -43,6 +43,32 @@ class RecipeContextContentBindingTest {
         }
     }
 
+    @Test fun directContentBindingRejectsUnrequestedHostSourcesAcrossAllEightConsents() {
+        for (bits in 0..7) {
+            val f = flags(bits)
+            val selectedStock = stock.takeIf { f.considerStock }
+            val selectedShopping = shopping.takeIf { f.considerShopping }
+            val selectedOffers = offers.takeIf { f.considerOffers }
+            val bound = requireNotNull(Binding.bind(f, at,
+                selectedStock, selectedShopping, selectedOffers))
+            assertTrue(Binding.matches(bound, f,
+                selectedStock, selectedShopping, selectedOffers))
+
+            if (!f.considerStock) {
+                assertNull(Binding.bind(f, at, stock, selectedShopping, selectedOffers))
+                assertFalse(Binding.matches(bound, f, stock, selectedShopping, selectedOffers))
+            }
+            if (!f.considerShopping) {
+                assertNull(Binding.bind(f, at, selectedStock, shopping, selectedOffers))
+                assertFalse(Binding.matches(bound, f, selectedStock, shopping, selectedOffers))
+            }
+            if (!f.considerOffers) {
+                assertNull(Binding.bind(f, at, selectedStock, selectedShopping, offers))
+                assertFalse(Binding.matches(bound, f, selectedStock, selectedShopping, offers))
+            }
+        }
+    }
+
     @Test fun changedContentScopeRevisionAndTimeInvalidateBoundReview() {
         val f = flags(7)
         val original = Gate.typedContext(f, at, Gate.Evidence(stock, true),
