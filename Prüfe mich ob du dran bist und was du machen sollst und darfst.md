@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T10:38:33.717Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe context revalidation / FoodStore boundary hardening"
-workingBranch: null
+workingBranch: "codex/integration-chat-production-batch-origin-20261102-11"
 lastReleasedAtUtc: "2026-11-02T10:31:22.142Z"
 lastReleasedCommit: "4a7657870c4d916688ce602130ff75ca8cf1057c"
 nextStep: "Independent cryptographic FoodStore recipe-save user-action provenance; generator/revalidator parity; Android credential/privacy E2E"
