@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T05:15:46.068Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement next testable FoodStore/recipe Android integration"
-workingBranch: null
+workingBranch: "integration-ii-consumption-berlin-occurrence-day-mvyt3y6x"
 lastReleasedAtUtc: "2026-11-02T05:04:15.236Z"
 lastReleasedCommit: "9cacae2da3638846f2058285b96b1d5fbd2d5135"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android credential/privacy device E2E"
