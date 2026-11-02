@@ -196,10 +196,12 @@ internal object RecipeDraftV1Import {
         // preview/consent UI, even if a later host review would reject them.
         val ingredientIds = lines.map { it.foodTypeId }.toSet()
         require(ingredientIds.size == lines.size) { "duplicate ingredient food type" }
-        // Independently reviewed states belong to this draft only. Reject stale
-        // selections from another draft rather than silently discarding them.
-        require(reviewedStates.keys.all { it in ingredientIds }) {
-            "reviewed state outside recipe ingredient scope"
+        // Unmatched review states alone are never forwarded (the ingredient
+        // remains UNKNOWN). But a partly matching map must not mix current
+        // selections with stale entries from a different draft.
+        require(reviewedStates.keys.none { it in ingredientIds } ||
+            reviewedStates.keys.all { it in ingredientIds }) {
+            "mixed review states from different ingredient scopes"
         }
         return Imported(draftId, created, snapshot, Gate.Draft(
             Gate.CONTRACT, "recipe.draft", title, steps.joinToString("\n"),
