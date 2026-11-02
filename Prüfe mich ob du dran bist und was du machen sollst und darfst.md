@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T19:09:32.704Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Room-Rezeptkontext: nächste transaktionale Validierung und Regression"
-workingBranch: null
+workingBranch: "integration-ii-shopping-provenance-20261102-1909"
 lastReleasedAtUtc: "2026-11-02T19:07:15.754Z"
 lastReleasedCommit: "8f21a7f7d3d1a33f07cc7878dad9e70caa8f08bd"
 nextStep: "Unabhängige FoodStore-Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
