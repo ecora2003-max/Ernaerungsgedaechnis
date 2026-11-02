@@ -59,8 +59,8 @@ ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102194219152-2660afs"
 acquiredAtUtc: "2026-11-02T19:42:19.152Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore recipe-save user-action provenance validation"
-workingBranch: null
+task: "Reject unrequested context snapshots in recipe content binding"
+workingBranch: "integration-chat/context-scope-failclosed-20261102"
 lastReleasedAtUtc: "2026-11-02T19:32:36.969Z"
 lastReleasedCommit: "27a7175b7e243d53a23879a6d3a643883be1c294"
 nextStep: "Independently authenticated FoodStore recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E"
