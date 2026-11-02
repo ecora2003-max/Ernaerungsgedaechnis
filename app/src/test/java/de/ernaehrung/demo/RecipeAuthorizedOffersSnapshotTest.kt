@@ -13,6 +13,7 @@ import de.ernaehrung.demo.data.local.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.concurrent.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -234,6 +235,53 @@ class RecipeAuthorizedOffersSnapshotTest {
             arrayOf(version.revision, versionId))
         val restored = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
         assertEquals(original.revision, restored.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    /** Callback failures are unknown evidence, but coroutine cancellation is not. */
+    private fun failingEvidenceReader(
+        articleFailure: RuntimeException? = null,
+        factsFailure: RuntimeException? = null
+    ) = RecipeAuthorizedOffersReader(
+        db.foodDao(),
+        ExternalPriceCandidateSupplier { listOf(candidate()) },
+        RecipeAuthorizedOffersReader.HostFactsRegistry {
+            if (factsFailure != null) throw factsFailure
+            ShoppingOfferGate.HostFacts("SALE", "CONFIRMED", "AVAILABLE",
+                false, "STORE_CONFIRMED", verifiedByHost = true)
+        },
+        articles = RecipeAuthorizedOffersReader.ArticleRegistry { _, _, _ ->
+            if (articleFailure != null) throw articleFailure
+            true
+        }
+    )
+
+    @Test fun cancelledHostArticleOrFactsVerificationPropagatesWithoutBooking() = runBlocking {
+        val before = db.foodDao().operationCount()
+        for (source in listOf(
+            failingEvidenceReader(articleFailure = CancellationException("article cancelled")),
+            failingEvidenceReader(factsFailure = CancellationException("facts cancelled"))
+        )) {
+            try {
+                store.readRecipeAuthorizedOffersSnapshot(scope, source)
+                fail("Cancellation must propagate out of the Room snapshot")
+            } catch (cancelled: CancellationException) {
+                assertTrue(cancelled.message?.endsWith("cancelled") == true)
+            }
+        }
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun ordinaryHostEvidenceFailureStillFailsClosedAndValidSourceRecovers() = runBlocking {
+        val before = db.foodDao().operationCount()
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope,
+            failingEvidenceReader(articleFailure = IllegalStateException("article unavailable"))))
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope,
+            failingEvidenceReader(factsFailure = IllegalStateException("facts unavailable"))))
+        val recovered = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(recovered).status)
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
