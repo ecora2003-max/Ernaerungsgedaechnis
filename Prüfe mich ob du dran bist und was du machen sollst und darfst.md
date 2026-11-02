@@ -46,6 +46,10 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 
 **Nächster Code-Schritt:** Typisierte echte Room-/Host-Snapshot-Lesestrecke der Rezept-KI anbinden und deren Kontext unmittelbar vor Speichern erneut transaktional prüfen, oder eine konkret begründete wichtigere Artikel-/Filial-/Shopping-UI-Integration. Ohne unabhängig belegte Nutzeraktion keine automatische FoodStore-Buchung. Exakte Vorgaben und offene Abnahmen in `docs/STATUS.md` und `docs/ACCEPTANCE.md`.
 
+## 5. EINZIGER AKTUELLER SPERRSTATUS – am Ende der Datei belassen
+
+Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
+
 ```yaml
 state: "FREE"
 ownerAutomationId: null
