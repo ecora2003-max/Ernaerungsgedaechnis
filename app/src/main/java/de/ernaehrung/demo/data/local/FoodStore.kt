@@ -61,7 +61,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun readRecipeRoomShoppingSnapshot(scope: ShoppingScope):
         de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =
         db.withTransaction {
-            RecipeRoomShoppingSnapshotReader(db, now)
+            RecipeRoomShoppingSnapshotReader(db)
                 .read(scope, java.time.Instant.ofEpochMilli(now()))
         }
 
@@ -313,7 +313,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 RecipeRoomShoppingSnapshotReader.scopeFromId(it)
             }
             val fresh = scope?.let {
-                RecipeRoomShoppingSnapshotReader(db, now)
+                RecipeRoomShoppingSnapshotReader(db)
                     .read(it, java.time.Instant.ofEpochMilli(trustedNow))
             }
             val ageSeconds = if (binding != null && fresh != null)

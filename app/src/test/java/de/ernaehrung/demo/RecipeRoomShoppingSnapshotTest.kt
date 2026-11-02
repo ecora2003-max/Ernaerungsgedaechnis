@@ -198,4 +198,32 @@ class RecipeRoomShoppingSnapshotTest {
             java.util.TimeZone.setDefault(previousZone)
         }
     }
+    @Test fun crossingBerlinMidnightDuringSnapshotDoesNotMixPlanningDays() = runBlocking {
+        store.savePlan("clock-boundary-plan", plan(200_000L))
+        val operationsBefore = db.foodDao().operationCount()
+        val beforeMidnight = Instant.parse("2026-11-01T22:59:59Z").toEpochMilli()
+        val afterMidnight = Instant.parse("2026-11-01T23:00:01Z").toEpochMilli()
+        var reads = 0
+        store = FoodStore(db) { if (reads++ == 0) beforeMidnight else afterMidnight }
+
+        val snapshot = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(1, reads)
+        assertEquals(200_000L, snapshot.lines.single().amountMilli)
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertEquals(operationsBefore, db.foodDao().operationCount())
+    }
+
+    @Test fun clockRollbackDuringSnapshotCannotAuthorizePastPurchaseDay() = runBlocking {
+        store.savePlan("clock-rollback-plan", plan(200_000L))
+        val operationsBefore = db.foodDao().operationCount()
+        val beforeMidnight = Instant.parse("2026-11-01T22:59:59Z").toEpochMilli()
+        val afterMidnight = Instant.parse("2026-11-01T23:00:01Z").toEpochMilli()
+        var reads = 0
+        store = FoodStore(db) { if (reads++ == 0) afterMidnight else beforeMidnight }
+
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(1, reads)
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertEquals(operationsBefore, db.foodDao().operationCount())
+    }
 }
