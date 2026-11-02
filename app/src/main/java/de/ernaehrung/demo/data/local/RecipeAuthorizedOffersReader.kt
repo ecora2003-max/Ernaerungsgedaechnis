@@ -102,9 +102,14 @@ internal class RecipeAuthorizedOffersReader(
             if (candidate.productVersionId != version.id) return null
             val confirmedArticle = try {
                 articles.isConfirmed(version, candidate, capturedAt)
+            } catch (cancelled: CancellationException) {
+                // Cancellation must abort the Room review, not masquerade as
+                // missing article evidence and allow a stale retry to proceed.
+                throw cancelled
             } catch (_: RuntimeException) { false }
             if (!confirmedArticle) return null
             val facts = try { hostFacts.verified(candidate.observationId) }
+                catch (cancelled: CancellationException) { throw cancelled }
                 catch (_: RuntimeException) { null } ?: return null
             // Feed-supplied productVersionConfirmed cannot establish identity.
             // Current Room version AND independent host article review are required.
