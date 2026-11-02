@@ -97,6 +97,15 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val acquired = batch.acquiredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
+            // Opening or thawing is a physical batch-state change. A legacy
+            // receipt can have an acquisition day later than its recorded
+            // operation timestamp; such a state change cannot predate that
+            // acquisition even when the review takes place days afterward.
+            if (acquired != null && listOfNotNull(batch.openedAt, batch.thawedAt).any { eventAt ->
+                    Instant.ofEpochMilli(eventAt)
+                        .atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
+                        .isBefore(acquired)
+                }) return null
             batchAcquiredOn[batch.id] = acquired
             val expiries = listOfNotNull(batch.bestBefore, batch.useBy).map {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
