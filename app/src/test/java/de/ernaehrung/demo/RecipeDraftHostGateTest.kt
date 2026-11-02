@@ -64,6 +64,30 @@ class RecipeDraftHostGateTest {
         assertNull(Gate.review(draft(), request(), mapOf("rice" to fact(id = null))).input)
     }
 
+    @Test fun foreignOrMixedHostFactsCannotAuthorizeCurrentRecipe() {
+        val trusted = mapOf("rice" to fact())
+        val foreign = fact().copy(foodTypeId = "beans", productVersionId = "version-beans")
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+            Gate.review(draft(), request(), trusted).status)
+
+        // A previously approved ingredient mixed with another draft's evidence
+        // must fail closed rather than silently dropping the foreign entry.
+        val mixed = Gate.review(draft(), request(), trusted + ("beans" to foreign))
+        assertEquals(Gate.Status.BLOCKED, mixed.status)
+        assertTrue("FOREIGN_INGREDIENT_EVIDENCE" in mixed.blockers)
+        assertNull(mixed.input)
+
+        val onlyForeign = Gate.review(draft(), request(), mapOf("beans" to foreign))
+        assertEquals(Gate.Status.BLOCKED, onlyForeign.status)
+        assertTrue("FOREIGN_INGREDIENT_EVIDENCE" in onlyForeign.blockers)
+        assertNull(onlyForeign.input)
+
+        // Fresh, exactly scoped evidence recovers without a FoodStore write.
+        val recovered = Gate.review(draft(), request(), trusted)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, recovered.status)
+        assertEquals(200_000L, recovered.input!!.ingredients.single().amount)
+    }
+
     @Test fun confirmedAllergenBlocksAndUnknownIsNotAssumedAbsent() {
         val restriction = setOf("ALLERGEN:SOY")
         val present = Gate.review(draft(), request(restrictions = restriction),
