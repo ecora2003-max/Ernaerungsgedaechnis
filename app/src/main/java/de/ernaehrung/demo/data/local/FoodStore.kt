@@ -350,8 +350,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             null
         }
         val lines = imported?.draft?.lines ?: emptyList()
+        // Independently enforce review chronology at the FoodStore boundary:
+        // even a caller bypassing the manual-review UI cannot reuse a catalog
+        // confirmation issued before the draft being approved existed.
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
-            lines, dao.allVersions(), confirmations, trustedNow)
+            lines, dao.allVersions(), confirmations, trustedNow,
+            draftCreatedAtMillis = imported?.createdAt?.toInstant()?.toEpochMilli())
         val review = de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
             json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
         // Producer clock skew is tolerated for read-only preview only. A host

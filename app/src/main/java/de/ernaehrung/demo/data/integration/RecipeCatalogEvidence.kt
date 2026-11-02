@@ -29,13 +29,17 @@ internal object RecipeCatalogEvidence {
         lines: List<RecipeDraftHostGate.DraftLine>,
         catalog: List<ProductVersionEntity>,
         confirmations: Map<String, ConfirmedLine>,
-        nowMillis: Long
+        nowMillis: Long,
+        // When a draft is available, host confirmation cannot predate its creation.
+        // A catalog review performed for an earlier draft is not approval of this one.
+        draftCreatedAtMillis: Long? = null
     ): Map<String, RecipeDraftHostGate.HostLine> {
         // Never let associateBy/maxBy silently pick a winner when an upstream
         // catalog projection contains duplicate IDs or conflicting latest revisions.
         // Room normally enforces unique IDs; this boundary must remain safe for
         // injected, migrated or otherwise inconsistent catalog snapshots as well.
-        if (nowMillis < 0L) return emptyMap()
+        if (nowMillis < 0L || (draftCreatedAtMillis != null &&
+                draftCreatedAtMillis !in 0L..nowMillis)) return emptyMap()
         // A host review must not mix confirmations from another draft into the
         // current ingredient scope. Otherwise a stale, unrelated confirmation
         // can travel through preview and consent as if it belonged to this draft.
@@ -68,6 +72,8 @@ internal object RecipeCatalogEvidence {
                 version.recordedAt !in 0L..nowMillis ||
                 latest[version.productId] != version.id ||
                 confirmed.confirmedAt !in 0L..nowMillis ||
+                (draftCreatedAtMillis != null &&
+                    confirmed.confirmedAt < draftCreatedAtMillis) ||
                 confirmed.confirmedAt < version.recordedAt ||
                 confirmed.confirmedAt > nowMillis ||
                 confirmed.unit != version.baseUnit ||
