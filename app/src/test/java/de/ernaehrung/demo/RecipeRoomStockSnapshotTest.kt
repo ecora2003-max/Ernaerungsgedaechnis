@@ -182,6 +182,41 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun futureProductVersionEvidenceCannotAuthorizeEarlierRoomStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), versionId))
+        // A valid batch and movement do not make a product version known
+        // before its recorded creation time. No stock or recipe is booked.
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(original.lines, recovered.lines)
+        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun futureOriginOperationCannotAuthorizeEarlierRoomStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), origin))
+        // The movement's old timestamp cannot override a future-dated
+        // originating receipt operation in the same physical stock snapshot.
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertEquals(original.lines, recovered.lines)
+        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun futureRecordedMovementCannotInflateCurrentStockSnapshot() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
