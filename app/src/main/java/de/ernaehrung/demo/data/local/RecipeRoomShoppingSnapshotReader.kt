@@ -53,6 +53,15 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         val rows = report.items.sortedBy { it.need.versionId }
         if (rows.map { it.need.versionId }.toSet().size != rows.size) return null
         val dao = db.foodDao()
+        // PlanningReader uses the latest revision of every plan series and
+        // allocates earlier needs before the requested window. A future
+        // revision (including cancellation) must not silently rewrite the
+        // shopping evidence captured at an earlier instant.
+        val relevantPlans = dao.allPlans().groupBy { it.seriesId ?: it.id }.values
+            .filter { history -> history.any { it.startsOn <= scope.endsOn } }
+            .map { history -> history.maxBy { it.revision } }
+            .sortedBy { it.id }
+        if (relevantPlans.any { it.recordedAt !in 0L..asOfMillis }) return null
         val versions = mutableMapOf<String, ProductVersionEntity>()
         for (row in rows) {
             val need = row.need
@@ -68,6 +77,10 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         }
         val revision = WriteRules.fingerprint(
             "RECIPE_ROOM_SHOPPING_REVISION_V1", scopeId(scope), report.asOf,
+            relevantPlans.map { plan ->
+                listOf(plan.id, plan.seriesId, plan.revision, plan.status.name,
+                    plan.startsOn, plan.endsOn, plan.recordedAt)
+            },
             rows.map { row ->
                 val need = row.need
                 val version = versions.getValue(need.versionId)
