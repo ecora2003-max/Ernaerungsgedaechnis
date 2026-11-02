@@ -41,17 +41,21 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
             fingerprint("RECIPE_DRAFT_APPROVAL_BOUND_V1", recipeHash, approvalBasisDigest)
         }
         replay(dao, key, hash)?.let { return@withTransaction it }
+        // One physical timestamp for the recipe, its version and the operation.
+        // Preserve the existing idempotent replay without another clock read.
+        val recordedAt = now()
+        require(recordedAt >= 0L) { "Ungültiger Rezept-Erfassungszeitpunkt." }
         val previous = recipeId?.let { requireNotNull(dao.latestRecipeVersion(it)) { "Rezept nicht gefunden." } }
         val identity = recipeId ?: id()
         val version = id()
-        if (previous == null) dao.insertRecipe(RecipeEntity(identity, now()))
+        if (previous == null) dao.insertRecipe(RecipeEntity(identity, recordedAt))
         dao.insertRecipeVersion(RecipeVersionEntity(version, identity, (previous?.revision ?: 0) + 1, input.name.trim(),
-            input.yieldPortions, null, input.steps, null, null, true, input.storageInstructions, input.safetySource, Quality.UNKNOWN, now(), reason))
+            input.yieldPortions, null, input.steps, null, null, true, input.storageInstructions, input.safetySource, Quality.UNKNOWN, recordedAt, reason))
         input.ingredients.forEachIndexed { position, ingredient ->
             val product = requireNotNull(dao.version(ingredient.versionId)) { "Artikelversion der Zutat nicht gefunden." }
             dao.insertIngredient(RecipeIngredientEntity(version, position, product.id, ingredient.amount, product.baseUnit, ingredient.note))
         }
-        dao.insertOperation(OperationEntity(key, "RECIPE", hash, now(), version))
+        dao.insertOperation(OperationEntity(key, "RECIPE", hash, recordedAt, version))
         version
     }
 

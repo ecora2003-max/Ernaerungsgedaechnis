@@ -425,4 +425,38 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
     }
+
+    @Test fun recipeSaveUsesOnePhysicalTimeAcrossVersionAndOperationAndRetry() = runBlocking {
+        val versionId = db.foodDao().allVersions().single().id
+        val input = RecipeInput("Reis", 2, listOf(RecipeItemInput(versionId, 200_000)), "Kochen")
+        val justBeforeMidnight = java.time.Instant.parse("2026-11-01T23:59:59.999Z").toEpochMilli()
+        var calls = 0
+        val store = FoodStore(db) {
+            calls++
+            justBeforeMidnight + (calls - 1) * 5_000L
+        }
+        val savedVersionId = store.saveRecipe("single-time-recipe", input)
+        assertEquals(1, calls) // crossing midnight cannot split one Room transaction
+        val version = requireNotNull(db.foodDao().recipeVersion(savedVersionId))
+        val operation = requireNotNull(db.foodDao().operation("single-time-recipe"))
+        assertEquals(justBeforeMidnight, version.recordedAt)
+        assertEquals(justBeforeMidnight, operation.recordedAt)
+        assertEquals(savedVersionId, store.saveRecipe("single-time-recipe", input))
+        assertEquals(1, calls) // idempotent retry must not read a new clock
+        assertEquals(2, db.foodDao().operationCount()) // original product + one recipe
+        assertEquals(1, db.foodDao().observeRecipes().first().size)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidRecipeSaveClockRollsBackWithoutHistoryOrRecipe() = runBlocking {
+        val versionId = db.foodDao().allVersions().single().id
+        val input = RecipeInput("Reis", 2, listOf(RecipeItemInput(versionId, 200_000)), "Kochen")
+        val store = FoodStore(db) { -1L }
+        val failure = runCatching { store.saveRecipe("invalid-time-recipe", input) }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+        assertNull(db.foodDao().operation("invalid-time-recipe"))
+        assertEquals(1, db.foodDao().operationCount()) // only setup product
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }
