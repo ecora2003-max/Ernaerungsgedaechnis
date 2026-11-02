@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T04:56:42.658Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration III: independently authenticated FoodStore recipe confirmation"
-workingBranch: null
+workingBranch: "integration-iii/recipe-consent-operation-collision-20261102-0556"
 lastReleasedAtUtc: "2026-11-02T04:42:57.042Z"
 lastReleasedCommit: "eae4273608ba340e7edd9c7bf5e135879dce93ef"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android device/privacy E2E"
