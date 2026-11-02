@@ -49,6 +49,12 @@ internal object RecipeCatalogEvidence {
         if (requestedFoodTypes.size != lines.size || requestedFoodTypes.any { it.isBlank() })
             return emptyMap()
         if (confirmations.keys.any { it !in requestedFoodTypes }) return emptyMap()
+        // The manual host review never assigns one catalog version to two
+        // different food-type ingredients. Enforce the same invariant at the
+        // independent FoodStore/Room preview boundary: direct callers must not
+        // bypass that ambiguity check with a crafted confirmation map.
+        val confirmedVersions = confirmations.values.map { it.productVersionId }
+        if (confirmedVersions.size != confirmedVersions.toSet().size) return emptyMap()
         val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
             versions.singleOrNull()?.let { id to it }
         }.toMap()
