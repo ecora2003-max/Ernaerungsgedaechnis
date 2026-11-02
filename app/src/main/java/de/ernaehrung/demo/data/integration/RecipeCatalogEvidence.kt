@@ -40,6 +40,10 @@ internal object RecipeCatalogEvidence {
         // current ingredient scope. Otherwise a stale, unrelated confirmation
         // can travel through preview and consent as if it belonged to this draft.
         val requestedFoodTypes = lines.mapTo(mutableSetOf()) { it.foodTypeId }
+        // Do not collapse ambiguous or blank ingredient identities through toMap().
+        // This read boundary is also called independently of the JSON import gate.
+        if (requestedFoodTypes.size != lines.size || requestedFoodTypes.any { it.isBlank() })
+            return emptyMap()
         if (confirmations.keys.any { it !in requestedFoodTypes }) return emptyMap()
         val byVersion = catalog.groupBy { it.id }.mapNotNull { (id, versions) ->
             versions.singleOrNull()?.let { id to it }
