@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvz9dsqh-iii"
 acquiredAtUtc: "2026-11-02T12:52:19.001Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration III: authenticated recipe confirmation and FoodStore regression"
-workingBranch: null
+task: "Integration III: reject stale or invalid recipe-context product versions"
+workingBranch: "integration-iii/recipe-context-version-gates-20261102"
 lastReleasedAtUtc: "2026-11-02T12:38:11.665Z"
 lastReleasedCommit: "a74edad9e3ffa5a39c99e1d38e358d3dcf44439a"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
