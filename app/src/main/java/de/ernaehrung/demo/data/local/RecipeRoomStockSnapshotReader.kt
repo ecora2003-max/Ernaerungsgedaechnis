@@ -82,6 +82,13 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 origin.recordedAt < version.recordedAt ||
                 origin.kind !in setOf("RECEIPT", "TRANSFER", "PRODUCTION") ||
                 origin.resultId != batch.id) return null
+            // Opening and thawing are physical batch-state events, not mere
+            // labels. A legacy future or pre-origin event cannot be treated as
+            // already established evidence at this recipe-review instant.
+            // Either timestamp may be absent (unknown), but not invented as 0.
+            if (listOf(batch.openedAt, batch.thawedAt).any { eventAt ->
+                    eventAt != null && eventAt !in origin.recordedAt..asOfMillis
+                }) return null
             batchOriginRecordedAt[batch.id] = origin.recordedAt
             // A zero balance is known zero, but an expired, future-acquired or
             // unconfirmed batch is not a current stock line even when empty.

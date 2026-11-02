@@ -798,4 +798,58 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(1, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun futureBatchOpeningCannotAuthorizeEarlierRecipeStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val operations = db.foodDao().operationCount()
+        val openedAt = at.plusSeconds(60).toEpochMilli()
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET openedAt = ? WHERE id = ?",
+            arrayOf(openedAt, batchId))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val laterSnapshot = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertNotEquals(original.revision, laterSnapshot.revision)
+
+        // A physically impossible opening before the batch was created stays
+        // invalid even when the review clock advances.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET openedAt = ? WHERE id = ?",
+            arrayOf(at.minusSeconds(1).toEpochMilli(), batchId))
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET openedAt = NULL WHERE id = ?", arrayOf(batchId))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(original.lines, restored.lines)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidThawTimestampFailsClosedUntilEvidenceIsRepaired() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val operations = db.foodDao().operationCount()
+        val later = FoodStore(db) { at.plusSeconds(30).toEpochMilli() }
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET thawedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(20).toEpochMilli(), batchId))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        val validLater = requireNotNull(later.readRecipeRoomStockSnapshot())
+        assertNotEquals(original.revision, validLater.revision)
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET thawedAt = ? WHERE id = ?", arrayOf(-1L, batchId))
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE batches SET thawedAt = NULL WHERE id = ?", arrayOf(batchId))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+
 }
