@@ -204,4 +204,30 @@ class RecipeCatalogEvidenceTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun duplicateOrBlankIngredientIdentityNeverProducesCatalogEvidence() = runBlocking {
+        val version = requireNotNull(dao.version(versionId))
+        val confirmed = confirmation()
+        val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        val before = dao.operationCount()
+        assertEquals(versionId, Catalog.resolve(listOf(line), listOf(version),
+            mapOf("rice" to confirmed), at)["rice"]?.productVersionId)
+
+        // A duplicate foodTypeId used to be silently collapsed by toMap().
+        assertTrue(Catalog.resolve(listOf(line, line.copy(label = "Other ingredient")),
+            listOf(version), mapOf("rice" to confirmed), at).isEmpty())
+        // A blank ID could also resolve if both the untrusted line and
+        // caller-supplied confirmation happened to use the same blank key.
+        val blank = line.copy(foodTypeId = "")
+        assertTrue(Catalog.resolve(listOf(blank), listOf(version),
+            mapOf("" to confirmed.copy(foodTypeId = "")), at).isEmpty())
+
+        // Valid evidence still recovers, without adding any actual events.
+        assertEquals(versionId, Catalog.resolve(listOf(line), listOf(version),
+            mapOf("rice" to confirmed), at)["rice"]?.productVersionId)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
+
 }
