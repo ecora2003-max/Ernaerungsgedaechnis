@@ -230,4 +230,31 @@ class RecipeCatalogEvidenceTest {
         assertTrue(dao.allPaidPrices().isEmpty())
     }
 
+
+    @Test fun catalogConfirmationMustFollowDraftCreationWhenDraftTimeIsKnown() = runBlocking {
+        val version = requireNotNull(dao.version(versionId))
+        val confirmed = confirmation()
+        val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        val reviewedAt = at + 120_000L
+        val draftCreatedAt = at + 60_000L
+        val before = dao.operationCount()
+        fun resolve(c: Catalog.ConfirmedLine, created: Long) =
+            Catalog.resolve(listOf(line), listOf(version), mapOf("rice" to c),
+                reviewedAt, draftCreatedAtMillis = created)
+
+        // Catalog identity alone cannot approve a draft that did not exist
+        // when the user reviewed the ingredient.
+        assertTrue(resolve(confirmed, draftCreatedAt).isEmpty())
+        assertTrue(resolve(confirmed, -1L).isEmpty())
+        assertTrue(resolve(confirmed, reviewedAt + 1L).isEmpty())
+        // Exact creation instant is a valid lower bound; a later fresh
+        // confirmation is also valid.
+        assertEquals(versionId, resolve(confirmed.copy(confirmedAt = draftCreatedAt),
+            draftCreatedAt)["rice"]?.productVersionId)
+        assertEquals(versionId, resolve(confirmed.copy(confirmedAt = reviewedAt),
+            draftCreatedAt)["rice"]?.productVersionId)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
 }
