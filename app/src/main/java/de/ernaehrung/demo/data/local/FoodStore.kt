@@ -117,6 +117,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         requireValidRecipeDraftSaveKey(key)
         val actionAt = now()
+        require(actionAt >= 0L) { "Ungültiger Rezeptbestätigungszeitpunkt." }
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
             reviewedStates, context, trustedContextSnapshotAt,
             requireNonFutureDraft = true, trustedNow = actionAt)
@@ -243,6 +244,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         requireValidRecipeDraftSaveKey(key)
         val saveAt = now()
+        require(saveAt >= 0L) { "Ungültiger Rezept-Speicherzeitpunkt." }
         val current = reviewRecipeDraftV1InTransaction(json, request, confirmations,
             reviewedStates, context, trustedContextSnapshotAt,
             requireNonFutureDraft = true, trustedNow = saveAt)
