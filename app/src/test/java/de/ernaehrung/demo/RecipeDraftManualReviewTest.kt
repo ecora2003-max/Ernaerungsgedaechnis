@@ -146,6 +146,43 @@ class RecipeDraftManualReviewTest {
         assertEquals("v1", facts["rice"]?.productVersionId)
     }
 
+    @Test fun importedDraftCannotBeConfirmedAfterItsOriginalFreshnessWindow() {
+        val parsed = imported()
+        val versions = listOf(catalog())
+        val choices = mapOf("rice" to choice(false))
+        val restrictions = setOf("ALLERGEN:SOY")
+        val atLimit = nowMillis + 86_400_000L
+        val valid = Manual.prepare(parsed, versions, choices, restrictions, true, atLimit)
+        assertEquals(atLimit, valid.confirmations["rice"]?.confirmedAt)
+        rejects {
+            Manual.prepare(parsed, versions, choices, restrictions, true, atLimit + 1L)
+        }
+        // Expiration does not mutate the imported draft or block a fresh review.
+        val fresh = Manual.prepare(parsed, versions, choices, restrictions, true, nowMillis)
+        assertEquals("v1", fresh.confirmations["rice"]?.productVersionId)
+    }
+
+    @Test fun stalePreparationChoiceCannotContradictPreviouslyReviewedDraftState() {
+        val alreadyReviewed = RecipeDraftV1Import.read(
+            json(), mapOf("rice" to Gate.State.RAW), now
+        )
+        val versions = listOf(catalog())
+        val restrictions = setOf("ALLERGEN:SOY")
+        rejects {
+            Manual.prepare(alreadyReviewed, versions,
+                mapOf("rice" to choice(false).copy(state = Gate.State.COOKED)),
+                restrictions, true, nowMillis)
+        }
+        val consistent = Manual.prepare(alreadyReviewed, versions,
+            mapOf("rice" to choice(false)), restrictions, true, nowMillis)
+        assertEquals(Gate.State.RAW, consistent.reviewedStates["rice"])
+        // UNKNOWN has no earlier independently reviewed preparation state.
+        val newlyReviewed = Manual.prepare(imported(), versions,
+            mapOf("rice" to choice(false).copy(state = Gate.State.COOKED)),
+            restrictions, true, nowMillis)
+        assertEquals(Gate.State.COOKED, newlyReviewed.reviewedStates["rice"])
+    }
+
     @Test fun negativeCatalogAndReviewTimestampsNeverCreateHostConfirmation() {
         val parsed = imported()
         val reviewed = mapOf("rice" to choice(false))
