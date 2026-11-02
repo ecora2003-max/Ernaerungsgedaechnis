@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "manual-idle-recovery"
-ownerChatId: "30-minute watcher maintenance"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "maintenance-30m-20261102080135628"
-acquiredAtUtc: "2026-11-02T08:01:35.628Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Change GitHub inactivity watchdog from 35m to 30m"
-workingBranch: "maintenance/integration-idle-recovery-30m-20261102"
-lastReleasedAtUtc: "2026-11-02T07:58:23.740Z"
-lastReleasedCommit: "4c88c6a58a991ef81dda18e45e97f37b265f7f48"
-nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
+task: "Inactivity watchdog threshold reduced from 35m to 30m (PR #93, 14/14 tests PASS)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T08:07:59.422Z"
+lastReleasedCommit: "a2f7371c39188e8d669231639e6ac1fe5e43a2b8"
+nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android credential/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
