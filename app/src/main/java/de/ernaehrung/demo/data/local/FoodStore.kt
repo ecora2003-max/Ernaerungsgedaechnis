@@ -313,7 +313,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 RecipeRoomShoppingSnapshotReader.scopeFromId(it)
             }
             val fresh = scope?.let {
-                RecipeRoomShoppingSnapshotReader(db, now)
+                RecipeRoomShoppingSnapshotReader(db)
                     .read(it, java.time.Instant.ofEpochMilli(trustedNow))
             }
             val ageSeconds = if (binding != null && fresh != null)
