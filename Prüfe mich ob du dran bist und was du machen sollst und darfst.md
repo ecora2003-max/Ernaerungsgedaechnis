@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T18:59:28.572Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Integration III: FoodStore recipe-save action provenance and validation"
-workingBranch: null
+workingBranch: "integration-iii/context-binding-epoch-20261102-1905"
 lastReleasedAtUtc: "2026-11-02T18:45:43.287Z"
 lastReleasedCommit: "c28c18f63de6350fa9f151c3194925f8dd87184a"
 nextStep: "Unabhängige FoodStore-Rezeptsave-Nutzeraktionsattestation, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
