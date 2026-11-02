@@ -311,4 +311,41 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun shoppingRecipeEvidenceTracksCatalogProvenanceAndRejectsDemo() = runBlocking {
+        store.savePlan("shopping-provenance-plan", plan(200_000L))
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
+        val operationsBefore = db.foodDao().operationCount()
+        val originalVersion = requireNotNull(db.foodDao().version(versionId))
+        assertEquals(Quality.CONFIRMED, originalVersion.quality)
+
+        // A still-eligible source-quality correction changes independent
+        // catalog evidence without changing the shopping need or version ID.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET quality = ? WHERE id = ?",
+            arrayOf(Quality.SOURCED.name, versionId))
+        val changed = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, changed.lines)
+        assertNotEquals(original.revision, changed.revision)
+        val stale = review(original)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, stale.status)
+        assertTrue("ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED" in stale.gaps)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(changed).status)
+
+        // Demo provenance is never host-confirmed recipe context, even when
+        // the persisted shopping plan still references the same product ID.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET source = ? WHERE id = ?",
+            arrayOf(Source.DEMO.name, versionId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET source = ?, quality = ? WHERE id = ?",
+            arrayOf(originalVersion.source.name, originalVersion.quality.name, versionId))
+        val restored = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.revision, restored.revision)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(restored).status)
+        assertEquals(operationsBefore, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }
