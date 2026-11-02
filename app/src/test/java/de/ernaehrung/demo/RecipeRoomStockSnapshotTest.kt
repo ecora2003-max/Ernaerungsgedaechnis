@@ -297,4 +297,47 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(1_900L, current.lines.single().amountMilli)
         assertNotEquals(original.revision, current.revision)
     }
+
+    @Test fun receiptCrossingBerlinMidnightKeepsOnePhysicalTimestampAndRetry() = runBlocking {
+        // 22:59:59.999 UTC is 23:59:59.999 in Berlin on 1 November.
+        // The second wall-clock read would already be the following Berlin day.
+        val instant = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
+        var clock = instant
+        val movingClockStore = FoodStore(db) { clock++ }
+        val input = BatchInput(versionId, locationId, 250L, acquiredOn = "2026-11-01",
+            release = ReleaseStatus.RELEASED)
+        val before = db.foodDao().operationCount()
+        val batch = movingClockStore.receive("receipt-midnight-boundary", input, true)
+        assertEquals(instant + 1L, clock)
+        assertEquals(batch, movingClockStore.receive("receipt-midnight-boundary", input, true))
+        assertEquals(instant + 1L, clock)
+        val operation = requireNotNull(db.foodDao().operation("receipt-midnight-boundary"))
+        val movement = db.foodDao().movements("receipt-midnight-boundary").single()
+        assertEquals(instant, operation.recordedAt)
+        assertEquals(operation.recordedAt, movement.recordedAt)
+        assertEquals("2026-11-01", movement.occurredOn)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        val asOfReceipt = FoodStore(db) { instant }
+        val snapshot = requireNotNull(asOfReceipt.readRecipeRoomStockSnapshot())
+        assertEquals(250L, snapshot.lines.single { it.identity == "batch:$batch" }.amountMilli)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun futureReceiptDayCannotBeAuthorizedByAdvancingClock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val before = db.foodDao().operationCount()
+        var clock = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
+        val movingClockStore = FoodStore(db) { clock++ }
+        val input = BatchInput(versionId, locationId, 250L, acquiredOn = "2026-11-02",
+            release = ReleaseStatus.RELEASED)
+        assertTrue(runCatching {
+            movingClockStore.receive("receipt-future-day", input, true)
+        }.isFailure)
+        assertNull(db.foodDao().operation("receipt-future-day"))
+        assertEquals(before, db.foodDao().operationCount())
+        val current = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, current.revision)
+        assertEquals(original.lines, current.lines)
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }
