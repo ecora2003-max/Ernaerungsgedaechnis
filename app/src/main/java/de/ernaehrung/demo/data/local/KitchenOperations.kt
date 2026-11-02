@@ -110,14 +110,20 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         }
         require(!differs || !input.deviationNote.isNullOrBlank()) { "Abweichende oder ungeklärte Mengen/Ausbeute begründen." }
 
+        // A later production must not append an older revision to the same
+        // recipe-output product. Check before any operation or stock is written;
+        // idempotent replays already returned above without reading the clock.
+        var outputProduct = dao.outputProduct(recipe.recipeId)
+        val previous = outputProduct?.let { dao.latestVersion(it.productId) }
+        require(previous == null || previous.recordedAt in 0L..recordedAt) {
+            "Herstellung würde eine rückwärts datierte Produktversion erzeugen."
+        }
         val outputBatch = id()
         dao.insertOperation(OperationEntity(key, "PRODUCTION", hash, recordedAt, outputBatch))
-        var outputProduct = dao.outputProduct(recipe.recipeId)
         if (outputProduct == null) {
             val product = id(); dao.insertProduct(ProductEntity(product, recordedAt))
             outputProduct = RecipeOutputProductEntity(recipe.recipeId, product); dao.insertOutputProduct(outputProduct)
         }
-        val previous = dao.latestVersion(outputProduct.productId)
         val outputVersion = id()
         // Actual recipe/ingredient history is retained; nutrition remains unknown until calculated correctly.
         dao.insertVersion(ProductVersionEntity(outputVersion, outputProduct.productId, (previous?.revision ?: 0) + 1,
