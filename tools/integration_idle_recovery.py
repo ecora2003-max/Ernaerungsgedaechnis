@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitHub-only 35-minute inactivity recovery. Fail closed on uncertainty."""
+"""GitHub-only 30-minute inactivity recovery. Fail closed on uncertainty."""
 from __future__ import annotations
 import argparse
 import base64
@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 
 REPOSITORY = "ecora2003-max/Ernaerungsgedaechnis"
 LOCK_PATH = "Prüfe mich ob du dran bist und was du machen sollst und darfst.md"
-MIN_IDLE = timedelta(minutes=35)
+MIN_IDLE = timedelta(minutes=30)
 ALLOWED_AUTOMATIONS = frozenset({
     "6ae659b2cf2081918f3414dce24a090e",
     "6ae65fdd040081919b0a5fb1c8962104",
@@ -115,7 +115,7 @@ def render_free_lock(lock: Lock, *, now: datetime, last_commit: str | None) -> s
     v["state"] = "FREE"
     for field in RELEASE_FIELDS:
         v[field] = None
-    v["task"] = "Automatische Freigabe nach >=35 Minuten ohne GitHub-Aktivität"
+    v["task"] = "Automatische Freigabe nach >=30 Minuten ohne GitHub-Aktivität"
     v["lastReleasedAtUtc"] = format_utc(now)
     v["lastReleasedCommit"] = last_commit
     v["nextStep"] = "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
@@ -177,7 +177,7 @@ class Github:
 
     def release(self, sha: str, content: str) -> Any:
         return self.api("PUT", f"/contents/{quote(LOCK_PATH, safe='/')}", data={
-            "message": "chore(lock): recover inactive integration owner after 35m",
+            "message": "chore(lock): recover inactive integration owner after 30m",
             "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
             "sha": sha, "branch": "main"})
 
@@ -221,7 +221,7 @@ def execute(gh: Github, *, now: datetime) -> str:
         or verified.marker != FREE_MARKER
         or any(verified.values[k] is not None for k in RELEASE_FIELDS)):
         raise RecoveryBlocked("release not independently verified")
-    return "RELEASED: >=35m inactivity; owner/token/sha verified"
+    return "RELEASED: >=30m inactivity; owner/token/sha verified"
 
 def main() -> int:
     p = argparse.ArgumentParser()
