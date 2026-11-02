@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T12:25:53.730Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save action provenance or targeted host/Room integrity regression"
-workingBranch: null
+workingBranch: "integration-iv-stock-origin-identity-20261102"
 lastReleasedAtUtc: "2026-11-02T12:25:01.182Z"
 lastReleasedCommit: "18c6a24ddd753ae5dd49c384d0cee0fdafe04dfd"
 nextStep: "Independent cryptographic FoodStore recipe-save action provenance; generator/revalidator parity; Android/privacy E2E"
