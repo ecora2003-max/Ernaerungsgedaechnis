@@ -248,9 +248,15 @@ class RecipeRoomStockSnapshotTest {
         // originating receipt operation in the same physical stock snapshot.
         assertNull(store.readRecipeRoomStockSnapshot())
         val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        // The origin's movement is still earlier than its author. A later
+        // snapshot cannot repair this inconsistent persisted chronology.
+        assertNull(later.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.toEpochMilli(), origin))
         val recovered = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(original.lines, recovered.lines)
-        assertNotEquals(original.revision, recovered.revision)
+        assertEquals(original.revision, recovered.revision)
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
