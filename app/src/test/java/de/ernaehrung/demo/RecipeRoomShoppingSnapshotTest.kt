@@ -226,6 +226,37 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
         assertEquals(operationsBefore, db.foodDao().operationCount())
     }
+    @Test fun futurePlanRevisionCannotAuthorizeEarlierShoppingContext() = runBlocking {
+        val planId = store.savePlan("future-plan-shopping", plan(200_000L))
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        val before = db.foodDao().operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), planId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        clock = at.plusSeconds(61).toEpochMilli()
+        val later = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, later.lines)
+        assertNotEquals(original.revision, later.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun invalidPlanRevisionTimeFailsClosedWithoutBooking() = runBlocking {
+        val planId = store.savePlan("invalid-plan-shopping", plan(200_000L))
+        val before = db.foodDao().operationCount()
+        val original = requireNotNull(db.foodDao().plan(planId)).recordedAt
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET recordedAt = -1 WHERE id = ?", arrayOf(planId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET recordedAt = ? WHERE id = ?", arrayOf(original, planId))
+        assertEquals(200_000L,
+            requireNotNull(store.readRecipeRoomShoppingSnapshot(scope)).lines.single().amountMilli)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun futureProductVersionCannotAuthorizeEarlierShoppingContext() = runBlocking {
         store.savePlan("future-version-shopping-plan", plan(200_000L))
         val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
