@@ -158,4 +158,30 @@ class RecipeCatalogEvidenceTest {
         assertEquals(0, dao.operationCount() - 1) // only setup's product creation
     }
 
+    @Test fun negativeCatalogOrConfirmationTimestampFailsClosedInRealRoomPreview() = runBlocking {
+        val version = requireNotNull(dao.version(versionId))
+        val confirmed = confirmation()
+        val line = Gate.DraftLine("rice", "Reis", 200, Gate.UnitCode.G,
+            Gate.Basis.NET, Gate.State.RAW)
+        fun resolve(v: ProductVersionEntity, c: Catalog.ConfirmedLine, time: Long = at) =
+            Catalog.resolve(listOf(line), listOf(v), mapOf("rice" to c), time)
+        assertEquals(versionId, resolve(version, confirmed)["rice"]?.productVersionId)
+        assertTrue(resolve(version.copy(recordedAt = -1L),
+            confirmed.copy(versionRecordedAt = -1L)).isEmpty())
+        assertTrue(resolve(version, confirmed.copy(confirmedAt = -1L)).isEmpty())
+        assertTrue(resolve(version, confirmed, -1L).isEmpty())
+        val before = dao.operationCount()
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = -1 WHERE id = ?", arrayOf(versionId))
+        assertEquals(Gate.Status.REVIEW_REQUIRED,
+            preview(confirmed.copy(versionRecordedAt = -1L)).status)
+        assertEquals(before, dao.operationCount())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(version.recordedAt, versionId))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview(confirmed).status)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
+
 }

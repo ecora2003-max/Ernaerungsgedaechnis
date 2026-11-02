@@ -34,6 +34,7 @@ internal object RecipeDraftManualReview {
         nowMillis: Long
     ): Prepared {
         require(explicitlyReviewed) { "explicit manual review required" }
+        require(nowMillis >= 0L) { "invalid review timestamp" }
         val draft = imported.draft
         // No stock/list/offer snapshot or digest has been independently acquired here.
         require(!draft.flags.considerStock && !draft.flags.considerShopping &&
@@ -52,7 +53,7 @@ internal object RecipeDraftManualReview {
         // Select the latest version known at this review instant. A future-dated
         // revision must neither displace a currently valid row nor authorize itself.
         val latestByProduct = catalog.groupBy { it.productId }.mapValues { (_, versions) ->
-            val known = versions.filter { it.recordedAt <= nowMillis }
+            val known = versions.filter { it.recordedAt in 0L..nowMillis }
             val highest = known.maxOfOrNull { it.revision }
             known.filter { it.revision == highest }.singleOrNull()?.id
         }
@@ -65,7 +66,7 @@ internal object RecipeDraftManualReview {
                 ?: throw IllegalArgumentException("missing or duplicate catalog version")
             require(version.productId.isNotBlank() &&
                 latestByProduct[version.productId] == version.id &&
-                version.revision > 0 && version.recordedAt <= nowMillis &&
+                version.revision > 0 && version.recordedAt in 0L..nowMillis &&
                 version.source != Source.DEMO &&
                 version.quality in setOf(Quality.CONFIRMED, Quality.SOURCED)) {
                 "catalog version not independently current and sourced"
