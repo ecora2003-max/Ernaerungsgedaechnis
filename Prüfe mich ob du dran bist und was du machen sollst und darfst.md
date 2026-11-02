@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration-II-2026-11-02T17:07:58.047Z"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102T170758047Z-cb1j1re7pq"
-acquiredAtUtc: "2026-11-02T17:07:58.047Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Rezept-Kontext: Room-Snapshot-Konsistenz und Regressionstests"
-workingBranch: "integration-ii-status-batch-times-20261102-1715"
-lastReleasedAtUtc: "2026-11-02T17:05:52.828Z"
-lastReleasedCommit: "0450169f7c3342b5f3b2fac90ac2c38ce89abf49"
-nextStep: "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
+task: "Integration II: Chargenöffnung/Auftauen zeitgültig geprüft; PR #127/#128 gemergt"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T17:16:25.700Z"
+lastReleasedCommit: "75340ef68435cc9dd183d114c3b45a13e02a4019"
+nextStep: "FoodStore-Rezeptsave unabhängig authentifizieren; Generator-/Revalidator-Parität und Android-/Privacy-E2E weiterentwickeln"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
