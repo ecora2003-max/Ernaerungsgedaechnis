@@ -1,4 +1,4 @@
-"""Offline regression tests for the 35-minute integration lock recovery."""
+"""Offline regression tests for the 30-minute integration lock recovery."""
 from datetime import datetime, timedelta, timezone
 import unittest
 from unittest.mock import Mock
@@ -68,8 +68,8 @@ class RecoveryTests(unittest.TestCase):
         self.assertIsNone(values["workingBranch"])
         self.assertTrue(result.endswith(FREE_MARKER + "\n"))
 
-    def test_exact_35_minute_boundary(self):
-        for age, eligible in [(34, False), (35, True), (36, True)]:
+    def test_exact_30_minute_boundary(self):
+        for age, eligible in [(29, False), (30, True), (31, True)]:
             gh = FakeGithub(text=sample(age), branch_age=age)
             self.assertEqual(check_idle(gh, parse_lock(gh.text), now=NOW)[0], eligible)
 
