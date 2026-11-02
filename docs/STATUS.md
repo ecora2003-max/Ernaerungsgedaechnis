@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): Rezeptzutaten nur aus bereits erfassten Artikelversionen (02.11.2026)
+
+- **[PR #100](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/100), Code-/Test-SHA `9298211d3168ec38263a868ff794d2cbb5b88bd3`; [PR-CI 41422861712](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41422861712) PASS auf exakt diesem SHA: 468/468 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen, Lint, gepinnte Python-/v1-Schema-Referenzen, Room-8-Schema und Android-Testkompilierung.** `KitchenOperations.saveRecipe` prüft vor jeder neuen Rezeptanlage/-revision, dass alle referenzierten Produktversionen nichtnegativ und spätestens zum einzigen physischen Rezept-Speicherzeitpunkt erfasst wurden. Zwei Room-/Robolectric-Regressionen prüfen transaktionale Ablehnung ohne Rezept-/Ist-Nebenbuchung, spätere zulässige Speicherung und idempotente Wiederholung bei zurückgestellter Uhr. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft); keine Schema-/Vertragsänderung, keine APK und **keine ausgeführten Android-Gerätetests**.
+- **Weiter:** unabhängig authentifizierte FoodStore-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität und Android-/Privacy-E2E. Alle vier Fachmodule bleiben TEILWEISE/OFFEN.
+
+
 
 ## Integration IV: chronologisch konsistente Rezeptrevision und Herstellung (02.11.2026)
 
