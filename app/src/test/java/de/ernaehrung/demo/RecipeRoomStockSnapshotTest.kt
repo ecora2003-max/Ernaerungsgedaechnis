@@ -256,4 +256,45 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun futureOrNegativeConfirmedConsumptionCannotPoisonCurrentRoomStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val beforeConsumption = db.foodDao().consumptionCount()
+        for ((key, occurredAt) in listOf(
+            "future-confirmed-consumption" to at.plusSeconds(30).toEpochMilli(),
+            "negative-confirmed-consumption" to -1L
+        )) {
+            val input = ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
+                listOf(Allocation(batchId, 100L)), occurredAt = occurredAt)
+            assertTrue("Invalid physical occurrence must roll back: $key",
+                runCatching { store.consume(key, input, true) }.isFailure)
+        }
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+        val unchanged = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, unchanged.revision)
+        assertEquals(2_000L, unchanged.lines.single().amountMilli)
+    }
+
+    @Test fun validPastConsumptionUsesOneRecordedAtAndRemainsIdempotent() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        var clock = at.toEpochMilli()
+        val movingClockStore = FoodStore(db) { clock++ }
+        val input = ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
+            listOf(Allocation(batchId, 100L)),
+            occurredAt = at.minusSeconds(30).toEpochMilli())
+        val first = movingClockStore.consume("confirmed-past-consumption", input, true)
+        assertEquals(first, movingClockStore.consume("confirmed-past-consumption", input, true))
+        val operation = requireNotNull(db.foodDao().operation("confirmed-past-consumption"))
+        val movements = db.foodDao().movements("confirmed-past-consumption")
+        assertEquals(1, movements.size)
+        assertEquals(at.toEpochMilli(), operation.recordedAt)
+        assertEquals(operation.recordedAt, movements.single().recordedAt)
+        assertEquals(input.occurredAt, movements.single().occurredAt)
+        assertEquals(1, db.foodDao().consumptionCount())
+        val current = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(1_900L, current.lines.single().amountMilli)
+        assertNotEquals(original.revision, current.revision)
+    }
 }

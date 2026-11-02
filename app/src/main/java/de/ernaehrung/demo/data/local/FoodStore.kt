@@ -607,10 +607,19 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val fingerprint = fingerprint("CONSUMPTION", input.versionId, input.date, input.meal, input.amount,
             input.occurredAt, input.quality, input.note, input.allocations.sortedBy { it.batchId }.map { listOf(it.batchId, it.amount) })
         replay(operationId, fingerprint)?.let { return@withTransaction it }
-        actualDate(input.date)
+        // Freeze one physical write instant for the actual event and all its
+        // movements. A future/negative occurrence must never be persisted as
+        // today's stock consumption (or poison an as-of recipe snapshot).
+        val recordedAt = now()
+        WriteRules.actualDate(input.date, recordedAt)
+        input.occurredAt?.let { occurred ->
+            require(occurred in 0L..recordedAt) {
+                "Tatsächlicher Verzehrzeitpunkt liegt außerhalb der gültigen Vergangenheit."
+            }
+        }
         requireNotNull(dao.version(input.versionId)) { "Produktversion nicht gefunden." }
         val consumptionId = id()
-        dao.insertOperation(OperationEntity(operationId, "CONSUMPTION", fingerprint, now(), consumptionId))
+        dao.insertOperation(OperationEntity(operationId, "CONSUMPTION", fingerprint, recordedAt, consumptionId))
         dao.insertConsumption(ConsumptionEntity(consumptionId, operationId, input.versionId, input.date,
             input.occurredAt, input.meal.trim(), input.amount, Source.USER, input.quality, input.note))
         for (allocation in input.allocations) {
@@ -618,7 +627,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             require(batch.versionId == input.versionId) { "Charge gehört zu einer anderen Produktversion." }
             dao.insertAllocation(ConsumptionAllocationEntity(consumptionId, batch.id, allocation.amount))
             dao.insertMovement(StockMovementEntity(id(), batch.id, operationId, -allocation.amount,
-                MovementKind.CONSUMPTION, input.occurredAt, Source.USER, "Bestätigter Verzehr", recordedAt = now(), occurredOn = input.date))
+                MovementKind.CONSUMPTION, input.occurredAt, Source.USER, "Bestätigter Verzehr", recordedAt = recordedAt, occurredOn = input.date))
         }
         // A new entry invalidates a prior completeness assertion. No automatic COMPLETE status.
         dao.saveDay(DiaryDayEntity(input.date, DayStatus.PARTIAL, null))
