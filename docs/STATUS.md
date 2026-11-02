@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): Berlin-lokale Android-Formular- und ViewModel-Datumsdefaults (02.11.2026)
+
+- [PR #57](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/57), **Code-/Test-Commit `a43f7d70c6837522c7614ba1a9f9ed89e972978d`**: Ein gemeinsamer `AppCalendar.today()`-Tag in `Europe/Berlin` ersetzt 26 gerätezeitzonenabhängige `LocalDate.now()`-Defaults in realen Android-Formularen und `LocalDataViewModel` (Planung, Shopping, Kauf-/Ausgabenansicht, Ernährung, Küche und Lager). Damit widersprechen voreingestellte UI-Tage den bereits Berlin-lokalen Room-Planungs-/Shopping-/Ist-Ereignisgrenzen bei Mitternacht oder Sommer-/Winterzeitwechsel nicht mehr. Zwei neue positive/negative JVM-Regressionen prüfen fremde Gerätezeitzonen sowie beide DST-Umstellungen; keine Datenbankschemaänderung, keine neue Buchung.
+- **[PR-CI 41368569615](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41368569615) PASS auf exakt `a43f7d70c6837522c7614ba1a9f9ed89e972978d`**: **413/413 JVM-Tests**, 0 Fehler/Skips, **7/7 Room-Migrationen**, Lint, gepinnte Schema-/Produkt-/Shopping-Python-Referenzgates und Android-Testkompilierung PASS. **0 echte Android-Geräte-/Emulatortests**, keine APK. UI-Kalenderkohärenz ist keine FoodStore-Rezeptsave-Aktionsattestation.
+- **Kurzer modulübergreifender Abgleich nach #52, #54 und #56:** Credential-Gates und Berlin-lokale Room-/UI-Daten sind gezielt verbessert; Produkt-/Preis-/Shopping-/Rezept-Gesamtgates, unabhängige Nutzeraktionsprovenienz, reale Artikel-/Filial-/Rechtequellen und Android-/Privacy-E2E bleiben offen. Flexible Zielmatrix unverändert; kein Modul `INTEGRATED`.
+- **Weiter:** Unabhängig verifizierbare Rezept-Save-Aktionsattestation an der FoodStore-Transaktionsgrenze; echte Android-Credential-/Privacy-E2E und Generator-/Revalidator-Parität.
 
 ## Integration IV: Berlin-lokale Datumsgrenze für Room-/Shopping-/FoodStore (02.11.2026)
 
