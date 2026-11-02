@@ -178,6 +178,20 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }?.id?.substring(prefix.length)
     }
 
+    /**
+     * A resumed opaque pending key is not necessarily unused: the previous
+     * consent may have committed before process death, while its private
+     * pending-key cleanup did not. An expired ledger consent cannot be renewed
+     * with that key. Check both the consent and recipe operation namespaces.
+     * This is a read-only collision check, never an authorization to save.
+     */
+    internal suspend fun isRecipeDraftOperationKeyUnavailable(key: String): Boolean =
+        db.withTransaction {
+            requireValidRecipeDraftSaveKey(key)
+            dao.operation(recipeDraftConsentKey(key)) != null ||
+                dao.operation(key) != null
+        }
+
     private fun requireValidRecipeDraftSaveKey(key: String) {
         require(key.isNotBlank() && key.length <= 200 &&
             !key.startsWith("RECIPE_DRAFT_CONSENT_V1:")) {
