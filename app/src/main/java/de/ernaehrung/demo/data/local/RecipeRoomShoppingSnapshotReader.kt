@@ -36,6 +36,8 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         capturedAt: Instant
     ): RecipeContextContentBinding.Snapshot? {
         if (scope.budgetId != null || scopeFromId(scopeId(scope)) != scope) return null
+        val asOfMillis = capturedAt.toEpochMilli()
+        if (asOfMillis < 0L) return null
         // ShoppingReader internally reads planning, stock, price versions and
         // checklist revisions in one Room transaction. Its price observations
         // are never promoted to approved external offers by this adapter.
@@ -57,7 +59,11 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             if (need.versionId.isBlank() || need.unknownRequirements != 0 ||
                 need.knownMissing !in 0..Amounts.MAX || row.staleCheck) return null
             val version = dao.version(need.versionId) ?: return null
-            if (version.baseUnit != need.unit) return null
+            // A future-dated or invalid product revision cannot substantiate
+            // a Room shopping need at an earlier recipe-review instant.
+            // Planning reports may still show it; this evidence port fails closed.
+            if (version.recordedAt !in 0L..asOfMillis ||
+                version.baseUnit != need.unit) return null
             versions[need.versionId] = version
         }
         val revision = WriteRules.fingerprint(
