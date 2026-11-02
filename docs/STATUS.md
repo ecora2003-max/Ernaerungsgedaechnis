@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): Room-Shopping-Kontext bindet Planversionszeit (02.11.2026)
+
+- **[PR #96](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/96), Code-/Test-HEAD `b91636a3ae935eb985b55a084635a2d298e26584`, Squash-Merge `84e8b85dae81394dc931b020779d6f4fe6a30696`; [PR-CI 41416627622](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41416627622) PASS auf exakt diesem HEAD: **462/462 JVM-Tests (0 Fehler/Skips), 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung.** `RecipeRoomShoppingSnapshotReader` prüft nun den Erfassungszeitpunkt der neuesten relevanten Planserienversion gegen den transaktionalen Snapshot-Zeitpunkt; zukünftige/negative Planrevisionen, auch Stornos, können keine frühere Rezept-Kontextfreigabe begründen. Identität, Status, Revision und Zeitpunkt fließen in den Revisionsdigest ein. Zwei neue positive/negative Room-/Robolectric-Tests prüfen spätere gültige Projektion, Korrektur und fehlende Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (1.0.0-draft). Keine Schema-/Vertragsänderung, keine APK, **keine ausgeführten Android-Gerätetests**.
+- **Weiter:** unabhängige authentifizierte FoodStore-Rezeptsave-Aktionsprovenienz, vollständige Generator-/Revalidator-Parität, Android-/Privacy-E2E. Alle vier Gesamtmodule bleiben TEILWEISE/OFFEN.
+
+
 
 ## Integration II: Room-Rezept-Shoppingkontext prüft Produktversionszeit (02.11.2026)
 
