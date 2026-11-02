@@ -64,6 +64,36 @@ class RecipeDraftPendingKeyStoreTest {
         }
     }
 
+    @Test fun invalidWallClockCannotCreateOrOverwritePendingCheckpoint() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        var time = 1_000_000L
+        val store = PrivateRecipeDraftPendingKeyStore(context) { time }
+        store.discard()
+        val file = File(context.noBackupFilesDir, "recipe-draft-pending-key-v1")
+        try {
+            val original = store.resumeOrCreate(digestA)
+            val bytes = file.readBytes()
+            time = -1L
+            try {
+                store.resumeOrCreate(digestB)
+                fail("Invalid wall clock must not write a pending key")
+            } catch (_: IllegalArgumentException) { }
+            assertArrayEquals(bytes, file.readBytes())
+            time = 1_000_000L
+            assertEquals(original, store.resumeOrCreate(digestA))
+
+            store.discard()
+            time = -1L
+            try {
+                store.resumeOrCreate(digestA)
+                fail("Invalid wall clock must not create a checkpoint")
+            } catch (_: IllegalArgumentException) { }
+            assertFalse(file.exists())
+        } finally {
+            store.discard()
+        }
+    }
+
     @Test fun expiryClockRollbackAndInvalidDigestNeverAuthorizeReuse() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         var time = 10_000_000L
