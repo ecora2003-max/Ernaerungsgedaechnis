@@ -77,7 +77,10 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.BLOCKED, reviewed(state = foreignStates).status)
         assertNull(reviewed(state = foreignStates).input)
 
-        // Missing review state is still UNKNOWN rather than implicitly RAW.
+        // A wholly unrelated review state is not applied to this recipe:
+        // missing per-ingredient state remains UNKNOWN, not a false approval.
+        val onlyForeign = mapOf("other-food" to Gate.State.COOKED)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, reviewed(state = onlyForeign).status)
         assertEquals("synthetic-1", Import.read(sample, emptyMap(), now).draftId)
         assertEquals(Gate.Status.REVIEW_REQUIRED, reviewed(state = emptyMap()).status)
     }
