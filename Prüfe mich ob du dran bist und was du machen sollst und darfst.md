@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T03:11:55.873Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Implement next testable Android integration unit with regressions"
-workingBranch: "integration-ii/production-recorded-at-20261102-0311"
+workingBranch: "integration-ii/production-status-20261102-0319"
 lastReleasedAtUtc: "2026-11-02T03:04:44.161Z"
 lastReleasedCommit: "f4e811329926b0dcb180e1f64943fc4906683607"
 nextStep: "Independent authenticated FoodStore recipe-save action provenance; Android credential/privacy E2E; generator/revalidator parity"
