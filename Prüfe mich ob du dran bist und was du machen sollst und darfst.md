@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-35-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
+ownerChatId: "Integration III scheduled run 8"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvyse5ya-mar7wmd8w1"
+acquiredAtUtc: "2026-11-02T04:56:42.658Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration IV: stale occupied consent key rotation; PR #78 merged; 440/440 JVM PASS"
+task: "Integration III: independently authenticated FoodStore recipe confirmation"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-02T04:42:57.042Z"
 lastReleasedCommit: "eae4273608ba340e7edd9c7bf5e135879dce93ef"
 nextStep: "Independent cryptographic FoodStore recipe-save action attestation; generator/revalidator parity; Android device/privacy E2E"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
