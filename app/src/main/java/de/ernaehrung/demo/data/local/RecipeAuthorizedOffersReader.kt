@@ -67,11 +67,13 @@ internal class RecipeAuthorizedOffersReader(
         if (!validScope(scope)) return null
         val version = dao.version(scope.productVersionId) ?: return null
         val cutoff = capturedAt.toEpochMilli()
-        if (version.productId.isBlank() || version.recordedAt > cutoff ||
+        if (cutoff < 0L || version.productId.isBlank() ||
+            version.revision <= 0 || version.recordedAt !in 0L..cutoff ||
             version.source == Source.DEMO ||
             version.quality !in setOf(Quality.SOURCED, Quality.CONFIRMED)) return null
         val latest = dao.allVersions().filter {
-            it.productId == version.productId && it.recordedAt <= cutoff
+            it.productId == version.productId && it.recordedAt in 0L..cutoff &&
+                it.revision > 0
         }.maxOfOrNull { it.revision } ?: return null
         if (version.revision != latest) return null
         val request = ExternalPriceBridge.Request(

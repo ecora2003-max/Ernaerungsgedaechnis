@@ -62,6 +62,13 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             .map { history -> history.maxBy { it.revision } }
             .sortedBy { it.id }
         if (relevantPlans.any { it.recordedAt !in 0L..asOfMillis }) return null
+        // A planning need may still reference a superseded product version. Only
+        // the current, independently recorded Room identity at capture time can
+        // substantiate recipe context; future revisions do not invalidate history.
+        val latestRevisionByProduct = dao.allVersions()
+            .filter { it.recordedAt in 0L..asOfMillis && it.revision > 0 }
+            .groupBy { it.productId }
+            .mapValues { (_, history) -> history.maxOf { it.revision } }
         val versions = mutableMapOf<String, ProductVersionEntity>()
         for (row in rows) {
             val need = row.need
@@ -72,6 +79,8 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             // a Room shopping need at an earlier recipe-review instant.
             // Planning reports may still show it; this evidence port fails closed.
             if (version.recordedAt !in 0L..asOfMillis ||
+                version.productId.isBlank() || version.revision <= 0 ||
+                latestRevisionByProduct[version.productId] != version.revision ||
                 version.baseUnit != need.unit) return null
             versions[need.versionId] = version
         }
