@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
+state: "ACTIVE"
+ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
+ownerChatId: "Integration II 2026-11-02 evening"
 ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
+ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-20261102181359277-17z41fn3lt"
+acquiredAtUtc: "2026-11-02T18:13:59.277Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Integration III: negative Rezept-Katalogzeiten abgewiesen; Code-PR #131 und Status-PR #132 gemergt"
+task: "Integration II: nächste konkrete Room-Rezept-Kontext-Validierung mit Regressionstest"
 workingBranch: null
 lastReleasedAtUtc: "2026-11-02T18:06:02.844Z"
 lastReleasedCommit: "234d21f39e66ef7df2f9d8e086ed85c606305aca"
 nextStep: "Unabhängige authentifizierte Nutzeraktionsprovenienz beim Rezeptsave, Generator-/Revalidator-Parität und Android-/Privacy-E2E"
 ```
 
-**Hier arbeitet kein Chat mehr.**
+**Hier arbeitet jetzt ein Chat!**
