@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat) turn 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-20261102223833085-xadt1oprg"
-acquiredAtUtc: "2026-11-02T22:38:33.085Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe save authenticated action and context revalidation"
-workingBranch: "integration-chat/recipe-confirmation-chronology-20261102-2238"
-lastReleasedAtUtc: "2026-11-02T22:33:56.998Z"
-lastReleasedCommit: "31ace7ec1d9b4acaa942fc557a785a92b7afd5df"
-nextStep: "PR #159 docs-only status remains open (no PR CI); next code: independent authenticated recipe-save user action, generator/revalidator parity and Android/privacy E2E; all modules partial"
+task: "Integration (Chat): PR #160 recipe review chronology merged; CI PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-02T22:52:38.038Z"
+lastReleasedCommit: "a42887a46e1f791e57b3bebb1ef6176e015f8dad"
+nextStep: "Status-only PR #161 remains open (no CI); next code: independent authenticated FoodStore recipe-save action provenance, generator/revalidator parity, Android/privacy E2E; modules partial"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
