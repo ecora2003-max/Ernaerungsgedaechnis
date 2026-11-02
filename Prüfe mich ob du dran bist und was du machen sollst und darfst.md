@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-02T23:38:00.982Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore recipe-save action provenance and context regression"
-workingBranch: null
+workingBranch: "integration-chat/recipe-import-host-bounds-20261103-0039"
 lastReleasedAtUtc: "2026-11-02T23:27:12.858Z"
 lastReleasedCommit: "fb06e1dd70378c200486f757c84fe174b264396f"
 nextStep: "Code PR #164 merged with CI 41544749395 PASS (531 JVM, 7 Room); docs PR #165 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
