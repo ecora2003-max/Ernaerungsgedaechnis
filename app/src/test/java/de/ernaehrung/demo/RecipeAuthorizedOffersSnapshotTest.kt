@@ -213,4 +213,29 @@ class RecipeAuthorizedOffersSnapshotTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED, expired.status)
         assertNull(expired.input)
     }
+
+    @Test fun invalidRoomVersionTimestampOrRevisionNeverAuthorizesOfferContext() = runBlocking {
+        val original = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        val before = db.foodDao().operationCount()
+        val version = requireNotNull(db.foodDao().version(versionId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = -1 WHERE id = ?",
+            arrayOf(versionId))
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(version.recordedAt, versionId))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET revision = 0 WHERE id = ?",
+            arrayOf(versionId))
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET revision = ? WHERE id = ?",
+            arrayOf(version.revision, versionId))
+        val restored = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(original.revision, restored.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
 }
