@@ -423,4 +423,59 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
         assertTrue(dao.allPaidPrices().isEmpty())
     }
+
+    @Test fun unconsumedConsentExpiresAndCannotBeRecoveredOrUsedForNewSave() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val ready = preview()
+        val digest = consent("expired-consent", ready)
+        val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:expired-consent"))
+        assertEquals(at, checkpoint.recordedAt)
+        assertEquals("expired-consent", store.recordedRecipeDraftV1ConsentKey(digest))
+        val before = dao.operationCount()
+
+        trustedClock = at + 300_001L
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { save("expired-consent", ready) }
+        // Repeating the same caller-supplied Boolean cannot refresh a stale ledger row.
+        assertEquals(digest, consent("expired-consent", ready))
+        rejected { save("expired-consent", ready) }
+        assertEquals(before, dao.operationCount())
+        assertNull(dao.operation("expired-consent"))
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+    }
+
+    @Test fun consentFiveMinuteBoundaryAllowsSaveButCompletedRecipeReplaySurvivesExpiry() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val ready = preview()
+        val digest = consent("fresh-boundary", ready)
+        trustedClock = at + 300_000L
+        assertEquals("fresh-boundary", store.recordedRecipeDraftV1ConsentKey(digest))
+        val saved = save("fresh-boundary", ready)
+        val count = dao.operationCount()
+
+        trustedClock = at + 86_400_000L
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(saved, save("fresh-boundary", ready))
+        assertEquals(count, dao.operationCount())
+        assertEquals(1, dao.ingredients(saved).size)
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun expiredConsentCannotReplayUnrelatedManualRecipeOperation() = runBlocking {
+        var trustedClock = at
+        store = FoodStore(db) { trustedClock }
+        val ready = preview()
+        consent("unrelated-existing", ready)
+        val input = requireNotNull(ready.input)
+        val manual = store.saveRecipe("unrelated-existing", input, reason = "Manuelles Rezept")
+        val before = dao.operationCount()
+        trustedClock = at + 300_001L
+        rejected { save("unrelated-existing", ready) }
+        assertEquals(manual, dao.operation("unrelated-existing")?.resultId)
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
 }
