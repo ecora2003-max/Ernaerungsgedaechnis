@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Resume existing PR #221 Room recipe stock context regression",
-  "workingBranch": null,
+  "workingBranch": "integration-chat-stock-unique-movement-20261103",
   "lastReleasedAtUtc": "2026-11-03T11:39:25.470Z",
   "lastReleasedCommit": "ad4dba470dc3e1646743c3c736fb9703357ccb01",
   "nextStep": "PR #221 open, CI not yet reported. Check exact-head CI and Robolectric test; fix if needed; merge only on PASS with fresh own lock. No merge this run."
