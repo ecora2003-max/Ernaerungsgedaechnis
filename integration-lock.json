@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Reorganize integration delivery instructions and automations, no app code",
-  "workingBranch": null,
+  "workingBranch": "governance/two-functional-integrators-20261103",
   "lastReleasedAtUtc": "2026-11-03T15:44:43.361Z",
   "lastReleasedCommit": "8355393b99e9afb3a6a895b94bcb9f1f6e77eb1a",
   "nextStep": "Code PR #226 merged, exact PR CI 41665882272 PASS (562 JVM/7 migrations). Status PR #227 awaits CI and merge; reconcile open PR #225 against current main. Next code: independent recipe-save user-action provenance and Android/privacy E2E."
