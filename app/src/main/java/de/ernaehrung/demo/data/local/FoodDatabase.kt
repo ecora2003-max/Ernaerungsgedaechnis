@@ -137,6 +137,7 @@ internal interface FoodDao {
     @Query("SELECT * FROM product_versions WHERE productId = :id ORDER BY revision") suspend fun versions(id: String): List<ProductVersionEntity>
     @Query("SELECT * FROM storage_locations WHERE id = :id") suspend fun location(id: String): StorageLocationEntity?
     @Query("SELECT * FROM batches WHERE id = :id") suspend fun batch(id: String): BatchEntity?
+    @Query("SELECT COUNT(*) FROM batches") suspend fun batchCount(): Int
     @Query("SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = :id") suspend fun balance(id: String): Long
     // v1 movements have no occurredOn; the linked consumption still has its known calendar date.
     @Query("""SELECT MAX(COALESCE(m.occurredOn, c.date)) FROM stock_movements m
