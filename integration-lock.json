@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "EG Integrator B automation turn 11 2026-11-04",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1asu5d-kale2s6z4rb",
-  "acquiredAtUtc": "2026-11-03T23:07:32.641Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: FoodStore-independent recipe-save user action attestation and Android regression",
-  "workingBranch": "integration-b-recipe-production-handoff-20261104",
-  "lastReleasedAtUtc": "2026-11-03T22:17:12.039Z",
-  "lastReleasedCommit": "6f1343d93f45dccbc80cf09d401d548dc1e5aad6",
-  "nextStep": "B1 ACTIVE: independently verifiable FoodStore-side user-action attestation for recipe save, then connect deterministic offline generator/v1 revalidator and 8 contexts to kitchen UI; verify explicit production and separate consumption plus Android/offline/privacy E2E. PR #229 merged after 568 JVM / 7 Room migrations CI PASS; device gates open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T23:16:25.590Z",
+  "lastReleasedCommit": "c4b5957722c31146a837c26e26050694ccfff326",
+  "nextStep": "B1 ACTIVE: continue existing code PR #230 (integration-b-recipe-production-handoff-20261104) on exact head c4b5957722c31146a837c26e26050694ccfff326; inspect CI run 41737431370 and fix any Kotlin/Compose/Robolectric failures; merge only if exact-head PASS and main/lock/overlap rechecked. Then implement independently verifiable FoodStore-side user-action attestation and generator/v1 revalidator, manufacturing and separate consumption Android/offline/privacy E2E. No device tests yet."
 }
