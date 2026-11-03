@@ -113,6 +113,19 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED, unknown.status)
     }
 
+    private fun approvedContext(f: Gate.Flags): Gate.Context<Binding.Snapshot,
+        Binding.Snapshot, Binding.Snapshot> {
+        val at = Instant.parse("2026-11-01T03:15:00Z")
+        fun snapshot(source: Binding.Source) = Binding.Snapshot(
+            source, "synthetic-" + source.name, "revision-1", at,
+            listOf(Binding.Line("rice", "version-rice", 200_000L, "g"))
+        )
+        return Gate.typedContext(f, at,
+            Gate.Evidence(snapshot(Binding.Source.STOCK), true),
+            Gate.Evidence(snapshot(Binding.Source.SHOPPING), true),
+            Gate.Evidence(snapshot(Binding.Source.OFFERS), true))
+    }
+
     @Test fun allEightIndependentConsentFlagsRequireMatchingDatedApprovedContext() {
         for (bits in 0..7) {
             val f = Gate.Flags(bits and 1 != 0, bits and 2 != 0, bits and 4 != 0)
@@ -120,14 +133,23 @@ class RecipeDraftV1ImportTest {
                 .replace("\"considerStock\":false", "\"considerStock\":" + f.considerStock)
                 .replace("\"considerShopping\":false", "\"considerShopping\":" + f.considerShopping)
                 .replace("\"considerOffers\":false", "\"considerOffers\":" + f.considerOffers)
-            val c = Gate.context(f,
-                Gate.Evidence("stock", true), Gate.Evidence("shopping", true),
-                Gate.Evidence("offers", true))
+            val trusted = if (bits == 0) null
+                else OffsetDateTime.parse("2026-11-01T04:15:00+01:00")
+            val typed = approvedContext(f)
             assertEquals("bits=" + bits, Gate.Status.READY_FOR_EXPLICIT_SAVE,
-                reviewed(json, req = request(f), context = c,
-                    trustedSnapshot = if (bits == 0) null
-                        else OffsetDateTime.parse("2026-11-01T04:15:00+01:00")).status)
+                reviewed(json, req = request(f), context = typed,
+                    trustedSnapshot = trusted).status)
             if (bits != 0) {
+                // Independent approval of a timestamp and generic projection
+                // cannot substitute for a digest of the selected host rows.
+                val untyped = Gate.context(f,
+                    Gate.Evidence("stock", true), Gate.Evidence("shopping", true),
+                    Gate.Evidence("offers", true))
+                val unbound = reviewed(json, req = request(f), context = untyped,
+                    trustedSnapshot = trusted)
+                assertEquals(Gate.Status.REVIEW_REQUIRED, unbound.status)
+                assertTrue("TYPED_CONTEXT_CONTENT_REQUIRED" in unbound.gaps)
+                assertNull(unbound.input)
                 assertEquals(Gate.Status.REVIEW_REQUIRED,
                     reviewed(json, req = request(f)).status)
                 assertEquals(Gate.Status.BLOCKED,
@@ -154,7 +176,9 @@ class RecipeDraftV1ImportTest {
         assertNull(wrong.input)
         val sameInstant = reviewed(json, req = request(f), context = c,
             trustedSnapshot = OffsetDateTime.parse("2026-11-01T03:15:00Z"))
-        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, sameInstant.status)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, sameInstant.status)
+        assertTrue("TYPED_CONTEXT_CONTENT_REQUIRED" in sameInstant.gaps)
+        assertNull(sameInstant.input)
     }
 
     @Test fun typedContextMustMatchTheIndependentlyTrustedSnapshotInstant() {
