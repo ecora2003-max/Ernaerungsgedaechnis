@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,8 +41,18 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
             }
             if (draftConsent.busy) CircularProgressIndicator()
             draftConsent.error?.let { Hint(it) }
-            if (draftConsent.recordedDigest != null) {
-                Text("Rezeptvorschau ausdrücklich bestätigt und lokal protokolliert. Noch kein Rezept gespeichert, keine Herstellung und kein Verzehr.")
+            draftConsent.recordedDigest?.let { digest ->
+                if (draftConsent.savedRecipeVersionId == null) {
+                    Text("Rezeptvorschau ausdrücklich bestätigt und lokal protokolliert. Noch kein Rezept gespeichert.")
+                    Button(
+                        onClick = { model.saveConfirmedRecipeDraft(digest) },
+                        enabled = !draftConsent.busy,
+                        modifier = Modifier.testTag("recipe_draft_save_confirmed")
+                    ) { Text("Geprüfte Rezeptversion jetzt speichern") }
+                }
+            }
+            draftConsent.savedRecipeVersionId?.let { version ->
+                Text("Rezeptversion lokal gespeichert: $version. Keine Herstellung oder Verzehrbuchung.")
             }
         }
     }
