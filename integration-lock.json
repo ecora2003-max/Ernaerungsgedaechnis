@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration III turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104-20261103T1453Z-h2h7rgsljxh",
-  "acquiredAtUtc": "2026-11-03T14:53:12.379Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "PR #223 Regression isolieren und mit main abgleichen",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T14:44:37.120Z",
+  "lastReleasedAtUtc": "2026-11-03T14:53:50.238Z",
   "lastReleasedCommit": "8f4cc6cfb391e7b9abac65c7d617d5eef5c3d3b2",
-  "nextStep": "PR #224 CI/JUnit auf HEAD 8f4cc6cf prüfen; erst bei PASS und eigener Sperre mergen; unabhängige Rezeptsave-Attestation bleibt offen"
+  "nextStep": "PR #223 bereits geschlossen; nächste Integration III echte Code-/Testeinheit auf neuem Branch; PR #224 ist offen und gehört anderem Integrationslauf; vor jeder Arbeit aktuelle Sperre erneut prüfen"
 }
