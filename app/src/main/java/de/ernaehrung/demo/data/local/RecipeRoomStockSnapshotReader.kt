@@ -133,6 +133,24 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val receiptCredits = movements.filter { it.movementKind == MovementKind.RECEIPT }
             .groupBy { it.operationId to it.batchId }
         if (receiptCredits.values.any { it.size != 1 }) return null
+        // A transfer is one atomic physical move, not two independent stock
+        // credits/debits. The author operation must have exactly one source and
+        // one destination of equal quantity and product version. A damaged
+        // legacy ledger must not inflate the stock available to recipe review.
+        val transfers = movements.filter { it.movementKind == MovementKind.TRANSFER }
+            .groupBy { it.operationId }
+        for ((operationId, entries) in transfers) {
+            if (entries.size != 2) return null
+            val debit = entries.singleOrNull { it.delta < 0L } ?: return null
+            val credit = entries.singleOrNull { it.delta > 0L } ?: return null
+            if (debit.batchId == credit.batchId ||
+                debit.delta != -credit.delta ||
+                batchVersions[debit.batchId] != batchVersions[credit.batchId] ||
+                rows.firstOrNull { it.batch.id == credit.batchId }
+                    ?.batch?.parentBatchId != debit.batchId ||
+                rows.firstOrNull { it.batch.id == credit.batchId }
+                    ?.batch?.originOperationId != operationId) return null
+        }
         // Planning balances sum every stored movement, including legacy or
         // future-dated rows. Never expose those as current physical stock.
         // A legacy consumption date is resolved by the DAO when occurredOn is null.
