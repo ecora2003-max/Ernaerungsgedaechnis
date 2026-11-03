@@ -123,6 +123,11 @@ internal object RecipeDraftHostGate {
                 Character.isISOControl(cp) ||
                 Character.getType(cp) == Character.FORMAT.toInt() ||
                 Character.getType(cp) == Character.SURROGATE.toInt() ||
+                // U+2028/U+2029 are visual line breaks but not ISO controls or
+                // whitespace on every Android/JVM Unicode implementation. A
+                // hidden separator must not turn an exclusion into another ID.
+                Character.getType(cp) == Character.LINE_SEPARATOR.toInt() ||
+                Character.getType(cp) == Character.PARAGRAPH_SEPARATOR.toInt() ||
                 cp == 0x034F
             ) return false
             offset += Character.charCount(cp)
