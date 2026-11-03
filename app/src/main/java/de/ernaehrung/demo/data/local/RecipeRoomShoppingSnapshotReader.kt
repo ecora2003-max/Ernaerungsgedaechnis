@@ -69,9 +69,6 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
                         older.recordedAt > newer.recordedAt
                     }
             }) return null
-        val relevantPlans = relevantPlanHistories.map { history ->
-            history.maxBy { it.revision }
-        }.sortedBy { it.id }
         // A planning need may still reference a superseded product version. Only
         // the current, independently recorded Room identity at capture time can
         // substantiate recipe context; future revisions do not invalidate history.
