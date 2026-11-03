@@ -81,6 +81,32 @@ class RecipeDraftCatalogSaveTest {
         catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun variationSelectorRestrictionsFailClosedAtRoomConsentAndSave() = runBlocking {
+        val before = dao.operationCount()
+        val supplementarySelector = String(Character.toChars(0xE0100))
+        for ((index, selector) in listOf("\uFE0F", supplementarySelector).withIndex()) {
+            val spoofed = request.copy(confirmedRestrictions =
+                setOf("FOOD:rice" + selector, "ALLERGEN:SOY"))
+            val blocked = store.previewRecipeDraftV1(json, spoofed, confirmed(), states)
+            assertEquals(Gate.Status.BLOCKED, blocked.status)
+            assertTrue("UNSUPPORTED_RESTRICTION" in blocked.blockers)
+            assertNull(blocked.input)
+            rejected { consent("selector-$index", blocked, req = spoofed) }
+            rejected { save("selector-$index", blocked, req = spoofed) }
+        }
+        assertEquals(before, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+
+        // Normal independent confirmation still permits a recipe without
+        // creating stock, purchase or consumption events.
+        val ready = preview()
+        consent("safe-selector-control", ready)
+        assertNotNull(dao.recipeVersion(save("safe-selector-control", ready)))
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun invisibleOrAmbiguousRecipeConsentKeysCannotReachTheDurableLedger() = runBlocking {
         val ready = preview()
         val before = dao.operationCount()
