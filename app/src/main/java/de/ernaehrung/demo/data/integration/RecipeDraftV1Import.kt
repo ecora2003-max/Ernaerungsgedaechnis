@@ -27,6 +27,16 @@ internal object RecipeDraftV1Import {
     private fun str(value: Any?, name: String): String =
         (value as? String)?.takeIf { it.isNotBlank() }
             ?: throw IllegalArgumentException(name + " must be nonempty string")
+    /** Reject untrusted display controls and bidi overrides before manual review. */
+    private fun previewText(value: Any?, name: String, multiline: Boolean = false): String {
+        val text = str(value, name)
+        require(text.none { char ->
+            (Character.isISOControl(char) && !(multiline && char == '\n')) ||
+                char in '\u202A'..'\u202E' || char in '\u2066'..'\u2069' ||
+                char == '\u200E' || char == '\u200F' || char == '\u061C'
+        }) { name + " contains unsafe display controls" }
+        return text
+    }
     private fun optionalStr(value: Any?, name: String): String? =
         if (value == null) null else str(value, name)
     private fun bool(value: Any?, name: String): Boolean =
@@ -130,7 +140,7 @@ internal object RecipeDraftV1Import {
         rejectUntrustedBookingClaims(p)
         require(p["status"] == "DRAFT") { "only unconfirmed DRAFT status allowed" }
         val draftId = str(p["draftId"], "draftId")
-        val title = str(p["title"], "title")
+        val title = previewText(p["title"], "title")
         // Reject content exceeding the host preview limits before it reaches UI or
         // manual confirmation. The later review gate is not the import boundary.
         require(title.length <= 200) { "recipe title exceeds host preview limit" }
@@ -149,7 +159,7 @@ internal object RecipeDraftV1Import {
             require(snapshot != null) { "requested context needs dated snapshot" }
         }
         val steps = list(p["steps"], "steps").map {
-            str(it, "step")
+            previewText(it, "step", multiline = true)
         }
         require(steps.isNotEmpty()) { "empty recipe steps" }
         val stepText = steps.joinToString("\n")
@@ -170,7 +180,8 @@ internal object RecipeDraftV1Import {
         val lines = ingredients.mapIndexed { index, value ->
             val line = obj(value, "ingredient " + index)
             val id = str(line["foodTypeId"], "ingredient.foodTypeId")
-            val label = str(line["label"], "ingredient.label")
+            val label = previewText(line["label"], "ingredient.label")
+            require(label.length <= 200) { "ingredient label exceeds host preview limit" }
             optionalStr(line["productRef"], "ingredient.productRef")
             optionalStr(line["allergenNotes"], "ingredient.allergenNotes")
             require(str(line["sourceStatus"], "sourceStatus") in

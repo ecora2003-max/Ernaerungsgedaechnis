@@ -419,4 +419,36 @@ class RecipeDraftV1ImportTest {
         assertNull(reviewed(tooMany).input)
     }
 
+
+    @Test fun previewRejectsInvisibleControlsAndOversizedIngredientLabels() {
+        val unsafe = listOf(
+            change("\"title\":\"Reis\"", "\"title\":\"Re\\u0000is\""),
+            change("\"title\":\"Reis\"", "\"title\":\"Re\\nis\""),
+            change("\"label\":\"Reis\"", "\"label\":\"Re\\u202Eis\""),
+            change("\"steps\":[\"Reis kochen.\"]",
+                "\"steps\":[\"Reis\\u2066 kochen.\"]"),
+            change("\"label\":\"Reis\"",
+                "\"label\":\"" + "L".repeat(201) + "\"")
+        )
+        for (candidate in unsafe) {
+            try {
+                Import.read(candidate, states, now)
+                fail("unsafe untrusted text must not reach manual preview")
+            } catch (_: IllegalArgumentException) { }
+            val review = reviewed(candidate)
+            assertEquals(Gate.Status.BLOCKED, review.status)
+            assertNull(review.input)
+        }
+
+        val maxLabel = change("\"label\":\"Reis\"",
+            "\"label\":\"" + "Ä".repeat(200) + "\"")
+        assertEquals(200, Import.read(maxLabel, states, now).draft.lines.single().label.length)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(maxLabel).status)
+
+        val multilineStep = change("\"steps\":[\"Reis kochen.\"]",
+            "\"steps\":[\"Reis\\nkochen.\"]")
+        assertEquals("Reis\nkochen.", Import.read(multilineStep, states, now).draft.steps)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(multilineStep).status)
+    }
+
 }
