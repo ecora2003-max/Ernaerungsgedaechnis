@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II automation turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261103T131245Z-9abm98l6z6",
-  "acquiredAtUtc": "2026-11-03T13:12:57.137Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Continue verified pending integration PR or implement next Room regression",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T12:56:01.646Z",
-  "lastReleasedCommit": "18f3d3854e997e55e8c896243764ac836e5f1ca9",
-  "nextStep": "PR #223 open at 18f3d3854e997e55e8c896243764ac836e5f1ca9; check exact-head CI, improve independent transfer-day regression if needed, merge only after PASS and fresh lock."
+  "lastReleasedAtUtc": "2026-11-03T13:13:59.341Z",
+  "lastReleasedCommit": "49df7cb87f1b0b6adf046e864349b43245cd3ca8",
+  "nextStep": "PR #223 merged with PASS CI 41639869500 on exact code/test HEAD 18f3d385; next implement independent recipe save action provenance or next bounded Room/host integration and device E2E."
 }
