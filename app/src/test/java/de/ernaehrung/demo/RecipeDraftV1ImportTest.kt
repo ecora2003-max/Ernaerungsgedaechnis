@@ -451,4 +451,39 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(multilineStep).status)
     }
 
+
+    @Test fun invisibleUnicodeFormatCharactersNeverReachRecipeManualReview() {
+        // Format controls are invisible or reorder visible text. Check both
+        // BMP controls and supplementary tag code points, not just UTF-16 chars.
+        val supplementaryTag = String(Character.toChars(0xE0061))
+        val unsafe = listOf(
+            change("\"title\":\"Reis\"", "\"title\":\"Re\\u200Bis\""),
+            change("\"label\":\"Reis\"", "\"label\":\"Re\\u00ADis\""),
+            change("\"steps\":[\"Reis kochen.\"]",
+                "\"steps\":[\"Re\\u2060is kochen.\"]"),
+            change("\"title\":\"Reis\"", "\"title\":\"Re\\uFEFFis\""),
+            change("\"label\":\"Reis\"", "\"label\":\"Re\\u034Fis\""),
+            change("\"title\":\"Reis\"", "\"title\":\"Re" + supplementaryTag + "is\"")
+        )
+        unsafe.forEach { candidate ->
+            try {
+                Import.read(candidate, states, now)
+                fail("invisible format control reached preview")
+            } catch (_: IllegalArgumentException) { }
+            val result = reviewed(candidate)
+            assertEquals(Gate.Status.BLOCKED, result.status)
+            assertNull(result.input)
+        }
+
+        // Accented and non-BMP visible characters remain valid.
+        val readable = change("\"title\":\"Reis\"",
+            "\"title\":\"Café und Reis\"")
+        assertEquals("Café und Reis", Import.read(readable, states, now).draft.title)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(readable).status)
+        val visibleEmoji = change("\"label\":\"Reis\"",
+            "\"label\":\"Möhre 🥕\"")
+        assertEquals("Möhre 🥕", Import.read(visibleEmoji, states, now).draft.lines.single().label)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visibleEmoji).status)
+    }
+
 }
