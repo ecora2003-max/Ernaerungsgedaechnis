@@ -349,8 +349,8 @@ class RecipeDraftHostGateTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, normal.status)
         assertNotNull(normal.input)
         val supplementaryTag = String(Character.toChars(0xE0061))
-        for (bad in listOf("version-rice ", "version-\\u200B", "version-\\u202E",
-            "version-\\uFE0F", "version-\\uD800", "version-$supplementaryTag")) {
+        for (bad in listOf("version-rice ", "version-\u200B", "version-\u202E",
+            "version-\uFE0F", "version-\uD800", "version-$supplementaryTag")) {
             val rejected = Gate.review(draft(), request(), mapOf("rice" to fact(id = bad)))
             assertEquals(bad, Gate.Status.REVIEW_REQUIRED, rejected.status)
             assertTrue(bad, "UNRESOLVED_PRODUCT_VERSION" in rejected.gaps)
