@@ -41,5 +41,5 @@ jobs:
           persist-credentials: false
       - name: Restore stale or conservatively recoverable lock
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 tools/integration_idle_recovery.py --repo "$GITHUB_REPOSITORY"
