@@ -204,6 +204,7 @@ class RecipeDraftManualReviewTest {
         val malformed = listOf(
             "FOOD:rice ", "FOOD:rice:other", "FOOD:ri\u200Bce",
             "ALLERGEN:SOY\t", "ALLERGEN:SOY:other", "ALLERGEN:SOY\u2060",
+            "FOOD:rice\u2028hidden", "ALLERGEN:SOY\u2029hidden",
             "FOOD:", "ALLERGEN:", "OTHER:rice"
         )
         for (token in malformed) {
