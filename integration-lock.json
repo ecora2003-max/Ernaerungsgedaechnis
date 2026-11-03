@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Verify PR #225 and implement recipe save user-action provenance",
-  "workingBranch": null,
+  "workingBranch": "integration-iv-recipe-save-20261103-1623",
   "lastReleasedAtUtc": "2026-11-03T15:10:04.786Z",
   "lastReleasedCommit": "0c17f49f6bd092b97dd844c1d20e39f701651465",
   "nextStep": "PR #225 remains open; verify CI on head 0c17f49f6bd092b97dd844c1d20e39f701651465 and merge only after PASS and fresh exclusive lock. Warning display-control regression is not yet CI-verified."
