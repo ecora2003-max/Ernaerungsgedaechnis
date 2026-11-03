@@ -259,6 +259,16 @@ internal object RecipeDraftV1Import {
                     blockers = base.blockers + "CONTEXT_SNAPSHOT_TIME_MISMATCH",
                     input = null
                 )
+            // A timestamp alone does not attest the actual stock, shopping or
+            // offer rows. Generic host projections may be useful for review,
+            // but must not advertise a save-ready recipe without a typed,
+            // independently approved content binding.
+            context?.contentBindingRequired != true || context?.contentBinding == null ->
+                base.copy(
+                    status = Gate.Status.REVIEW_REQUIRED,
+                    gaps = base.gaps + "TYPED_CONTEXT_CONTENT_REQUIRED",
+                    input = null
+                )
             else -> base
         }
     } catch (_: IllegalArgumentException) {
