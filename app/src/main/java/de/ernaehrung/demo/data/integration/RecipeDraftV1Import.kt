@@ -33,12 +33,16 @@ internal object RecipeDraftV1Import {
         // Inspect Unicode code points, not UTF-16 chars: supplementary
         // format controls (including invisible tag characters) must not pass.
         // U+034F is a default-ignorable combining grapheme joiner (Mn).
+        // U+2028/U+2029 are visual line breaks even though they are not ISO controls;
+        // accepting them in IDs, titles or steps can spoof the review display.
         var offset = 0
         while (offset < text.length) {
             val cp = Character.codePointAt(text, offset)
             require(
                 !(Character.isISOControl(cp) && !(multiline && cp == '\n'.code)) &&
                     Character.getType(cp) != Character.FORMAT.toInt() &&
+                    Character.getType(cp) != Character.LINE_SEPARATOR.toInt() &&
+                    Character.getType(cp) != Character.PARAGRAPH_SEPARATOR.toInt() &&
                     cp != 0x034F
             ) { name + " contains unsafe display controls" }
             offset += Character.charCount(cp)
