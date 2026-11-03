@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II scheduled code run",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261103071320970-ro5y2e19oeo",
-  "acquiredAtUtc": "2026-11-03T07:13:20.971Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezeptimport: Code-PR #194 gemergt, commitgenaue Statusübergabe",
-  "workingBranch": "integration-ii-recipe-identifier-status-20261103",
-  "lastReleasedAtUtc": "2026-11-03T07:06:54.260Z",
-  "lastReleasedCommit": "05e5f998a25c02e94420bdd2f2baa1be9bdbd57c",
-  "nextStep": "Rezeptsave: unabhängig authentifizierte Nutzeraktionsprovenienz oder Generator-/Revalidator-Parität; Android-/Privacy-E2E offen. Docs-only PR #193 und ältere Status-PRs nur mit passenden Checks mergen."
+  "task": "Integration II: Unicode-sichere sichtbare Rezeptidentitäten, PR #194 gemergt, CI PASS",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T07:21:29.761Z",
+  "lastReleasedCommit": "ff72c107f5c60dc737509f2a4373ed44eee82eba",
+  "nextStep": "Rezeptsave: unabhängige Nutzeraktionsauthentifizierung oder Generator-/Revalidator-Parität; echte Android-/Privacy-E2E offen. Docs-only PR #195 und ältere Status-PRs nur mit passenden Checks mergen."
 }
