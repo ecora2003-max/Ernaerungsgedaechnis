@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B0: resolve recipe PRs #222 #224 #225 and documentation PR #227",
-  "workingBranch": null,
+  "workingBranch": "integration-ii-recipe-warning-safety-20261103",
   "lastReleasedAtUtc": "2026-11-03T20:35:22.747Z",
   "lastReleasedCommit": "0d93b045634e03e25b69a7dfa52305cb127de066",
   "nextStep": "A: complete active A1 bon→confirmed purchase→historical price→shopping proposal. B: resolve #222/#224/#225/#227 under B0, then complete recipe→manufacture→separate consumption B1. Actual Android/Offline/Privacy E2E required."
