@@ -171,11 +171,12 @@ internal object RecipeDraftHostGate {
         val bannedFoods = linkedSetOf<String>()
         for (code in request.confirmedRestrictions) {
             // Restriction identifiers are exact host tokens, not display labels.
-            // A trailing space/control character in FOOD:rice must not silently
+            // An extra delimiter, invisible format character or trailing whitespace in FOOD:rice must not silently
             // miss the matching ingredient and authorize a restricted recipe.
             val identifier = code.substringAfter(':', "")
-            if (identifier.isEmpty() || identifier.any {
-                    it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it)
+            if (code.count { it == ':' } != 1 || identifier.isEmpty() || identifier.any {
+                    it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it) ||
+                        Character.getType(it) == Character.FORMAT.toInt()
                 }) {
                 blockers += "UNSUPPORTED_RESTRICTION"
                 continue

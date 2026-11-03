@@ -135,6 +135,33 @@ class RecipeDraftHostGateTest {
         assertNull(restricted.input)
     }
 
+    @Test fun extraDelimitersAndInvisibleUnicodeCannotBypassFoodOrAllergenRestrictions() {
+        val host = mapOf("rice" to fact(allergens = mapOf("SOY" to false)))
+        // Valid host identifiers and an unrelated food exclusion remain usable.
+        val valid = Gate.review(draft(), request(restrictions = setOf(
+            "FOOD:beans-1", "ALLERGEN:SOY")), host)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, valid.status)
+        assertNotNull(valid.input)
+
+        // Previously these malformed tokens could be interpreted as different
+        // identifiers and therefore silently miss the actual forbidden food.
+        for (bad in listOf(
+            "FOOD:rice:shadow", "ALLERGEN:SOY:shadow",
+            "FOOD:rice\u200B", "FOOD:rice\u2060", "FOOD:rice\u200D",
+            "ALLERGEN:SOY\u202E"
+        )) {
+            val result = Gate.review(draft(), request(restrictions = setOf(bad)), host)
+            assertEquals(bad, Gate.Status.BLOCKED, result.status)
+            assertTrue(bad, "UNSUPPORTED_RESTRICTION" in result.blockers)
+            assertNull(bad, result.input)
+        }
+        // A malformed restriction must also poison an otherwise valid set.
+        val mixed = Gate.review(draft(), request(restrictions = setOf(
+            "FOOD:beans", "FOOD:rice:shadow")), host)
+        assertEquals(Gate.Status.BLOCKED, mixed.status)
+        assertNull(mixed.input)
+    }
+
     @Test fun incompatibleBasisAndCookStateNeverSilentlyConvert() {
         val drained = Gate.review(draft(), request(), mapOf("rice" to fact(basis = Gate.Basis.DRAINED)))
         assertEquals(Gate.Status.BLOCKED, drained.status)
