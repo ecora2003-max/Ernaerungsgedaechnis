@@ -90,6 +90,33 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun receiptOperationWithConsumptionEvidenceFailsClosedUntilRepaired() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val receiptOperation = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        val bogusConsumption = "legacy-consumption-on-receipt"
+
+        // Simulate an inconsistent legacy import: a confirmed consumption
+        // event points to the operation that actually created the batch.
+        db.foodDao().insertConsumption(ConsumptionEntity(
+            bogusConsumption, receiptOperation, versionId, "2026-11-01",
+            at.toEpochMilli(), "UNKNOWN", 100L, Source.USER,
+            Quality.CONFIRMED, null))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+
+        // Repair only the contradictory legacy evidence; the read path must
+        // not create another purchase, stock event or consumption booking.
+        db.openHelper.writableDatabase.execSQL(
+            "DELETE FROM consumption_events WHERE id = ?", arrayOf(bogusConsumption))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(original.revision, restored.revision)
+        assertEquals(original.lines, restored.lines)
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun stockReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
         val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
