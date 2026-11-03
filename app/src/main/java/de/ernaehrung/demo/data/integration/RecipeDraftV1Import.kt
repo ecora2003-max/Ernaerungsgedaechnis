@@ -147,7 +147,8 @@ internal object RecipeDraftV1Import {
         val p = obj(message["payload"], "payload")
         rejectUntrustedBookingClaims(p)
         require(p["status"] == "DRAFT") { "only unconfirmed DRAFT status allowed" }
-        val draftId = str(p["draftId"], "draftId")
+        // The draft ID is displayed beside the recipe title during manual review.
+        val draftId = previewText(p["draftId"], "draftId")
         val title = previewText(p["title"], "title")
         // Reject content exceeding the host preview limits before it reaches UI or
         // manual confirmation. The later review gate is not the import boundary.
@@ -187,7 +188,8 @@ internal object RecipeDraftV1Import {
         require(ingredients.size in 1..64) { "recipe ingredient count exceeds host preview limit" }
         val lines = ingredients.mapIndexed { index, value ->
             val line = obj(value, "ingredient " + index)
-            val id = str(line["foodTypeId"], "ingredient.foodTypeId")
+            // The canonical ingredient ID is displayed and used for independent review.
+            val id = previewText(line["foodTypeId"], "ingredient.foodTypeId")
             val label = previewText(line["label"], "ingredient.label")
             require(label.length <= 200) { "ingredient label exceeds host preview limit" }
             optionalStr(line["productRef"], "ingredient.productRef")
