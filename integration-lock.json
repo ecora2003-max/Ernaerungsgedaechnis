@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T07:13:20.971Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezeptimport: sichtbare Draft-/Zutatenidentitäten gegen Unicode-Steuerzeichen absichern",
-  "workingBranch": "integration-ii-recipe-identifier-preview-20261103",
+  "task": "Rezeptimport: Code-PR #194 gemergt, commitgenaue Statusübergabe",
+  "workingBranch": "integration-ii-recipe-identifier-status-20261103",
   "lastReleasedAtUtc": "2026-11-03T07:06:54.260Z",
   "lastReleasedCommit": "05e5f998a25c02e94420bdd2f2baa1be9bdbd57c",
   "nextStep": "Rezeptsave: unabhängig authentifizierte Nutzeraktionsprovenienz oder Generator-/Revalidator-Parität; Android-/Privacy-E2E offen. Docs-only PR #193 und ältere Status-PRs nur mit passenden Checks mergen."
