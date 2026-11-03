@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II run 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-1793718550503-k464nijri6q",
-  "acquiredAtUtc": "2026-11-03T15:09:10.503Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezeptsave Provenienz und Room-Regression",
-  "workingBranch": "integration-ii-recipe-warning-safety-20261103",
-  "lastReleasedAtUtc": "2026-11-03T14:53:50.238Z",
-  "lastReleasedCommit": "8f4cc6cfb391e7b9abac65c7d617d5eef5c3d3b2",
-  "nextStep": "PR #223 bereits geschlossen; nächste Integration III echte Code-/Testeinheit auf neuem Branch; PR #224 ist offen und gehört anderem Integrationslauf; vor jeder Arbeit aktuelle Sperre erneut prüfen"
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T15:10:04.786Z",
+  "lastReleasedCommit": "0c17f49f6bd092b97dd844c1d20e39f701651465",
+  "nextStep": "PR #225 remains open; verify CI on head 0c17f49f6bd092b97dd844c1d20e39f701651465 and merge only after PASS and fresh exclusive lock. Warning display-control regression is not yet CI-verified."
 }
