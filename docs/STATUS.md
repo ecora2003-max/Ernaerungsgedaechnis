@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration III: Transfer-Konservierung im echten Room-Rezeptbestand (03.11.2026)
+
+- **[Code-PR #217](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/217)**, Code-/Test-HEAD `7313cbdb2ea3a538b320fc1317bcabfe02aaec62`, Squash-Merge `f62b8ae1d4b7ef0b0a8403d9271ab4119cb3eea4`; **[PR-CI 41623670120](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41623670120) PASS** auf diesem HEAD: **559/559 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeRoomStockSnapshotReader` verwirft jetzt unvollständige/unausgeglichene Transferbewegungen und nicht zur Quellcharge passende Zielchargen; positive/negative Room-/Robolectric-Regression prüft Mengenabweichung, fehlende Abbuchung, Wiederherstellung und null zusätzliche Ist-Buchungen. Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
+- **Weiter:** unabhängig authentifizierte Nutzeraktionsprovenienz für Rezeptsave, Generator-/Revalidator-Parität und echte Android-/Privacy-E2E; alle vier Fachmodule bleiben TEILWEISE/OFFEN.
+
+
 ## Integration II: Katalogbestätigungen strikt auf Rezeptzutaten begrenzen (02.11.2026)
 
 - **[Code-PR #148](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/148)**, Code-/Test-HEAD `fd93144002ce1276d989026b0b93d27ba37e83bf`, Squash-Merge `6b81d747a835e3d7963dbf72e31dc133c3ee41c4`; **[PR-CI 41526249184](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41526249184) PASS** auf diesem HEAD: **521/521 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeCatalogEvidence.resolve` verwirft jetzt Katalogbestätigungen außerhalb des Zutaten-Scopes; positive/negative Room-/Robolectric-Regression prüft gemischte/fremde Belege, Erholung und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
