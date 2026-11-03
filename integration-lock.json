@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezept-Kontext: transaktionale Snapshot- und Identitätsvalidierung",
-  "workingBranch": "integration-chat-recipe-visible-text-20261103",
+  "workingBranch": "integration-chat-recipe-preview-status-20261103",
   "lastReleasedAtUtc": null,
   "lastReleasedCommit": null,
   "nextStep": "Integration aus docs/STATUS.md entlang EG-Architecture fortsetzen"
