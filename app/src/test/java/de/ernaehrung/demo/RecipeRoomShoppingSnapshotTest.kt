@@ -396,6 +396,48 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun historicalCatalogAllergenAndIdentityCorrectionsInvalidateShoppingEvidence() = runBlocking {
+        val predecessor = requireNotNull(db.foodDao().version(versionId))
+        clock += 1_000L
+        versionId = store.rememberProduct("shopping-metadata-successor",
+            ProductInput("Reis neu", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = predecessor.productId)
+        store.savePlan("shopping-metadata-plan", plan(200_000L))
+        val currentVersion = requireNotNull(db.foodDao().version(versionId))
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        val before = db.foodDao().operationCount()
+        val sql = db.openHelper.writableDatabase
+
+        // The selected version and planning need do not change. A corrected
+        // allergen in its predecessor is nevertheless part of the provenance.
+        sql.execSQL("UPDATE product_versions SET allergens = ? WHERE id = ?",
+            arrayOf("Sesam", predecessor.id))
+        val changedAllergen = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, changedAllergen.lines)
+        assertNotEquals(original.revision, changedAllergen.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+
+        sql.execSQL("UPDATE product_versions SET allergens = ? WHERE id = ?",
+            arrayOf(predecessor.allergens, predecessor.id))
+        assertEquals(original.revision,
+            requireNotNull(store.readRecipeRoomShoppingSnapshot(scope)).revision)
+
+        // Likewise, a metadata correction to the selected catalog identity
+        // cannot reuse a previously approved context digest.
+        sql.execSQL("UPDATE product_versions SET name = ? WHERE id = ?",
+            arrayOf("Reis mit geaenderter Bezeichnung", currentVersion.id))
+        val changedIdentity = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, changedIdentity.lines)
+        assertNotEquals(original.revision, changedIdentity.revision)
+
+        sql.execSQL("UPDATE product_versions SET name = ? WHERE id = ?",
+            arrayOf(currentVersion.name, currentVersion.id))
+        assertEquals(original.revision,
+            requireNotNull(store.readRecipeRoomShoppingSnapshot(scope)).revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun shoppingRecipeEvidenceTracksCatalogProvenanceAndRejectsDemo() = runBlocking {
         store.savePlan("shopping-provenance-plan", plan(200_000L))
         val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
