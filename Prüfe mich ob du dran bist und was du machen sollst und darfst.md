@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T00:43:23.305Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Android recipe-save provenance validation"
-workingBranch: null
+workingBranch: "integration-chat-restriction-delimiter-20261103"
 lastReleasedAtUtc: "2026-11-03T00:39:38.322Z"
 lastReleasedCommit: "3122dd820570ecdb6bfd8d007dd1c149205095cd"
 nextStep: "Code PR #172 merged; CI 41553474651 PASS (535 JVM, 7 Room); docs PR #173 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
