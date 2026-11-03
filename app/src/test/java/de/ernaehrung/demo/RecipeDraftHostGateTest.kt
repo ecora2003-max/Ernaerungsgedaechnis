@@ -147,8 +147,8 @@ class RecipeDraftHostGateTest {
         // identifiers and therefore silently miss the actual forbidden food.
         for (bad in listOf(
             "FOOD:rice:shadow", "ALLERGEN:SOY:shadow",
-            "FOOD:rice\\u200B", "FOOD:rice\\u2060", "FOOD:rice\\u200D",
-            "ALLERGEN:SOY\\u202E"
+            "FOOD:rice\u200B", "FOOD:rice\u2060", "FOOD:rice\u200D",
+            "ALLERGEN:SOY\u202E"
         )) {
             val result = Gate.review(draft(), request(restrictions = setOf(bad)), host)
             assertEquals(bad, Gate.Status.BLOCKED, result.status)
