@@ -90,6 +90,31 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun missingOriginReceiptMovementCannotMasqueradeAsKnownZeroStock() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        val credit = db.foodDao().movements(origin).single()
+        val operationsBefore = db.foodDao().operationCount()
+        val consumptionBefore = db.foodDao().consumptionCount()
+        val sql = db.openHelper.writableDatabase
+
+        // A damaged imported ledger can retain the batch and its receipt
+        // operation while losing the physical credit. The SQL balance then
+        // reports zero, which must not be mistaken for confirmed zero stock.
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(credit.id))
+        assertEquals(0L, db.foodDao().balance(batchId))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+
+        // Restoring historical evidence, not booking a new operation,
+        // recovers the original revision and recipe context.
+        db.foodDao().insertMovement(credit)
+        assertEquals(original, requireNotNull(store.readRecipeRoomStockSnapshot()))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
+        assertEquals(operationsBefore, db.foodDao().operationCount())
+        assertEquals(consumptionBefore, db.foodDao().consumptionCount())
+    }
+
     @Test fun duplicateReceiptMovementPerOperationFailsClosedWithoutRejectingLegacyReceipts() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val beforeOperations = db.foodDao().operationCount()

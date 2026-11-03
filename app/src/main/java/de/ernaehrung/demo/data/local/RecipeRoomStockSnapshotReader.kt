@@ -134,6 +134,15 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val receiptCredits = movements.filter { it.movementKind == MovementKind.RECEIPT }
             .groupBy { it.operationId to it.batchId }
         if (receiptCredits.values.any { it.size != 1 }) return null
+        // A batch's persisted receipt operation is not sufficient evidence
+        // that its initial physical credit survived an incomplete import.
+        // Even a current zero balance must not conceal a missing receipt:
+        // zero is a verified amount only when the ledger is complete.
+        if (rows.any { row ->
+                val origin = origins[row.batch.originOperationId]
+                origin?.kind == "RECEIPT" &&
+                    receiptCredits[row.batch.originOperationId to row.batch.id]?.size != 1
+            }) return null
         // A transfer is one atomic physical move, not two independent stock
         // credits/debits. The author operation must have exactly one source and
         // one destination of equal quantity and product version. A damaged

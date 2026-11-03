@@ -28,7 +28,10 @@ internal object RecipeDraftV1Import {
         (value as? String)?.takeIf { it.isNotBlank() }
             ?: throw IllegalArgumentException(name + " must be nonempty string")
     /** Reject untrusted display controls and bidi overrides before manual review. */
-    private fun previewText(value: Any?, name: String, multiline: Boolean = false): String {
+    private fun previewText(
+        value: Any?, name: String, multiline: Boolean = false,
+        identity: Boolean = false
+    ): String {
         val text = str(value, name)
         // Inspect Unicode code points, not UTF-16 chars: supplementary
         // format controls (including invisible tag characters) must not pass.
@@ -43,7 +46,13 @@ internal object RecipeDraftV1Import {
                     Character.getType(cp) != Character.FORMAT.toInt() &&
                     Character.getType(cp) != Character.LINE_SEPARATOR.toInt() &&
                     Character.getType(cp) != Character.PARAGRAPH_SEPARATOR.toInt() &&
-                    cp != 0x034F
+                    cp != 0x034F &&
+                    // Variation selectors are legitimate in visible emoji, but
+                    // invisible distinctions in review/ledger identities can
+                    // turn one displayed ID into a different stored ID.
+                    (!identity || !(cp in 0xFE00..0xFE0F ||
+                        cp in 0xE0100..0xE01EF ||
+                        cp in 0x180B..0x180D || cp == 0x180F))
             ) { name + " contains unsafe display controls" }
             offset += Character.charCount(cp)
         }
@@ -152,7 +161,7 @@ internal object RecipeDraftV1Import {
         rejectUntrustedBookingClaims(p)
         require(p["status"] == "DRAFT") { "only unconfirmed DRAFT status allowed" }
         // The draft ID is displayed beside the recipe title during manual review.
-        val draftId = previewText(p["draftId"], "draftId")
+        val draftId = previewText(p["draftId"], "draftId", identity = true)
         require(draftId.length <= 200) { "draft identifier exceeds host preview limit" }
         val title = previewText(p["title"], "title")
         // Reject content exceeding the host preview limits before it reaches UI or
@@ -196,7 +205,7 @@ internal object RecipeDraftV1Import {
         val lines = ingredients.mapIndexed { index, value ->
             val line = obj(value, "ingredient " + index)
             // The canonical ingredient ID is displayed and used for independent review.
-            val id = previewText(line["foodTypeId"], "ingredient.foodTypeId")
+            val id = previewText(line["foodTypeId"], "ingredient.foodTypeId", identity = true)
             require(id.length <= 200) { "ingredient identity exceeds host preview limit" }
             val label = previewText(line["label"], "ingredient.label")
             require(label.length <= 200) { "ingredient label exceeds host preview limit" }

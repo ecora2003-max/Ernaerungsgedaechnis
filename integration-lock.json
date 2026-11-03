@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "state": "ACTIVE",
   "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II run 11",
+  "ownerChatId": "Integrator-B-automation-turn-11",
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-1793718550503-k464nijri6q",
-  "acquiredAtUtc": "2026-11-03T15:09:10.503Z",
+  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw16s1nq-3dayf0yrtc2",
+  "acquiredAtUtc": "2026-11-03T21:14:57.254Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezeptsave Provenienz und Room-Regression",
-  "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T14:53:50.238Z",
-  "lastReleasedCommit": "8f4cc6cfb391e7b9abac65c7d617d5eef5c3d3b2",
-  "nextStep": "PR #223 bereits geschlossen; nächste Integration III echte Code-/Testeinheit auf neuem Branch; PR #224 ist offen und gehört anderem Integrationslauf; vor jeder Arbeit aktuelle Sperre erneut prüfen"
+  "task": "B0: resolve recipe PRs #222 #224 #225 and documentation PR #227",
+  "workingBranch": "integration-ii-recipe-warning-safety-20261103",
+  "lastReleasedAtUtc": "2026-11-03T20:35:22.747Z",
+  "lastReleasedCommit": "0d93b045634e03e25b69a7dfa52305cb127de066",
+  "nextStep": "A: complete active A1 bon→confirmed purchase→historical price→shopping proposal. B: resolve #222/#224/#225/#227 under B0, then complete recipe→manufacture→separate consumption B1. Actual Android/Offline/Privacy E2E required."
 }
