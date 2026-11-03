@@ -10,7 +10,10 @@ data class BatchRow(@Embedded val batch: BatchEntity, val productName: String, v
 /** Minimal immutable movement evidence for a time-consistent Room stock projection. */
 data class StockMovementSnapshotRow(val id: String, val batchId: String, val operationId: String,
     val movementKind: MovementKind, val delta: Long, val recordedAt: Long, val occurredAt: Long?, val occurredOn: String?,
-    val operationRecordedAt: Long?, val operationKind: String?, val operationResultId: String?)
+    val operationRecordedAt: Long?, val operationKind: String?, val operationResultId: String?,
+    val consumptionId: String?, val consumptionVersionId: String?,
+    val consumptionAmount: Long?, val consumptionDate: String?,
+    val consumptionOccurredAt: Long?, val allocationAmount: Long?)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
 data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
 data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
@@ -170,8 +173,12 @@ internal interface FoodDao {
         m.delta, m.recordedAt, m.occurredAt,
         COALESCE(m.occurredOn, c.date) AS occurredOn,
         o.recordedAt AS operationRecordedAt, o.kind AS operationKind,
-        o.resultId AS operationResultId FROM stock_movements m
+        o.resultId AS operationResultId, c.id AS consumptionId,
+        c.productVersionId AS consumptionVersionId, c.amount AS consumptionAmount,
+        c.date AS consumptionDate, c.occurredAt AS consumptionOccurredAt,
+        a.amount AS allocationAmount FROM stock_movements m
         LEFT JOIN consumption_events c ON c.operationId = m.operationId
+        LEFT JOIN consumption_allocations a ON a.consumptionId = c.id AND a.batchId = m.batchId
         LEFT JOIN operations o ON o.id = m.operationId ORDER BY m.id""")
     suspend fun stockMovementSnapshotRows(): List<StockMovementSnapshotRow>
 
