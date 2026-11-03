@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T10:22:35.821Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezept-Speichern: Nutzeraktionsprovenienz und transaktionale Room-Kontextprüfung",
-  "workingBranch": null,
+  "task": "Reject Unicode line/paragraph separators in recipe restriction identifiers; host and Room regressions",
+  "workingBranch": "integration-iv-20261103-restriction-linebreak",
   "lastReleasedAtUtc": "2026-11-03T10:15:47.409Z",
   "lastReleasedCommit": "f3780a550a5f3055c60f1479f30059172f3a3cbb",
   "nextStep": "Code PR #213 merged f3780a550a5f3055c60f1479f30059172f3a3cbb; exact code/test head 8b41e8a4e23628cb6b111208a208ac41f23c544c CI 41616741649 PASS (555 JVM, 7 Room migrations; no device tests). Docs-only PR #214 open with no independent CI, not merged; earlier docs PRs also open. Next real integration: independently authenticated recipe-save user action, generator/revalidator parity, or Android/privacy E2E; inspect open code PR #210 before touching stock receipt credits. No APK; modules remain open."
