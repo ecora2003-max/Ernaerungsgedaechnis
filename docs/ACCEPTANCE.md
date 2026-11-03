@@ -1,6 +1,6 @@
 # Haupt-App: verbindliche modulübergreifende Integrationsabnahme
 
-Stand 31.10.2026. Die Haupt-App ist der **einzige** schreibende Integrator. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
+Stand 31.10.2026; aktive Priorisierung seit 03.11.2026 gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md). Die Haupt-App ist das **einzige** Schreibrepository; zwei spezialisierte Integratoren schreiben dort nur nacheinander unter exklusiver JSON-Sperre. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
 
 ## 1. Version / unveränderliche Vertrags-SHAs
 
@@ -26,6 +26,13 @@ Stand 31.10.2026. Die Haupt-App ist der **einzige** schreibende Integrator. Dies
 - [ ] **Rezept:** unbestätigter Entwurf → geprüfte, ausdrücklich bestätigte Rezeptversion → tatsächlich bestätigte Herstellung (nur Zutaten-/Outputbuchung) → separat bestätigter Verzehr. Plan, Rezeptentwurf oder Herstellung allein dürfen keine Verzehrbuchung auslösen.
 - [ ] Nach jeder Störung transaktionalen Rollback, Wiederholung, Neueinlesen, App-Neustart und zeit-/versionsrichtige Historie prüfen; nutzbare Vorräte nie negativ.
 
+## 3a. Abnahme der priorisierten bedienbaren Nutzerketten (ab 03.11.2026)
+
+- [ ] **A1 Einkaufsablauf:** tatsächlicher Einstieg in der Android-Oberfläche mit Bon/Kamera/OCR oder lokalem Ersatz, Nutzerkorrektur der Artikel-/Barcode-/Filialversion, explizitem Kauf-Commit über FoodStore, dauerhaftem privaten historischen Preis, korrektem Vergleich und konkret sichtbarem Einkaufsvorschlag. Negativ/Retry/Storno/Offline/Neustart/Rechte-/Zeit-/Unbekannt-Gates aus §3 und §4; ein synthetischer Unit-Test ohne UI reicht **nicht**. Fehlende Livequellen führen zu einem brauchbaren Offlinepfad.
+- [ ] **B1 Rezeptablauf:** reale Generator-/Revalidator-Hostanbindung, alle acht Kontextkombinationen, aktuelle Nährwert-/Allergen-/Kochstatus-/Versionsprüfung, ausdrückliche und unabhängig bis zur FoodStore-Grenze belegte Nutzeraktion, gespeicherte Rezeptversion, bestätigte Herstellung und **separater** Verzehr. Negativ-/Abbruch-/Retry-/Neustart-/Offline-/Privacy-Gates; kein Speichern allein auf Entwurf/OS-Dialog/Checkpoint.
+- [ ] **Android-Gerätebeleg:** `connectedDebugAndroidTest` oder nachvollziehbarer gleichwertiger Emulator-/Geräte-GUI-Lauf auf **exaktem Code-/Test-Commit** mit protokolliertem Gerät/API, getesteter Strecke, Pass/Fail/Skip und Artefakt/Run; explizit Kamera/OCR, Persistenz/Neustart, Offline und Datenschutz. Bei fehlender Hardware/Emulatorinfrastruktur als **BLOCKIERT/OFFEN** kennzeichnen, keine fiktiven Testresultate.
+- [ ] **Meilenstein-Gate:** Erst wenn der gesamte Nutzerablauf und die relevanten vorhandenen Architektur-/FoodStore-/Schema-/Integritätsgates nachgewiesen sind, A1 oder B1 als abgeschlossen kennzeichnen. JVM-Tests bleiben Pflicht, ihre Anzahl ist kein Fortschritts-Prozentsatz. Keine Modulfreigabe allein durch Dokumentation.
+
 ## 4. Room-Bestands-, Kosten- und Datenschutzschutz
 
 - [ ] Synthetische bestandsgefüllte 1→neu, 2→neu, 3→neu, 4→neu, 5→neu, 6→neu und 7→neu Migrationspfade und Fremdschlüssel prüfen. Bei unverändertem Room 7 vorhandene 1→7-Regression vollständig erneut ausführen.
@@ -40,4 +47,4 @@ Stand 31.10.2026. Die Haupt-App ist der **einzige** schreibende Integrator. Dies
 - **ANDROID_DEVICE_VERIFIED:** wirkliche Instrumentation/GUI/Kamera/OCR/optional Modell/Offline-Privacy auf unterstütztem Android-Gerät/Emulator ausgeführt und überprüft; bloßes Kompilieren von `androidTest` zählt nicht.
 - **INTEGRATED:** erst nach den jeweils relevanten Host-, Daten-, Betriebs-, Rechts- und Android-Nachweisen, ohne beschädigte Altfunktionen. `STABLE`-Kontraktfreigabe ist eine gesonderte Architekturentscheidung.
 
-Bei **jeder** Änderung im Hauptrepository in `docs/STATUS.md` protokollieren: gepinnte Modul-/Vertrags-/Host-SHAs, Dateien und Schnittstellen, tatsächlich ausgeführte Kommandos/Actions-Run-URLs, 0/positive Pass/Fail/Skip-Zahlen, separate Geräteprüfungen, offene Gates und den nächsten ausführbaren Schritt. **Nie eine vorhandene Testdatei oder einen gestarteten CI-Lauf als bestandenen Test ausgeben.**
+Bei **jeder materiellen Code-/Teständerung** möglichst im selben Code-PR kurz in `docs/STATUS.md` protokollieren (kein separater Status-PR als Routine): gepinnte Modul-/Vertrags-/Host-SHAs, Dateien und Schnittstellen, tatsächlich ausgeführte Kommandos/Actions-Run-URLs, 0/positive Pass/Fail/Skip-Zahlen, separate Geräteprüfungen, offene Gates und den nächsten ausführbaren Schritt. **Nie eine vorhandene Testdatei oder einen gestarteten CI-Lauf als bestandenen Test ausgeben.**
