@@ -79,6 +79,7 @@ class RecipeRoomStockSnapshotTest {
         val second = store.receive("orphan-join-receipt",
             BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
                 release = ReleaseStatus.RELEASED), true)
+        assertEquals(2, requireNotNull(store.readRecipeRoomStockSnapshot()).lines.size)
         val operations = db.foodDao().operationCount()
         val sql = db.openHelper.writableDatabase
         // Simulate a damaged legacy database: the inner join omits this batch,
