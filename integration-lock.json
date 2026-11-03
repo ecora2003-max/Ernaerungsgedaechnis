@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Room orphaned historical rows / PR #188 reconciliation and regression code",
-  "workingBranch": null,
+  "workingBranch": "integration-iv-room-orphan-joins-reconcile-20261103",
   "lastReleasedAtUtc": "2026-11-03T08:23:36.695Z",
   "lastReleasedCommit": "c1602c1e7dbab7220d264bdcd16bdddd7cb1309c",
   "nextStep": "Code PR #201 merged after exact-head CI 41602137550 PASS (548 JVM, 7 Room); docs-only PR #202 remains open without separate CI. Other docs PRs and orphan-batch code PR #188 await reconciliation/CI. Next: independently authenticated recipe-save user action, generator/revalidator parity, Android/privacy E2E."
