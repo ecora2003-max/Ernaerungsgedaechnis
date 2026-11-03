@@ -227,14 +227,25 @@ class RecipeDraftV1ImportTest {
     }
 
     @Test fun zeroIsInvalidButNullIsUnknownAndNeverConvertedToZero() {
-        val zero = reviewed(change("\"amount\":200", "\"amount\":0"))
+        val zeroJson = change("\\"amount\\":200", "\\"amount\\":0")
+        try {
+            Import.read(zeroJson, states, now)
+            fail("known zero quantity must not reach recipe preview")
+        } catch (_: IllegalArgumentException) { }
+        val zero = reviewed(zeroJson)
         assertEquals(Gate.Status.BLOCKED, zero.status)
-        val unknown = reviewed(change("\"amount\":200", "\"amount\":null"))
+        assertNull(zero.input)
+
+        val unknownJson = change("\\"amount\\":200", "\\"amount\\":null")
+        assertNull(Import.read(unknownJson, states, now).draft.lines.single().amount)
+        val unknown = reviewed(unknownJson)
         assertEquals(Gate.Status.REVIEW_REQUIRED, unknown.status)
         assertTrue("UNKNOWN_AMOUNT" in unknown.gaps)
         assertNull(unknown.input)
-    }
 
+        assertEquals(200L, Import.read(sample, states, now).draft.lines.single().amount)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed().status)
+    }
     @Test fun wrongVersionTypeStatusOrExtraMetaCannotBeImported() {
         for (json in listOf(
             change("1.0.0-draft", "1.1.0-draft"),
