@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration III: Typisierte Rezept-Kontextbindung zeitlich an Hostbeleg gekoppelt (03.11.2026)
+
+- **[Code-PR #168](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/168)**, Code-/Test-HEAD `912687874a18238652bf50744f3c78e4ceccb91a`, Squash-Merge `0d7e0d2b69165f5d8ff564869bdbc6b5be702e12`; **[PR-CI 41549884479](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41549884479) PASS** auf exakt diesem HEAD: **533/533 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte Schema-/Python-Referenzgates, Room-Schema und Android-Testkompilierung. `RecipeDraftV1Import.review` blockiert jetzt einen intern gültigen, aber auf einen anderen Zeitpunkt gebundenen typisierten Kontext, obwohl Producer-Snapshot und unabhängig bestätigter Hostzeitpunkt übereinstimmen; positive/negative JVM-Regression belegt korrekte Annahme und Fail-closed. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK und **keine ausgeführten Android-Geräte-/Privacy-E2E**.
+- **Weiter:** authentifizierte Nutzeraktionsprovenienz beim Rezeptsave, vollständige Generator-/Revalidator-Parität und echte Android-/Privacy-E2E. Die vier Fachmodule bleiben TEILWEISE/OFFEN.
+
+
 ## Integration II: Katalogbestätigungen strikt auf Rezeptzutaten begrenzen (02.11.2026)
 
 - **[Code-PR #148](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/148)**, Code-/Test-HEAD `fd93144002ce1276d989026b0b93d27ba37e83bf`, Squash-Merge `6b81d747a835e3d7963dbf72e31dc133c3ee41c4`; **[PR-CI 41526249184](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41526249184) PASS** auf diesem HEAD: **521/521 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeCatalogEvidence.resolve` verwirft jetzt Katalogbestätigungen außerhalb des Zutaten-Scopes; positive/negative Room-/Robolectric-Regression prüft gemischte/fremde Belege, Erholung und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
