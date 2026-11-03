@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Ernährungsgedächtnis Integration (Chat) run 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-2026-11-03T10:36:49.204Z-rx9a0i4h24",
-  "acquiredAtUtc": "2026-11-03T10:36:49.204Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Review PR #210 CI and integrate next validated Room/recipe action integrity improvement",
-  "workingBranch": "integration-chat-status-210-20261103",
-  "lastReleasedAtUtc": "2026-11-03T10:31:36.067Z",
-  "lastReleasedCommit": "b050f5e512dc1527ab0a7fcfe3d3ffc41abd0f7b",
-  "nextStep": "Integration IV PR #215 merged b050f5e512dc1527ab0a7fcfe3d3ffc41abd0f7b; exact code/test head cc32e6af7d270433fa83e865357c29329356061c CI 41619128025 PASS (557 JVM tests, 7 Room migrations, lint, pinned schema/Python gates, Android test compilation; no device tests or APK). Variation-selector FOOD/ALLERGEN ID spoofing now fail-closed across host/manual/Room. Next: inspect open PR #210 for receipt credit integrity before merging after current-main CI, and implement independently authenticated recipe-save action provenance plus generator/revalidator parity and Android/privacy E2E. docs/STATUS.md for #215 not yet updated; older docs-only PRs remain open. All modules still open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T10:53:52.946Z",
+  "lastReleasedCommit": "880a3ec26c8ae1fc49cb9f935d760404ee2ffbb9",
+  "nextStep": "Integration (Chat) code PR #210 merged 880a3ec26c8ae1fc49cb9f935d760404ee2ffbb9; exact head dc2c17c9e3caeea33913ef727da3ac9f23465620 CI 41621932487 PASS: 558 JVM tests, 7 Room migrations, lint, pinned v1/Python parity, Android test compilation. Duplicate RECEIPT movements by same operation/batch rejected; independently authorized legacy receipt history retained. Failed stricter variant reverted after five regressions. Main push CI 41622939223 pending at release. Docs status PR #216 open without CI (also covers #215). Next: verify main CI and docs PR #216, then independent authenticated recipe-save user action provenance, generator/revalidator parity, Android/privacy E2E. No APK/device tests; all four modules remain open."
 }
