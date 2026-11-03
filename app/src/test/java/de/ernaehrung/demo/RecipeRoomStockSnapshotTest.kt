@@ -174,13 +174,12 @@ class RecipeRoomStockSnapshotTest {
 
         // A transfer is one physical event: distinct persisted instants on its
         // debit and credit cannot both describe that same confirmed movement.
-        val credit = movements.single { it.delta > 0L }
         sql.execSQL("UPDATE stock_movements SET occurredAt = ? WHERE id = ?",
             arrayOf(transferAt.minusSeconds(1).toEpochMilli(), debit.id))
         assertNull(reader.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
-        sql.execSQL("UPDATE stock_movements SET occurredAt = NULL WHERE id = ?",
-            arrayOf(debit.id))
+        sql.execSQL("UPDATE stock_movements SET occurredAt = ? WHERE id = ?",
+            arrayOf(debit.occurredAt, debit.id))
         assertEquals(valid, requireNotNull(reader.readRecipeRoomStockSnapshot()))
 
         // A missing source debit must not leave the destination credit
