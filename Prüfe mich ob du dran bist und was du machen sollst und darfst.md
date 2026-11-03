@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104:mvzzbxfx-jiy4uqhrs9d"
 acquiredAtUtc: "2026-11-03T00:58:41.805Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe-save authenticated action provenance or next verified Kotlin integration"
-workingBranch: null
+task: "Reject malformed or invisible food/allergen restriction tokens in recipe host review"
+workingBranch: "integration-iii/recipe-restriction-token-safety-20261103-run11"
 lastReleasedAtUtc: "2026-11-03T00:51:09.117Z"
 lastReleasedCommit: "826836cf392a73357749833b7aba51315f0e99c2"
 nextStep: "Code PR #174 merged; CI 41555039103 PASS (535 JVM, 7 Room); docs PR #175 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
