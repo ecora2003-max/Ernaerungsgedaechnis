@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T06:58:45.603Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezept-Hostkontext: echte Nutzeraktionsprovenienz und Regressionstests",
-  "workingBranch": null,
+  "task": "Rezeptimport: Unicode-Formatsteuerzeichen in sichtbarem Preview fail-closed abweisen",
+  "workingBranch": "integration-iii/recipe-preview-format-controls-20261103",
   "lastReleasedAtUtc": "2026-11-03T06:48:30.908Z",
   "lastReleasedCommit": "bee2443713d9b6f11203f02a26c25d9918212835",
   "nextStep": "Authentifizierte Rezeptsave-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität oder Android-/Privacy-E2E; Status-PR #191 erst nach passenden Checks mergen"
