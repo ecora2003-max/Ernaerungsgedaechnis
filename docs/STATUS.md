@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 Rezeptversion ausdrücklich speichern (03.11.2026)
+
+- B0 ist über PR #225 (Merge `df067824f00c342dd518867fec55215631e25d3d`) abgeschlossen. B1 ist AKTIV.
+- B1-Code-/Teststand `bf00fdda2b558759cbfb8eb288b3c29bebaeecd4`: nach bestehendem Geräte-Credential-/Room-Consent-Checkpoint zeigt die Küchen-UI einen **separaten** Rezeptsave an; das ViewModel bindet den ursprünglichen, nicht aus JSON stammenden Operation-Key an `FoodStore.saveReviewedRecipeDraftV1`. FoodStore revalidiert Vorschau/Katalog/Digest/TTL transaktional. Positive/negative Room-ViewModel-Tests für fehlenden Consent, falschen Digest, Änderung, Neustart und Retry ergänzt. **PR-CI PENDING**; weder Rezeptsave noch Geräte-E2E als bestanden behaupten.
+- **Offen:** unabhängige kryptografisch prüfbare Nutzeraktionsprovenienz an der FoodStore-Grenze; tatsächlicher Generator/Revalidator samt acht Kontextkombinationen; bestätigte Herstellung und separater Verzehr in derselben UI; Android-/Offline-/Privacy-E2E. Nächster Schritt: CI/Room-Regression dieses PRs prüfen, Fehler korrigieren und erst bei PASS mergen; danach die FoodStore-seitige Aktionsattestation integrieren.
+
 B0-Konsolidierungs-PR #225 enthält die bislang getrennten Code-/Regressionseinheiten #222/#224/#225 und den Nachweis aus #227; #224-Kotlin-Nullability wurde korrigiert. Vollständige CI auf dem konsolidierten HEAD und Android-Geräte-/Offline-/Privacy-E2E sind vor Freigabe gesondert nachzuweisen.
 
 ## Integration (Chat): Rezept-Review-Identitäten ohne unsichtbare Variationsselektoren (03.11.2026)
