@@ -123,6 +123,38 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visible).status)
     }
 
+    @Test fun variationSelectorsCannotDisguiseReviewIdentities() {
+        // A visible review ID must not contain invisible Unicode selectors
+        // that make distinct persisted keys look identical to the user.
+        for (cp in listOf(0xFE0F, 0xE0100, 0x180B, 0x180F)) {
+            val selector = String(Character.toChars(cp))
+            for ((before, after) in listOf(
+                "\"draftId\":\"synthetic-1\"" to
+                    "\"draftId\":\"synthetic" + selector + "-1\"",
+                "\"foodTypeId\":\"rice\"" to
+                    "\"foodTypeId\":\"ri" + selector + "ce\""
+            )) {
+                val invalid = change(before, after)
+                try {
+                    Import.read(invalid, states, now)
+                    fail("invisible identity selector must fail at import")
+                } catch (_: IllegalArgumentException) { }
+                val result = reviewed(invalid)
+                assertEquals(Gate.Status.BLOCKED, result.status)
+                assertNull(result.input)
+            }
+        }
+
+        // Variation selectors used for ordinary visible emoji are allowed
+        // in a title; visible Unicode identity characters also remain valid.
+        val emojiTitle = change("\"title\":\"Reis\"", "\"title\":\"Reis ⚠️\"")
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(emojiTitle).status)
+        val visibleId = change("\"draftId\":\"synthetic-1\"",
+            "\"draftId\":\"synthetic-ä\"")
+        assertEquals("synthetic-ä", Import.read(visibleId, states, now).draftId)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visibleId).status)
+    }
+
     @Test fun validV1DraftRequiresIndependentHostFactsAndExplicitSave() {
         val result = reviewed()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)
