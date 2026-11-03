@@ -59,8 +59,8 @@ ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-IV11-20261103012448304-b72f"
 acquiredAtUtc: "2026-11-03T01:24:48.304Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Host/Room/FoodStore recipe-save provenance validation and regressions"
-workingBranch: null
+task: "Room stock movement occurrence day must not postdate author operation; regression"
+workingBranch: "integration-iv/stock-occurrence-day-after-author-20261103"
 lastReleasedAtUtc: "2026-11-03T01:16:03.145Z"
 lastReleasedCommit: "1aa794bd13847c18cf7a89e205fb0fa50a2bb7e1"
 nextStep: "Code PR #178 merged; CI 41557833412 PASS (537 JVM, 7 Room); docs PR #179 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
