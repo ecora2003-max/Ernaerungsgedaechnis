@@ -113,11 +113,21 @@ internal object RecipeDraftHostGate {
     fun isSupportedRestriction(code: String): Boolean {
         if (!code.startsWith("ALLERGEN:") && !code.startsWith("FOOD:")) return false
         val identifier = code.substringAfter(':', "")
-        return code.count { it == ':' } == 1 && identifier.isNotEmpty() &&
-            identifier.none {
-                it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it) ||
-                    Character.getType(it) == Character.FORMAT.toInt()
-            }
+        if (code.count { it == ':' } != 1 || identifier.isEmpty()) return false
+        // UTF-16 char iteration misses supplementary default-ignorable format
+        // controls (e.g. U+E0061 tag characters) inside restriction IDs.
+        var offset = 0
+        while (offset < identifier.length) {
+            val cp = Character.codePointAt(identifier, offset)
+            if (Character.isWhitespace(cp) || Character.isSpaceChar(cp) ||
+                Character.isISOControl(cp) ||
+                Character.getType(cp) == Character.FORMAT.toInt() ||
+                Character.getType(cp) == Character.SURROGATE.toInt() ||
+                cp == 0x034F
+            ) return false
+            offset += Character.charCount(cp)
+        }
+        return true
     }
 
     fun review(
