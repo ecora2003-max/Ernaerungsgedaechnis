@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae66058b40c8191b8efb843b437b0ca",
-  "ownerChatId": "Integration IV turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae66058b40c8191b8efb843b437b0ca-1793715790586-IV11",
-  "acquiredAtUtc": "2026-11-03T14:23:10.586Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezept-Speichern Nutzeraktionsgrenze",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T14:15:28.693Z",
-  "lastReleasedCommit": "cd6623464c01d076afd463d858cd6e98a68626ba",
-  "nextStep": "Konkrete Kotlin-Änderung mit Regression und PR-CI; Codepfade via Git tree API identifiziert"
+  "lastReleasedAtUtc": "2026-11-03T14:23:40.412Z",
+  "lastReleasedCommit": "7bb90da9481f150694d45db20f1cb92d16b74908",
+  "nextStep": "Gezielte Kotlin-Korrektur mit Regression; Rezeptsave-Authentifizierung weiter offen"
 }
