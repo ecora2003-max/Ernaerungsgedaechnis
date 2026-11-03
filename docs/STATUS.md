@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 Rezeptsave→Herstellung-UI-Handoff (04.11.2026)
+
+- PR #229 wurde nach exakter CI 41728714642 (568 JVM, 7 Room-Migrationen) als `6f1343d9` gemergt. Die gespeicherte Rezeptversion ist im KitchenEditor sichtbar; weiterhin keine automatische Herstellung oder Verzehrbuchung.
+- Arbeitsbranch `integration-b-recipe-production-handoff-20261104`, Code-/Teststand `8dcb4d52`: ausdrückliche UI-Aktion übernimmt die gespeicherte Rezeptversions-ID in den bereits vorhandenen Herstellungseditor, öffnet das Formular und leert alte Mengen-/Lager-/Bestätigungswerte. Room-/ViewModel-Negativprüfung und Robolectric-Compose-Expansionstest ergänzt. **CI PENDING, keine Geräteabnahme.**
+- Nächster Anschluss B1: unabhängig überprüfbare Nutzeraktionsprovenienz an FoodStore, Generator/v1-Revalidator und acht Kontextkombinationen; danach bestätigte Herstellung und separaten Verzehr in derselben Android-Nutzerstrecke samt Offline-/Privacy-/Geräte-E2E belegen.
+
 ## Integrator B – B1 Rezeptversion ausdrücklich speichern (03.11.2026)
 
 - B0 ist über PR #225 (Merge `df067824f00c342dd518867fec55215631e25d3d`) abgeschlossen. B1 ist AKTIV.
