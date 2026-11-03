@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T08:45:56.904Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Implement concrete Room recipe-context integrity regression",
-  "workingBranch": null,
+  "task": "Fail closed on ambiguous or chronologically reversed Room product-version histories in recipe shopping context",
+  "workingBranch": "integration/chat-recipe-shopping-version-chronology-20261103",
   "lastReleasedAtUtc": "2026-11-03T08:34:24.424Z",
   "lastReleasedCommit": "5aa5fb4fc87b50785fffe3aab6eb7964f3f1dcef",
   "nextStep": "Code PR #203 merged after exact-head CI 41603409094 PASS (d4fa1f59ed99223744dd6817d66d650088850dbf); superseded PR #188 closed. Docs-only PR #204 pending without own CI. Next code: independently authenticated recipe-save user action, generator/revalidator parity and real Android/privacy E2E; module gates remain open."
