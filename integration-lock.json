@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae66058b40c8191b8efb843b437b0ca",
-  "ownerChatId": "Integration IV 2026-11-03 11:22 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae66058b40c8191b8efb843b437b0ca-20261103102235819-z5o66buyv7",
-  "acquiredAtUtc": "2026-11-03T10:22:35.821Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Reject Unicode line/paragraph separators in recipe restriction identifiers; host and Room regressions",
-  "workingBranch": "integration-iv-20261103-restriction-linebreak",
-  "lastReleasedAtUtc": "2026-11-03T10:15:47.409Z",
-  "lastReleasedCommit": "f3780a550a5f3055c60f1479f30059172f3a3cbb",
-  "nextStep": "Code PR #213 merged f3780a550a5f3055c60f1479f30059172f3a3cbb; exact code/test head 8b41e8a4e23628cb6b111208a208ac41f23c544c CI 41616741649 PASS (555 JVM, 7 Room migrations; no device tests). Docs-only PR #214 open with no independent CI, not merged; earlier docs PRs also open. Next real integration: independently authenticated recipe-save user action, generator/revalidator parity, or Android/privacy E2E; inspect open code PR #210 before touching stock receipt credits. No APK; modules remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T10:31:36.067Z",
+  "lastReleasedCommit": "b050f5e512dc1527ab0a7fcfe3d3ffc41abd0f7b",
+  "nextStep": "Integration IV PR #215 merged b050f5e512dc1527ab0a7fcfe3d3ffc41abd0f7b; exact code/test head cc32e6af7d270433fa83e865357c29329356061c CI 41619128025 PASS (557 JVM tests, 7 Room migrations, lint, pinned schema/Python gates, Android test compilation; no device tests or APK). Variation-selector FOOD/ALLERGEN ID spoofing now fail-closed across host/manual/Room. Next: inspect open PR #210 for receipt credit integrity before merging after current-main CI, and implement independently authenticated recipe-save action provenance plus generator/revalidator parity and Android/privacy E2E. docs/STATUS.md for #215 not yet updated; older docs-only PRs remain open. All modules still open."
 }
