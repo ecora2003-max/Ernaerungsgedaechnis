@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration III 2026-11-03 10h",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104-mw0gjtzp-e6c9qyis51",
-  "acquiredAtUtc": "2026-11-03T09:00:44.053Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Document verified Integration III Room catalog metadata CI and merge",
-  "workingBranch": "integration-iii-catalog-metadata-status-20261103",
-  "lastReleasedAtUtc": "2026-11-03T08:59:31.660Z",
-  "lastReleasedCommit": "f35c64fcc0d953eb1dfd749758a5cfb6d78fa009",
-  "nextStep": "PR #205 merged after exact-head CI 41606690756 PASS (8b7dc2e1, 550/550 JVM, 7/7 Room migrations, Lint, pinned Python/schema gates, androidTest compilation). Next: document code/CI SHA in short docs/STATUS.md via own docs PR, then independent authenticated recipe-save action and generator/revalidator parity; real Android/privacy E2E remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T09:15:15.868Z",
+  "lastReleasedCommit": "257fa4612bf2538582b7873eac749294ff4b42b4",
+  "nextStep": "Code PR #206 merged after exact-head CI 41607860528 PASS (e5b645c4, 551/551 JVM, 7/7 Room migrations, Lint, pinned schema/Python gates, androidTest compilation). Docs-only PR #207 open without own CI; do not merge without PASS. Next: independently authenticated recipe-save action and generator/revalidator parity; Android/privacy device E2E still open."
 }
