@@ -1016,6 +1016,16 @@ class RecipeRoomStockSnapshotTest {
             "UPDATE consumption_allocations SET amount = ? WHERE consumptionId = ? AND batchId = ?",
             arrayOf(100L, consumption.id, batchId))
 
+        // Even a locally matching allocation cannot authorize an event whose
+        // total consumed quantity no longer matches all its allocations.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET amount = ? WHERE id = ?",
+            arrayOf(101L, consumption.id))
+        assertNull(after.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET amount = ? WHERE id = ?",
+            arrayOf(100L, consumption.id))
+
         // The operation's result must point to this actual consumption event,
         // not just to an arbitrary nonblank identifier.
         db.openHelper.writableDatabase.execSQL(
