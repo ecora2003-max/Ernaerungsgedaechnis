@@ -152,6 +152,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     movement.allocationAmount <= 0L ||
                     movement.consumptionAllocatedTotal == null ||
                     movement.consumptionAmount != movement.consumptionAllocatedTotal ||
+                    // A matching amount on this one movement does not prove
+                    // that every allocation has exactly one physical deduction.
+                    // Reject missing or duplicated movement evidence for any
+                    // batch allocated by the same confirmed consumption.
+                    movement.unmatchedConsumptionAllocations != 0 ||
                     movement.delta != -movement.allocationAmount ||
                     movement.consumptionDate != movement.occurredOn ||
                     movement.consumptionOccurredAt != movement.occurredAt)) return null
@@ -241,7 +246,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 it.occurredAt, it.occurredOn, it.consumptionId,
                 it.consumptionVersionId, it.consumptionAmount, it.consumptionDate,
                 it.consumptionOccurredAt, it.allocationAmount,
-                it.consumptionAllocatedTotal) },
+                it.consumptionAllocatedTotal, it.unmatchedConsumptionAllocations) },
             eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
