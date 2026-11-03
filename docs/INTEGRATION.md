@@ -1,6 +1,6 @@
 # Integration der Fachmodule in die Android-Haupt-App
 
-Stand 01.11.2026. Verbindliche Abnahmekriterien: [ACCEPTANCE.md](ACCEPTANCE.md); laufender, commitgenauer Nachweis: [STATUS.md](STATUS.md). Diese Datei beschreibt **Schnittstellen und Grenzen**, keine produktive Freigabe.
+Stand 01.11.2026; Steuerung seit 03.11.2026 gemäß [funktionsorientiertem Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md) mit zwei zeitversetzten Integratoren und jeweils genau einem aktiven End-to-End-Meilenstein. Die bestehenden Host-Schnittstellen bleiben unverändert. Verbindliche Abnahmekriterien: [ACCEPTANCE.md](ACCEPTANCE.md); laufender, commitgenauer Nachweis: [STATUS.md](STATUS.md). Diese Datei beschreibt **Schnittstellen und Grenzen**, keine produktive Freigabe.
 
 ## Architektur und Schreibhoheit
 
