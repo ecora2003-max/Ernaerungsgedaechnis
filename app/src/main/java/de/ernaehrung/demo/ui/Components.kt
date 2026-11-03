@@ -87,7 +87,9 @@ import de.ernaehrung.demo.navigation.*
         options.forEach{FilterChip(selected==it,{onSelect(it)},label={Text(it)},modifier=Modifier.heightIn(min=48.dp),colors=FilterChipDefaults.filterChipColors(selectedContainerColor=Forest,selectedLabelColor=Color.White))}
     }
 }
-@Composable fun Fold(title:String,content:@Composable ColumnScope.()->Unit){var open by remember{mutableStateOf(false)}
+@Composable fun Fold(title:String,openRequest:String?=null,content:@Composable ColumnScope.()->Unit){var open by remember{mutableStateOf(false)}
+    // A deliberate new handoff request expands the form; recomposition alone does not.
+    LaunchedEffect(openRequest) { if (openRequest != null) open = true }
     Panel{
         Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable{open=!open},verticalAlignment=Alignment.CenterVertically){
             Text(title,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium);Icon(if(open)Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,if(open)"Zuklappen" else "Aufklappen")
