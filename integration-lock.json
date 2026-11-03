@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: FoodStore-independent recipe-save user action attestation and Android regression",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-production-handoff-20261104",
   "lastReleasedAtUtc": "2026-11-03T22:17:12.039Z",
   "lastReleasedCommit": "6f1343d93f45dccbc80cf09d401d548dc1e5aad6",
   "nextStep": "B1 ACTIVE: independently verifiable FoodStore-side user-action attestation for recipe save, then connect deterministic offline generator/v1 revalidator and 8 contexts to kitchen UI; verify explicit production and separate consumption plus Android/offline/privacy E2E. PR #229 merged after 568 JVM / 7 Room migrations CI PASS; device gates open."
