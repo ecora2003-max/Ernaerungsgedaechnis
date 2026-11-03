@@ -129,7 +129,20 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
                 compareBy<ProductVersionEntity> { it.productId }.thenBy { it.revision }
             ).map { version ->
                 listOf(version.id, version.productId, version.revision,
-                    version.recordedAt, version.source.name, version.quality.name)
+                    version.recordedAt, version.source.name, version.quality.name,
+                    // Historical identity and ingredient/allergen corrections
+                    // must invalidate a previously reviewed shopping context,
+                    // even when the currently selected version is unchanged.
+                    version.name, version.brand, version.category, version.barcode,
+                    version.baseUnit.name, version.packageAmount,
+                    version.ingredients, version.allergens, version.sourceDetail,
+                    version.changeReason, version.nutritionBasis,
+                    version.energyKcal, version.proteinGrams, version.fatGrams,
+                    version.carbsGrams, version.fiberGrams, version.sugarGrams,
+                    version.saturatedFatGrams, version.saltGrams,
+                    version.calciumMg, version.ironMg, version.magnesiumMg,
+                    version.iodineMicrograms, version.vitaminB12Micrograms,
+                    version.vitaminDMicrograms)
             },
             rows.map { row ->
                 val need = row.need
