@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integration Chat turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-1793709477075-sawxdf5w99",
-  "acquiredAtUtc": "2026-11-03T12:37:57.075Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Review pending Room PR and implement next recipe regression",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T12:24:39.821Z",
+  "lastReleasedAtUtc": "2026-11-03T12:38:19.891Z",
   "lastReleasedCommit": "ccb3744b160a9a4506e27c40fc69ac48a7c282b9",
-  "nextStep": "PR #222 contains Room origin receipt movement integrity fix and Robolectric regression. Wait for exact-head CI; merge only on PASS after current main and lock checks. Continue independent recipe-save user-action attestation."
+  "nextStep": "No code change in this run: GitHub code search returned no target files; inspect PR #221/#222 and actual Kotlin paths, then implement regression under a new lock and run exact-head CI."
 }
