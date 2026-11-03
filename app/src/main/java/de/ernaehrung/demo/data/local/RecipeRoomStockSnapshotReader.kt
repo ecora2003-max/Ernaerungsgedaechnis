@@ -126,6 +126,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         if (movements.size > MAX_MOVEMENTS) return null
         val knownBatches = rows.map { it.batch.id }.toSet()
         val batchVersions = rows.associate { it.batch.id to it.batch.versionId }
+        val batchById = rows.associateBy { it.batch.id }
         // A single confirmed receipt operation may credit a given batch only
         // once. Older imported histories can contain separately authorized
         // receipt operations for that same batch; do not discard those, but
@@ -146,10 +147,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             if (debit.batchId == credit.batchId ||
                 debit.delta != -credit.delta ||
                 batchVersions[debit.batchId] != batchVersions[credit.batchId] ||
-                rows.firstOrNull { it.batch.id == credit.batchId }
-                    ?.batch?.parentBatchId != debit.batchId ||
-                rows.firstOrNull { it.batch.id == credit.batchId }
-                    ?.batch?.originOperationId != operationId) return null
+                batchById[credit.batchId]?.batch?.parentBatchId != debit.batchId ||
+                batchById[credit.batchId]?.batch?.originOperationId != operationId) return null
         }
         // Planning balances sum every stored movement, including legacy or
         // future-dated rows. Never expose those as current physical stock.
