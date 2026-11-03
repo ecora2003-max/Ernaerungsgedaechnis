@@ -105,6 +105,21 @@ internal object RecipeDraftHostGate {
         val approvalBasisDigest: String? = null
     )
 
+    /**
+     * Shared host-token syntax for manual evidence acquisition and final review.
+     * A malformed token must never produce a durable confirmation that the
+     * later FoodStore gate would reject (or silently fail to match).
+     */
+    fun isSupportedRestriction(code: String): Boolean {
+        if (!code.startsWith("ALLERGEN:") && !code.startsWith("FOOD:")) return false
+        val identifier = code.substringAfter(':', "")
+        return code.count { it == ':' } == 1 && identifier.isNotEmpty() &&
+            identifier.none {
+                it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it) ||
+                    Character.getType(it) == Character.FORMAT.toInt()
+            }
+    }
+
     fun review(
         draft: Draft, request: Request, facts: Map<String, HostLine>,
         /** Context must be the independently approved projection for this request. */
@@ -170,21 +185,14 @@ internal object RecipeDraftHostGate {
         val allergies = linkedSetOf<String>()
         val bannedFoods = linkedSetOf<String>()
         for (code in request.confirmedRestrictions) {
-            // Restriction identifiers are exact host tokens, not display labels.
-            // An extra delimiter, invisible format character or trailing whitespace in FOOD:rice must not silently
-            // miss the matching ingredient and authorize a restricted recipe.
-            val identifier = code.substringAfter(':', "")
-            if (code.count { it == ':' } != 1 || identifier.isEmpty() || identifier.any {
-                    it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it) ||
-                        Character.getType(it) == Character.FORMAT.toInt()
-                }) {
+            if (!isSupportedRestriction(code)) {
                 blockers += "UNSUPPORTED_RESTRICTION"
                 continue
             }
+            val identifier = code.substringAfter(':')
             when {
                 code.startsWith("ALLERGEN:") -> allergies += identifier
                 code.startsWith("FOOD:") -> bannedFoods += identifier
-                else -> blockers += "UNSUPPORTED_RESTRICTION"
             }
         }
         val items = mutableListOf<RecipeItemInput>()
