@@ -150,6 +150,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 // timed movements. Contradictory legacy instants invalidate stock.
                 (debit.occurredAt != null && credit.occurredAt != null &&
                     debit.occurredAt != credit.occurredAt) ||
+                // A transfer's two physical ledger legs also share one local
+                // occurrence day. Different legacy days are not one transfer.
+                (debit.occurredOn != null && credit.occurredOn != null &&
+                    debit.occurredOn != credit.occurredOn) ||
                 batchVersions[debit.batchId] != batchVersions[credit.batchId] ||
                 batchById[credit.batchId]?.batch?.parentBatchId != debit.batchId ||
                 batchById[credit.batchId]?.batch?.originOperationId != operationId) return null
