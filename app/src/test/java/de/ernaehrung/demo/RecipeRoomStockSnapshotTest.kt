@@ -994,4 +994,50 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+
+    @Test fun consumptionMovementRequiresMatchingEventAndBatchAllocation() = runBlocking {
+        val eventAt = at.plusSeconds(30).toEpochMilli()
+        val after = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val key = "room-stock-consumption-evidence"
+        after.consume(key, ConsumptionInput(versionId, "2026-11-01", "Snack",
+            100L, listOf(Allocation(batchId, 100L)), occurredAt = eventAt), true)
+        val valid = requireNotNull(after.readRecipeRoomStockSnapshot())
+        assertEquals(1_900L, valid.lines.single().amountMilli)
+        val consumption = requireNotNull(db.foodDao().consumptionForOperation(key))
+        val operations = db.foodDao().operationCount()
+
+        // A changed allocation must not be silently accepted because the
+        // stock movement still claims the original deduction.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_allocations SET amount = ? WHERE consumptionId = ? AND batchId = ?",
+            arrayOf(99L, consumption.id, batchId))
+        assertNull(after.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_allocations SET amount = ? WHERE consumptionId = ? AND batchId = ?",
+            arrayOf(100L, consumption.id, batchId))
+
+        // The operation's result must point to this actual consumption event,
+        // not just to an arbitrary nonblank identifier.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET resultId = ? WHERE id = ?", arrayOf(batchId, key))
+        assertNull(after.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE operations SET resultId = ? WHERE id = ?", arrayOf(consumption.id, key))
+
+        // A physical movement cannot silently inherit a changed diary day.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET date = ? WHERE id = ?",
+            arrayOf("2026-11-02", consumption.id))
+        assertNull(after.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET date = ? WHERE id = ?",
+            arrayOf("2026-11-01", consumption.id))
+
+        val restored = requireNotNull(after.readRecipeRoomStockSnapshot())
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(valid.lines, restored.lines)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(1, db.foodDao().consumptionCount())
+    }
+
 }
