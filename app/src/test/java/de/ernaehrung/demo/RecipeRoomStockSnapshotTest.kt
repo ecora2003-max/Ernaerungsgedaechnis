@@ -239,6 +239,8 @@ class RecipeRoomStockSnapshotTest {
         val complete = requireNotNull(store.readRecipeRoomStockSnapshot())
         assertEquals(2, complete.lines.size)
         val operations = db.foodDao().operationCount()
+        val origin = requireNotNull(db.foodDao().batch(second)).originOperationId
+        val receiptCredit = db.foodDao().movements(origin).single { it.batchId == second }
         val sql = db.openHelper.writableDatabase
         // A damaged legacy batch with no movement is invisible to the
         // planning INNER JOIN; a valid first batch must not mask the omission.
@@ -259,6 +261,10 @@ class RecipeRoomStockSnapshotTest {
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(complete).status)
         rewriteBatchReference("locationId", locationId)
+        // Restoring the join alone cannot make a missing physical receipt
+        // credit known stock; recover the historical evidence first.
+        assertNull(store.readRecipeRoomStockSnapshot())
+        db.foodDao().insertMovement(receiptCredit)
         val restoredLocation = requireNotNull(store.readRecipeRoomStockSnapshot())
         assertEquals(2, restoredLocation.lines.size)
         assertEquals(2_000L,
