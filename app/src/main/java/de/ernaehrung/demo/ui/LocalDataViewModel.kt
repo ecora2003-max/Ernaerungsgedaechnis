@@ -39,6 +39,7 @@ internal data class RecipeDraftConsentUiState(
     val recordedDigest: String? = null,
     val sessionId: String? = null,
     val attemptVersion: Int = 0,
+    val savedRecipeVersionId: String? = null,
     val error: String? = null
 )
 
@@ -252,6 +253,9 @@ class LocalDataViewModel internal constructor(
     private val recipeDraftConsent = MutableStateFlow(RecipeDraftConsentUiState())
     internal val recipeDraftConsentState = recipeDraftConsent.asStateFlow()
     private var pendingRecipeDraft: PendingRecipeDraft? = null
+    // This is a durable Room consent key, not cryptographic human identity proof.
+    private var pendingReviewedSave: PendingRecipeDraft? = null
+    private var recipeSaveJob: kotlinx.coroutines.Job? = null
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
     private var recipeConsentJob: kotlinx.coroutines.Job? = null
 
@@ -261,9 +265,10 @@ class LocalDataViewModel internal constructor(
     internal fun clearRecipeDraftConsent() {
         // An explicit consent already in-flight must finish or fail transactionally.
         // Editing cannot silently cancel an action that may have committed to Room.
-        if (recipeConsentJob?.isActive == true) return
+        if (recipeConsentJob?.isActive == true || recipeSaveJob?.isActive == true) return
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
+        pendingReviewedSave = null
         // Editing invalidates the gesture, never the short-lived opaque key:
         // retyping JSON after process death must not erase its pending operation.
         // A different revalidated digest replaces the key on the next preview.
@@ -288,9 +293,10 @@ class LocalDataViewModel internal constructor(
     ) {
         // Never cancel a consent that may already have committed inside Room.
         // A second programmatic preview request must wait for the first transaction.
-        if (recipeConsentJob?.isActive == true) return
+        if (recipeConsentJob?.isActive == true || recipeSaveJob?.isActive == true) return
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
+        pendingReviewedSave = null
         recipeDraftConsent.value = RecipeDraftConsentUiState(busy = true)
         val immutableFacts = confirmations.mapValues { (_, line) ->
             line.copy(allergens = line.allergens.toMap())
@@ -331,6 +337,11 @@ class LocalDataViewModel internal constructor(
                         key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review)
                 } else if (recordedKey != null) {
+                    // Recovered Room consent permits a separate save gesture,
+                    // never replay of a previous device-authentication result.
+                    pendingReviewedSave = PendingRecipeDraft(
+                        recordedKey, "", json, immutableRequest, immutableFacts,
+                        reviewedStates.toMap(), review)
                     // A durable Room checkpoint wins over a stale pending-key file.
                     runCatching {
                         pendingKeyStore.finish(requireNotNull(review.approvalBasisDigest), recordedKey)
@@ -371,6 +382,7 @@ class LocalDataViewModel internal constructor(
                 runCatching { pendingKeyStore.finish(recorded, session.operationKey) }
                 if (pendingRecipeDraft === session) {
                     pendingRecipeDraft = null
+                    pendingReviewedSave = session
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
                         review = session.review, recordedDigest = recorded)
                 }
@@ -383,6 +395,40 @@ class LocalDataViewModel internal constructor(
                         review = session.review, sessionId = session.sessionId,
                         attemptVersion = recipeDraftConsent.value.attemptVersion + 1,
                         error = "Bestätigung nicht gespeichert: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /** A separate save gesture after durable consent; FoodStore revalidates the
+     * original JSON, catalog evidence, digest and operation key in one transaction.
+     * This only persists a recipe version; it never books cooking or eating.
+     */
+    internal fun saveConfirmedRecipeDraft(approvalBasisDigest: String) {
+        val session = pendingReviewedSave ?: return
+        val state = recipeDraftConsent.value
+        if (state.busy || state.savedRecipeVersionId != null ||
+            state.recordedDigest != approvalBasisDigest ||
+            session.review.approvalBasisDigest != approvalBasisDigest) return
+        recipeDraftConsent.value = state.copy(busy = true, error = null)
+        recipeSaveJob = viewModelScope.launch {
+            try {
+                val version = store.saveReviewedRecipeDraftV1(
+                    session.operationKey, session.json, session.request,
+                    session.confirmations, session.reviewedStates, session.review, true)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pendingReviewedSave === session) {
+                    pendingReviewedSave = null
+                    recipeDraftConsent.value = recipeDraftConsent.value.copy(
+                        busy = false, savedRecipeVersionId = version, error = null)
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (pendingReviewedSave === session) {
+                    recipeDraftConsent.value = recipeDraftConsent.value.copy(
+                        busy = false, error = "Rezeptversion nicht gespeichert: ${error.message}")
                 }
             }
         }
