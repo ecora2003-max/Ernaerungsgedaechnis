@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "manual-integration-steering-20261103",
-  "ownerChatId": "user-directed-development-governance-update",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "manual-governance-20261103-ad208e561d88",
-  "acquiredAtUtc": "2026-11-03T20:24:05.850Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Reorganize integration delivery instructions and automations, no app code",
-  "workingBranch": "governance/two-functional-integrators-20261103",
-  "lastReleasedAtUtc": "2026-11-03T15:44:43.361Z",
-  "lastReleasedCommit": "8355393b99e9afb3a6a895b94bcb9f1f6e77eb1a",
-  "nextStep": "Code PR #226 merged, exact PR CI 41665882272 PASS (562 JVM/7 migrations). Status PR #227 awaits CI and merge; reconcile open PR #225 against current main. Next code: independent recipe-save user-action provenance and Android/privacy E2E."
+  "task": "Two-integrator governance adopted; no integration code executed in governance update",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T20:35:22.747Z",
+  "lastReleasedCommit": "0d93b045634e03e25b69a7dfa52305cb127de066",
+  "nextStep": "A: complete active A1 bon→confirmed purchase→historical price→shopping proposal. B: resolve #222/#224/#225/#227 under B0, then complete recipe→manufacture→separate consumption B1. Actual Android/Offline/Privacy E2E required."
 }
