@@ -159,6 +159,69 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun extraConsumptionAllocationWithoutMovementInvalidatesWholeStockSnapshot() = runBlocking {
+        val otherBatch = store.receive("allocation-orphan-other-receipt",
+            BatchInput(versionId, locationId, 300L, acquiredOn = "2026-11-01",
+                release = ReleaseStatus.RELEASED), true)
+        val later = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val consumptionId = later.consume("allocation-orphan-consumption",
+            ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
+                listOf(Allocation(batchId, 100L)),
+                occurredAt = at.plusSeconds(30).toEpochMilli()), true)
+        val reader = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val complete = requireNotNull(reader.readRecipeRoomStockSnapshot())
+        assertEquals(2, complete.lines.size)
+        val beforeOperations = db.foodDao().operationCount()
+        val beforeConsumption = db.foodDao().consumptionCount()
+
+        // Corrupt only the imported consumption ledger: its new allocation
+        // has no corresponding physical stock movement. Its total still
+        // agrees with the consumption event, so amount-only checks miss it.
+        db.foodDao().insertAllocation(ConsumptionAllocationEntity(
+            consumptionId, otherBatch, 50L))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET amount = ? WHERE id = ?",
+            arrayOf(150L, consumptionId))
+        assertNull(reader.readRecipeRoomStockSnapshot())
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+
+        db.openHelper.writableDatabase.execSQL(
+            "DELETE FROM consumption_allocations WHERE consumptionId = ? AND batchId = ?",
+            arrayOf(consumptionId, otherBatch))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE consumption_events SET amount = ? WHERE id = ?",
+            arrayOf(100L, consumptionId))
+        val restored = requireNotNull(reader.readRecipeRoomStockSnapshot())
+        assertEquals(complete, restored)
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+    }
+
+    @Test fun duplicateConsumptionMovementForOneAllocationFailsClosed() = runBlocking {
+        val later = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        later.consume("allocation-duplicate-consumption",
+            ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
+                listOf(Allocation(batchId, 100L)),
+                occurredAt = at.plusSeconds(30).toEpochMilli()), true)
+        val reader = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val complete = requireNotNull(reader.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val beforeConsumption = db.foodDao().consumptionCount()
+        val duplicateId = "legacy-duplicate-consumption-movement"
+        db.foodDao().insertMovement(StockMovementEntity(
+            duplicateId, batchId, "allocation-duplicate-consumption",
+            -100L, MovementKind.CONSUMPTION, at.plusSeconds(30).toEpochMilli(),
+            Source.USER, "Duplicate legacy movement", at.plusSeconds(60).toEpochMilli(),
+            occurredOn = "2026-11-01"))
+        assertNull(reader.readRecipeRoomStockSnapshot())
+        db.openHelper.writableDatabase.execSQL(
+            "DELETE FROM stock_movements WHERE id = ?", arrayOf(duplicateId))
+        assertEquals(complete, requireNotNull(reader.readRecipeRoomStockSnapshot()))
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+    }
+
     @Test fun stockReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
         val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()

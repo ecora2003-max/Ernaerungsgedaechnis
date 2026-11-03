@@ -14,7 +14,7 @@ data class StockMovementSnapshotRow(val id: String, val batchId: String, val ope
     val consumptionId: String?, val consumptionVersionId: String?,
     val consumptionAmount: Long?, val consumptionDate: String?,
     val consumptionOccurredAt: Long?, val allocationAmount: Long?,
-    val consumptionAllocatedTotal: Long?)
+    val consumptionAllocatedTotal: Long?, val unmatchedConsumptionAllocations: Int?)
 data class MovementRow(@Embedded val movement: StockMovementEntity, val productName: String, val unit: BaseUnit)
 data class OperationRow(@Embedded val operation: OperationEntity, val reversedBy: String?)
 data class IngredientRow(@Embedded val ingredient: RecipeIngredientEntity, val productName: String)
@@ -180,7 +180,13 @@ internal interface FoodDao {
         c.date AS consumptionDate, c.occurredAt AS consumptionOccurredAt,
         a.amount AS allocationAmount,
         (SELECT SUM(a2.amount) FROM consumption_allocations a2
-            WHERE a2.consumptionId = c.id) AS consumptionAllocatedTotal
+            WHERE a2.consumptionId = c.id) AS consumptionAllocatedTotal,
+        (SELECT COUNT(*) FROM consumption_allocations a3
+            WHERE a3.consumptionId = c.id AND
+            (SELECT COUNT(*) FROM stock_movements m2
+                WHERE m2.operationId = m.operationId AND m2.batchId = a3.batchId
+                AND m2.kind = 'CONSUMPTION' AND m2.delta = -a3.amount) <> 1
+        ) AS unmatchedConsumptionAllocations
         FROM stock_movements m
         LEFT JOIN consumption_events c ON c.operationId = m.operationId
         LEFT JOIN consumption_allocations a ON a.consumptionId = c.id AND a.batchId = m.batchId
