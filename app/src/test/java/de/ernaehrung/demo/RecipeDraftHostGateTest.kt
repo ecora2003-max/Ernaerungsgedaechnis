@@ -192,6 +192,28 @@ class RecipeDraftHostGateTest {
         ).status)
     }
 
+    @Test fun visualUnicodeLineSeparatorsCannotSpoofFoodOrAllergenExclusions() {
+        val host = mapOf("rice" to fact(allergens = mapOf("SOY" to false)))
+        // Neither U+2028 nor U+2029 is an ISO control. Both render a line
+        // break and could make an exclusion appear to match a different ID.
+        for (separator in listOf("\u2028", "\u2029")) {
+            for (prefix in listOf("FOOD:rice", "ALLERGEN:SOY")) {
+                val token = prefix + separator + "ignored"
+                assertFalse(token, Gate.isSupportedRestriction(token))
+                val result = Gate.review(draft(),
+                    request(restrictions = setOf("FOOD:beans", token)), host)
+                assertEquals(token, Gate.Status.BLOCKED, result.status)
+                assertTrue(token, "UNSUPPORTED_RESTRICTION" in result.blockers)
+                assertNull(token, result.input)
+            }
+        }
+        // A visible identifier is not rejected merely for being non-ASCII.
+        assertTrue(Gate.isSupportedRestriction("FOOD:carrot-🥕"))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, Gate.review(
+            draft(), request(restrictions = setOf("FOOD:carrot-🥕", "ALLERGEN:SOY")),
+            host).status)
+    }
+
     @Test fun incompatibleBasisAndCookStateNeverSilentlyConvert() {
         val drained = Gate.review(draft(), request(), mapOf("rice" to fact(basis = Gate.Basis.DRAINED)))
         assertEquals(Gate.Status.BLOCKED, drained.status)
