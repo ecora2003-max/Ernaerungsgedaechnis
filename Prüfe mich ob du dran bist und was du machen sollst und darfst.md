@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae659b2cf2081918f3414dce24a090e"
-ownerChatId: "Integration II 2026-11-03 02h"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae659b2cf2081918f3414dce24a090e-44df1618d39ac514dac40861ba4cfdec3216dc90"
-acquiredAtUtc: "2026-11-03T01:08:10.503Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Recipe save provenance and restriction validation integration"
-workingBranch: "integration-ii/manual-restriction-token-validation-20261103"
-lastReleasedAtUtc: "2026-11-03T01:07:56.355Z"
-lastReleasedCommit: "bc9203c62b34ec52b7cf99f4275ec5a0500ef495"
-nextStep: "Code PR #176 merged; CI 41556879490 PASS (536 JVM, 7 Room); docs PR #177 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
+task: "Manual recipe restriction token validation: code PR #178 merged, 537 JVM PASS"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-03T01:16:03.145Z"
+lastReleasedCommit: "1aa794bd13847c18cf7a89e205fb0fa50a2bb7e1"
+nextStep: "Code PR #178 merged; CI 41557833412 PASS (537 JVM, 7 Room); docs PR #179 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
