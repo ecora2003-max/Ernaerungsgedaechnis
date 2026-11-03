@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezeptsave: konkrete Nutzeraktions- und Kontextvalidierung mit Kotlin/Room-Regression",
-  "workingBranch": null,
+  "workingBranch": "integration-ii-recipe-identity-bounds-20261103",
   "lastReleasedAtUtc": "2026-11-03T10:03:04.741Z",
   "lastReleasedCommit": "0ca714103c93df46913690bbbdaf96d89d3b54e3",
   "nextStep": "Code PR #211 merged 0ca714103c93df46913690bbbdaf96d89d3b54e3; exact-head a9c5529a21a2dd11597e01e4e4abfca636645350 CI 41615310544 PASS (554 JVM, 7 Room migrations). Docs-only PR #212 open without independent CI; older own docs PRs remain open. Next real integration: independently authenticated recipe-save user action, generator/revalidator parity or Android/privacy E2E; inspect current main/other open code PR #210 first. No APK/device tests; modules remain open."
