@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T05:56:58.755Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore authenticated user-action provenance integration"
-workingBranch: null
+workingBranch: "integration-iii/recipe-consent-key-safety-20261103-0656"
 lastReleasedAtUtc: "2026-11-03T05:55:20.698Z"
 lastReleasedCommit: "d1ba9f9147e7dba285415ec520a9bfe698bbed69"
 nextStep: "Code PR #182 merged; CI 41561954733 PASS (538 JVM, 7 Room); docs PR #183 open without CI; next: authenticated FoodStore user-action provenance, generator/revalidator parity, Android/privacy E2E"
