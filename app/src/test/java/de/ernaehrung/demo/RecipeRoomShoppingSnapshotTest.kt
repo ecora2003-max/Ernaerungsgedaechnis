@@ -356,6 +356,46 @@ class RecipeRoomShoppingSnapshotTest {
     }
 
 
+    @Test fun earlierCatalogRevisionCannotFollowItsSuccessorOrSilentlyChangeEvidence() = runBlocking {
+        val olderVersionId = versionId
+        val older = requireNotNull(db.foodDao().version(olderVersionId))
+        clock += 1_000L
+        versionId = store.rememberProduct("shopping-catalog-successor",
+            ProductInput("Reis neu", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = older.productId)
+        store.savePlan("shopping-catalog-history-plan", plan(200_000L))
+        val valid = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(versionId, valid.lines.single().versionId)
+        val before = db.foodDao().operationCount()
+        val sql = db.openHelper.writableDatabase
+
+        // The currently selected revision is sound, but its predecessor
+        // claims to have been recorded later. A latest-only check misses it.
+        sql.execSQL("UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(clock + 60_000L, olderVersionId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
+        // Passing the future timestamp cannot repair reversed revision history.
+        clock += 61_000L
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+
+        // A legitimate correction within the chronology must still invalidate
+        // the previous context digest, even though the selected version is unchanged.
+        sql.execSQL("UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(older.recordedAt + 500L, olderVersionId))
+        val corrected = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(valid.lines, corrected.lines)
+        assertNotEquals(valid.revision, corrected.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
+
+        sql.execSQL("UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(older.recordedAt, olderVersionId))
+        val restored = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(valid.revision, restored.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun shoppingRecipeEvidenceTracksCatalogProvenanceAndRejectsDemo() = runBlocking {
         store.savePlan("shopping-provenance-plan", plan(200_000L))
         val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
