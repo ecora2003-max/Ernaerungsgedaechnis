@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integration Chat automation turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-20261103T1339Z-eo7a61kvt6",
-  "acquiredAtUtc": "2026-11-03T13:39:19.476Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Implement next bounded Room/host integrity regression",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T13:23:32.807Z",
-  "lastReleasedCommit": "49df7cb87f1b0b6adf046e864349b43245cd3ca8",
-  "nextStep": "No code changes in this run; inspect concrete Kotlin source and implement independently authenticated recipe save action provenance with regression tests, or continue next bounded Room/host integrity fix."
+  "lastReleasedAtUtc": "2026-11-03T13:39:52.508Z",
+  "lastReleasedCommit": "1bd491e4490f625822a6442a7d686ff3241eeefe",
+  "nextStep": "Inspect existing PR #221/#222 and implement a distinct, bounded Kotlin/Room regression; this run performed no code changes."
 }
