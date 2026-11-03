@@ -90,6 +90,48 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun orphanBatchHiddenByEitherPlanningJoinFailsClosedWithoutBooking() = runBlocking {
+        val second = store.receive("orphan-join-receipt",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                release = ReleaseStatus.RELEASED), true)
+        val complete = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2, complete.lines.size)
+        val operations = db.foodDao().operationCount()
+        val sql = db.openHelper.writableDatabase
+        // A damaged legacy batch with no movement is invisible to the
+        // planning INNER JOIN; a valid first batch must not mask the omission.
+        sql.execSQL("DELETE FROM stock_movements WHERE batchId = ?", arrayOf(second))
+
+        fun rewriteBatchReference(column: String, value: String) {
+            sql.execSQL("PRAGMA foreign_keys=OFF")
+            try {
+                sql.execSQL("UPDATE batches SET $column = ? WHERE id = ?",
+                    arrayOf(value, second))
+            } finally {
+                sql.execSQL("PRAGMA foreign_keys=ON")
+            }
+        }
+
+        // Both joins independently matter: location and product version.
+        rewriteBatchReference("locationId", "missing-legacy-location")
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(complete).status)
+        rewriteBatchReference("locationId", locationId)
+        val restoredLocation = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2, restoredLocation.lines.size)
+        assertEquals(2_000L,
+            restoredLocation.lines.single { it.identity == "batch:$batchId" }.amountMilli)
+
+        rewriteBatchReference("versionId", "missing-legacy-version")
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(complete).status)
+        rewriteBatchReference("versionId", versionId)
+        val restoredVersion = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(restoredLocation, restoredVersion)
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun receiptOperationWithConsumptionEvidenceFailsClosedUntilRepaired() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val beforeOperations = db.foodDao().operationCount()
