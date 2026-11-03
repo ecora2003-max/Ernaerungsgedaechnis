@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II 20261103T1209Z-mt8cpth9ym",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261103T1209Z-mt8cpth9ym",
-  "acquiredAtUtc": "2026-11-03T12:09:00Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Next distinct Room recipe context regression",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T11:54:08.795Z",
-  "lastReleasedCommit": "4eb84e715a8a59194b5c7c45e5caf6973ff8f170",
-  "nextStep": "PR #221 merged after successful exact-head CI 41629267613. Next: implement a new distinct Android/Room code and regression unit, verify on exact SHA; authenticated recipe action provenance and device/privacy E2E remain open."
+  "lastReleasedAtUtc": "2026-11-03T12:12:00Z",
+  "lastReleasedCommit": "0677acaa4538ee67da384ba5669a5201f6182758",
+  "nextStep": "No code change this run: GitHub search did not locate intended Room source; select exact file path and implement testable Android change in next run."
 }
