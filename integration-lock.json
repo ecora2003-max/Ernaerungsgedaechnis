@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II 2026-11-03 10UTC",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw0iwr32-fv1pl5q0bzu",
-  "acquiredAtUtc": "2026-11-03T10:06:46.046Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezeptsave: konkrete Nutzeraktions- und Kontextvalidierung mit Kotlin/Room-Regression",
-  "workingBranch": "integration-ii-status-identity-bounds-20261103",
-  "lastReleasedAtUtc": "2026-11-03T10:03:04.741Z",
-  "lastReleasedCommit": "0ca714103c93df46913690bbbdaf96d89d3b54e3",
-  "nextStep": "Code PR #211 merged 0ca714103c93df46913690bbbdaf96d89d3b54e3; exact-head a9c5529a21a2dd11597e01e4e4abfca636645350 CI 41615310544 PASS (554 JVM, 7 Room migrations). Docs-only PR #212 open without independent CI; older own docs PRs remain open. Next real integration: independently authenticated recipe-save user action, generator/revalidator parity or Android/privacy E2E; inspect current main/other open code PR #210 first. No APK/device tests; modules remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T10:15:47.409Z",
+  "lastReleasedCommit": "f3780a550a5f3055c60f1479f30059172f3a3cbb",
+  "nextStep": "Code PR #213 merged f3780a550a5f3055c60f1479f30059172f3a3cbb; exact code/test head 8b41e8a4e23628cb6b111208a208ac41f23c544c CI 41616741649 PASS (555 JVM, 7 Room migrations; no device tests). Docs-only PR #214 open with no independent CI, not merged; earlier docs PRs also open. Next real integration: independently authenticated recipe-save user action, generator/revalidator parity, or Android/privacy E2E; inspect open code PR #210 before touching stock receipt credits. No APK; modules remain open."
 }
