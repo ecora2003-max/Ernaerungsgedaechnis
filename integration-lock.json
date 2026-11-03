@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: Android recipe reviewed save UI→ViewModel→FoodStore with independently attested user action and regression tests",
-  "workingBranch": null,
+  "workingBranch": "integration-b-reviewed-recipe-save-20261103",
   "lastReleasedAtUtc": "2026-11-03T21:31:51.856Z",
   "lastReleasedCommit": "df067824f00c342dd518867fec55215631e25d3d",
   "nextStep": "B1 ACTIVE: implement explicit reviewed recipe version save in Android UI/ViewModel via FoodStore.saveReviewedRecipeDraftV1 after independent user-action attestation; verify retry/abort/changed context, then connect confirmed production and separate consumption, Android/offline/privacy E2E."
