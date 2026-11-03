@@ -192,13 +192,15 @@ class RecipeDraftHostGateTest {
         ).status)
     }
 
-    @Test fun visualUnicodeLineSeparatorsCannotSpoofFoodOrAllergenExclusions() {
+    @Test fun invisibleVariationSelectorsCannotSpoofFoodOrAllergenExclusions() {
         val host = mapOf("rice" to fact(allergens = mapOf("SOY" to false)))
-        // Neither U+2028 nor U+2029 is an ISO control. Both render a line
-        // break and could make an exclusion appear to match a different ID.
-        for (separator in listOf("\u2028", "\u2029")) {
+        val supplementarySelector = String(Character.toChars(0xE0100))
+        // Variation selectors are non-spacing marks, not FORMAT or whitespace.
+        // They must not silently turn a confirmed exclusion into another ID.
+        for (selector in listOf("\uFE0F", "\uFE00", supplementarySelector,
+            "\u180B", "\u180F")) {
             for (prefix in listOf("FOOD:rice", "ALLERGEN:SOY")) {
-                val token = prefix + separator + "ignored"
+                val token = prefix + selector
                 assertFalse(token, Gate.isSupportedRestriction(token))
                 val result = Gate.review(draft(),
                     request(restrictions = setOf("FOOD:beans", token)), host)
@@ -207,8 +209,9 @@ class RecipeDraftHostGateTest {
                 assertNull(token, result.input)
             }
         }
-        // A visible identifier is not rejected merely for being non-ASCII.
+        // Legitimate visible Unicode identifiers remain supported.
         assertTrue(Gate.isSupportedRestriction("FOOD:carrot-🥕"))
+        assertTrue(Gate.isSupportedRestriction("FOOD:cafe\u0301"))
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, Gate.review(
             draft(), request(restrictions = setOf("FOOD:carrot-🥕", "ALLERGEN:SOY")),
             host).status)
