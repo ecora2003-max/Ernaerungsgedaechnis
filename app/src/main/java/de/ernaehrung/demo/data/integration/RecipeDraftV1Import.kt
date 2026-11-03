@@ -263,7 +263,7 @@ internal object RecipeDraftV1Import {
             // offer rows. Generic host projections may be useful for review,
             // but must not advertise a save-ready recipe without a typed,
             // independently approved content binding.
-            context?.contentBindingRequired != true || context.contentBinding == null ->
+            context?.contentBindingRequired != true || context?.contentBinding == null ->
                 base.copy(
                     status = Gate.Status.REVIEW_REQUIRED,
                     gaps = base.gaps + "TYPED_CONTEXT_CONTENT_REQUIRED",
