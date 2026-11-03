@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T01:08:10.503Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe save provenance and restriction validation integration"
-workingBranch: null
+workingBranch: "integration-ii/manual-restriction-token-validation-20261103"
 lastReleasedAtUtc: "2026-11-03T01:07:56.355Z"
 lastReleasedCommit: "bc9203c62b34ec52b7cf99f4275ec5a0500ef495"
 nextStep: "Code PR #176 merged; CI 41556879490 PASS (536 JVM, 7 Room); docs PR #177 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
