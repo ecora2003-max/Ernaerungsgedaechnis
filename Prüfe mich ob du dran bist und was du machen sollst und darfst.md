@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T00:13:05.125Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe context integrity and snapshot regression"
-workingBranch: null
+workingBranch: "integration-ii-restriction-token-validation-20261103-0115"
 lastReleasedAtUtc: "2026-11-03T00:08:09.260Z"
 lastReleasedCommit: "0d7e0d2b69165f5d8ff564869bdbc6b5be702e12"
 nextStep: "Code PR #168 merged, CI 41549884479 PASS (533 JVM, 7 Room); docs PR #169 and earlier #163 remain open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
