@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integration (Chat) automated run 2026-11-03 09:45 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-mw0g0tgo-enbyt7wd95",
-  "acquiredAtUtc": "2026-11-03T08:45:56.904Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Fail closed on ambiguous or chronologically reversed Room product-version histories in recipe shopping context",
-  "workingBranch": "integration/chat-recipe-shopping-version-chronology-20261103",
-  "lastReleasedAtUtc": "2026-11-03T08:34:24.424Z",
-  "lastReleasedCommit": "5aa5fb4fc87b50785fffe3aab6eb7964f3f1dcef",
-  "nextStep": "Code PR #203 merged after exact-head CI 41603409094 PASS (d4fa1f59ed99223744dd6817d66d650088850dbf); superseded PR #188 closed. Docs-only PR #204 pending without own CI. Next code: independently authenticated recipe-save user action, generator/revalidator parity and real Android/privacy E2E; module gates remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T08:59:31.660Z",
+  "lastReleasedCommit": "f35c64fcc0d953eb1dfd749758a5cfb6d78fa009",
+  "nextStep": "PR #205 merged after exact-head CI 41606690756 PASS (8b7dc2e1, 550/550 JVM, 7/7 Room migrations, Lint, pinned Python/schema gates, androidTest compilation). Next: document code/CI SHA in short docs/STATUS.md via own docs PR, then independent authenticated recipe-save action and generator/revalidator parity; real Android/privacy E2E remain open."
 }
