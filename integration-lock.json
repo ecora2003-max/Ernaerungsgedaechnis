@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration III 2026-11-03 08:56 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104-20261103T075623216Z-nrgudavmrl",
-  "acquiredAtUtc": "2026-11-03T07:56:23.216Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Continue pending integration PRs and implement recipe save validation or related Room regression",
-  "workingBranch": "integration-iii-docs-restriction-supplementary-20261103",
-  "lastReleasedAtUtc": "2026-11-03T07:50:31.331Z",
-  "lastReleasedCommit": "f9e34f7abd1335bbfc722f0c906f8fa2c6924db7",
-  "nextStep": "Documentation-only PR #198 awaits suitable checks. Resolve diverged PR #188 only after current-main reconciliation and exact-head CI. Authenticated recipe-save action, Generator/Revalidator parity, Android/privacy E2E remain open."
+  "task": "Integration III: supplementary Unicode restriction token safety, code PR #199 merged, docs PR #200 pending",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T08:02:31.923Z",
+  "lastReleasedCommit": "9ca1122f8b3e20cfea06acd36c5a10b2935d21e5",
+  "nextStep": "Code PR #199 merged after exact-head CI 41599801112 PASS (547 JVM, 7 Room). Docs-only PR #200 remains open without separate CI; previous docs PRs also await suitable checks. Reconcile pending PR #188 on current main with exact-head CI. Next: authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E."
 }
