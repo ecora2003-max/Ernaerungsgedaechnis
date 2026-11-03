@@ -51,20 +51,20 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae66058b40c8191b8efb843b437b0ca"
-ownerChatId: "Integration IV 2026-11-03 07:21"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae66058b40c8191b8efb843b437b0ca-20261103062144589-iv"
-acquiredAtUtc: "2026-11-03T06:21:44.589Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "FoodStore/Room recipe and inventory provenance hardening"
-workingBranch: "integration-iv-room-batch-join-integrity-20261103"
-lastReleasedAtUtc: "2026-11-03T06:14:05.899Z"
+task: "Room batch join completeness regression PR #188 (CI pending)"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-03T06:25:33.424Z"
 lastReleasedCommit: "54750654a37ade66df4ffcb13c5eacc726673800"
-nextStep: "Code PR #186 merged, exact-HEAD CI 41588042412 PASS (541 JVM, 7 Room); docs PR #187 open pending own CI. Next: independent authenticated FoodStore user-action provenance, generator/revalidator parity, Android/privacy device E2E."
+nextStep: "PR #188 code/test HEAD 8b2e8bc78d4abba356f3297b3f10bcf8d53f294f, CI 41589630746 QUEUED: verify exact-HEAD JVM/Room/lint/schema results; merge only on PASS after fresh lock and main-base reconciliation. Docs PR #187 still pending. Then independent authenticated FoodStore recipe-save provenance."
 
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
