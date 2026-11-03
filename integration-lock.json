@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II automation turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw0ex4i8-217zne8jnn",
-  "acquiredAtUtc": "2026-11-03T08:15:04.976Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Document merged recipe preview Unicode separator regression with exact CI",
-  "workingBranch": "integration-ii/status-recipe-preview-separators-20261103",
-  "lastReleasedAtUtc": "2026-11-03T08:02:31.923Z",
-  "lastReleasedCommit": "9ca1122f8b3e20cfea06acd36c5a10b2935d21e5",
-  "nextStep": "Code PR #199 merged after exact-head CI 41599801112 PASS (547 JVM, 7 Room). Docs-only PR #200 remains open without separate CI; previous docs PRs also await suitable checks. Reconcile pending PR #188 on current main with exact-head CI. Next: authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E."
+  "task": "Integration II: recipe preview Unicode separator rejection, code PR #201 merged, docs PR #202 pending",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T08:23:36.695Z",
+  "lastReleasedCommit": "c1602c1e7dbab7220d264bdcd16bdddd7cb1309c",
+  "nextStep": "Code PR #201 merged after exact-head CI 41602137550 PASS (548 JVM, 7 Room); docs-only PR #202 remains open without separate CI. Other docs PRs and orphan-batch code PR #188 await reconciliation/CI. Next: independently authenticated recipe-save user action, generator/revalidator parity, Android/privacy E2E."
 }
