@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T06:07:18.239Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore authenticated user-action provenance integration"
-workingBranch: null
+workingBranch: "integration-ii/recipe-save-future-ledger-20261103-0707"
 lastReleasedAtUtc: "2026-11-03T06:05:00.461Z"
 lastReleasedCommit: "4a28f05cc252839089f2f3db938f1865dabe0b18"
 nextStep: "Code PR #184 merged; CI 41587028741 PASS (540 JVM, 7 Room); docs PR #185 open without CI; next: independent authenticated FoodStore user-action provenance, generator/revalidator parity, Android/privacy E2E"
