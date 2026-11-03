@@ -187,6 +187,16 @@ class RecipeRoomStockSnapshotTest {
             arrayOf(credit.occurredAt, credit.id))
         assertEquals(valid, requireNotNull(reader.readRecipeRoomStockSnapshot()))
 
+        // Contradictory persisted local days cannot describe the same
+        // transfer, even when its debit and credit quantities balance.
+        sql.execSQL("UPDATE stock_movements SET occurredOn = ? WHERE id = ?",
+            arrayOf("2026-11-02", credit.id))
+        assertNull(reader.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
+        sql.execSQL("UPDATE stock_movements SET occurredOn = ? WHERE id = ?",
+            arrayOf(credit.occurredOn, credit.id))
+        assertEquals(valid, requireNotNull(reader.readRecipeRoomStockSnapshot()))
+
         // A missing source debit must not leave the destination credit
         // available for a recipe, even though its author operation exists.
         sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(debit.id))
