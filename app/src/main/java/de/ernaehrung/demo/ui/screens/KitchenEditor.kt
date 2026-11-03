@@ -16,6 +16,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
     val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
+    val productionPrefill by model.productionPrefillVersionId.collectAsStateWithLifecycle()
     RecipeDraftImportPanel(
         catalog = state.versions,
         editingEnabled = !draftConsent.busy,
@@ -53,10 +54,15 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
             }
             draftConsent.savedRecipeVersionId?.let { version ->
                 Text("Rezeptversion lokal gespeichert: $version. Keine Herstellung oder Verzehrbuchung.")
+                Button(
+                    onClick = { model.prepareProductionForSavedRecipe(version) },
+                    enabled = !draftConsent.busy && state.recipes.any { it.id == version },
+                    modifier = Modifier.testTag("recipe_production_prepare")
+                ) { Text("Herstellung mit dieser Rezeptversion vorbereiten") }
             }
         }
     }
-    if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model)
+    if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model, productionPrefill)
     state.recipes.forEach { recipe -> Panel {
         Section(recipe.name, "Version ${recipe.revision} · ${Amounts.format(recipe.yieldPortions)} Soll-Portionen")
         state.ingredients.filter { it.ingredient.recipeVersionId == recipe.id }.forEach { item ->
@@ -121,7 +127,8 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
 }
 
 @Composable
-private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
+private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
+    preselectedRecipeVersionId: String?) {
     var selected by rememberSaveable { mutableStateOf("") }
     var batches by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
@@ -134,7 +141,17 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var checked by rememberSaveable { mutableStateOf(false) }
     var released by rememberSaveable { mutableStateOf(false) }
     var confirmed by rememberSaveable { mutableStateOf(false) }
-    Fold("Tatsächliche Herstellung buchen") {
+    LaunchedEffect(preselectedRecipeVersionId) {
+        if (preselectedRecipeVersionId != null && state.recipes.any { it.id == preselectedRecipeVersionId }) {
+            selected = preselectedRecipeVersionId
+            val count = state.ingredients.count { it.ingredient.recipeVersionId == selected }.coerceAtLeast(1)
+            batches = ArrayList(List(count) { "" })
+            quantities = ArrayList(List(count) { "" })
+            portions = ""; location = ""; storageNote = ""; deviation = ""; useBy = ""
+            checked = false; released = false; confirmed = false
+        }
+    }
+    Fold("Tatsächliche Herstellung buchen", openRequest = preselectedRecipeVersionId) {
         val recipe = state.recipes.find { it.id == selected }
         val ingredients = state.ingredients.filter { it.ingredient.recipeVersionId == selected }
         val versions = ingredients.map { it.ingredient.productVersionId }.toSet()
