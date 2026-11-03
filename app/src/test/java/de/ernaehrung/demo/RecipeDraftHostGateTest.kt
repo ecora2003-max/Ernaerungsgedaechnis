@@ -162,6 +162,36 @@ class RecipeDraftHostGateTest {
         assertNull(mixed.input)
     }
 
+    @Test fun supplementaryAndCombiningInvisibleRestrictionCharactersFailClosed() {
+        val invisibleTag = String(Character.toChars(0xE0061))
+        val host = mapOf("rice" to fact(allergens = mapOf("SOY" to false)))
+        // UTF-16 char iteration previously treated supplementary tag characters
+        // as two surrogates, not as an invisible Unicode FORMAT code point.
+        val invalid = listOf(
+            "FOOD:rice$invisibleTag", "ALLERGEN:SOY$invisibleTag",
+            "FOOD:ri\u034Fce", "FOOD:rice\uD800"
+        )
+        for (token in invalid) {
+            assertFalse(token, Gate.isSupportedRestriction(token))
+            val result = Gate.review(draft(), request(restrictions = setOf(token)), host)
+            assertEquals(token, Gate.Status.BLOCKED, result.status)
+            assertTrue(token, "UNSUPPORTED_RESTRICTION" in result.blockers)
+            assertNull(token, result.input)
+        }
+
+        // Valid ordinary and visible supplementary identifiers remain usable.
+        assertTrue(Gate.isSupportedRestriction("FOOD:beans"))
+        assertTrue(Gate.isSupportedRestriction("FOOD:carrot-🥕"))
+        val safe = Gate.review(draft(), request(restrictions = setOf(
+            "FOOD:carrot-🥕", "ALLERGEN:SOY"
+        )), host)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, safe.status)
+        assertNotNull(safe.input)
+        assertEquals(Gate.Status.BLOCKED, Gate.review(
+            draft(), request(restrictions = setOf("FOOD:rice")), host
+        ).status)
+    }
+
     @Test fun incompatibleBasisAndCookStateNeverSilentlyConvert() {
         val drained = Gate.review(draft(), request(), mapOf("rice" to fact(basis = Gate.Basis.DRAINED)))
         assertEquals(Gate.Status.BLOCKED, drained.status)
