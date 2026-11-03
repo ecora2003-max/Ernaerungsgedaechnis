@@ -170,9 +170,19 @@ internal object RecipeDraftHostGate {
         val allergies = linkedSetOf<String>()
         val bannedFoods = linkedSetOf<String>()
         for (code in request.confirmedRestrictions) {
+            // Restriction identifiers are exact host tokens, not display labels.
+            // A trailing space/control character in FOOD:rice must not silently
+            // miss the matching ingredient and authorize a restricted recipe.
+            val identifier = code.substringAfter(':', "")
+            if (identifier.isEmpty() || identifier.any {
+                    it.isWhitespace() || Character.isSpaceChar(it) || Character.isISOControl(it)
+                }) {
+                blockers += "UNSUPPORTED_RESTRICTION"
+                continue
+            }
             when {
-                code.startsWith("ALLERGEN:") && code.length > 9 -> allergies += code.removePrefix("ALLERGEN:")
-                code.startsWith("FOOD:") && code.length > 5 -> bannedFoods += code.removePrefix("FOOD:")
+                code.startsWith("ALLERGEN:") -> allergies += identifier
+                code.startsWith("FOOD:") -> bannedFoods += identifier
                 else -> blockers += "UNSUPPORTED_RESTRICTION"
             }
         }
