@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Room recipe stock context validation and regression",
-  "workingBranch": null,
+  "workingBranch": "integration-chat-stock-unique-movement-20261103",
   "lastReleasedAtUtc": "2026-11-03T11:30:27.613Z",
   "lastReleasedCommit": null,
   "nextStep": "Integration IV turn 11: no code changes; GitHub code search returned no matches, examined current host review/context and architecture. Resume with a scoped, testable code defect after checking open PRs; no tests or PR this run."
