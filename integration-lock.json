@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae66058b40c8191b8efb843b437b0ca",
-  "ownerChatId": "Integration IV 2026-11-03 08:23 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae66058b40c8191b8efb843b437b0ca-20261103T072352911Z-pn8t8a8xkrd",
-  "acquiredAtUtc": "2026-11-03T07:23:52.911Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Integrate and test pending Room history integrity PR #188 or next missing Host/FoodStore regression",
-  "workingBranch": "integration-iv-room-consumption-author-scope-20261103",
-  "lastReleasedAtUtc": "2026-11-03T07:21:29.761Z",
-  "lastReleasedCommit": "ff72c107f5c60dc737509f2a4373ed44eee82eba",
-  "nextStep": "Rezeptsave: unabhängige Nutzeraktionsauthentifizierung oder Generator-/Revalidator-Parität; echte Android-/Privacy-E2E offen. Docs-only PR #195 und ältere Status-PRs nur mit passenden Checks mergen."
+  "task": "Integration IV: reject consumption evidence on non-consumption Room stock author; code PR #196 merged; exact-head CI PASS 545/545 JVM and 7/7 migrations",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T07:31:27.633Z",
+  "lastReleasedCommit": "dde403e1abf6ed8a0f3a9067c7b084323d435a46",
+  "nextStep": "Resolve diverged PR #188 (orphan batches hidden by Room joins; old-head CI PASS) against current main and rerun exact-head CI before merge. Independently authenticated recipe-save user action, Generator/Revalidator parity, Android/privacy device E2E remain open. Record #196 in docs/STATUS.md when merging verified status changes."
 }
