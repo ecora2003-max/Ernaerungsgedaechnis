@@ -31,9 +31,9 @@ internal object RecipeDraftV1Import {
     private fun previewText(value: Any?, name: String, multiline: Boolean = false): String {
         val text = str(value, name)
         require(text.none { char ->
-            (Character.isISOControl(char) && !(multiline && char == '\\n')) ||
-                char in '\\u202A'..'\\u202E' || char in '\\u2066'..'\\u2069' ||
-                char == '\\u200E' || char == '\\u200F' || char == '\\u061C'
+            (Character.isISOControl(char) && !(multiline && char == '\n')) ||
+                char in '\u202A'..'\u202E' || char in '\u2066'..'\u2069' ||
+                char == '\u200E' || char == '\u200F' || char == '\u061C'
         }) { name + " contains unsafe display controls" }
         return text
     }
