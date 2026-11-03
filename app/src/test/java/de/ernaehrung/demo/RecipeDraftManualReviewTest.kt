@@ -196,4 +196,42 @@ class RecipeDraftManualReviewTest {
         assertEquals("v1", valid.confirmations["rice"]?.productVersionId)
     }
 
+
+    @Test fun malformedRestrictionTokensAreRejectedBeforeHostConfirmation() {
+        val parsed = imported()
+        val versions = listOf(catalog())
+        val choices = mapOf("rice" to choice(false))
+        val malformed = listOf(
+            "FOOD:rice ", "FOOD:rice:other", "FOOD:ri\u200Bce",
+            "ALLERGEN:SOY\t", "ALLERGEN:SOY:other", "ALLERGEN:SOY\u2060",
+            "FOOD:", "ALLERGEN:", "OTHER:rice"
+        )
+        for (token in malformed) {
+            rejects {
+                Manual.prepare(parsed, versions, choices, setOf(token), true, nowMillis)
+            }
+        }
+        // The strict gate still permits legitimate restrictions and explicit
+        // negative allergen review, without writing a FoodStore event.
+        val valid = Manual.prepare(parsed, versions, choices,
+            setOf("ALLERGEN:SOY", "FOOD:other"), true, nowMillis)
+        assertEquals(setOf("ALLERGEN:SOY", "FOOD:other"),
+            valid.request.confirmedRestrictions)
+        val facts = RecipeCatalogEvidence.resolve(parsed.draft.lines,
+            versions, valid.confirmations, nowMillis)
+        val review = RecipeDraftV1Import.review(json(), valid.request,
+            facts, valid.reviewedStates, now)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review.status)
+        assertNotNull(review.input)
+
+        // A well-formed exclusion of the actual ingredient remains a blocker.
+        val excluded = Manual.prepare(parsed, versions, choices,
+            setOf("FOOD:rice", "ALLERGEN:SOY"), true, nowMillis)
+        val excludedReview = RecipeDraftV1Import.review(json(), excluded.request,
+            facts, excluded.reviewedStates, now)
+        assertEquals(Gate.Status.BLOCKED, excludedReview.status)
+        assertTrue(excludedReview.blockers.contains("CONFIRMED_FOOD_CONFLICT"))
+        assertNull(excludedReview.input)
+    }
+
 }
