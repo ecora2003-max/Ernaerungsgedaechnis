@@ -81,6 +81,46 @@ class RecipeDraftCatalogSaveTest {
         catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun invisibleOrAmbiguousRecipeConsentKeysCannotReachTheDurableLedger() = runBlocking {
+        val ready = preview()
+        val before = dao.operationCount()
+        val badKeys = listOf(" key", "key ", "key\\nother", "key\\tother",
+            "key\\u200Bother", "key/other", "RECIPE_DRAFT_CONSENT_V1:shadow")
+        badKeys.forEach { key ->
+            rejected { consent(key, ready) }
+            rejected { save(key, ready) }
+            rejected { store.isRecipeDraftOperationKeyUnavailable(key) }
+        }
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+
+        // Generated UUIDs and ordinary safe synthetic operation keys remain valid.
+        consent("valid-consent-key_1", ready)
+        val version = save("valid-consent-key_1", ready)
+        assertNotNull(dao.recipeVersion(version))
+        assertEquals(0, dao.consumptionCount())
+    }
+
+    @Test fun recoveryDoesNotPromoteMalformedLedgerKeyEvenWithMatchingFingerprint() = runBlocking {
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        val malformed = "line\\nsecond"
+        dao.insertOperation(OperationEntity(
+            "RECIPE_DRAFT_CONSENT_V1:" + malformed, "RECIPE_DRAFT_CONSENT_V1",
+            WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", malformed, digest),
+            at, digest
+        ))
+        val before = dao.operationCount()
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(before, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+
+        consent("fresh-valid-key", ready)
+        assertEquals("fresh-valid-key", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertTrue(dao.observeRecipes().first().isEmpty())
+    }
+
     @Test fun exactReviewedInputSavesOnceAndNeverBooksStockOrConsumption() = runBlocking {
         val ready = preview()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)

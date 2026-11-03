@@ -188,8 +188,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 else {
                     val key = operation.id.substring(prefix.length)
                     val existingSaveOperation = dao.operation(key)
-                    key.isNotBlank() && key.length <= 200 &&
-                        !key.startsWith(prefix) &&
+                    isValidRecipeDraftSaveKey(key) &&
                         recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
@@ -232,11 +231,18 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 dao.operation(key) != null
         }
 
+    // A pending key is generated as an ASCII UUID. Keep the durable consent
+    // namespace unambiguous and reject invisible controls, Unicode format
+    // characters and whitespace that could hide a different ledger identity.
+    // This is operation-key hygiene, not independent user authentication.
+    private val recipeDraftSaveKeyPattern = Regex("[A-Za-z0-9][A-Za-z0-9._:-]{0,199}")
+
+    private fun isValidRecipeDraftSaveKey(key: String): Boolean =
+        recipeDraftSaveKeyPattern.matches(key) &&
+            !key.startsWith("RECIPE_DRAFT_CONSENT_V1:")
+
     private fun requireValidRecipeDraftSaveKey(key: String) {
-        require(key.isNotBlank() && key.length <= 200 &&
-            !key.startsWith("RECIPE_DRAFT_CONSENT_V1:")) {
-            "Ungültige Rezeptvorgangs-ID."
-        }
+        require(isValidRecipeDraftSaveKey(key)) { "Ungültige Rezeptvorgangs-ID." }
     }
 
     // Bound a durable host checkpoint to a recent action, not an indefinite approval.
