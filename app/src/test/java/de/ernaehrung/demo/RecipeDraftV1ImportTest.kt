@@ -562,4 +562,31 @@ class RecipeDraftV1ImportTest {
             Import.read(safeFoodId, emptyMap(), now).draft.lines.single().foodTypeId)
     }
 
+
+    @Test fun untrustedRecipeIdentityLengthIsBoundedBeforeManualPreview() {
+        // IDs are displayed during consent review and must not be able to
+        // monopolize the preview with a generator-controlled 256 KiB string.
+        for ((field, original) in listOf(
+            "draftId" to "synthetic-1",
+            "foodTypeId" to "rice"
+        )) {
+            fun candidate(size: Int) = change(
+                "\"$field\":\"$original\"",
+                "\"$field\":\"" + "x".repeat(size) + "\""
+            )
+            val accepted = Import.read(candidate(200), emptyMap(), now)
+            assertEquals(200, if (field == "draftId") accepted.draftId.length
+                else accepted.draft.lines.single().foodTypeId.length)
+
+            val oversized = candidate(201)
+            try {
+                Import.read(oversized, emptyMap(), now)
+                fail("oversized untrusted identity reached manual preview")
+            } catch (_: IllegalArgumentException) { }
+            val review = reviewed(oversized)
+            assertEquals(Gate.Status.BLOCKED, review.status)
+            assertNull(review.input)
+        }
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed().status)
+    }
 }
