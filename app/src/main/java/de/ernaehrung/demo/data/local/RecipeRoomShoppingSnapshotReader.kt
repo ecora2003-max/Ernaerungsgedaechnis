@@ -60,6 +60,14 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         val relevantPlanHistories = dao.allPlans()
             .groupBy { it.seriesId ?: it.id }.values
             .filter { history -> history.any { it.startsOn <= scope.endsOn } }
+        val relevantPlanIds = relevantPlanHistories.flatten().map { it.id }.toSet()
+        // Bind the actual persisted plan lines, not just their aggregate missing
+        // quantity. A correction to an ingredient, date, label or source plan
+        // must invalidate a previously approved recipe-shopping context even
+        // if the projected total remains identical.
+        val relevantPlanEntries = dao.allPlannedEntries()
+            .filter { it.planId in relevantPlanIds }
+            .sortedWith(compareBy<PlannedEntryEntity> { it.planId }.thenBy { it.id })
         // A valid latest revision does not repair a future-dated or reversed
         // earlier revision in the same persisted series. Validate the entire
         // history before using the latest plan as recipe-context evidence.
@@ -121,7 +129,14 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             "RECIPE_ROOM_SHOPPING_REVISION_V1", scopeId(scope), report.asOf,
             relevantPlanHistories.flatten().sortedBy { it.id }.map { plan ->
                 listOf(plan.id, plan.seriesId, plan.revision, plan.status.name,
-                    plan.startsOn, plan.endsOn, plan.recordedAt)
+                    plan.startsOn, plan.endsOn, plan.recordedAt,
+                    plan.source.name, plan.title, plan.changeReason)
+            },
+            relevantPlanEntries.map { entry ->
+                listOf(entry.id, entry.planId, entry.date, entry.kind.name,
+                    entry.productVersionId, entry.recipeVersionId, entry.amount,
+                    entry.unit.name, entry.preparationEntryId, entry.label,
+                    entry.positionId)
             },
             // A correction to a historical product revision changes the
             // provenance of the currently selected version as well.
