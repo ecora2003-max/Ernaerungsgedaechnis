@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T09:00:44.053Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Continue open Integration III PRs and implement next concrete Room/recipe integration regression",
-  "workingBranch": null,
+  "task": "Bind historical Room catalog identity and allergen metadata to recipe shopping snapshot revision",
+  "workingBranch": "integration-iii-recipe-catalog-metadata-20261103",
   "lastReleasedAtUtc": "2026-11-03T08:59:31.660Z",
   "lastReleasedCommit": "f35c64fcc0d953eb1dfd749758a5cfb6d78fa009",
   "nextStep": "PR #205 merged after exact-head CI 41606690756 PASS (8b7dc2e1, 550/550 JVM, 7/7 Room migrations, Lint, pinned Python/schema gates, androidTest compilation). Next: document code/CI SHA in short docs/STATUS.md via own docs PR, then independent authenticated recipe-save action and generator/revalidator parity; real Android/privacy E2E remain open."
