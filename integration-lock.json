@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Integrate and test pending Room history integrity PR #188 or next missing Host/FoodStore regression",
-  "workingBranch": null,
+  "workingBranch": "integration-iv-room-consumption-author-scope-20261103",
   "lastReleasedAtUtc": "2026-11-03T07:21:29.761Z",
   "lastReleasedCommit": "ff72c107f5c60dc737509f2a4373ed44eee82eba",
   "nextStep": "Rezeptsave: unabhängige Nutzeraktionsauthentifizierung oder Generator-/Revalidator-Parität; echte Android-/Privacy-E2E offen. Docs-only PR #195 und ältere Status-PRs nur mit passenden Checks mergen."
