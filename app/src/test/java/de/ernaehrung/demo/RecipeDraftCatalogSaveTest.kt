@@ -205,6 +205,40 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
     }
 
+    @Test fun futureDatedCompletedRecipeCannotBeRecoveredOrReplayedBeforeItsWriteInstant() = runBlocking {
+        var clock = at
+        store = FoodStore(db) { clock }
+        val ready = preview()
+        val digest = requireNotNull(ready.approvalBasisDigest)
+        consent("future-completed", ready)
+        clock = at + 60_000L
+        val savedVersion = save("future-completed", ready)
+        val count = dao.operationCount()
+        assertEquals(clock, dao.operation("future-completed")?.recordedAt)
+        assertEquals("future-completed", store.recordedRecipeDraftV1ConsentKey(digest))
+
+        // A clock rollback must not promote a later saved recipe to a past
+        // completed action, even though its ledger fingerprint is genuine.
+        clock = at + 30_000L
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { consent("future-completed", ready) }
+        rejected { save("future-completed", ready) }
+        assertEquals(count, dao.operationCount())
+        assertEquals(savedVersion, dao.operation("future-completed")?.resultId)
+        assertEquals(at + 60_000L, dao.recipeVersion(savedVersion)?.recordedAt)
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+
+        // Once the host clock reaches the actual write instant, immutable
+        // recovery and idempotent replay remain valid without extra writes.
+        clock = at + 60_000L
+        assertEquals("future-completed", store.recordedRecipeDraftV1ConsentKey(digest))
+        assertEquals(digest, consent("future-completed", ready))
+        assertEquals(savedVersion, save("future-completed", ready))
+        assertEquals(count, dao.operationCount())
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun recoveredConsentRejectsRecipeOperationPointingAtAnEarlierVersion() = runBlocking {
         var clock = at
         store = FoodStore(db) { clock }

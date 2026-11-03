@@ -140,7 +140,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // a recipe approval merely because its prefixed consent key is unused.
         val existingSaveOperation = dao.operation(key)
         if (previous != null) {
-            require(recipeDraftSaveOperationCompatible(existingSaveOperation, previous.recordedAt)) {
+            require(recipeDraftSaveOperationCompatible(existingSaveOperation, previous.recordedAt, actionAt)) {
                 "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
             }
             require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
@@ -189,7 +189,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                     val key = operation.id.substring(prefix.length)
                     val existingSaveOperation = dao.operation(key)
                     isValidRecipeDraftSaveKey(key) &&
-                        recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt) &&
+                        recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt, checkedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
                         operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
@@ -204,10 +204,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
      * provenance or the recipe's complete approval fingerprint.
      */
     private suspend fun recipeDraftSaveOperationCompatible(
-        saved: OperationEntity?, consentAt: Long
+        saved: OperationEntity?, consentAt: Long, checkedAt: Long
     ): Boolean {
         if (saved == null) return true
-        if (saved.kind != "RECIPE" || saved.recordedAt < consentAt) return false
+        // A future-dated recipe is not a completed action at this host instant.
+        // Reject clock rollback on recovery, consent retry and save replay alike.
+        if (saved.kind != "RECIPE" || saved.recordedAt !in consentAt..checkedAt) return false
         val version = dao.recipeVersion(saved.resultId) ?: return false
         // A recipe-save operation and its first persisted version are written
         // atomically at one physical instant. An unrelated later revision or
@@ -305,7 +307,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // Otherwise KitchenOperations' idempotent replay could return an orphan
         // version or a recipe recorded before the alleged authorization.
         val existingSaveOperation = dao.operation(key)
-        require(recipeDraftSaveOperationCompatible(existingSaveOperation, consent.recordedAt)) {
+        require(recipeDraftSaveOperationCompatible(existingSaveOperation, consent.recordedAt, saveAt)) {
             "Rezeptvorgang liegt vor der Bestätigung oder verweist auf fehlende Rezeptversion."
         }
         // A checkpoint alone must not authorize a *new* recipe hours or days later.
