@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration II: Untrusted Rezeptidentitäten vor manueller Vorschau begrenzen (03.11.2026)
+
+- **[Code-PR #213](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/213)**, Code-/Test-HEAD `8b41e8a4e23628cb6b111208a208ac41f23c544c`, Squash-Merge `f3780a550a5f3055c60f1479f30059172f3a3cbb`; **[PR-CI 41616741649](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41616741649) PASS**: **555/555 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte Rezept-v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung erfolgreich. `RecipeDraftV1Import` begrenzt untrusted `draftId` und `foodTypeId` auf 200 Zeichen vor der Review-UI; positive 200-/negative 201-Zeichen-Regressionen verhindern überlange Identitätsanzeigen und ein speicherbares `RecipeInput` aus ungültigem Draft. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`); keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
+- **Weiter:** unabhängig authentifizierte Nutzeraktionsprovenienz beim Rezeptsave, vollständige Generator-/Revalidator-Parität und echte Android-Geräte-/Privacy-E2E; vier Fachmodule weiterhin TEILWEISE/OFFEN.
+
+
 ## Integration II: Katalogbestätigungen strikt auf Rezeptzutaten begrenzen (02.11.2026)
 
 - **[Code-PR #148](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/148)**, Code-/Test-HEAD `fd93144002ce1276d989026b0b93d27ba37e83bf`, Squash-Merge `6b81d747a835e3d7963dbf72e31dc133c3ee41c4`; **[PR-CI 41526249184](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41526249184) PASS** auf diesem HEAD: **521/521 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeCatalogEvidence.resolve` verwirft jetzt Katalogbestätigungen außerhalb des Zutaten-Scopes; positive/negative Room-/Robolectric-Regression prüft gemischte/fremde Belege, Erholung und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
