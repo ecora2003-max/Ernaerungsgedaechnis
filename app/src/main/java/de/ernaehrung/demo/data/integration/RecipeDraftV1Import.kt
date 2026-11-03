@@ -180,6 +180,9 @@ internal object RecipeDraftV1Import {
             val q = obj(line["quantity"], "quantity")
             require(q.containsKey("amount")) { "quantity.amount missing" }
             val amount = number(q["amount"], "quantity.amount", nullable = true)
+            // Zero is a known non-positive quantity, not an unknown amount.
+            // Reject it before exposing the untrusted draft to the preview UI.
+            require(amount == null || amount > 0L) { "quantity.amount must be positive or null" }
             val unit = enumUnit(q["unit"])
             val basis = enumBasis(q["basis"])
             bool(q["confirmed"], "quantity.confirmed") // Untrusted, never forwarded.
