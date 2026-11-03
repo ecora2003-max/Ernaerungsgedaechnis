@@ -74,6 +74,36 @@ class RecipeRoomStockSnapshotTest {
             context, OffsetDateTime.parse("2026-11-01T04:00:00Z"))
     }
 
+    @Test fun orphanBatchHiddenByPlanningJoinMakesStockUnavailableUntilRepaired() = runBlocking {
+        val before = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val second = store.receive("orphan-join-receipt",
+            BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
+                release = ReleaseStatus.RELEASED), true)
+        val operations = db.foodDao().operationCount()
+        val sql = db.openHelper.writableDatabase
+        // Simulate a damaged legacy database: the inner join omits this batch,
+        // while the valid first batch would otherwise look like complete stock.
+        sql.execSQL("DELETE FROM stock_movements WHERE batchId = ?", arrayOf(second))
+        sql.execSQL("PRAGMA foreign_keys=OFF")
+        try {
+            sql.execSQL("UPDATE batches SET locationId = ? WHERE id = ?",
+                arrayOf("missing-legacy-location", second))
+        } finally {
+            sql.execSQL("PRAGMA foreign_keys=ON")
+        }
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(operations, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+
+        // Repair the broken join without creating any new confirmed operation.
+        sql.execSQL("UPDATE batches SET locationId = ? WHERE id = ?",
+            arrayOf(locationId, second))
+        val restored = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(before.lines.single().amountMilli,
+            restored.lines.single { it.identity == "batch:$batchId" }.amountMilli)
+        assertEquals(operations, db.foodDao().operationCount())
+    }
+
     @Test fun actualReleasedRoomStockBindsAndPreviewDoesNotBook() = runBlocking {
         val before = db.foodDao().operationCount()
         val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
