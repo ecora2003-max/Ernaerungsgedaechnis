@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Room/Host/FoodStore recipe snapshot integrity regression",
-  "workingBranch": null,
+  "workingBranch": "integration-iv-20261103-stock-join-cardinality",
   "lastReleasedAtUtc": "2026-11-03T09:15:15.868Z",
   "lastReleasedCommit": "257fa4612bf2538582b7873eac749294ff4b42b4",
   "nextStep": "Code PR #206 merged after exact-head CI 41607860528 PASS (e5b645c4, 551/551 JVM, 7/7 Room migrations, Lint, pinned schema/Python gates, androidTest compilation). Docs-only PR #207 open without own CI; do not merge without PASS. Next: independently authenticated recipe-save action and generator/revalidator parity; Android/privacy device E2E still open."
