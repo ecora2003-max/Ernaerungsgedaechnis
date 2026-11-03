@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II 2026-11-03 15:14 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw0rryqh-fjfxntxfyj",
-  "acquiredAtUtc": "2026-11-03T14:14:59.225Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Nächste konkrete Android-Code-/Testintegration",
+  "task": "Gezielte Codeanalyse, keine Implementierung",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T13:56:28.840Z",
-  "lastReleasedCommit": "18f3d3854e997e55e8c896243764ac836e5f1ca9",
-  "nextStep": "PR #223 branch integration-iii-transfer-day-consistency-20261103 CI 41639869500 PASS; test day mismatch not isolated because it also violates author-day check. Refine with valid individually consistent days, reconcile 10 commits of main divergence, rerun CI before merge."
+  "lastReleasedAtUtc": "2026-11-03T14:15:28.693Z",
+  "lastReleasedCommit": "cd6623464c01d076afd463d858cd6e98a68626ba",
+  "nextStep": "Konkrete Kotlin-Änderung mit Regression und PR-CI; Codepfade via Git tree API identifiziert"
 }
