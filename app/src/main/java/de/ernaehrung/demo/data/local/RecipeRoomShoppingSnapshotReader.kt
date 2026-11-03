@@ -57,11 +57,21 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         // allocates earlier needs before the requested window. A future
         // revision (including cancellation) must not silently rewrite the
         // shopping evidence captured at an earlier instant.
-        val relevantPlans = dao.allPlans().groupBy { it.seriesId ?: it.id }.values
+        val relevantPlanHistories = dao.allPlans()
+            .groupBy { it.seriesId ?: it.id }.values
             .filter { history -> history.any { it.startsOn <= scope.endsOn } }
-            .map { history -> history.maxBy { it.revision } }
-            .sortedBy { it.id }
-        if (relevantPlans.any { it.recordedAt !in 0L..asOfMillis }) return null
+        // A valid latest revision does not repair a future-dated or reversed
+        // earlier revision in the same persisted series. Validate the entire
+        // history before using the latest plan as recipe-context evidence.
+        if (relevantPlanHistories.any { history ->
+                history.any { it.recordedAt !in 0L..asOfMillis } ||
+                    history.sortedBy { it.revision }.zipWithNext().any { (older, newer) ->
+                        older.recordedAt > newer.recordedAt
+                    }
+            }) return null
+        val relevantPlans = relevantPlanHistories.map { history ->
+            history.maxBy { it.revision }
+        }.sortedBy { it.id }
         // A planning need may still reference a superseded product version. Only
         // the current, independently recorded Room identity at capture time can
         // substantiate recipe context; future revisions do not invalidate history.
@@ -90,7 +100,7 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         }
         val revision = WriteRules.fingerprint(
             "RECIPE_ROOM_SHOPPING_REVISION_V1", scopeId(scope), report.asOf,
-            relevantPlans.map { plan ->
+            relevantPlanHistories.flatten().sortedBy { it.id }.map { plan ->
                 listOf(plan.id, plan.seriesId, plan.revision, plan.status.name,
                     plan.startsOn, plan.endsOn, plan.recordedAt)
             },
