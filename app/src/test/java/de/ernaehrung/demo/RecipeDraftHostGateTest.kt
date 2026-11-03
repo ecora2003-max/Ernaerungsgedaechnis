@@ -103,6 +103,38 @@ class RecipeDraftHostGateTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, absent.status)
     }
 
+    @Test fun malformedRestrictionTokensCannotBypassConfirmedFoodOrAllergenLimits() {
+        val host = mapOf("rice" to fact(allergens = mapOf("SOY" to false)))
+        // A well-formed restriction on a different food remains harmless.
+        val allowed = Gate.review(draft(), request(restrictions = setOf(
+            "FOOD:beans", "ALLERGEN:SOY")), host)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, allowed.status)
+        assertNotNull(allowed.input)
+
+        // Whitespace, nonbreaking space, and control characters cannot turn a
+        // confirmed food exclusion into an unmatched (and therefore ignored) ID.
+        for (bad in listOf(
+            "FOOD:rice ", "FOOD: rice", "FOOD:rice\t", "FOOD:rice\n",
+            "FOOD:rice\u00A0", "FOOD:", "FOOD: ",
+            "ALLERGEN:SOY ", "ALLERGEN: SOY", "ALLERGEN:SOY\u00A0"
+        )) {
+            val result = Gate.review(draft(), request(restrictions = setOf(bad)), host)
+            assertEquals(bad, Gate.Status.BLOCKED, result.status)
+            assertTrue(bad, "UNSUPPORTED_RESTRICTION" in result.blockers)
+            assertNull(bad, result.input)
+        }
+        val mixed = Gate.review(draft(), request(restrictions = setOf(
+            "FOOD:beans", "FOOD:rice ")), host)
+        assertEquals(Gate.Status.BLOCKED, mixed.status)
+        assertNull(mixed.input)
+
+        // A correctly encoded restriction still blocks the actual ingredient.
+        val restricted = Gate.review(draft(), request(restrictions = setOf("FOOD:rice")), host)
+        assertEquals(Gate.Status.BLOCKED, restricted.status)
+        assertTrue("CONFIRMED_FOOD_CONFLICT" in restricted.blockers)
+        assertNull(restricted.input)
+    }
+
     @Test fun incompatibleBasisAndCookStateNeverSilentlyConvert() {
         val drained = Gate.review(draft(), request(), mapOf("rice" to fact(basis = Gate.Basis.DRAINED)))
         assertEquals(Gate.Status.BLOCKED, drained.status)
