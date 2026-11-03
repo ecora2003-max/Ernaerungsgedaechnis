@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration III 2026-11-03 12:52 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104-20261103T1152-o51tl72t3vs",
-  "acquiredAtUtc": "2026-11-03T11:52:56.571Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Resume existing PR #221 Room recipe stock context regression",
-  "workingBranch": "integration-chat-stock-unique-movement-20261103",
-  "lastReleasedAtUtc": "2026-11-03T11:39:25.470Z",
-  "lastReleasedCommit": "ad4dba470dc3e1646743c3c736fb9703357ccb01",
-  "nextStep": "PR #221 open, CI not yet reported. Check exact-head CI and Robolectric test; fix if needed; merge only on PASS with fresh own lock. No merge this run."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T11:54:08.795Z",
+  "lastReleasedCommit": "4eb84e715a8a59194b5c7c45e5caf6973ff8f170",
+  "nextStep": "PR #221 merged after successful exact-head CI 41629267613. Next: implement a new distinct Android/Room code and regression unit, verify on exact SHA; authenticated recipe action provenance and device/privacy E2E remain open."
 }
