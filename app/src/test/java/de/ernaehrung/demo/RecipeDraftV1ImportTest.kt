@@ -87,6 +87,42 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.REVIEW_REQUIRED, reviewed(state = emptyMap()).status)
     }
 
+    @Test fun unicodeLineAndParagraphSeparatorsCannotSpoofManualRecipePreview() {
+        // JSON permits U+2028/U+2029, but neither is an ISO control character.
+        // A displayed ID, title, ingredient or step must not acquire a hidden line.
+        for (codePoint in listOf(0x2028, 0x2029)) {
+            val separator = codePoint.toChar().toString()
+            val fields = listOf(
+                "\"draftId\":\"synthetic-1\"" to "\"draftId\":\"synthetic" + separator + "-1\"",
+                "\"title\":\"Reis\"" to "\"title\":\"Re" + separator + "is\"",
+                "\"label\":\"Reis\"" to "\"label\":\"Re" + separator + "is\"",
+                "\"foodTypeId\":\"rice\"" to "\"foodTypeId\":\"ri" + separator + "ce\"",
+                "\"steps\":[\"Reis kochen.\"]" to
+                    "\"steps\":[\"Reis" + separator + " kochen.\"]"
+            )
+            for ((before, after) in fields) {
+                val invalid = change(before, after)
+                try {
+                    Import.read(invalid, states, now)
+                    fail("line separator U+" + codePoint.toString(16) + " must fail import")
+                } catch (_: IllegalArgumentException) { }
+                val result = reviewed(invalid)
+                assertEquals(Gate.Status.BLOCKED, result.status)
+                assertNull(result.input)
+            }
+        }
+
+        // Ordinary explicit newlines remain supported inside recipe steps,
+        // and visible supplementary characters remain valid preview content.
+        val multiline = change(
+            "\"steps\":[\"Reis kochen.\"]", "\"steps\":[\"Reis\\nkochen.\"]"
+        )
+        assertEquals("Reis\nkochen.", Import.read(multiline, states, now).draft.steps)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(multiline).status)
+        val visible = change("\"title\":\"Reis\"", "\"title\":\"Reis 🥕\"")
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visible).status)
+    }
+
     @Test fun validV1DraftRequiresIndependentHostFactsAndExplicitSave() {
         val result = reviewed()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)
