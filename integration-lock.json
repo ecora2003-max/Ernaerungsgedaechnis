@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integrator-B-automation-turn-11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw16s1nq-3dayf0yrtc2",
-  "acquiredAtUtc": "2026-11-03T21:14:57.254Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B0: resolve recipe PRs #222 #224 #225 and documentation PR #227",
-  "workingBranch": "integration-ii-recipe-warning-safety-20261103",
-  "lastReleasedAtUtc": "2026-11-03T20:35:22.747Z",
-  "lastReleasedCommit": "0d93b045634e03e25b69a7dfa52305cb127de066",
-  "nextStep": "A: complete active A1 bon→confirmed purchase→historical price→shopping proposal. B: resolve #222/#224/#225/#227 under B0, then complete recipe→manufacture→separate consumption B1. Actual Android/Offline/Privacy E2E required."
+  "task": "B0 consolidated #222/#224/#225/#227 via merged #225; 565 JVM and 7 Room migration tests PASS",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T21:31:51.856Z",
+  "lastReleasedCommit": "df067824f00c342dd518867fec55215631e25d3d",
+  "nextStep": "B1 ACTIVE: implement explicit reviewed recipe version save in Android UI/ViewModel via FoodStore.saveReviewedRecipeDraftV1 after independent user-action attestation; verify retry/abort/changed context, then connect confirmed production and separate consumption, Android/offline/privacy E2E."
 }
