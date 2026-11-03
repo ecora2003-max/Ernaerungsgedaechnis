@@ -126,6 +126,13 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         if (movements.size > MAX_MOVEMENTS) return null
         val knownBatches = rows.map { it.batch.id }.toSet()
         val batchVersions = rows.associate { it.batch.id to it.batch.versionId }
+        // A single confirmed receipt operation may credit a given batch only
+        // once. Older imported histories can contain separately authorized
+        // receipt operations for that same batch; do not discard those, but
+        // never count a duplicate physical credit under the same operation.
+        val receiptCredits = movements.filter { it.movementKind == MovementKind.RECEIPT }
+            .groupBy { it.operationId to it.batchId }
+        if (receiptCredits.values.any { it.size != 1 }) return null
         // Planning balances sum every stored movement, including legacy or
         // future-dated rows. Never expose those as current physical stock.
         // A legacy consumption date is resolved by the DAO when occurredOn is null.

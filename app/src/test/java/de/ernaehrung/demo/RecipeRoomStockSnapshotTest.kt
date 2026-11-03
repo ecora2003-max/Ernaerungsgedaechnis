@@ -90,6 +90,59 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun duplicateReceiptMovementPerOperationFailsClosedWithoutRejectingLegacyReceipts() = runBlocking {
+        val original = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val beforeOperations = db.foodDao().operationCount()
+        val beforeConsumption = db.foodDao().consumptionCount()
+        val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
+        val duplicateId = "legacy-duplicate-receipt-credit"
+        val sql = db.openHelper.writableDatabase
+
+        // A second physical credit under the same confirmed operation must
+        // not inflate available stock or pass transactional recipe review.
+        db.foodDao().insertMovement(StockMovementEntity(
+            duplicateId, batchId, origin, 2_000L, MovementKind.RECEIPT,
+            null, Source.USER, "Duplicate legacy receipt",
+            at.toEpochMilli(), occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(duplicateId))
+        assertEquals(original, requireNotNull(store.readRecipeRoomStockSnapshot()))
+
+        // Independently authorized legacy receipt operations are still
+        // accepted, but their changed balance invalidates the old review.
+        val secondOperation = "legacy-second-receipt-operation"
+        val secondMovement = "legacy-second-receipt-movement"
+        db.foodDao().insertOperation(OperationEntity(
+            secondOperation, "RECEIPT", secondOperation, at.toEpochMilli(), batchId))
+        db.foodDao().insertMovement(StockMovementEntity(
+            secondMovement, batchId, secondOperation, 500L,
+            MovementKind.RECEIPT, null, Source.USER, "Separate legacy receipt",
+            at.toEpochMilli(), occurredOn = "2026-11-01"))
+        val updated = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2_500L, updated.lines.single().amountMilli)
+        assertNotEquals(original.revision, updated.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+
+        // Repeating this separate operation's physical credit is likewise
+        // invalid, even when the amounts of its movements differ.
+        val secondDuplicate = "legacy-second-receipt-duplicate"
+        db.foodDao().insertMovement(StockMovementEntity(
+            secondDuplicate, batchId, secondOperation, 100L,
+            MovementKind.RECEIPT, null, Source.USER, "Repeated receipt operation",
+            at.toEpochMilli(), occurredOn = "2026-11-01"))
+        assertNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(updated).status)
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(secondDuplicate))
+        assertEquals(updated, requireNotNull(store.readRecipeRoomStockSnapshot()))
+
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(secondMovement))
+        sql.execSQL("DELETE FROM operations WHERE id = ?", arrayOf(secondOperation))
+        assertEquals(original, requireNotNull(store.readRecipeRoomStockSnapshot()))
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+    }
+
     @Test fun orphanBatchHiddenByEitherPlanningJoinFailsClosedWithoutBooking() = runBlocking {
         val second = store.receive("orphan-join-receipt",
             BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
