@@ -59,8 +59,8 @@ ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzx9olo-hajxzw5fyn"
 acquiredAtUtc: "2026-11-03T00:00:57.804Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Resume docs PR #167 and implement next recipe-import regression"
-workingBranch: null
+task: "Bind typed recipe context timestamp to independently trusted snapshot"
+workingBranch: "integration-iii/recipe-bound-context-time-20261103-0100"
 lastReleasedAtUtc: "2026-11-02T23:44:55.818Z"
 lastReleasedCommit: "6e6dd4a29b39897c3cf83fe9dbf9288ea2ec2505"
 nextStep: "Code PR #166 merged with CI 41547137130 PASS (532 JVM, 7 Room); docs PR #167 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
