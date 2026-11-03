@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integration (Chat) scheduled 2026-11-03T06:40:42.304Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb:13aak8jiiefcmw0bjr5s",
-  "acquiredAtUtc": "2026-11-03T06:40:42.308Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Rezept-Kontext: transaktionale Snapshot- und Identitätsvalidierung",
-  "workingBranch": "integration-chat-recipe-preview-status-20261103",
-  "lastReleasedAtUtc": null,
-  "lastReleasedCommit": null,
-  "nextStep": "Integration aus docs/STATUS.md entlang EG-Architecture fortsetzen"
+  "task": "Rezeptvorschau: Steuerzeichen- und Labelschutz (PR #190, CI PASS); Status-PR #191 offen",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T06:48:30.908Z",
+  "lastReleasedCommit": "bee2443713d9b6f11203f02a26c25d9918212835",
+  "nextStep": "Authentifizierte Rezeptsave-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität oder Android-/Privacy-E2E; Status-PR #191 erst nach passenden Checks mergen"
 }
