@@ -81,6 +81,31 @@ class RecipeDraftCatalogSaveTest {
         catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun visualSeparatorRestrictionsFailClosedAtRoomPreviewAndConsentBoundary() = runBlocking {
+        val before = dao.operationCount()
+        for ((index, separator) in listOf("\u2028", "\u2029").withIndex()) {
+            val spoofed = request.copy(confirmedRestrictions =
+                setOf("FOOD:rice" + separator + "hidden", "ALLERGEN:SOY"))
+            val blocked = store.previewRecipeDraftV1(json, spoofed, confirmed(), states)
+            assertEquals(Gate.Status.BLOCKED, blocked.status)
+            assertTrue("UNSUPPORTED_RESTRICTION" in blocked.blockers)
+            assertNull(blocked.input)
+            rejected { consent("separator-$index", blocked, req = spoofed) }
+            rejected { save("separator-$index", blocked, req = spoofed) }
+        }
+        assertEquals(before, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        assertEquals(0, dao.consumptionCount())
+        assertTrue(dao.allPaidPrices().isEmpty())
+
+        // Normal independent confirmation still permits a recipe without
+        // creating stock, purchase or consumption events.
+        val ready = preview()
+        consent("safe-separator-control", ready)
+        assertNotNull(dao.recipeVersion(save("safe-separator-control", ready)))
+        assertEquals(0, dao.consumptionCount())
+    }
+
     @Test fun invisibleOrAmbiguousRecipeConsentKeysCannotReachTheDurableLedger() = runBlocking {
         val ready = preview()
         val before = dao.operationCount()
