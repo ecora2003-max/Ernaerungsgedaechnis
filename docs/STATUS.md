@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration (Chat): Rezeptimport verwirft bekannte Nullmenge vor Vorschau (03.11.2026)
+
+- **[Code-PR #174](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/174)**, Code-/Test-HEAD `58dddcc07290ee62bfac707405c913b2781f7db4`, Squash-Merge `826836cf392a73357749833b7aba51315f0e99c2`; **[PR-CI 41555039103](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41555039103) PASS** auf exakt diesem HEAD: **535/535 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung. Keine APK und keine ausgeführten Android-Geräte-/Privacy-E2E.
+- `RecipeDraftV1Import` verweigert `quantity.amount=0` nun vor der manuellen Rezeptvorschau; `null` bleibt unbekannt und positive Mengen bleiben zulässig. Positive/negative JVM-Regression ergänzt. Keine Room-Schemaänderung, keine neuen FoodStore-Ist-Schreibpfade. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`, nicht STABLE).
+- **Weiter:** unabhängig authentifizierte Nutzeraktionsprovenienz, Generator-/Revalidator-Parität und Android-/Offline-/Privacy-E2E; alle vier Gesamtmodule weiterhin TEILWEISE/OFFEN.
+
 ## Integration II: Katalogbestätigungen strikt auf Rezeptzutaten begrenzen (02.11.2026)
 
 - **[Code-PR #148](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/148)**, Code-/Test-HEAD `fd93144002ce1276d989026b0b93d27ba37e83bf`, Squash-Merge `6b81d747a835e3d7963dbf72e31dc133c3ee41c4`; **[PR-CI 41526249184](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41526249184) PASS** auf diesem HEAD: **521/521 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeCatalogEvidence.resolve` verwirft jetzt Katalogbestätigungen außerhalb des Zutaten-Scopes; positive/negative Room-/Robolectric-Regression prüft gemischte/fremde Belege, Erholung und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
