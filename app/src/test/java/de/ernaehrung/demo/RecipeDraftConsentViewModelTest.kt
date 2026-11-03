@@ -459,4 +459,82 @@ class RecipeDraftConsentViewModelTest {
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
         assertEquals(0, db.foodDao().consumptionCount())
     }
+
+    @Test fun separateSaveGesturePersistsOneReviewedRecipeWithoutCookingOrEating() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val digest = requireNotNull(preview.review?.approvalBasisDigest)
+        // Neither preview nor a premature save callback can persist a recipe.
+        vm.saveConfirmedRecipeDraft(digest)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(1, db.foodDao().operationCount())
+
+        vm.confirmRecipeDraftConsent(digest, preview.sessionId)
+        withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        vm.saveConfirmedRecipeDraft("f".repeat(64))
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+
+        vm.saveConfirmedRecipeDraft(digest)
+        val saved = withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.savedRecipeVersionId != null }
+        }
+        assertNotNull(db.foodDao().recipeVersion(requireNotNull(saved.savedRecipeVersionId)))
+        assertEquals(1, db.foodDao().observeRecipes().first().size)
+        assertEquals(3, db.foodDao().operationCount()) // product + consent + recipe
+        vm.saveConfirmedRecipeDraft(digest) // duplicate UI gesture is ignored
+        assertEquals(3, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertTrue(db.foodDao().allPaidPrices().isEmpty())
+    }
+
+    @Test fun invalidatedReviewCannotSavePreviouslyConsentedDraft() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val first = ready()
+        val oldDigest = requireNotNull(first.review?.approvalBasisDigest)
+        vm.confirmRecipeDraftConsent(oldDigest, first.sessionId)
+        withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == oldDigest }
+        }
+        vm.clearRecipeDraftConsent()
+        vm.saveConfirmedRecipeDraft(oldDigest)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+
+        val changed = json.replace("\"title\":\"Reis\"", "\"title\":\"Reis neu\"")
+        vm.prepareRecipeDraftConsent(changed, request, facts, states)
+        val next = ready()
+        val newDigest = requireNotNull(next.review?.approvalBasisDigest)
+        assertNotEquals(oldDigest, newDigest)
+        vm.saveConfirmedRecipeDraft(oldDigest)
+        assertNull(vm.recipeDraftConsentState.value.savedRecipeVersionId)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(2, db.foodDao().operationCount()) // product + old consent
+    }
+
+    @Test fun recoveredRoomConsentRequiresNewSaveGestureAndUsesSameOperationKey() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val digest = requireNotNull(preview.review?.approvalBasisDigest)
+        vm.confirmRecipeDraftConsent(digest, preview.sessionId)
+        withTimeout(10_000) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
+        }
+        val recreated = LocalDataViewModel(FoodStore(db) { at })
+        recreated.prepareRecipeDraftConsent(json, request, facts, states)
+        val restored = withTimeout(10_000) {
+            recreated.recipeDraftConsentState.first { !it.busy && it.recordedDigest == digest }
+        }
+        assertNull(restored.sessionId)
+        assertNull(restored.savedRecipeVersionId)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        recreated.saveConfirmedRecipeDraft(digest)
+        val saved = withTimeout(10_000) {
+            recreated.recipeDraftConsentState.first { it.savedRecipeVersionId != null }
+        }
+        assertNotNull(db.foodDao().recipeVersion(requireNotNull(saved.savedRecipeVersionId)))
+        assertEquals(3, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
 }
