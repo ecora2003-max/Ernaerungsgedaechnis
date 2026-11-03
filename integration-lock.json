@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Continue pending integration PRs and implement recipe save validation or related Room regression",
-  "workingBranch": null,
+  "workingBranch": "integration-iii-restriction-supplementary-20261103",
   "lastReleasedAtUtc": "2026-11-03T07:50:31.331Z",
   "lastReleasedCommit": "f9e34f7abd1335bbfc722f0c906f8fa2c6924db7",
   "nextStep": "Documentation-only PR #198 awaits suitable checks. Resolve diverged PR #188 only after current-main reconciliation and exact-head CI. Authenticated recipe-save action, Generator/Revalidator parity, Android/privacy E2E remain open."
