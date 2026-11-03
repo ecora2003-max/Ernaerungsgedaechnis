@@ -123,11 +123,12 @@ internal object RecipeDraftHostGate {
                 Character.isISOControl(cp) ||
                 Character.getType(cp) == Character.FORMAT.toInt() ||
                 Character.getType(cp) == Character.SURROGATE.toInt() ||
-                // U+2028/U+2029 are visual line breaks but not ISO controls or
-                // whitespace on every Android/JVM Unicode implementation. A
-                // hidden separator must not turn an exclusion into another ID.
-                Character.getType(cp) == Character.LINE_SEPARATOR.toInt() ||
-                Character.getType(cp) == Character.PARAGRAPH_SEPARATOR.toInt() ||
+                // Unicode variation selectors are default-ignorable Mn marks,
+                // not FORMAT or whitespace. On ordinary food/allergen IDs they
+                // can make a different token look identical to a blocked food.
+                cp in 0xFE00..0xFE0F ||
+                cp in 0xE0100..0xE01EF ||
+                cp in 0x180B..0x180D || cp == 0x180F ||
                 cp == 0x034F
             ) return false
             offset += Character.charCount(cp)
