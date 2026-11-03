@@ -72,9 +72,23 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         // A planning need may still reference a superseded product version. Only
         // the current, independently recorded Room identity at capture time can
         // substantiate recipe context; future revisions do not invalidate history.
-        val latestRevisionByProduct = dao.allVersions()
-            .filter { it.recordedAt in 0L..asOfMillis && it.revision > 0 }
+        val catalogVersions = dao.allVersions()
+        val catalogById = catalogVersions.associateBy { it.id }
+        val referencedProducts = rows.mapNotNull { catalogById[it.need.versionId]?.productId }.toSet()
+        // The latest revision alone cannot establish a trustworthy catalog
+        // identity if an earlier persisted revision has an impossible timestamp.
+        // Restrict the history gate to products actually used by this context;
+        // unrelated catalog edits must not invalidate the recipe review.
+        val versionHistories = catalogVersions
+            .filter { it.productId in referencedProducts && it.recordedAt <= asOfMillis }
             .groupBy { it.productId }
+        if (versionHistories.values.any { history ->
+                history.any { it.recordedAt < 0L || it.revision <= 0 } ||
+                    history.sortedBy { it.revision }.zipWithNext().any { (older, newer) ->
+                        older.recordedAt > newer.recordedAt
+                    }
+            }) return null
+        val latestRevisionByProduct = versionHistories
             .mapValues { (_, history) -> history.maxOf { it.revision } }
         val versions = mutableMapOf<String, ProductVersionEntity>()
         for (row in rows) {
@@ -100,6 +114,14 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             relevantPlanHistories.flatten().sortedBy { it.id }.map { plan ->
                 listOf(plan.id, plan.seriesId, plan.revision, plan.status.name,
                     plan.startsOn, plan.endsOn, plan.recordedAt)
+            },
+            // A correction to a historical product revision changes the
+            // provenance of the currently selected version as well.
+            versionHistories.values.flatten().sortedWith(
+                compareBy<ProductVersionEntity> { it.productId }.thenBy { it.revision }
+            ).map { version ->
+                listOf(version.id, version.productId, version.revision,
+                    version.recordedAt, version.source.name, version.quality.name)
             },
             rows.map { row ->
                 val need = row.need
