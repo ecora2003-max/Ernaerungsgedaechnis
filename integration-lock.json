@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Implement next verified recipe/Room integration regression",
-  "workingBranch": null,
+  "workingBranch": "integration-ii-recipe-context-action-20261103-1210",
   "lastReleasedAtUtc": "2026-11-03T11:04:42.651Z",
   "lastReleasedCommit": "f62b8ae1d4b7ef0b0a8403d9271ab4119cb3eea4",
   "nextStep": "Integration III code PR #217 merged f62b8ae1d4b7ef0b0a8403d9271ab4119cb3eea4, exact code/test HEAD 7313cbdb2ea3a538b320fc1317bcabfe02aaec62 CI 41623670120 PASS: 559 JVM tests, 7 Room migrations, lint, pinned v1/Python parity, Android test compilation. Transfer debits/credits now require balanced one-to-one same-version source/destination; damaged/missing movement fails closed. Docs PR #218 open without CI, earlier docs PR #216 open. Next: verify main CI and docs PRs, independently authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E. No APK or executed device tests; all four modules still open."
