@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Continue own pending PRs then implement next recipe Room/host validation with tests",
-  "workingBranch": "integration-iii-shopping-plan-entry-provenance-20261103-1059",
+  "workingBranch": "integration-iii-shopping-plan-provenance-status-20261103",
   "lastReleasedAtUtc": "2026-11-03T09:52:48.852Z",
   "lastReleasedCommit": "d7cb059ee5a33f0e5328577084032379122ecff3",
   "nextStep": "Code PR #210 open, branch integration-chat-receipt-origin-integrity-20261103-0945, head 7507046b0484144760f6e3362aba0b250464af7b. First CI 41613635232 failed 5 existing tests because initial overly strict check disallowed separate legacy receipts; fixed in exact head 7507046b. Exact-head CI 41614417662 PENDING; do not merge until PASS with JUnit/Room/schema/reference gates. After PASS, recheck main and exclusive own ACTIVE lock before merge; document exact merge/CI in docs/STATUS.md. No APK/device tests, modules open."
