@@ -188,7 +188,9 @@ internal object RecipeDraftV1Import {
         val stepText = steps.joinToString("\n")
         require(stepText.length <= 20_000) { "recipe steps exceed host preview limit" }
         list(p["warnings"], "warnings").forEach {
-            require(it is String) { "warnings must contain strings" }
+            // Warnings are untrusted text too: do not allow hidden bidi or
+            // line-break controls to masquerade as a different review item.
+            previewText(it, "warning")
         }
         if (p.containsKey("nutrition") && p["nutrition"] != null)
             obj(p["nutrition"], "nutrition") // Claims are deliberately discarded.

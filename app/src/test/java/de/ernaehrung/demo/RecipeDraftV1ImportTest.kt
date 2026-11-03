@@ -155,6 +155,21 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visibleId).status)
     }
 
+    @Test fun warningTextRejectsInvisibleControlsBeforeReview() {
+        for (unsafe in listOf("\\u202e", "\\u2028", "\\u2029", "\\u034f", "\\u0001")) {
+            val invalid = change("\"warnings\":[]", "\"warnings\":[\"untrusted" + unsafe + "claim\"]")
+            assertEquals(Gate.Status.BLOCKED, reviewed(invalid).status)
+            assertNull(reviewed(invalid).input)
+            try {
+                Import.read(invalid, states, now)
+                fail("unsafe warning must fail import")
+            } catch (_: IllegalArgumentException) { }
+        }
+        val visible = change("\"warnings\":[]", "\"warnings\":[\"Contains soy 🥕\"]")
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visible).status)
+        assertEquals("synthetic-1", Import.read(visible, states, now).draftId)
+    }
+
     @Test fun validV1DraftRequiresIndependentHostFactsAndExplicitSave() {
         val result = reviewed()
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)
