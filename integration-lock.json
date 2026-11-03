@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae66058b40c8191b8efb843b437b0ca",
-  "ownerChatId": "Integration IV scheduled run 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae66058b40c8191b8efb843b437b0ca-mw0u8g8z-dtaziy6gyje",
-  "acquiredAtUtc": "2026-11-03T15:23:47.651Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Verify PR #225 and implement recipe save user-action provenance",
-  "workingBranch": "integration-iv-recipe-save-20261103-1623",
-  "lastReleasedAtUtc": "2026-11-03T15:10:04.786Z",
-  "lastReleasedCommit": "0c17f49f6bd092b97dd844c1d20e39f701651465",
-  "nextStep": "PR #225 remains open; verify CI on head 0c17f49f6bd092b97dd844c1d20e39f701651465 and merge only after PASS and fresh exclusive lock. Warning display-control regression is not yet CI-verified."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T15:24:20.212Z",
+  "lastReleasedCommit": "4821e4399992d17e23eab05c1789dc2da8aa9e55",
+  "nextStep": "PR #225 CI success on 0c17f49 but mergeable=false; reconcile current main and retest before merge. Recipe save independent user-action provenance still open; this run made no code changes."
 }
