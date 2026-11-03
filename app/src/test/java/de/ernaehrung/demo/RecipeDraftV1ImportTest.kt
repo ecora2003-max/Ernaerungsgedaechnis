@@ -486,4 +486,44 @@ class RecipeDraftV1ImportTest {
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(visibleEmoji).status)
     }
 
+
+    @Test fun visibleDraftAndFoodTypeIdentifiersRejectInvisibleControlsBeforeReview() {
+        // Both IDs appear verbatim in the manual-review UI, not just the
+        // recipe title, steps and ingredient labels.
+        val supplementaryTag = String(Character.toChars(0xE0061))
+        val unsafe = listOf(
+            change("\"draftId\":\"synthetic-1\"",
+                "\"draftId\":\"synthetic-\\u202E1\""),
+            change("\"draftId\":\"synthetic-1\"",
+                "\"draftId\":\"synthetic-\\n1\""),
+            change("\"foodTypeId\":\"rice\"",
+                "\"foodTypeId\":\"ri\\u2060ce\""),
+            change("\"foodTypeId\":\"rice\"",
+                "\"foodTypeId\":\"ri\\u034Fce\""),
+            change("\"foodTypeId\":\"rice\"",
+                "\"foodTypeId\":\"ri" + supplementaryTag + "ce\"")
+        )
+        unsafe.forEach { candidate ->
+            try {
+                Import.read(candidate, states, now)
+                fail("untrusted identity controls reached the manual preview")
+            } catch (_: IllegalArgumentException) { }
+            val review = reviewed(candidate)
+            assertEquals(Gate.Status.BLOCKED, review.status)
+            assertNull(review.input)
+        }
+
+        val safeDraftId = change("\"draftId\":\"synthetic-1\"",
+            "\"draftId\":\"synthetic-1-safe\"")
+        assertEquals("synthetic-1-safe", Import.read(safeDraftId, states, now).draftId)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, reviewed(safeDraftId).status)
+
+        // IDs are not restricted to ASCII; visible characters are not
+        // silently normalized or substituted.
+        val safeFoodId = change("\"foodTypeId\":\"rice\"",
+            "\"foodTypeId\":\"reis-ä\"")
+        assertEquals("reis-ä",
+            Import.read(safeFoodId, emptyMap(), now).draft.lines.single().foodTypeId)
+    }
+
 }
