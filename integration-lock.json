@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Room recipe context and FoodStore history regression",
-  "workingBranch": null,
+  "workingBranch": "integration-iv-origin-movement-evidence-20261103",
   "lastReleasedAtUtc": "2026-11-03T12:12:00Z",
   "lastReleasedCommit": "0677acaa4538ee67da384ba5669a5201f6182758",
   "nextStep": "No code change this run: GitHub search did not locate intended Room source; select exact file path and implement testable Android change in next run."
