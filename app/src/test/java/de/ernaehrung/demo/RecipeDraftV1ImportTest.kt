@@ -3,7 +3,9 @@ package de.ernaehrung.demo
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import as Import
 import de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson as Json
+import de.ernaehrung.demo.data.integration.RecipeContextContentBinding as Binding
 import de.ernaehrung.demo.data.local.BaseUnit
+import java.time.Instant
 import java.time.OffsetDateTime
 import org.junit.Assert.*
 import org.junit.Test
@@ -153,6 +155,35 @@ class RecipeDraftV1ImportTest {
         val sameInstant = reviewed(json, req = request(f), context = c,
             trustedSnapshot = OffsetDateTime.parse("2026-11-01T03:15:00Z"))
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, sameInstant.status)
+    }
+
+    @Test fun typedContextMustMatchTheIndependentlyTrustedSnapshotInstant() {
+        val requested = Gate.Flags(true, false, false)
+        val json = change("\"considerStock\":false", "\"considerStock\":true")
+        val trusted = OffsetDateTime.parse("2026-11-01T04:15:00+01:00")
+        fun boundContext(at: Instant): Gate.Context<Binding.Snapshot,
+            Binding.Snapshot, Binding.Snapshot> {
+            val stock = Binding.Snapshot(
+                Binding.Source.STOCK, "synthetic-stock", "revision-1", at,
+                listOf(Binding.Line("rice", "version-rice", 200_000L, "g"))
+            )
+            return Gate.typedContext(requested, at, Gate.Evidence(stock, true),
+                null, null)
+        }
+        val correct = reviewed(json, req = request(requested),
+            context = boundContext(Instant.parse("2026-11-01T03:15:00Z")),
+            trustedSnapshot = trusted)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, correct.status)
+        assertNotNull(correct.input)
+
+        // The binding is internally valid but describes another snapshot.
+        // Its own digest must not authorize the draft's later snapshot.
+        val wrong = reviewed(json, req = request(requested),
+            context = boundContext(Instant.parse("2026-11-01T03:14:00Z")),
+            trustedSnapshot = trusted)
+        assertEquals(Gate.Status.BLOCKED, wrong.status)
+        assertTrue("CONTEXT_CONTENT_SNAPSHOT_TIME_MISMATCH" in wrong.blockers)
+        assertNull(wrong.input)
     }
 
     @Test fun contextFlagRequiresDatedSnapshotAndNoConsentLeakage() {

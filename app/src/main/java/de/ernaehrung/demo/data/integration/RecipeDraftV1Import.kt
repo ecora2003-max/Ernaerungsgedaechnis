@@ -240,6 +240,16 @@ internal object RecipeDraftV1Import {
                     blockers = base.blockers + "TRUSTED_CONTEXT_SNAPSHOT_IN_FUTURE",
                     input = null
                 )
+            // The independently approved typed content must refer to the same
+            // snapshot instant as both the host timestamp and the draft. A
+            // valid digest for another instant cannot attest this preview.
+            context?.contentBinding?.let {
+                it.snapshotAt != trustedContextSnapshotAt.toInstant()
+            } == true -> base.copy(
+                status = Gate.Status.BLOCKED,
+                blockers = base.blockers + "CONTEXT_CONTENT_SNAPSHOT_TIME_MISMATCH",
+                input = null
+            )
             imported.snapshotAt?.toInstant() != trustedContextSnapshotAt.toInstant() ->
                 base.copy(
                     status = Gate.Status.BLOCKED,
