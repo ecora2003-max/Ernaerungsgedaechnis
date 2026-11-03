@@ -121,6 +121,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val movements = dao.stockMovementSnapshotRows()
         if (movements.size > MAX_MOVEMENTS) return null
         val knownBatches = rows.map { it.batch.id }.toSet()
+        val batchVersions = rows.associate { it.batch.id to it.batch.versionId }
         // Planning balances sum every stored movement, including legacy or
         // future-dated rows. Never expose those as current physical stock.
         // A legacy consumption date is resolved by the DAO when occurredOn is null.
@@ -129,6 +130,22 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             // operation. Later recording of the movement cannot make an
             // impossible correction, consumption or transfer legitimate.
             val batchCreatedAt = batchOriginRecordedAt[movement.batchId] ?: return null
+            // A consumption movement must be backed by the same confirmed
+            // consumption event and its per-batch allocation. An operation
+            // labelled CONSUMPTION alone is not proof of a physical deduction.
+            // Keep this read-only: invalid legacy evidence makes stock unknown.
+            if (movement.movementKind == MovementKind.CONSUMPTION &&
+                (movement.consumptionId.isNullOrBlank() ||
+                    movement.operationResultId != movement.consumptionId ||
+                    movement.consumptionVersionId != batchVersions[movement.batchId] ||
+                    movement.consumptionAmount == null ||
+                    movement.allocationAmount == null ||
+                    movement.allocationAmount <= 0L ||
+                    movement.consumptionAllocatedTotal == null ||
+                    movement.consumptionAmount != movement.consumptionAllocatedTotal ||
+                    movement.delta != -movement.allocationAmount ||
+                    movement.consumptionDate != movement.occurredOn ||
+                    movement.consumptionOccurredAt != movement.occurredAt)) return null
             val day = movement.occurredOn?.let {
                 runCatching { LocalDate.parse(it) }.getOrNull() ?: return null
             }
@@ -205,7 +222,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     })
             }, movements.map { listOf(it.id, it.batchId, it.operationId, it.movementKind.name, it.operationKind,
                 it.operationResultId, it.operationRecordedAt, it.delta, it.recordedAt,
-                it.occurredAt, it.occurredOn) },
+                it.occurredAt, it.occurredOn, it.consumptionId,
+                it.consumptionVersionId, it.consumptionAmount, it.consumptionDate,
+                it.consumptionOccurredAt, it.allocationAmount,
+                it.consumptionAllocatedTotal) },
             eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
