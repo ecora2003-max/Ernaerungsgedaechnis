@@ -43,6 +43,8 @@ internal data class RecipeDraftConsentUiState(
     val error: String? = null
 )
 
+internal data class ProductionPrefillUiState(val recipeVersionId: String, val requestSequence: Int)
+
 data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emptyList(), val text: PhotoText? = null,
     val method: String? = null, val message: String? = null)
 
@@ -255,14 +257,15 @@ class LocalDataViewModel internal constructor(
     private var pendingRecipeDraft: PendingRecipeDraft? = null
     // This is a durable Room consent key, not cryptographic human identity proof.
     private var pendingReviewedSave: PendingRecipeDraft? = null
-    private val productionPrefill = MutableStateFlow<String?>(null)
-    internal val productionPrefillVersionId = productionPrefill.asStateFlow()
+    private val productionPrefill = MutableStateFlow<ProductionPrefillUiState?>(null)
+    internal val productionPrefillState = productionPrefill.asStateFlow()
 
     /** UI handoff only: never books a production or consumes stock. */
     internal fun prepareProductionForSavedRecipe(recipeVersionId: String) {
         if (recipeVersionId.isNotBlank() &&
             recipeDraftConsent.value.savedRecipeVersionId == recipeVersionId) {
-            productionPrefill.value = recipeVersionId
+            productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
+                (productionPrefill.value?.requestSequence ?: 0) + 1)
         }
     }
     private var recipeSaveJob: kotlinx.coroutines.Job? = null
