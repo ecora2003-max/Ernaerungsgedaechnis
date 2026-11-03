@@ -15,7 +15,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 REPOSITORY = "ecora2003-max/Ernaerungsgedaechnis"
-LOCK_PATH = "Prüfe mich ob du dran bist und was du machen sollst und darfst.md"
+LOCK_PATH = "integration-lock.json"
 MIN_IDLE = timedelta(minutes=30)
 ALLOWED_AUTOMATIONS = frozenset({
     "6ae659b2cf2081918f3414dce24a090e",
@@ -23,15 +23,14 @@ ALLOWED_AUTOMATIONS = frozenset({
     "6ae66058b40c8191b8efb843b437b0ca",
     "6ae64ea269448191ac8f0b8a5fd206cb",
 })
-ACTIVE_MARKER = "**Hier arbeitet jetzt ein Chat!**"
-FREE_MARKER = "**Hier arbeitet kein Chat mehr.**"
-BLOCK_START = "\n" + chr(96) * 3 + "yaml\n"
-BLOCK_END = "\n" + chr(96) * 3 + "\n\n"
+# This file is the ONLY operational lock. Never parse lock data from Markdown.
 RELEASE_FIELDS = ("ownerAutomationId", "ownerChatId", "ownerRunId", "ownerRunToken",
                   "acquiredAtUtc", "lastHeartbeatUtc", "leaseExpiresAtUtc", "workingBranch")
-REQUIRED_FIELDS = frozenset(RELEASE_FIELDS) | {
-    "state", "task", "lastReleasedAtUtc", "lastReleasedCommit", "nextStep",
-}
+KEY_ORDER = ("schemaVersion", "state", "ownerAutomationId", "ownerChatId", "ownerRunId",
+             "ownerRunToken", "acquiredAtUtc", "lastHeartbeatUtc", "leaseExpiresAtUtc",
+             "task", "workingBranch", "lastReleasedAtUtc", "lastReleasedCommit", "nextStep")
+REQUIRED_FIELDS = frozenset(KEY_ORDER)
+REPAIR_REQUIRED = frozenset(RELEASE_FIELDS) | {"schemaVersion", "state"}
 
 class RecoveryBlocked(Exception):
     """Malformed evidence, unavailable API or uncertain owner: do not unlock."""
@@ -53,35 +52,79 @@ def format_utc(t: datetime) -> str:
 @dataclass(frozen=True)
 class Lock:
     values: dict[str, Any]
-    before_block: str
-    after_block: str
-    marker: str
+    recovered: bool = False
 
-def parse_lock(content: str) -> Lock:
-    start = content.rfind(BLOCK_START)
-    if start == -1:
-        raise RecoveryBlocked("operative YAML missing")
-    end = content.find(BLOCK_END, start + len(BLOCK_START))
-    if end == -1:
-        raise RecoveryBlocked("operative YAML terminator missing")
-    before, after = content[:start + len(BLOCK_START)], content[end:]
-    marker = after[len(BLOCK_END):].strip()
-    if marker not in {ACTIVE_MARKER, FREE_MARKER}:
-        raise RecoveryBlocked("invalid closing marker")
+def _unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in obj:
+            raise RecoveryBlocked("duplicate JSON lock key")
+        obj[key] = value
+    return obj
+
+def _validate_lock(values: dict[str, Any]) -> None:
+    if not isinstance(values, dict) or set(values) != REQUIRED_FIELDS:
+        raise RecoveryBlocked("missing or extra lock fields")
+    if type(values["schemaVersion"]) is not int or values["schemaVersion"] != 1:
+        raise RecoveryBlocked("unsupported lock schema")
+    if values["state"] not in ("ACTIVE", "FREE"):
+        raise RecoveryBlocked("invalid lock state")
+    if values["state"] == "FREE" and any(values[k] is not None for k in RELEASE_FIELDS):
+        raise RecoveryBlocked("FREE lock has owner metadata")
+    for name in ("ownerAutomationId", "ownerChatId", "ownerRunToken", "task",
+                 "workingBranch", "lastReleasedCommit", "nextStep"):
+        if values[name] is not None and not isinstance(values[name], str):
+            raise RecoveryBlocked("invalid field type: " + name)
+    for name in ("acquiredAtUtc", "lastHeartbeatUtc", "leaseExpiresAtUtc", "lastReleasedAtUtc"):
+        if values[name] is not None:
+            utc(values[name])
+    if values["ownerRunId"] is not None:
+        raise RecoveryBlocked("ownerRunId must be null")
+
+def _repairable_active_values(content: str) -> dict[str, Any]:
+    """Conservatively extract an identifiable ACTIVE owner from damaged pretty JSON.
+
+    This is ONLY used by the watchdog, never by an acquiring integrator. A missing,
+    conflicting or duplicated identity, timestamp or branch is not recoverable.
+    """
+    if len(content) > 8192:
+        raise RecoveryBlocked("damaged lock too large")
     fields: dict[str, Any] = {}
-    for line in content[start + len(BLOCK_START):end].splitlines():
-        m = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*): (.+)", line)
-        if not m or m.group(1) in fields:
-            raise RecoveryBlocked("invalid or duplicate YAML line")
-        try:
-            fields[m.group(1)] = json.loads(m.group(2))
-        except json.JSONDecodeError as e:
-            raise RecoveryBlocked("unsupported YAML scalar") from e
-    if set(fields) != REQUIRED_FIELDS:
-        raise RecoveryBlocked("missing/unknown operative fields")
-    if (fields["state"] == "ACTIVE") != (marker == ACTIVE_MARKER):
-        raise RecoveryBlocked("YAML and marker disagree")
-    return Lock(fields, before, after, marker)
+    pattern = re.compile(r'\s*"([A-Za-z][A-Za-z0-9]*)"\s*:\s*("(?:\\.|[^"\\])*"|null|true|false|-?[0-9]+)\s*,?\s*')
+    for line in content.splitlines():
+        matched = pattern.fullmatch(line)
+        if matched:
+            key, literal = matched.groups()
+            if key in fields:
+                raise RecoveryBlocked("duplicate damaged lock field")
+            try:
+                fields[key] = json.loads(literal)
+            except json.JSONDecodeError as e:
+                raise RecoveryBlocked("invalid damaged scalar") from e
+    if not REPAIR_REQUIRED.issubset(fields):
+        raise RecoveryBlocked("cannot recover all owner and activity evidence")
+    if fields["state"] != "ACTIVE" or fields["schemaVersion"] != 1:
+        raise RecoveryBlocked("cannot recover non-ACTIVE or unknown format")
+    # Even if only punctuation was damaged, never infer or overwrite owner data.
+    values = {k: fields.get(k) for k in KEY_ORDER}
+    for key in ("task", "lastReleasedCommit", "nextStep", "lastReleasedAtUtc"):
+        values.setdefault(key, None)
+    _validate_lock(values)
+    if not is_eligible_owner(Lock(values)):
+        raise RecoveryBlocked("damaged owner identity is not verifiable")
+    if not values["ownerRunToken"].startswith(values["ownerAutomationId"] + "-"):
+        raise RecoveryBlocked("damaged token does not match owner")
+    return values
+
+def parse_lock(content: str, *, allow_repair: bool = False) -> Lock:
+    try:
+        values = json.loads(content, object_pairs_hook=_unique_pairs)
+    except json.JSONDecodeError as e:
+        if not allow_repair:
+            raise RecoveryBlocked("standalone lock JSON malformed") from e
+        return Lock(_repairable_active_values(content), recovered=True)
+    _validate_lock(values)
+    return Lock(values)
 
 def is_eligible_owner(lock: Lock) -> bool:
     v = lock.values
@@ -111,16 +154,18 @@ def latest_activity(lock: Lock, *, now: datetime, branch_commit: datetime | None
     return max(timestamps), False
 
 def render_free_lock(lock: Lock, *, now: datetime, last_commit: str | None) -> str:
-    v = dict(lock.values)
-    v["state"] = "FREE"
+    """Replace the COMPLETE standalone lock with a known-good FREE JSON template."""
+    values = dict(lock.values)
+    values["schemaVersion"] = 1
+    values["state"] = "FREE"
     for field in RELEASE_FIELDS:
-        v[field] = None
-    v["task"] = "Automatische Freigabe nach >=30 Minuten ohne GitHub-Aktivität"
-    v["lastReleasedAtUtc"] = format_utc(now)
-    v["lastReleasedCommit"] = last_commit
-    v["nextStep"] = "Integration aus docs/STATUS.md fortsetzen; vorher Sperre neu übernehmen"
-    lines = [f"{k}: {json.dumps(v[k], ensure_ascii=False)}" for k in lock.values]
-    return lock.before_block + "\n".join(lines) + BLOCK_END + FREE_MARKER + "\n"
+        values[field] = None
+    values["task"] = "Automatisch wiederhergestellt nach mindestens 30 Minuten Inaktivitaet"
+    values["lastReleasedAtUtc"] = format_utc(now)
+    values["lastReleasedCommit"] = last_commit
+    values["nextStep"] = "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
+    return json.dumps({key: values[key] for key in KEY_ORDER},
+                      ensure_ascii=False, indent=2) + "\n"
 
 class Github:
     def __init__(self, repo: str, token: str):
@@ -177,7 +222,7 @@ class Github:
 
     def release(self, sha: str, content: str) -> Any:
         return self.api("PUT", f"/contents/{quote(LOCK_PATH, safe='/')}", data={
-            "message": "chore(lock): recover inactive integration owner after 30m",
+            "message": "chore(lock): restore standalone JSON lock after verified inactivity",
             "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
             "sha": sha, "branch": "main"})
 
@@ -199,7 +244,7 @@ def check_idle(gh: Github, lock: Lock, *, now: datetime) -> tuple[bool, str | No
 
 def execute(gh: Github, *, now: datetime) -> str:
     old_sha, old_text = gh.lock()
-    lock = parse_lock(old_text)
+    lock = parse_lock(old_text, allow_repair=True)
     if lock.values["state"] == "FREE":
         return "SKIP: FREE"
     if not is_eligible_owner(lock):
@@ -211,17 +256,17 @@ def execute(gh: Github, *, now: datetime) -> str:
     new_sha, new_text = gh.lock()
     if (old_sha, old_text) != (new_sha, new_text):
         return "SKIP: lock changed"
-    eligible_again, branch_sha_again = check_idle(gh, parse_lock(new_text), now=now)
+    eligible_again, branch_sha_again = check_idle(gh, parse_lock(new_text, allow_repair=True), now=now)
     if not eligible_again or branch_sha_again != branch_sha:
         return "SKIP: branch or activity changed"
     gh.release(new_sha, render_free_lock(lock, now=now, last_commit=branch_sha))
     verified_sha, verified_text = gh.lock()
     verified = parse_lock(verified_text)
     if (verified_sha == new_sha or verified.values["state"] != "FREE"
-        or verified.marker != FREE_MARKER
         or any(verified.values[k] is not None for k in RELEASE_FIELDS)):
         raise RecoveryBlocked("release not independently verified")
-    return "RELEASED: >=30m inactivity; owner/token/sha verified"
+    return ("RESTORED: malformed lock replaced after >=30m verified inactivity" if lock.recovered
+            else "RELEASED: >=30m inactivity; owner/token/sha verified")
 
 def main() -> int:
     p = argparse.ArgumentParser()

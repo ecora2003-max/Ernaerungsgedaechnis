@@ -1,6 +1,6 @@
 # Prüfe mich, ob du dran bist und was du machen sollst und darfst
 
-**Verbindliche Arbeitsanweisung für JEDEN neu gestarteten Chat, Codex-Lauf und jede der vier zeitversetzten Automatisierungen.** ZUERST vollständig lesen, BEVOR du programmierst, Dateien änderst, einen Branch erstellst oder irgendein Repository beschreibst. Ein anderer Chat hat möglicherweise bereits dieselbe Aufgabe übernommen. Die gemeinsame Arbeit wird nicht durch Chatverlauf, sondern durch GitHub und die nachstehende Sperre koordiniert.
+**Verbindliche Arbeitsanweisung für JEDEN neu gestarteten Chat, Codex-Lauf und jede der vier zeitversetzten Automatisierungen.** ZUERST vollständig lesen, BEVOR du programmierst, Dateien änderst, einen Branch erstellst oder irgendein Repository beschreibst. Ein anderer Chat hat möglicherweise bereits dieselbe Aufgabe übernommen. Die gemeinsame Arbeit wird nicht durch den Chatverlauf, sondern durch GitHub und die separate Datei integration-lock.json auf main koordiniert. Diese Anweisungsdatei ist KEINE operative Sperrdatei.
 
 ## 1. Deine Rolle und deine Aufgabe
 
@@ -27,18 +27,17 @@ Nach bestätigter eigener `ACTIVE`-Sperre **kurz** `AGENTS.md`, den **kompakten*
 4. Passende JVM-/Room-/Migrations-/Regression-/Referenztests, Lint, Schemavergleich und Android-Testkompilierung auf dem geänderten Stand ausführen bzw. echte GitHub-CI prüfen. Routine: `./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin`. Die Kompilierung **führt keine Gerätetests aus**.
 5. `docs/STATUS.md` nur bei echtem Code-/Testfortschritt oder nachweislicher Blockade **kurz und commitgenau** aktualisieren. Bei Integration IV zusätzlich die Kohärenz der Host-/FoodStore-Datenflüsse prüfen, nicht die Fachrepositories vollständig auditieren. Immer die eigene Sperre manuell wieder `FREE` setzen.
 
-## 3. Einfache manuelle Arbeitssperre (ACTIVE/FREE)
+## 3. Verbindliche separate Arbeitssperre: integration-lock.json
 
-**Verbindlich für alle vier Integrations-Chats:** Es gibt eine einzige gemeinsame Sperre im letzten operativen YAML-Block am Ende dieser Datei auf GitHub-`main`. `ACTIVE` bedeutet „Hier arbeitet jetzt ein Chat!“ (in progress); `FREE` bedeutet „Hier arbeitet kein Chat mehr.“ **Die Chats selbst** setzen diese Zustände. Es gibt keine automatische Sperrenübernahme, keine CI-Lease-Verlängerung und keine Run-ID-Pflicht. **Ausnahme:** Der gesonderte GitHub-Wächter prüft alle fünf Minuten eine mögliche Freigabe erst nach **mindestens 30 Minuten ohne verifizierte GitHub-Aktivität**, mit zweimaligem Besitzer-/Token-/SHA-Check und ohne Sperrverlängerung. Die früheren Lease-Verlängerungsworkflows bleiben entfernt. Details: [INTEGRATION_IDLE_RECOVERY.md](docs/INTEGRATION_IDLE_RECOVERY.md).
+**EINZIGE operative Sperrdatei:** integration-lock.json auf GitHub-main. Der frühere YAML-Sperrblock am Ende dieser Markdown-Datei ist abgeschafft. Bei widersprüchlichen älteren Chat-Anweisungen hat diese neue Regel Vorrang. Die Datei ist ein vollständiges JSON-Objekt, kein YAML und kein Textmarker. Die vollständige chronologische Arbeits- und Wiederherstellungsregel steht in docs/INTEGRATION_IDLE_RECOVERY.md.
 
-1. **Vor dem Arbeiten:** Die vollständige Datei frisch von `main` lesen. Bei `ACTIVE` eines anderen Chats: nichts schreiben, keine fremden Branches/PRs übernehmen, diesen Lauf beenden und beim nächsten geplanten Lauf erneut versuchen. Auch ein älterer Zeitstempel berechtigt **andere Chats nicht** zur Übernahme; nur der eng begrenzte GitHub-Wächter darf nach seiner 30-Minuten-Inaktivitätsprüfung freigeben.
-2. **FREE übernehmen:** Aus der aktuellen Automatisierungs-/Chatkennung und einer neu erzeugten, eindeutigen Ausführungskennung einen `ownerRunToken` bilden. Eine ChatGPT-interne Run-ID ist **nicht erforderlich**; `ownerRunId` bleibt `null`, falls nicht verfügbar. Im letzten operativen YAML-Block ausdrücklich `state: "FREE"` auf **`state: "ACTIVE"`** umstellen und passende `ownerAutomationId`, `ownerChatId`, `ownerRunToken`, `acquiredAtUtc`, Aufgabe und `workingBranch` eintragen; `lastHeartbeatUtc` und `leaseExpiresAtUtc` bleiben `null`. Den Schlussmarker zugleich auf **„Hier arbeitet jetzt ein Chat!“** ändern. Ausschließlich mit dem **frisch gelesenen GitHub-Datei-SHA** bedingt aktualisieren (CAS); bei 409/Konflikt neu prüfen, nichts überschreiben.
-3. **Eigentum verifizieren:** Nach dem Commit `main` erneut lesen. Nur wenn `ACTIVE` und der eigene Token exakt stimmen, darf dieser Chat entwickeln. Den eigenen Arbeitsbranch im Sperrblock registrieren. Branch/PR/CI/Tests nach `AGENTS.md` durchführen; keine Änderungen in Fremdrepositories.
-4. **Solange gearbeitet wird:** Vor jedem Push, PR-Merge und anderen wichtigen Schreiboperationen `main` erneut lesen und den eigenen `ACTIVE`-Token prüfen. Es gibt **keinen automatischen Heartbeat** und keine automatische Zeitverlängerung.
-5. **Bei jedem Abschluss:** Den tatsächlichen Entwicklungs-/Teststand und den nächsten Schritt soweit möglich in `docs/STATUS.md` sichern. Danach **sofort** nur bei übereinstimmendem eigenem Token den letzten YAML-Block atomar umstellen: ausdrücklich **`state: "ACTIVE"` zu `state: "FREE"`** ändern, Besitzer-, Run-ID-, Token-, Branch-, Heartbeat- und Lease-Felder auf `null`; Freigabezeit und nächster Schritt dokumentieren. Schlussmarker **„Hier arbeitet kein Chat mehr.“**. Von `main` erneut lesen und `FREE` bestätigen. Auch bei Abbruch oder ohne Codeänderung freigeben.
-6. **Wenn eine Sperre nach einem Abbruch stehen bleibt:** Andere Integrations-Chats dürfen eine fremde `ACTIVE`-Sperre niemals selbst freigeben. Der GitHub-Wächter darf ausschließlich nach seiner 30-Minuten-Inaktivitäts-/Owner-/Token-/SHA-Prüfung automatisch freigeben; bei Unsicherheit bleibt die Sperre. Manuelle Sonderkorrektur nur nach nachgewiesener Beendigung des Vorbesitzers und ausdrücklicher Nutzerinitiative. Den Nutzer über eine notwendige Blockade informieren.
+1. **Zuerst Anweisungen, dann Sperre:** Diese Datei und die gezielt erforderlichen Projektregeln lesen. Danach den GESAMTEN Inhalt sowie den frischen GitHub-Datei-Blob-SHA von integration-lock.json auf main lesen und als JSON parsen. Ausschließlich schemaVersion=1, alle Pflichtfelder und ein vollständig freier Zustand (state="FREE", alle Besitzer-, Token-, Run-, Zeit-/Branchfelder null) erlauben eine Übernahme. Bei ACTIVE, Syntaxfehler, unbekanntem Zustand, API- oder SHA-Problem: ohne Schreibaktion abbrechen. Andere Integratoren dürfen niemals fremde Sperren reparieren oder freigeben.
+2. **Nur bei FREE übernehmen:** Für den eigenen Lauf einen NEUEN einmaligen ownerRunToken mit eigener Automatisierungs-ID erzeugen. Den VOLLSTÄNDIGEN JSON-Inhalt strukturiert serialisieren: state="ACTIVE", ownerAutomationId, ownerChatId, ownerRunToken, acquiredAtUtc, task, workingBranch=null; ownerRunId, lastHeartbeatUtc, leaseExpiresAtUtc bleiben null. Ausschließlich integration-lock.json auf main atomar mit dem frisch gelesenen Datei-Blob-SHA aktualisieren; keine Änderung an dieser Anweisungsdatei. Nach 409/SHA-Konflikt neu prüfen und nicht überschreiben.
+3. **Eigenen Besitz rücklesen:** main und JSON-Datei erneut lesen. Nur bei streng gültigem JSON, eigener Besitzer-ID und exakt eigenem Token entwickeln. Eigenen GitHub-Branch anlegen und dessen Namen früh in workingBranch mit neuem Datei-SHA und eigenem Token registrieren. Vor jedem wichtigen Schreibvorgang, CI-/PR-Merge und nach main-Änderungen Token und Branch prüfen; die fachlichen EG-Architecture-Verträge bleiben verbindlich.
+4. **Am Ende selbst freigeben:** Mit frisch gelesenem Blob-SHA und exakt eigenem ACTIVE-Token die GESAMTE JSON-Datei als gültiges state="FREE" neu serialisieren und alle acht Owner-/Run-/Token-/Zeit-/Lease-/Heartbeat-/Branchfelder auf null setzen. Freigabezeit und nächste Aufgabe angeben; danach main erneut lesen, JSON parse/owner-free verifizieren. Auch bei Abbruch den eigenen Lock freigeben. Ohne Erfolg keine Freigabe behaupten.
+5. **Automatischer Wächter als Ausnahme:** Die GitHub Action prüft ungefähr alle fünf Minuten auf mindestens **30 Minuten GitHub-Inaktivität** des registrierten Besitzers. Erst nach doppelter Owner-/Token-/Branch-/PR-/CI-/Datei-SHA-Prüfung setzt sie den gesamten Inhalt von integration-lock.json auf eine bekannte korrekte FREE-JSON-Vorlage zurück. Bei beschädigtem JSON nur, wenn Besitzer- und Aktivitätsnachweis eindeutig rekonstruierbar sind; andernfalls keine Änderung. Die Entwicklungs-Chats warten nicht auf den Wächter und führen keine fremde Recovery aus. GitHub-Aktivität ist kein perfekter Nachweis für Chat-Inaktivität.
 
-**Wichtig:** Die GitHub-Dateisperre ist ein koordinierendes Verfahren, keine technisch erzwungene Repository-Berechtigung. Der Schutz gegen gleichzeitige Änderungen erfolgt weiter über eigenen Token, bedingte SHA-Updates, Branch-/PR- und CI-Prüfungen.
+**Wichtig:** Die Dateisperre ist ein Koordinationsverfahren, keine erzwungene GitHub-Rechtebeschränkung. Keine parallelen schreibenden Integratoren und keine fremden Repositories ändern.
 
 ## 4. Aktueller Stand und nächste Implementierung
 
@@ -46,25 +45,6 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 
 **Nächster Code-Schritt:** Typisierte echte Room-/Host-Snapshot-Lesestrecke der Rezept-KI anbinden und deren Kontext unmittelbar vor Speichern erneut transaktional prüfen, oder eine konkret begründete wichtigere Artikel-/Filial-/Shopping-UI-Integration. Ohne unabhängig belegte Nutzeraktion keine automatische FoodStore-Buchung. Exakte Vorgaben und offene Abnahmen in `docs/STATUS.md` und `docs/ACCEPTANCE.md`.
 
-## 5. EINZIGER AKTUELLER SPERRSTATUS – am Ende der Datei belassen
+## 5. Sperrstatus ausschließlich in der separaten JSON-Datei
 
-Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
-
-```yaml
-state: "FREE"
-ownerAutomationId: null
-ownerChatId: null
-ownerRunId: null
-ownerRunToken: null
-acquiredAtUtc: null
-lastHeartbeatUtc: null
-leaseExpiresAtUtc: null
-task: "Room batch join completeness regression PR #188 (CI pending)"
-workingBranch: null
-lastReleasedAtUtc: "2026-11-03T06:25:33.424Z"
-lastReleasedCommit: "54750654a37ade66df4ffcb13c5eacc726673800"
-nextStep: "PR #188 code/test HEAD 8b2e8bc78d4abba356f3297b3f10bcf8d53f294f, CI 41589630746 QUEUED: verify exact-HEAD JVM/Room/lint/schema results; merge only on PASS after fresh lock and main-base reconciliation. Docs PR #187 still pending. Then independent authenticated FoodStore recipe-save provenance."
-
-```
-
-**Hier arbeitet kein Chat mehr.**
+Die einzige operative aktuelle Sperre liegt in integration-lock.json auf main. Hier steht bewusst KEIN YAML-Sperrblock und KEIN ACTIVE-/FREE-Schlussmarker mehr. Der GitHub-Wächter darf nur die JSON-Datei auf eine geprüfte FREE-Vorlage zurücksetzen, niemals die vorliegenden Anweisungen.
