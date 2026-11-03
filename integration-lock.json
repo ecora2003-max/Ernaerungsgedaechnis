@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae66058b40c8191b8efb843b437b0ca",
-  "ownerChatId": "Integration IV turn 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae66058b40c8191b8efb843b437b0ca-turn11-1793705393241-ejvidbtqzcq",
-  "acquiredAtUtc": "2026-11-03T11:29:53.241Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Recipe-save authenticated user action and Host/FoodStore consistency",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-03T11:18:58.235Z",
-  "lastReleasedCommit": "d37d5f030e97ced1f74a9dbfaf030b72e1e5ebaa",
-  "nextStep": "Integration II code PR #219 merged d37d5f030e97ced1f74a9dbfaf030b72e1e5ebaa; exact code/test HEAD e9115b5a10bc38a02fa8610b8e4f2d1f9ceb549d CI 41625615859 PASS incl. JVM/Room migration XML gate, lint, pinned schema/Python reference gates and Android test compilation. Docs PR #220 open without CI; do not claim merged. Next: independent recipe-save user-action authentication, generator/revalidator parity, Android/privacy E2E. No APK or executed device tests; all modules remain open."
+  "lastReleasedAtUtc": "2026-11-03T11:30:27.613Z",
+  "lastReleasedCommit": null,
+  "nextStep": "Integration IV turn 11: no code changes; GitHub code search returned no matches, examined current host review/context and architecture. Resume with a scoped, testable code defect after checking open PRs; no tests or PR this run."
 }
