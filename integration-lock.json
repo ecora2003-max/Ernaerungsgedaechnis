@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integration (Chat) scheduled run 11",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-20261103094410210-11ts1g88",
-  "acquiredAtUtc": "2026-11-03T09:44:10.210Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Implement next concrete Room/Host recipe context integrity integration",
-  "workingBranch": "integration-chat-receipt-origin-integrity-20261103-0945",
-  "lastReleasedAtUtc": "2026-11-03T09:38:54.625Z",
+  "task": "Integration Chat: Room receipt-operation deduplication code and Robolectric tests in PR #210; CI pending",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T09:52:48.852Z",
   "lastReleasedCommit": "d7cb059ee5a33f0e5328577084032379122ecff3",
-  "nextStep": "Code PR #208 merged (d7cb059e) after exact-head CI 41611207707 attempt 2 PASS (dc890200, 553/553 JVM, 7/7 Room migrations, Lint, pinned schema/Python, androidTest compilation). Attempt 1 failed transient Robolectric Maven artifact fetch. Docs-only PR #209 open without verified own CI; do not merge without PASS. Next: independently authenticated recipe-save user action, generator/revalidator parity, Android/privacy device E2E; no module fully INTEGRATED."
+  "nextStep": "Code PR #210 open, branch integration-chat-receipt-origin-integrity-20261103-0945, head 7507046b0484144760f6e3362aba0b250464af7b. First CI 41613635232 failed 5 existing tests because initial overly strict check disallowed separate legacy receipts; fixed in exact head 7507046b. Exact-head CI 41614417662 PENDING; do not merge until PASS with JUnit/Room/schema/reference gates. After PASS, recheck main and exclusive own ACTIVE lock before merge; document exact merge/CI in docs/STATUS.md. No APK/device tests, modules open."
 }
