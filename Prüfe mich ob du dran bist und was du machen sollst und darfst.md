@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T00:27:23.935Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Recipe save provenance and Room/FoodStore history consistency"
-workingBranch: null
+workingBranch: "integration-iv-consumption-evidence-20261103-0127"
 lastReleasedAtUtc: "2026-11-03T00:19:11.128Z"
 lastReleasedCommit: "03c78549e01b9ce792ad14fb3be2bc32163d1ef9"
 nextStep: "Code PR #170 merged, CI 41551429223 PASS (534 JVM, 7 Room); docs PR #171 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
