@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integration III: Unicode-sichere bestätigte Rezeptrestriktionen (03.11.2026)
+
+- **[Code-PR #199](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/199)**, Code-/Test-HEAD `0b7f874afa8d30a905f08f2e50ac3a3331bca515`, Squash-Merge `9ca1122f8b3e20cfea06acd36c5a10b2935d21e5`; **[PR-CI 41599801112](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41599801112) PASS** auf genau diesem HEAD: **547/547 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeDraftHostGate.isSupportedRestriction` prüft Restriktions-IDs jetzt als Unicode-Codepoints und verweigert supplementary FORMAT-Zeichen, unsichtbaren U+034F und isolierte Surrogates vor Host-Review und `RecipeDraftManualReview.prepare`. Positive/negative JVM-Regression, keine Schema-/FoodStore-Buchungsänderung, keine APK oder ausgeführten Android-Geräte-/Privacy-E2E. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`).
+- **Weiter:** Unabhängig authentifizierte Nutzeraktionsprovenienz beim FoodStore-Rezeptsave, vollständige Generator-/Revalidator-Parität und echte Android-/Privacy-E2E; vier Fachmodule weiterhin TEILWEISE/OFFEN.
+
+
 ## Integration II: Katalogbestätigungen strikt auf Rezeptzutaten begrenzen (02.11.2026)
 
 - **[Code-PR #148](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/148)**, Code-/Test-HEAD `fd93144002ce1276d989026b0b93d27ba37e83bf`, Squash-Merge `6b81d747a835e3d7963dbf72e31dc133c3ee41c4`; **[PR-CI 41526249184](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41526249184) PASS** auf diesem HEAD: **521/521 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte v1-Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung bestanden. `RecipeCatalogEvidence.resolve` verwirft jetzt Katalogbestätigungen außerhalb des Zutaten-Scopes; positive/negative Room-/Robolectric-Regression prüft gemischte/fremde Belege, Erholung und null zusätzliche Ist-Buchungen. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Schemaänderung, keine APK, **keine ausgeführten Android-Geräte-/Privacy-E2E**.
