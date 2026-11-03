@@ -1,5 +1,7 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+B0-Konsolidierungs-PR #225 enthält die bislang getrennten Code-/Regressionseinheiten #222/#224/#225 und den Nachweis aus #227; #224-Kotlin-Nullability wurde korrigiert. Vollständige CI auf dem konsolidierten HEAD und Android-Geräte-/Offline-/Privacy-E2E sind vor Freigabe gesondert nachzuweisen.
+
 ## Integration (Chat): Rezept-Review-Identitäten ohne unsichtbare Variationsselektoren (03.11.2026)
 
 - **[Code-PR #226](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/226)**, Code-/Test-HEAD `a1496df23c33a58fdb33ca8121a07594a6689cfd`, Squash-Merge `8355393b99e9afb3a6a895b94bcb9f1f6e77eb1a`; **[PR-CI 41665882272](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41665882272) PASS** auf diesem HEAD: **562/562 JVM-Tests, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, gepinnte Schema-/Python-Referenzgates, Room-8-Schema und Android-Testkompilierung. `RecipeDraftV1Import` verwirft jetzt unsichtbare Unicode-Variationsselektoren in `draftId` und `foodTypeId`, ohne sichtbare Unicode-Titel einschließlich Emoji-Varianten zu verbieten; positive/negative JVM-Regression. Architektur-HEAD `9871c9de59b35448451101cb470d1c5e35712dd1`, v1-Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` (`1.0.0-draft`). Keine Room-/Vertragsänderung, keine APK, keine ausgeführten Android-Geräte-/Privacy-E2E.
