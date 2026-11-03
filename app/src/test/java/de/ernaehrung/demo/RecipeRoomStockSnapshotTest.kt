@@ -90,16 +90,16 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
-    @Test fun duplicateReceiptMovementPerOperationFailsClosedWithoutRejectingLegacyReceipts() = runBlocking {
+    @Test fun receiptCreditsRequireTheirBatchOriginAndCannotBeDuplicated() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val beforeOperations = db.foodDao().operationCount()
         val beforeConsumption = db.foodDao().consumptionCount()
         val origin = requireNotNull(db.foodDao().batch(batchId)).originOperationId
-        val duplicateId = "legacy-duplicate-receipt-credit"
         val sql = db.openHelper.writableDatabase
 
-        // A second physical credit under the same confirmed operation must
-        // not inflate available stock or pass transactional recipe review.
+        // Replaying a confirmed receipt as a second physical movement must
+        // not inflate stock or pass the transactional recipe review.
+        val duplicateId = "legacy-duplicate-receipt-credit"
         db.foodDao().insertMovement(StockMovementEntity(
             duplicateId, batchId, origin, 2_000L, MovementKind.RECEIPT,
             null, Source.USER, "Duplicate legacy receipt",
@@ -109,37 +109,35 @@ class RecipeRoomStockSnapshotTest {
         sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(duplicateId))
         assertEquals(original, requireNotNull(store.readRecipeRoomStockSnapshot()))
 
-        // Independently authorized legacy receipt operations are still
-        // accepted, but their changed balance invalidates the old review.
-        val secondOperation = "legacy-second-receipt-operation"
-        val secondMovement = "legacy-second-receipt-movement"
+        // Even a separately persisted RECEIPT operation cannot credit an
+        // existing batch. FoodStore creates a fresh batch for each receipt.
+        val foreignOperation = "legacy-foreign-receipt-operation"
+        val foreignMovement = "legacy-foreign-receipt-movement"
         db.foodDao().insertOperation(OperationEntity(
-            secondOperation, "RECEIPT", secondOperation, at.toEpochMilli(), batchId))
+            foreignOperation, "RECEIPT", foreignOperation, at.toEpochMilli(), batchId))
         db.foodDao().insertMovement(StockMovementEntity(
-            secondMovement, batchId, secondOperation, 500L,
-            MovementKind.RECEIPT, null, Source.USER, "Separate legacy receipt",
-            at.toEpochMilli(), occurredOn = "2026-11-01"))
-        val updated = requireNotNull(store.readRecipeRoomStockSnapshot())
-        assertEquals(2_500L, updated.lines.single().amountMilli)
-        assertNotEquals(original.revision, updated.revision)
-        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
-
-        // Repeating this separate operation's physical credit is likewise
-        // invalid, even when the amounts of its movements differ.
-        val secondDuplicate = "legacy-second-receipt-duplicate"
-        db.foodDao().insertMovement(StockMovementEntity(
-            secondDuplicate, batchId, secondOperation, 100L,
-            MovementKind.RECEIPT, null, Source.USER, "Repeated receipt operation",
+            foreignMovement, batchId, foreignOperation, 500L,
+            MovementKind.RECEIPT, null, Source.USER, "Foreign batch credit",
             at.toEpochMilli(), occurredOn = "2026-11-01"))
         assertNull(store.readRecipeRoomStockSnapshot())
-        assertEquals(Gate.Status.REVIEW_REQUIRED, review(updated).status)
-        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(secondDuplicate))
-        assertEquals(updated, requireNotNull(store.readRecipeRoomStockSnapshot()))
-
-        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(secondMovement))
-        sql.execSQL("DELETE FROM operations WHERE id = ?", arrayOf(secondOperation))
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(foreignMovement))
+        sql.execSQL("DELETE FROM operations WHERE id = ?", arrayOf(foreignOperation))
         assertEquals(original, requireNotNull(store.readRecipeRoomStockSnapshot()))
         assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+
+        // A genuinely new, explicitly confirmed receipt has its own batch
+        // and remains valid; snapshot reads do not add any extra Ist-events.
+        val newBatch = store.receive("separate-valid-receipt",
+            BatchInput(versionId, locationId, 500L, acquiredOn = "2026-11-01",
+                release = ReleaseStatus.RELEASED), true)
+        val valid = requireNotNull(store.readRecipeRoomStockSnapshot())
+        assertEquals(2, valid.lines.size)
+        assertEquals(500L, valid.lines.single { it.identity == "batch:$newBatch" }.amountMilli)
+        assertEquals(2_000L, valid.lines.single { it.identity == "batch:$batchId" }.amountMilli)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+        assertEquals(beforeOperations + 1, db.foodDao().operationCount())
         assertEquals(beforeConsumption, db.foodDao().consumptionCount())
     }
 
