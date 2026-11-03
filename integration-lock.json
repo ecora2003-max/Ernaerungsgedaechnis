@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Integrate recipe save provenance and reconcile pending PR #225",
-  "workingBranch": "integration/chat-recipe-variation-selector-safety-20261103",
+  "workingBranch": "integration/chat-status-recipe-identity-226-20261103",
   "lastReleasedAtUtc": "2026-11-03T15:24:20.212Z",
   "lastReleasedCommit": "4821e4399992d17e23eab05c1789dc2da8aa9e55",
   "nextStep": "PR #225 CI success on 0c17f49 but mergeable=false; reconcile current main and retest before merge. Recipe save independent user-action provenance still open; this run made no code changes."
