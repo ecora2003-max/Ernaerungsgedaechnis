@@ -71,11 +71,22 @@ internal class RecipeAuthorizedOffersReader(
             version.revision <= 0 || version.recordedAt !in 0L..cutoff ||
             version.source == Source.DEMO ||
             version.quality !in setOf(Quality.SOURCED, Quality.CONFIRMED)) return null
-        val latest = dao.allVersions().filter {
-            it.productId == version.productId && it.recordedAt in 0L..cutoff &&
-                it.revision > 0
-        }.maxOfOrNull { it.revision } ?: return null
-        if (version.revision != latest) return null
+        // The selected version is not trustworthy if an earlier persisted
+        // revision has impossible chronology. A future-dated predecessor of
+        // an already-current version cannot be hidden by an as-of filter.
+        // Legitimate future successors do not replace the current version.
+        val productHistory = dao.allVersions().filter {
+            it.productId == version.productId
+        }
+        if (productHistory.any { it.recordedAt < 0L || it.revision <= 0 }) return null
+        val knownHistory = productHistory.filter { it.recordedAt <= cutoff }
+        if (knownHistory.isEmpty() ||
+            knownHistory.sortedBy { it.revision }.zipWithNext().any { (older, newer) ->
+                older.recordedAt > newer.recordedAt
+            }) return null
+        val latest = knownHistory.maxOf { it.revision }
+        if (version.revision != latest ||
+            productHistory.any { it.recordedAt > cutoff && it.revision <= latest }) return null
         val request = ExternalPriceBridge.Request(
             retailer = scope.retailer,
             capability = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION,
@@ -137,6 +148,22 @@ internal class RecipeAuthorizedOffersReader(
             scopeId(scope), version.id, version.productId, version.revision,
             version.recordedAt, version.baseUnit.name,
             version.source.name, version.quality.name,
+            // The complete known product history is part of the approval
+            // revision. A legacy repair of an older ingredient/allergen or
+            // identity record must invalidate an otherwise identical offer.
+            knownHistory.sortedBy { it.revision }.map { prior ->
+                listOf(prior.id, prior.productId, prior.revision,
+                    prior.recordedAt, prior.name, prior.brand, prior.category,
+                    prior.barcode, prior.baseUnit.name, prior.packageAmount,
+                    prior.nutritionBasis, prior.ingredients, prior.allergens,
+                    prior.source.name, prior.sourceDetail, prior.quality.name,
+                    prior.changeReason, prior.energyKcal, prior.proteinGrams,
+                    prior.fatGrams, prior.carbsGrams, prior.fiberGrams,
+                    prior.sugarGrams, prior.saturatedFatGrams, prior.saltGrams,
+                    prior.calciumMg, prior.ironMg, prior.magnesiumMg,
+                    prior.iodineMicrograms, prior.vitaminB12Micrograms,
+                    prior.vitaminDMicrograms)
+            },
             ordered.map { (candidate, visible, facts) ->
                 listOf(candidate.observationId, candidate.sourceId,
                     candidate.rightsStatus.name, candidate.rightsEvidenceRef,
