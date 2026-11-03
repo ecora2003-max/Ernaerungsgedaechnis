@@ -30,11 +30,19 @@ internal object RecipeDraftV1Import {
     /** Reject untrusted display controls and bidi overrides before manual review. */
     private fun previewText(value: Any?, name: String, multiline: Boolean = false): String {
         val text = str(value, name)
-        require(text.none { char ->
-            (Character.isISOControl(char) && !(multiline && char == '\n')) ||
-                char in '\u202A'..'\u202E' || char in '\u2066'..'\u2069' ||
-                char == '\u200E' || char == '\u200F' || char == '\u061C'
-        }) { name + " contains unsafe display controls" }
+        // Inspect Unicode code points, not UTF-16 chars: supplementary
+        // format controls (including invisible tag characters) must not pass.
+        // U+034F is a default-ignorable combining grapheme joiner (Mn).
+        var offset = 0
+        while (offset < text.length) {
+            val cp = Character.codePointAt(text, offset)
+            require(
+                !(Character.isISOControl(cp) && !(multiline && cp == '\n'.code)) &&
+                    Character.getType(cp) != Character.FORMAT.toInt() &&
+                    cp != 0x034F
+            ) { name + " contains unsafe display controls" }
+            offset += Character.charCount(cp)
+        }
         return text
     }
     private fun optionalStr(value: Any?, name: String): String? =
