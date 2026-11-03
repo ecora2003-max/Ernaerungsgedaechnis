@@ -288,6 +288,75 @@ class RecipeAuthorizedOffersSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun offerCatalogHistoryRejectsFuturePredecessorAndReversedRevisionOrder() = runBlocking {
+        val original = requireNotNull(db.foodDao().version(versionId))
+        clock = at.plusMillis(1_000).toEpochMilli()
+        versionId = store.rememberProduct("offers-second-version",
+            ProductInput("Reis neu", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = original.productId)
+        scope = scope.copy(productVersionId = versionId)
+        clock = at.plusMillis(2_000).toEpochMilli()
+        val before = db.foodDao().operationCount()
+        val valid = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+
+        // A future predecessor must not be silently omitted from the as-of
+        // history merely because the selected newer revision is already valid.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(clock + 1_000L, original.id))
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+
+        // Both revisions can be in the past while their recorded chronology
+        // contradicts the persisted revision order.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusMillis(1_500).toEpochMilli(), original.id))
+        assertNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET recordedAt = ? WHERE id = ?",
+            arrayOf(original.recordedAt, original.id))
+        assertEquals(valid.revision,
+            requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader())).revision)
+
+        // A legitimate future successor must not replace a version that was
+        // independently current at the earlier snapshot instant.
+        clock = at.plusMillis(4_000).toEpochMilli()
+        store.rememberProduct("offers-future-successor",
+            ProductInput("Reis später", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = original.productId)
+        clock = at.plusMillis(2_000).toEpochMilli()
+        assertEquals(valid.revision,
+            requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader())).revision)
+        assertEquals(before + 1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun olderCatalogMetadataRepairInvalidatesOfferApprovalRevision() = runBlocking {
+        val original = requireNotNull(db.foodDao().version(versionId))
+        clock = at.plusMillis(1_000).toEpochMilli()
+        versionId = store.rememberProduct("offers-metadata-successor",
+            ProductInput("Reis neu", source = Source.USER, quality = Quality.CONFIRMED),
+            productId = original.productId)
+        scope = scope.copy(productVersionId = versionId)
+        clock = at.plusMillis(2_000).toEpochMilli()
+        val before = db.foodDao().operationCount()
+        val first = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET allergens = ? WHERE id = ?",
+            arrayOf("SOY", original.id))
+        val changed = requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader()))
+        assertEquals(first.lines, changed.lines)
+        assertNotEquals(first.revision, changed.revision)
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE product_versions SET allergens = ? WHERE id = ?",
+            arrayOf(original.allergens, original.id))
+        assertEquals(first.revision,
+            requireNotNull(store.readRecipeAuthorizedOffersSnapshot(scope, reader())).revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     /** Callback failures are unknown evidence, but coroutine cancellation is not. */
     private fun failingEvidenceReader(
         articleFailure: RuntimeException? = null,
