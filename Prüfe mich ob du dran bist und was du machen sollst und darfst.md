@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae64ea269448191ac8f0b8a5fd206cb"
-ownerChatId: "Integration (Chat) run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae64ea269448191ac8f0b8a5fd206cb-mvzys8q1-7odrq0nt0"
-acquiredAtUtc: "2026-11-03T00:43:23.305Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "Android recipe-save provenance validation"
-workingBranch: "integration-chat-restriction-delimiter-20261103"
-lastReleasedAtUtc: "2026-11-03T00:39:38.322Z"
-lastReleasedCommit: "3122dd820570ecdb6bfd8d007dd1c149205095cd"
-nextStep: "Code PR #172 merged; CI 41553474651 PASS (535 JVM, 7 Room); docs PR #173 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-03T00:51:09.117Z"
+lastReleasedCommit: "826836cf392a73357749833b7aba51315f0e99c2"
+nextStep: "Code PR #174 merged; CI 41555039103 PASS (535 JVM, 7 Room); docs PR #175 open without CI; next: authenticated recipe-save action provenance, generator/revalidator parity, Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
