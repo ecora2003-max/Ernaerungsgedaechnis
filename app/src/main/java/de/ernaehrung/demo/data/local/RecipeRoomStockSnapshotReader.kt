@@ -51,7 +51,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val asOfMillis = capturedAt.toEpochMilli()
         if (asOfMillis < 0L) return null
         val rows = dao.planningBatches()
-        if (rows.size > MAX_ROWS || rows.map { it.batch.id }.toSet().size != rows.size) return null
+        // The planning query joins product versions and locations. A legacy
+        // orphan batch would otherwise disappear from this projection and make
+        // an incomplete stock view appear independently verified.
+        if (rows.size > MAX_ROWS || rows.size != dao.batchCount() ||
+            rows.map { it.batch.id }.toSet().size != rows.size) return null
         val today = capturedAt.atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
         // A released batch in an unconfirmed storage location is not usable stock.
         // Include location facts in the revision to invalidate a prior review if
