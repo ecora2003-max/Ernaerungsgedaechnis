@@ -51,19 +51,19 @@ Haupt-App **Room 8, 36 Tabellen**. Letzter unabhängig belegter Integrations-Cod
 Dieser Block enthält den **einzigen operativen Sperrstatus**. Nur hier den YAML-Block und den zugehörigen Schlussmarker ändern, niemals Feldnamen in den Erklärungen global ersetzen. Maßgeblich sind `state` (`ACTIVE` oder `FREE`) und die exakt passende `ownerRunToken`-Kennung. Für die manuelle Sperre werden `ownerRunId`, `lastHeartbeatUtc` und `leaseExpiresAtUtc` nicht benötigt und auf `null` gesetzt. Keine automatische Übernahme oder Fristverlängerung; einzige Ausnahme bei Freigaben ist der separat getestete GitHub-30-Minuten-Inaktivitätswächter (nur für registrierte Integrationsautomaten).
 
 ```yaml
-state: "ACTIVE"
-ownerAutomationId: "6ae65fdd040081919b0a5fb1c8962104"
-ownerChatId: "Integration III automated run 11"
+state: "FREE"
+ownerAutomationId: null
+ownerChatId: null
 ownerRunId: null
-ownerRunToken: "6ae65fdd040081919b0a5fb1c8962104-mvzx9olo-hajxzw5fyn"
-acquiredAtUtc: "2026-11-03T00:00:57.804Z"
+ownerRunToken: null
+acquiredAtUtc: null
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
-task: "Bind typed recipe context timestamp to independently trusted snapshot"
-workingBranch: "integration-iii/recipe-bound-context-time-20261103-0100"
-lastReleasedAtUtc: "2026-11-02T23:44:55.818Z"
-lastReleasedCommit: "6e6dd4a29b39897c3cf83fe9dbf9288ea2ec2505"
-nextStep: "Code PR #166 merged with CI 41547137130 PASS (532 JVM, 7 Room); docs PR #167 open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
+task: "Typed recipe context timestamp regression and verified code PR #168"
+workingBranch: null
+lastReleasedAtUtc: "2026-11-03T00:08:09.260Z"
+lastReleasedCommit: "0d7e0d2b69165f5d8ff564869bdbc6b5be702e12"
+nextStep: "Code PR #168 merged, CI 41549884479 PASS (533 JVM, 7 Room); docs PR #169 and earlier #163 remain open without CI; next: authenticated recipe-save provenance, generator/revalidator parity, Android/privacy E2E"
 ```
 
-**Hier arbeitet jetzt ein Chat!**
+**Hier arbeitet kein Chat mehr.**
