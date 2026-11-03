@@ -134,6 +134,11 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             // consumption event and its per-batch allocation. An operation
             // labelled CONSUMPTION alone is not proof of a physical deduction.
             // Keep this read-only: invalid legacy evidence makes stock unknown.
+            // A receipt, transfer or other non-consumption author cannot also
+            // carry a confirmed consumption event. The left join would otherwise
+            // expose that contradictory history as a valid stock snapshot.
+            if (movement.movementKind != MovementKind.CONSUMPTION &&
+                movement.consumptionId != null) return null
             if (movement.movementKind == MovementKind.CONSUMPTION &&
                 (movement.consumptionId.isNullOrBlank() ||
                     movement.operationResultId != movement.consumptionId ||
