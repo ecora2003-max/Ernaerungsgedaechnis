@@ -257,6 +257,35 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun earlierPlanRevisionCannotBeFutureDatedOrFollowItsSuccessor() = runBlocking {
+        val firstId = store.savePlan("plan-history-first", plan(200_000L))
+        store.savePlan("plan-history-second", plan(300_000L), firstId)
+        val before = db.foodDao().operationCount()
+        val valid = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(300_000L, valid.lines.single().amountMilli)
+        val firstRecordedAt = requireNotNull(db.foodDao().plan(firstId)).recordedAt
+
+        // The latest revision is valid, but the earlier persisted revision
+        // claims to have been recorded after it. A latest-only check misses it.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET recordedAt = ? WHERE id = ?",
+            arrayOf(at.plusSeconds(60).toEpochMilli(), firstId))
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+        // Waiting until the malformed timestamp is in the past does not
+        // repair the reversed order of the two plan revisions.
+        clock = at.plusSeconds(61).toEpochMilli()
+        assertNull(store.readRecipeRoomShoppingSnapshot(scope))
+
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE plans SET recordedAt = ? WHERE id = ?",
+            arrayOf(firstRecordedAt, firstId))
+        val repaired = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(300_000L, repaired.lines.single().amountMilli)
+        assertEquals(valid.revision, repaired.revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun invalidPlanRevisionTimeFailsClosedWithoutBooking() = runBlocking {
         val planId = store.savePlan("invalid-plan-shopping", plan(200_000L))
         val before = db.foodDao().operationCount()
