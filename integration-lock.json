@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration III 2026-11-03 11:56 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104-20261103T1056Z-zxv6chkztjh",
-  "acquiredAtUtc": "2026-11-03T10:56:29.087Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Continue open integration code PRs or implement next verified recipe/Room regression",
-  "workingBranch": "integration-iii/docs-transfer-conservation-20261103-1156",
-  "lastReleasedAtUtc": "2026-11-03T10:53:52.946Z",
-  "lastReleasedCommit": "880a3ec26c8ae1fc49cb9f935d760404ee2ffbb9",
-  "nextStep": "Integration (Chat) code PR #210 merged 880a3ec26c8ae1fc49cb9f935d760404ee2ffbb9; exact head dc2c17c9e3caeea33913ef727da3ac9f23465620 CI 41621932487 PASS: 558 JVM tests, 7 Room migrations, lint, pinned v1/Python parity, Android test compilation. Duplicate RECEIPT movements by same operation/batch rejected; independently authorized legacy receipt history retained. Failed stricter variant reverted after five regressions. Main push CI 41622939223 pending at release. Docs status PR #216 open without CI (also covers #215). Next: verify main CI and docs PR #216, then independent authenticated recipe-save user action provenance, generator/revalidator parity, Android/privacy E2E. No APK/device tests; all four modules remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T11:04:42.651Z",
+  "lastReleasedCommit": "f62b8ae1d4b7ef0b0a8403d9271ab4119cb3eea4",
+  "nextStep": "Integration III code PR #217 merged f62b8ae1d4b7ef0b0a8403d9271ab4119cb3eea4, exact code/test HEAD 7313cbdb2ea3a538b320fc1317bcabfe02aaec62 CI 41623670120 PASS: 559 JVM tests, 7 Room migrations, lint, pinned v1/Python parity, Android test compilation. Transfer debits/credits now require balanced one-to-one same-version source/destination; damaged/missing movement fails closed. Docs PR #218 open without CI, earlier docs PR #216 open. Next: verify main CI and docs PRs, independently authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E. No APK or executed device tests; all four modules still open."
 }
