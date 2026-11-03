@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-03T08:15:04.976Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Implement next tested Kotlin Room/recipe integration unit",
-  "workingBranch": null,
+  "task": "Reject Unicode line/paragraph separator spoofing in recipe draft preview identities and labels",
+  "workingBranch": "integration-ii/recipe-preview-line-separator-20261103-0815",
   "lastReleasedAtUtc": "2026-11-03T08:02:31.923Z",
   "lastReleasedCommit": "9ca1122f8b3e20cfea06acd36c5a10b2935d21e5",
   "nextStep": "Code PR #199 merged after exact-head CI 41599801112 PASS (547 JVM, 7 Room). Docs-only PR #200 remains open without separate CI; previous docs PRs also await suitable checks. Reconcile pending PR #188 on current main with exact-head CI. Next: authenticated recipe-save user-action provenance, generator/revalidator parity, Android/privacy E2E."
