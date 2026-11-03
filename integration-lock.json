@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Implement next concrete Room/Host recipe context integrity integration",
-  "workingBranch": null,
+  "workingBranch": "integration-chat-receipt-origin-integrity-20261103-0945",
   "lastReleasedAtUtc": "2026-11-03T09:38:54.625Z",
   "lastReleasedCommit": "d7cb059ee5a33f0e5328577084032379122ecff3",
   "nextStep": "Code PR #208 merged (d7cb059e) after exact-head CI 41611207707 attempt 2 PASS (dc890200, 553/553 JVM, 7/7 Room migrations, Lint, pinned schema/Python, androidTest compilation). Attempt 1 failed transient Robolectric Maven artifact fetch. Docs-only PR #209 open without verified own CI; do not merge without PASS. Next: independently authenticated recipe-save user action, generator/revalidator parity, Android/privacy device E2E; no module fully INTEGRATED."
