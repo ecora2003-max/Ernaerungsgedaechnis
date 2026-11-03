@@ -79,8 +79,9 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
         // identity if an earlier persisted revision has an impossible timestamp.
         // Restrict the history gate to products actually used by this context;
         // unrelated catalog edits must not invalidate the recipe review.
-        val versionHistories = catalogVersions
-            .filter { it.productId in referencedProducts && it.recordedAt <= asOfMillis }
+        val relevantVersions = catalogVersions.filter { it.productId in referencedProducts }
+        val versionHistories = relevantVersions
+            .filter { it.recordedAt <= asOfMillis }
             .groupBy { it.productId }
         if (versionHistories.values.any { history ->
                 history.any { it.recordedAt < 0L || it.revision <= 0 } ||
@@ -90,6 +91,13 @@ internal class RecipeRoomShoppingSnapshotReader(private val db: FoodDatabase) {
             }) return null
         val latestRevisionByProduct = versionHistories
             .mapValues { (_, history) -> history.maxOf { it.revision } }
+        // A future-dated successor may legitimately be unknown at capture time.
+        // A future-dated *predecessor* of an already current revision cannot:
+        // excluding it from the as-of history would conceal reversed chronology.
+        if (relevantVersions.any { version ->
+                version.recordedAt > asOfMillis &&
+                    version.revision <= (latestRevisionByProduct[version.productId] ?: 0)
+            }) return null
         val versions = mutableMapOf<String, ProductVersionEntity>()
         for (row in rows) {
             val need = row.need
