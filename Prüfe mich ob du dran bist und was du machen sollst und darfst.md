@@ -60,7 +60,7 @@ acquiredAtUtc: "2026-11-03T06:21:44.589Z"
 lastHeartbeatUtc: null
 leaseExpiresAtUtc: null
 task: "FoodStore/Room recipe and inventory provenance hardening"
-workingBranch: null
+workingBranch: "integration-iv-room-batch-join-integrity-20261103"
 lastReleasedAtUtc: "2026-11-03T06:14:05.899Z"
 lastReleasedCommit: "54750654a37ade66df4ffcb13c5eacc726673800"
 nextStep: "Code PR #186 merged, exact-HEAD CI 41588042412 PASS (541 JVM, 7 Room); docs PR #187 open pending own CI. Next: independent authenticated FoodStore user-action provenance, generator/revalidator parity, Android/privacy device E2E."
