@@ -442,6 +442,48 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals(0, db.foodDao().consumptionCount())
     }
 
+    @Test fun persistedPlanEntryAndTitleCorrectionsInvalidateShoppingReview() = runBlocking {
+        val planId = store.savePlan("shopping-plan-provenance", plan(200_000L))
+        val planRow = requireNotNull(db.foodDao().plan(planId))
+        val entry = db.foodDao().allPlannedEntries().single { it.planId == planId }
+        val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(original).status)
+        val before = db.foodDao().operationCount()
+        val sql = db.openHelper.writableDatabase
+
+        // Changing a persisted ingredient annotation leaves the calculated
+        // shopping quantity untouched but changes its source evidence.
+        sql.execSQL("UPDATE planned_entries SET label = ? WHERE id = ?",
+            arrayOf("Manuell korrigierte Zutat", entry.id))
+        val correctedEntry = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, correctedEntry.lines)
+        assertNotEquals(original.revision, correctedEntry.revision)
+        val staleEntry = review(original)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, staleEntry.status)
+        assertTrue("ROOM_SHOPPING_SNAPSHOT_STALE_OR_CHANGED" in staleEntry.gaps)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review(correctedEntry).status)
+
+        sql.execSQL("UPDATE planned_entries SET label = ? WHERE id = ?",
+            arrayOf(entry.label, entry.id))
+        assertEquals(original.revision,
+            requireNotNull(store.readRecipeRoomShoppingSnapshot(scope)).revision)
+
+        // The plan's recorded metadata is also part of the source revision.
+        sql.execSQL("UPDATE plans SET title = ? WHERE id = ?",
+            arrayOf("Geaenderter Wochenplan", planId))
+        val correctedTitle = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
+        assertEquals(original.lines, correctedTitle.lines)
+        assertNotEquals(original.revision, correctedTitle.revision)
+        assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
+
+        sql.execSQL("UPDATE plans SET title = ? WHERE id = ?",
+            arrayOf(planRow.title, planId))
+        assertEquals(original.revision,
+            requireNotNull(store.readRecipeRoomShoppingSnapshot(scope)).revision)
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun shoppingRecipeEvidenceTracksCatalogProvenanceAndRejectsDemo() = runBlocking {
         store.savePlan("shopping-provenance-plan", plan(200_000L))
         val original = requireNotNull(store.readRecipeRoomShoppingSnapshot(scope))
