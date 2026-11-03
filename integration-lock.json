@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezept-Speichern Nutzeraktionsgrenze",
-  "workingBranch": null,
+  "workingBranch": "integration-chat-recipe-save-validation-20261103-11",
   "lastReleasedAtUtc": "2026-11-03T14:23:40.412Z",
   "lastReleasedCommit": "7bb90da9481f150694d45db20f1cb92d16b74908",
   "nextStep": "Gezielte Kotlin-Korrektur mit Regression; Rezeptsave-Authentifizierung weiter offen"
