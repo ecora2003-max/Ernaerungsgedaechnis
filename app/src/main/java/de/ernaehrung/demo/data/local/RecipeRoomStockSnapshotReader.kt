@@ -141,7 +141,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     movement.consumptionAmount == null ||
                     movement.allocationAmount == null ||
                     movement.allocationAmount <= 0L ||
-                    movement.consumptionAmount < movement.allocationAmount ||
+                    movement.consumptionAllocatedTotal == null ||
+                    movement.consumptionAmount != movement.consumptionAllocatedTotal ||
                     movement.delta != -movement.allocationAmount ||
                     movement.consumptionDate != movement.occurredOn ||
                     movement.consumptionOccurredAt != movement.occurredAt)) return null
@@ -223,7 +224,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 it.operationResultId, it.operationRecordedAt, it.delta, it.recordedAt,
                 it.occurredAt, it.occurredOn, it.consumptionId,
                 it.consumptionVersionId, it.consumptionAmount, it.consumptionDate,
-                it.consumptionOccurredAt, it.allocationAmount) },
+                it.consumptionOccurredAt, it.allocationAmount,
+                it.consumptionAllocatedTotal) },
             eligibleBatchIds.sorted())
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
