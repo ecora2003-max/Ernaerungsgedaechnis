@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Continue pending code PR or implement Room recipe regression",
-  "workingBranch": null,
+  "workingBranch": "integration-iii-transfer-day-consistency-20261103",
   "lastReleasedAtUtc": "2026-11-03T12:38:19.891Z",
   "lastReleasedCommit": "ccb3744b160a9a4506e27c40fc69ac48a7c282b9",
   "nextStep": "No code change in this run: GitHub code search returned no target files; inspect PR #221/#222 and actual Kotlin paths, then implement regression under a new lock and run exact-head CI."
