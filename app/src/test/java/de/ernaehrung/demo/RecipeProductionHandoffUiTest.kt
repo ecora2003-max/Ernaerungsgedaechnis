@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import de.ernaehrung.demo.ui.Fold
 import org.junit.Rule
 import org.junit.Test
@@ -30,6 +31,11 @@ class RecipeProductionHandoffUiTest {
         }
         compose.onNodeWithText("Tatsächliche Zutatenmengen").assertDoesNotExist()
         compose.runOnUiThread { requestedVersion.value = "saved-recipe-version" }
+        compose.waitForIdle()
+        compose.onNodeWithText("Tatsächliche Zutatenmengen").assertIsDisplayed()
+        compose.onNodeWithText("Tatsächliche Herstellung buchen").performClick()
+        compose.onNodeWithText("Tatsächliche Zutatenmengen").assertDoesNotExist()
+        compose.runOnUiThread { requestedVersion.value = "saved-recipe-version-again" }
         compose.waitForIdle()
         compose.onNodeWithText("Tatsächliche Zutatenmengen").assertIsDisplayed()
     }
