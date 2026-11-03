@@ -143,6 +143,45 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(beforeConsumption, db.foodDao().consumptionCount())
     }
 
+    @Test fun incompleteOrUnbalancedTransferCannotBecomeRecipeStock() = runBlocking {
+        val target = store.addLocation("transfer-review-target", "Speisekammer", true)
+        val transferAt = at.plusSeconds(60)
+        val writer = FoodStore(db) { transferAt.toEpochMilli() }
+        val operationId = "transfer-review-operation"
+        val destination = writer.transfer(operationId,
+            TransferInput(batchId, target, 500L, "2026-11-01",
+                "Bestand umgelagert", conditionsConfirmed = true), true)
+        val reader = FoodStore(db) { transferAt.plusSeconds(1).toEpochMilli() }
+        val valid = requireNotNull(reader.readRecipeRoomStockSnapshot())
+        assertEquals(2, valid.lines.size)
+        assertEquals(1_500L, valid.lines.single { it.identity == "batch:$batchId" }.amountMilli)
+        assertEquals(500L, valid.lines.single { it.identity == "batch:$destination" }.amountMilli)
+        val beforeOperations = db.foodDao().operationCount()
+        val beforeConsumption = db.foodDao().consumptionCount()
+        val movements = db.foodDao().movements(operationId)
+        assertEquals(2, movements.size)
+        val debit = movements.single { it.delta < 0L }
+        val sql = db.openHelper.writableDatabase
+
+        // An imported transfer with a mismatched debit creates stock from
+        // nothing; a later snapshot must never accept that partial ledger.
+        sql.execSQL("UPDATE stock_movements SET delta = ? WHERE id = ?",
+            arrayOf(-400L, debit.id))
+        assertNull(reader.readRecipeRoomStockSnapshot())
+        sql.execSQL("UPDATE stock_movements SET delta = ? WHERE id = ?",
+            arrayOf(debit.delta, debit.id))
+        assertEquals(valid, requireNotNull(reader.readRecipeRoomStockSnapshot()))
+
+        // A missing source debit must not leave the destination credit
+        // available for a recipe, even though its author operation exists.
+        sql.execSQL("DELETE FROM stock_movements WHERE id = ?", arrayOf(debit.id))
+        assertNull(reader.readRecipeRoomStockSnapshot())
+        db.foodDao().insertMovement(debit)
+        assertEquals(valid, requireNotNull(reader.readRecipeRoomStockSnapshot()))
+        assertEquals(beforeOperations, db.foodDao().operationCount())
+        assertEquals(beforeConsumption, db.foodDao().consumptionCount())
+    }
+
     @Test fun orphanBatchHiddenByEitherPlanningJoinFailsClosedWithoutBooking() = runBlocking {
         val second = store.receive("orphan-join-receipt",
             BatchInput(versionId, locationId, 100L, acquiredOn = "2026-11-01",
