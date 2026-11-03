@@ -55,12 +55,14 @@ internal object RecipeDraftManualReview {
         val ids = draft.lines.map { it.foodTypeId }
         require(ids.all { it.isNotBlank() } && ids.toSet().size == ids.size)
         require(choices.keys == ids.toSet()) { "each ingredient needs its own review" }
+        // Use the exact same syntax as the final host review. In particular,
+        // whitespace, format characters and extra delimiters must not survive
+        // into a durable manual confirmation checkpoint.
+        require(restrictions.all(Gate::isSupportedRestriction)) {
+            "unsupported restriction"
+        }
         val allergens = restrictions.filter { it.startsWith("ALLERGEN:") }
             .map { it.removePrefix("ALLERGEN:") }.toSet()
-        require(restrictions.all {
-            (it.startsWith("ALLERGEN:") && it.length > 9) ||
-                (it.startsWith("FOOD:") && it.length > 5)
-        }) { "unsupported restriction" }
         val byId = catalog.groupBy { it.id }
         // Select the latest version known at this review instant. A future-dated
         // revision must neither displace a currently valid row nor authorize itself.
