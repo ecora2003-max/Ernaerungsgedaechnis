@@ -136,6 +136,23 @@ internal object RecipeDraftHostGate {
         return true
     }
 
+    /** Reject invisible or malformed host identity tokens before they enter a save input. */
+    private fun validProductVersionId(id: String?): Boolean {
+        if (id.isNullOrBlank()) return false
+        var offset = 0
+        while (offset < id.length) {
+            val cp = Character.codePointAt(id, offset)
+            if (Character.isWhitespace(cp) || Character.isSpaceChar(cp) ||
+                Character.isISOControl(cp) ||
+                Character.getType(cp) == Character.FORMAT.toInt() ||
+                Character.getType(cp) == Character.SURROGATE.toInt() ||
+                cp in 0xFE00..0xFE0F || cp in 0xE0100..0xE01EF ||
+                cp in 0x180B..0x180D || cp == 0x180F || cp == 0x034F) return false
+            offset += Character.charCount(cp)
+        }
+        return true
+    }
+
     fun review(
         draft: Draft, request: Request, facts: Map<String, HostLine>,
         /** Context must be the independently approved projection for this request. */
@@ -220,7 +237,7 @@ internal object RecipeDraftHostGate {
             if (line.state == State.UNKNOWN) gaps += "UNKNOWN_PREPARATION_STATE"
             val host = facts[line.foodTypeId]
             if (host == null || host.foodTypeId != line.foodTypeId ||
-                !host.identityConfirmed || host.productVersionId.isNullOrBlank()) {
+                !host.identityConfirmed || !validProductVersionId(host.productVersionId)) {
                 gaps += "UNRESOLVED_PRODUCT_VERSION"
                 continue
             }
