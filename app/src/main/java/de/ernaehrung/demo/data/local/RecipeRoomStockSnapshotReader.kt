@@ -182,6 +182,13 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 // legitimize a legacy future-occurrence movement.
                 (movement.occurredAt != null &&
                     movement.occurredAt > movement.operationRecordedAt) ||
+                // Day-only legacy events must also have occurred no later than
+                // their confirming operation's Berlin-local calendar day. A
+                // later snapshot cannot repair a future physical event.
+                (day != null && movement.operationRecordedAt?.let { authorAt ->
+                    day.isAfter(Instant.ofEpochMilli(authorAt)
+                        .atZone(ZoneId.of("Europe/Berlin")).toLocalDate())
+                } == true) ||
                 // A backdated physical event cannot consume or change a batch
                 // before its creating operation existed. A later recording or
                 // snapshot must not turn that impossible history into stock.
