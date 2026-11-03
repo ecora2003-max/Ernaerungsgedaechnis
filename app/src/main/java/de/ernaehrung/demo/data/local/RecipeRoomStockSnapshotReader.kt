@@ -146,6 +146,10 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
             val credit = entries.singleOrNull { it.delta > 0L } ?: return null
             if (debit.batchId == credit.batchId ||
                 debit.delta != -credit.delta ||
+                // One transfer has one physical occurrence, not two independently
+                // timed movements. Contradictory legacy instants invalidate stock.
+                (debit.occurredAt != null && credit.occurredAt != null &&
+                    debit.occurredAt != credit.occurredAt) ||
                 batchVersions[debit.batchId] != batchVersions[credit.batchId] ||
                 batchById[credit.batchId]?.batch?.parentBatchId != debit.batchId ||
                 batchById[credit.batchId]?.batch?.originOperationId != operationId) return null
