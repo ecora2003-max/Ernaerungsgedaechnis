@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae65fdd040081919b0a5fb1c8962104",
-  "ownerChatId": "Integration-III-2026-11-03-0658Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae65fdd040081919b0a5fb1c8962104:wa4zh56dba8mw0c6z1f",
-  "acquiredAtUtc": "2026-11-03T06:58:45.603Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Rezeptimport: Unicode-Formatsteuerzeichen in sichtbarem Preview fail-closed abweisen",
-  "workingBranch": "integration-iii/docs-recipe-unicode-preview-20261103",
-  "lastReleasedAtUtc": "2026-11-03T06:48:30.908Z",
-  "lastReleasedCommit": "bee2443713d9b6f11203f02a26c25d9918212835",
-  "nextStep": "Authentifizierte Rezeptsave-Nutzeraktionsprovenienz, Generator-/Revalidator-Parität oder Android-/Privacy-E2E; Status-PR #191 erst nach passenden Checks mergen"
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-03T07:06:54.260Z",
+  "lastReleasedCommit": "05e5f998a25c02e94420bdd2f2baa1be9bdbd57c",
+  "nextStep": "Rezeptsave: unabhängig authentifizierte Nutzeraktionsprovenienz oder Generator-/Revalidator-Parität; Android-/Privacy-E2E offen. Docs-only PR #193 und ältere Status-PRs nur mit passenden Checks mergen."
 }
