@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Android host recipe context: implement next verified Kotlin regression",
-  "workingBranch": "integration-chat-recipe-context-20261103-0742",
+  "workingBranch": "integration-chat-plan-history-status-20261103",
   "lastReleasedAtUtc": "2026-11-03T07:31:27.633Z",
   "lastReleasedCommit": "dde403e1abf6ed8a0f3a9067c7b084323d435a46",
   "nextStep": "Resolve diverged PR #188 (orphan batches hidden by Room joins; old-head CI PASS) against current main and rerun exact-head CI before merge. Independently authenticated recipe-save user action, Generator/Revalidator parity, Android/privacy device E2E remain open. Record #196 in docs/STATUS.md when merging verified status changes."
