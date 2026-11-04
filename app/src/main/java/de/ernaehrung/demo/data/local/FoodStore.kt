@@ -529,8 +529,11 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             // A context-bound save must attest the exact independently revalidated
             // snapshot content, not merely the three booleans or snapshot time.
             // Keep the historical no-context digest stable for existing consents.
-            val digest = if (!contextRequested) baseDigest else
-                context?.contentBinding?.takeIf {
+            // External offers require the same rights-checked reader at consent
+            // and save time. That dependency is not yet wired: never issue a
+            // usable approval digest for offer-enabled requests.
+            val digest = if (!contextRequested) baseDigest else if (request.flags.considerOffers)
+                null else context?.contentBinding?.takeIf {
                     context?.contentBindingRequired == true &&
                         it.flags == request.flags &&
                         it.snapshotAt == trustedContextSnapshotAt?.toInstant()
