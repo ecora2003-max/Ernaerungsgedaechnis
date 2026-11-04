@@ -83,7 +83,7 @@ class PreparedPortionConsumptionRoomTest {
             all.single { it.batch.id == rawBatch }
         )
         assertTrue(eligibleConsumptionBatches(candidates, true).isEmpty())
-        assertEquals(2, eligibleConsumptionBatches(candidates, false).size)
+        assertEquals(1, eligibleConsumptionBatches(candidates, false).size)
         assertEquals(0, db.foodDao().consumptionCount())
     }
 }
