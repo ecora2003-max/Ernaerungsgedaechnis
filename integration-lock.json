@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "integrator-b-2026-11-04T11:13Z-kj21anwl3k",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw20r3po-s4k4hiapvrvkj21anwl3k",
-  "acquiredAtUtc": "2026-11-04T11:14:01.741Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR #237 CI/emulator validation and credential provenance integration",
-  "workingBranch": "integration-b-credential-ui-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T10:21:17.326Z",
-  "lastReleasedCommit": "eae3502e6e0a55d70257825dce037a3a20a7b7ae",
-  "nextStep": "B1 PR #237 head eae3502e6e0a55d70257825dce037a3a20a7b7ae: real Android credential UI + signed proof/nonce/cancel tests. CI 41813328931 and emulator 41813328971 PENDING at release. Next check both; fix same PR branch if FAIL, merge only if PASS and mergeable. Pinned v1 revalidator parity and comprehensive Android privacy/context E2E remain OPEN."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T11:23:59.263Z",
+  "lastReleasedCommit": "81c4da16abd5d8f26de25cbe713247b794fb32e4",
+  "nextStep": "B1 PR #237 head 81c4da16: routine CI 41819611451 PASS; emulator 41819611484 FAIL 2/7 credential tests (PIN input before SystemUI editor ready; first Back hides keyboard). PR body updated with logcat evidence. Repair real credential editor synchronization and cancellation in existing PR; rerun both CI on exact HEAD, merge only PASS. v1 revalidator parity and full privacy E2E remain OPEN."
 }
