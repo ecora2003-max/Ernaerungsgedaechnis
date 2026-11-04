@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "automation-B-turn11-1793776226793",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1s1uqx-pc26urvycjn",
-  "acquiredAtUtc": "2026-11-04T07:10:26.793Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1 typed context snapshots and v1 Revalidator/allergen kitchen review",
-  "workingBranch": "integration-b-typed-context-kitchen-20261104",
-  "lastReleasedAtUtc": "2026-11-04T06:31:40.373Z",
-  "lastReleasedCommit": "1ff796fcfdab8460a9c4b98ad92ff29a540250d6",
-  "nextStep": "B1: PR #233 merged after CI 41785460976 PASS (579 JVM, 7 Room). Next implement approved typed Room stock/shopping/offer snapshot projections for seven context-enabled flag combinations, bind v1 Revalidator and allergen checks in kitchen review, then actual Android/offline/privacy E2E."
+  "task": "B1 recipe generator/revalidator and Android E2E",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T07:33:15.308Z",
+  "lastReleasedCommit": "fcbabf2e3b33dbfe1a0b7dcbb9f6668db08c670e",
+  "nextStep": "B1: PR #234 merged after exact CI 41792397845 PASS (583 JVM, 7 Room). Typed Room stock/shopping contexts and all eight flag gates are wired through kitchen preview/consent/save; offer modes fail closed. Next implement actual FoodType-to-product-version context-aware offline ranking and allergen/quantity safety, then executed Android/offline/restart/privacy E2E; do not mark INTEGRATED."
 }
