@@ -38,6 +38,11 @@ data class ConsumptionInput(val versionId: String, val date: String, val meal: S
 class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis,
     private val actionProofVerifier: RecipeActionProofVerifier = AndroidRecipeActionProof) {
     private val dao = db.foodDao()
+    private val recipeActionNonceGate = RecipeActionNonceGate()
+
+    /** Challenge is never persisted and cannot be replayed after process death. */
+    internal fun beginRecipeDraftCredentialAction(key: String, digest: String): String =
+        recipeActionNonceGate.issue(key, digest, now())
     private val stock = StockOperations(db, now)
     private val kitchen = KitchenOperations(db, now)
     private val nutrition = NutritionReader(db)
@@ -135,7 +140,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
         val digest = requireNotNull(current.approvalBasisDigest)
         val consentKind = if (actionProof != null) {
-            require(actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
+            require(recipeActionNonceGate.consume(actionProof, key, digest, actionAt) &&
+                actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
                 "Gerätegebundene Rezeptaktion fehlt, ist ungültig oder abgelaufen."
             }
             "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
