@@ -1,12 +1,13 @@
 package de.ernaehrung.demo
 
 import android.content.pm.ApplicationInfo
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -45,11 +46,12 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class RecipeOnDeviceEndToEndTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun offlineComposeProposalCannotBypassManualReviewOrSave() {
         var reviews = 0
-        compose.setContent {
+        compose.runOnUiThread {
+            compose.activity.setContent {
                 DemoTheme {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(
@@ -70,18 +72,6 @@ class RecipeOnDeviceEndToEndTest {
                         )
                     }
                 }
-        }
-        // Wait for the real Compose root on the software-rendered emulator;
-        // ActivityTaskManager "Displayed" alone is not a ready UI assertion.
-        compose.waitUntil(25_000) {
-            try {
-                compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
-                    .assertExists()
-                true
-            } catch (_: AssertionError) {
-                false
-            } catch (_: IllegalStateException) {
-                false
             }
         }
         compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
