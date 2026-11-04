@@ -1,4 +1,10 @@
-# Integration: aktueller Wiedereinstieg (01.11.2026)
+# Integration: aktueller Wiedereinstieg
+
+## Codex-Übernahme und belastbarer Ausgangsstand (04.11.2026)
+
+- Nutzerautorisierter exklusiver Einzelentwicklermodus; alle drei Sperren vor Reservierung regulär FREE, eigene Kennung `codex-exclusive-ernaehrung-20261104`, separate Session-/CAS-Tokens. A/B/III/IV bleiben pausiert. Neue Erwerbs-/Prüf-/Heartbeat-/Freigabewerkzeuge und konservative Wächtererweiterung; lokal **41/41 Python-Sicherheitstests PASS**. PR-CI nach Push prüfen; keine Änderung an App-Daten oder Vertragsversion.
+- Tatsächlicher GitHub-Stand: #243 integriert als `ce662fc`, CI 41913413053 PASS (604 JVM/7 Room); #244 offen auf `838f00ce`, CI 41909547708 PASS, aktuelle Basisintegration/CI noch erforderlich. Kein Gesamtmodul INTEGRATED. Nächste Arbeit nach Modus-CI: #244 auf aktuellem main fortsetzen, danach fehlende reale A1-/B1-Android-/Offline-/Neustart-/Privacy-Anschlüsse implementieren und testen; vorhandene #236/#237/#242-Gerätebelege erhalten.
+
 
 ## Integrator B – B1 mengenbezogene Offline-Kontextauswahl (04.11.2026)
 
