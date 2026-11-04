@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1: fehlenden Kauf-zu-Preishistorie-zu-Einkaufsvorschlag UI/Host-Anschluss implementieren",
-  "workingBranch": null,
+  "workingBranch": "integration-a-paid-price-purchase-ui-20261104",
   "lastReleasedAtUtc": null,
   "lastReleasedCommit": null,
   "nextStep": "A: nächste konkrete Einkaufssystem-Funktion und offene PRs fortsetzen."
