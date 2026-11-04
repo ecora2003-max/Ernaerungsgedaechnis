@@ -90,6 +90,40 @@ private fun ShoppingItem(line: ShoppingLine, scope: ShoppingScope, blocked: Stat
                     "Kein aktuelles Angebot, keine bestätigte Filiale, kein automatischer Einkauf.")
             }
         }
+        // Only locally entered, already validated pack quotes are candidates. Private paid
+        // history has no confirmed matching physical pack basis and is never a live offer.
+        val comparable = if (item.need.unknownRequirements == 0) item.quotes.filter { quote ->
+            quote.offer != null && quote.costCents != null && quote.costCents >= 0L &&
+                quote.exactPackCount != null && quote.issues.isEmpty()
+        }.sortedWith(compareBy({ it.costCents!! }, { it.offer!!.id })) else emptyList()
+        Section("Offline-Packungsvergleich", "Nur lokal erfasste, berechenbare Preisfassungen für denselben bekannten Bedarf")
+        if (item.need.unknownRequirements > 0) {
+            Hint("Weitere Bedarfsmengen sind unbekannt. Kein belastbarer günstigster Gesamtvorschlag.")
+        } else if (comparable.size < 2) {
+            Hint("Weniger als zwei vollständig berechenbare Packungsalternativen. Kein belastbarer Preisvergleich.")
+        } else {
+            val best = comparable.first()
+            Text(
+                "Günstigste bekannte Packungskosten für diese Fehlmenge: ${Money.format(best.costCents!!)} " +
+                    "(${best.offer?.merchant ?: "Händler unbekannt"}). Kein Marktbestpreis.",
+                Modifier.testTag("shopping_cheapest_${item.need.versionId}")
+            )
+        }
+        comparable.forEach { candidate ->
+            val offer = candidate.offer!!
+            Text(
+                "${offer.merchant ?: "Händler unbekannt"} · ${candidate.exactPackCount} Packungen · " +
+                    "${Money.format(candidate.costCents!!)} für die bekannte Fehlmenge" +
+                    if (offer.id == selected) " · zur Prüfung ausgewählt" else "",
+                Modifier.testTag("shopping_comparison_${offer.id}")
+            )
+            Action("Packungsalternative prüfen ${offer.id.take(8)}", true) {
+                selected = offer.id; checked = false
+            }
+        }
+        Hint("Private Bezahlpreishistorie ist nur ein Rückblick pro bestätigter Kaufeinheit; " +
+            "ohne geprüfte gleiche Mengenbasis kein numerischer Vergleich mit Packungspreisen. " +
+            "Die Auswahl wird erst nach gesondertem Speichern zum Einkaufsvorschlag, niemals zum Kauf.", Sage)
         IdPicker("Packungs-/Preisfassung ${item.need.versionId.take(8)}", listOf("" to "Keine Preisfassung") + item.alternatives.map {
             it.id to "${it.merchant ?: "Händler unbekannt"} · ${it.amount?.let(Amounts::format) ?: "Menge ungeklärt"} ${item.need.unit.label} · ${it.totalCents?.let { cents -> if (it.currency == "EUR") Money.format(cents) else "Währung ungeklärt" } ?: "Preis unbekannt"} · ${it.id.take(8)}"
         }, selected) { selected = it; checked = false }
