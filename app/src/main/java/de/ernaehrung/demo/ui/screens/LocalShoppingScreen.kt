@@ -6,8 +6,26 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.math.BigInteger
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
+
+/** Preview only: no budget claim without a reconciled expense balance and known other basket lines. */
+internal fun shoppingCandidateBudgetAfter(report: ShoppingReport, item: ShoppingLine, candidate: ShoppingQuote): Long? {
+    val remaining = report.budget.remainingBudgetCents ?: return null
+    if (report.budget.issue != null || item.need.unknownRequirements > 0 ||
+        candidate.issues.isNotEmpty() || candidate.exactPackCount == null) return null
+    val cost = candidate.costCents ?: return null
+    val otherLines = report.items.filter { it.need.versionId != item.need.versionId }
+    if (otherLines.any { it.need.unknownRequirements > 0 || it.issues.isNotEmpty() ||
+            it.calculatedCostCents == null }) return null
+    val otherCosts = otherLines.fold(BigInteger.ZERO) { total, line ->
+        total + BigInteger.valueOf(line.calculatedCostCents!!)
+    }
+    val balance = BigInteger.valueOf(remaining) - otherCosts - BigInteger.valueOf(cost)
+    return balance.takeIf { it >= BigInteger.valueOf(Long.MIN_VALUE) &&
+        it <= BigInteger.valueOf(Long.MAX_VALUE) }?.toLong()
+}
 
 @Composable
 internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
@@ -54,14 +72,15 @@ internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operati
     if (report.items.isEmpty()) Text("Keine aktuelle Produktfehlmenge in diesem Ausschnitt. Das bestätigt keine vollständig geplante Ernährung.")
     report.items.forEach { line ->
         androidx.compose.runtime.key(operationId, line.need.versionId, report.scope) {
-            ShoppingItem(line, report.scope, guard, operation, model)
+            ShoppingItem(line, report, guard, operation, model)
         }
     }
     Hint("Vor einem Kauf Haltbarkeit bis zum Bedarfstermin, tatsächlichen Lagerplatz und Überschüsse prüfen. Große Packungen sind nicht automatisch wirtschaftlicher. Keine automatische Bestellung, keine erfundene Umrechnung.", Sage)
 }
 
 @Composable
-private fun ShoppingItem(line: ShoppingLine, scope: ShoppingScope, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
+private fun ShoppingItem(line: ShoppingLine, report: ShoppingReport, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
+    val scope = report.scope
     var selected by rememberSaveable(line.snapshot) { mutableStateOf(line.offer?.id.orEmpty()) }
     var checked by rememberSaveable(line.snapshot) { mutableStateOf(line.checked) }
     val current = rememberUpdatedState(line)
@@ -109,14 +128,25 @@ private fun ShoppingItem(line: ShoppingLine, scope: ShoppingScope, blocked: Stat
                 Modifier.testTag("shopping_cheapest_${item.need.versionId}")
             )
         }
+        if (comparable.isNotEmpty() && comparable.none { shoppingCandidateBudgetAfter(report, item, it) != null }) {
+            Hint("Budgetwirkung nicht berechenbar: Budgetausgaben müssen vollständig abgeglichen und alle weiteren Listenpositionen bepreist sein.")
+        }
         comparable.forEach { candidate ->
             val offer = candidate.offer!!
             Text(
                 "${offer.merchant ?: "Händler unbekannt"} · ${candidate.exactPackCount} Packungen · " +
                     "${Money.format(candidate.costCents!!)} für die bekannte Fehlmenge" +
+                    " · Überschuss ${candidate.surplus?.let(Amounts::format) ?: "ungeklärt"} ${item.need.unit.label}" +
                     if (offer.id == selected) " · zur Prüfung ausgewählt" else "",
                 Modifier.testTag("shopping_comparison_${offer.id}")
             )
+            shoppingCandidateBudgetAfter(report, item, candidate)?.let { balance ->
+                Text(
+                    "Rechnerischer Budgetrest nach dieser Wahl: ${Money.format(balance)} · nur vollständig bekannte Positionen, keine Kauf- oder Budgetfreigabe.",
+                    Modifier.testTag("shopping_budget_candidate_${offer.id}")
+                )
+                if (balance < 0L) Hint("Bekannte Einkaufskosten überschreiten mit dieser Packungswahl das abgeglichene Restbudget.")
+            }
             Action("Packungsalternative prüfen ${offer.id.take(8)}", true) {
                 selected = offer.id; checked = false
             }
