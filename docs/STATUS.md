@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg
 
+## Einkauf A1 – vorhandenen Budget-PR #244 fortgesetzt (04.11.2026)
+
+- Bestehender Branch `integration-a-shopping-budget-candidate-ui-20261104` ohne Force-Push mit aktuellem main einschließlich Rezept-PR #243 und Codex-Modus #245 zusammengeführt. Die zwei bereits grünen Budgettests bleiben erhalten; voller App-/Room-/Lint-/Schema-/Referenzlauf auf aktualisierter Basis nach Push erforderlich. Keine zweite Funktionsbranch und keine neue APK.
+- Modus #245 ist als `bde3319f` integriert; beide Sicherheits-CIs 41918075888 und 41918075826 auf exakt `cd325382` PASS. Alle fünf Referenz-HEADs erneut nur lesend bestätigt: Architektur `9871c9de`, Preise `5c52bf70`, Produkte `6a04f651`, Einkauf `a3e13b14`, Rezepte `6581eabd`; v1-Schema unverändert.
+- Bestandsaufnahme am tatsächlichen Code: Scan/OCR und manuelle Korrektur, Kauf, separate Lager-/private Preisbestätigung, Planbedarf und Offline-Packungsvergleich sind lokal angeschlossen. Hauptnavigation enthält weiterhin Demoansichten; vollständige A1-/B1-UI→FoodStore-Geräteketten und vollständige Modulparität bleiben offen. Vorhandene echte API35-Belege nicht durch bloße Testkompilierung ersetzen. Nächster Anschluss: aktualisierten #244-CI-Head prüfen und fehlende echte Android-UI-/Offline-/Neustartstrecken ergänzen.
+
 ## Codex-Übernahme und belastbarer Ausgangsstand (04.11.2026)
 
 - Nutzerautorisierter exklusiver Einzelentwicklermodus; alle drei Sperren vor Reservierung regulär FREE, eigene Kennung `codex-exclusive-ernaehrung-20261104`, separate Session-/CAS-Tokens. A/B/III/IV bleiben pausiert. Neue Erwerbs-/Prüf-/Heartbeat-/Freigabewerkzeuge und konservative Wächtererweiterung; lokal **41/41 Python-Sicherheitstests PASS**. PR-CI nach Push prüfen; keine Änderung an App-Daten oder Vertragsversion.
