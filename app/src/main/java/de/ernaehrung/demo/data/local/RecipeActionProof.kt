@@ -17,7 +17,7 @@ import java.util.UUID
  * The signature is checked by FoodStore against the app's Android Keystore public key.
  * A signed action is not a general-purpose identity certificate or proof of user intent.
  */
-internal data class RecipeActionProof(
+data class RecipeActionProof(
     val operationKey: String,
     val approvalDigest: String,
     val issuedAtUtcMillis: Long,
@@ -49,7 +49,7 @@ internal object RecipeActionProofPayload {
             now - proof.issuedAtUtcMillis <= MAX_AGE_MS
 }
 
-internal fun interface RecipeActionProofVerifier {
+fun interface RecipeActionProofVerifier {
     fun verify(proof: RecipeActionProof, key: String, digest: String, now: Long): Boolean
 }
 
