@@ -16,11 +16,15 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
     val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
+    val recipeContext by model.recipeContextState.collectAsStateWithLifecycle()
     val productionPrefill by model.productionPrefillState.collectAsStateWithLifecycle()
     RecipeDraftImportPanel(
         catalog = state.versions,
         editingEnabled = !draftConsent.busy,
         recordedDigest = draftConsent.recordedDigest,
+        contextState = recipeContext,
+        onRequestContext = model::requestRecipeDraftContext,
+        onClearContext = model::clearRecipeDraftContext,
         onInvalidate = { model.clearRecipeDraftConsent() },
         onDiscardPending = { model.discardPendingRecipeDraftConsent() },
         onReview = { json, request, facts, states ->
