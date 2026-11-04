@@ -258,4 +258,35 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
         rule.runOnIdle { assertEquals(null, checkpoint.saved) }
     }
+    @Test fun offlineGeneratorCreatesVisibleV1DraftButNeverConfirmsOrBooks() {
+        var invalidations = 0
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(),
+                            onInvalidate = { invalidations++ },
+                            onDiscardPending = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("recipe.draft")
+        rule.onNodeWithText("Entwurfs-ID:", substring = true).assertExists()
+        rule.runOnIdle {
+            assertEquals(1, invalidations)
+            assertEquals(0, reviews)
+        }
+        // A second generation replaces the draft and invalidates the old review.
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(2, invalidations)
+            assertEquals(0, reviews)
+        }
+    }
+
 }
