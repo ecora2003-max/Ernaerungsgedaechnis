@@ -15,7 +15,7 @@ import de.ernaehrung.demo.ui.*
 
 @Composable
 internal fun ReceiptRecognitionEditor(data: LocalDataState, recognition: RecognitionData, blocked: State<Boolean>,
-    operation: State<String>, model: LocalDataViewModel) {
+    operation: State<String>, model: LocalDataViewModel, onShowPurchases: () -> Unit = {}) {
     val photo by model.photo.collectAsStateWithLifecycle()
     val reviewUi by model.receiptReview.collectAsStateWithLifecycle()
     var manual by rememberSaveable { mutableStateOf("") }
@@ -43,6 +43,9 @@ internal fun ReceiptRecognitionEditor(data: LocalDataState, recognition: Recogni
         Text("${parsed?.purchasedOn ?: "Datum ungeklärt"} · Vorschlag ${parsed?.totalCents?.let(Money::format) ?: "Betrag ungeklärt"}")
         if (draft.resolution == null) Action("Bonentwurf prüfen ${draft.scan.operationId.take(8)}", true) { model.showReceiptReview(draft.scan.operationId) }
         else Text(if (draft.resolution.receiptId != null) "Bereits als Kauf übernommen · ${draft.resolution.receiptId}" else "Verworfen · keine Zahlung")
+        if (draft.resolution?.receiptId != null) {
+            Action("Kauf und private Preisprüfung öffnen ${draft.scan.operationId.take(8)}", true) { onShowPurchases() }
+        }
     } }
     reviewUi.error?.let { Hint(it) }
     if (reviewUi.resolved) Hint("Dieser Bonentwurf wurde bereits übernommen oder verworfen. Gespeicherte Käufe stehen unter Käufe; Lagerzugänge dort separat bestätigen.", Sage)

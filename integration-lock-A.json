@@ -8,9 +8,9 @@
   "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "A1: fehlenden Kauf-zu-Preishistorie-zu-Einkaufsvorschlag UI/Host-Anschluss implementieren",
+  "task": "A1 PR #239 final CI/merge and next UI shopping flow",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-04T14:44:02.521Z",
-  "lastReleasedCommit": "5e43ab071ddfe8c556a4ea0077186ff24131ce64",
-  "nextStep": "A1 PR #239: exact-head CI 41850424588/JUnit prüfen, ggf. Kotlin-/Compose-Fehler auf demselben Branch korrigieren; nur bei PASS und neuem Merge-Lock mergen. Danach echte Kamera/OCR-/Offline-/Privacy-Geräte-E2E."
+  "lastReleasedAtUtc": "2026-11-04T16:37:51.779Z",
+  "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
+  "nextStep": "A1 PR #239 successfully merged at 74bbc44a after exact SHA ec330d55 CI SUCCESS. Next missing E2E link: historical/offline price comparison to actual FEFO/pack/budget shopping suggestion UI with positive/negative tests. Android device OCR/offline/restart/privacy E2E open."
 }

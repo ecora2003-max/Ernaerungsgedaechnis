@@ -8,9 +8,9 @@
   "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Exklusive Main-Merge- und gemeinsame-Dateien-Integration",
+  "task": "Exclusive merge of CI-PASS A1 PR #239",
   "workingBranch": null,
-  "lastReleasedAtUtc": null,
-  "lastReleasedCommit": null,
-  "nextStep": "A/B: vor shared-file-Änderung oder Merge beide Sperren-Eigentümer verifizieren."
+  "lastReleasedAtUtc": "2026-11-04T16:37:44.676Z",
+  "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
+  "nextStep": "PR #239 merged on main; continue A1 historical/offline comparison to FEFO/pack/budget shopping suggestion UI; Android OCR/offline/privacy device E2E open."
 }

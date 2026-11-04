@@ -107,7 +107,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
         "Planung" -> LocalPlanningScreen(state, blocked, operationId, model)
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
-        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode)
+        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) { mode = "Käufe" }
         "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
