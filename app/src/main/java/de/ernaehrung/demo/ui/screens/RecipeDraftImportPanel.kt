@@ -191,7 +191,7 @@ internal fun RecipeDraftImportPanel(
             enabled = json.isNotBlank(),
             modifier = Modifier.testTag("recipe_draft_json_inspect")
         ) { Text("JSON-Entwurf lokal prüfen") }
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Kontext ist nur mit unabhängig gebundenen Room-Snapshots verfügbar; externe Angebote ohne geprüfte Rechtequelle bleiben gesperrt. Keine Allergen- oder Garzustandsfreigabe.")
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Kontextflags binden lokale Quellen an die Prüfung; die Rezeptauswahl wird noch nicht nach Vorräten oder Einkaufsbedarf optimiert. Externe Angebote ohne geprüfte Rechtequelle bleiben gesperrt. Keine Allergen- oder Garzustandsfreigabe.")
         fun contextChanged() {
             invalidate()
             onClearContext()
@@ -203,17 +203,17 @@ internal fun RecipeDraftImportPanel(
         Row {
             Checkbox(useStock, { if (it != useStock) { contextChanged(); useStock = it } },
                 modifier = Modifier.testTag("recipe_context_stock"))
-            Text("Bestand berücksichtigen", Modifier.padding(top = 12.dp))
+            Text("Bestand für Prüfung einbeziehen", Modifier.padding(top = 12.dp))
         }
         Row {
             Checkbox(useShopping, { if (it != useShopping) { contextChanged(); useShopping = it } },
                 modifier = Modifier.testTag("recipe_context_shopping"))
-            Text("Einkaufsbedarf berücksichtigen", Modifier.padding(top = 12.dp))
+            Text("Einkaufsbedarf für Prüfung einbeziehen", Modifier.padding(top = 12.dp))
         }
         Row {
             Checkbox(useOffers, { if (it != useOffers) { contextChanged(); useOffers = it } },
                 modifier = Modifier.testTag("recipe_context_offers"))
-            Text("Geprüfte Angebote berücksichtigen", Modifier.padding(top = 12.dp))
+            Text("Angebote prüfen (noch gesperrt)", Modifier.padding(top = 12.dp))
         }
         if (selectedNeedsContext) {
             Button(
