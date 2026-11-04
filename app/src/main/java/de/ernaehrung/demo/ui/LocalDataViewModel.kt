@@ -38,6 +38,7 @@ internal data class RecipeDraftConsentUiState(
     val busy: Boolean = false,
     val recordedDigest: String? = null,
     val sessionId: String? = null,
+    val operationKey: String? = null,
     val attemptVersion: Int = 0,
     val savedRecipeVersionId: String? = null,
     val error: String? = null
@@ -364,7 +365,8 @@ class LocalDataViewModel internal constructor(
                 }
                 recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
                     recordedDigest = if (recordedKey != null) review.approvalBasisDigest else null,
-                    sessionId = pendingRecipeDraft?.sessionId)
+                    sessionId = pendingRecipeDraft?.sessionId,
+                    operationKey = pendingRecipeDraft?.operationKey)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -379,7 +381,8 @@ class LocalDataViewModel internal constructor(
      * Revalidation and the durable operation ledger remain inside FoodStore.
      * This is UI-action provenance, not an authenticated human identity.
      */
-    internal fun confirmRecipeDraftConsent(approvalBasisDigest: String, sessionId: String?) {
+    internal fun confirmRecipeDraftConsent(approvalBasisDigest: String, sessionId: String?,
+        actionProof: de.ernaehrung.demo.data.local.RecipeActionProof? = null) {
         val session = pendingRecipeDraft ?: return
         if (recipeDraftConsent.value.busy ||
             recipeDraftConsent.value.recordedDigest != null ||
@@ -390,7 +393,8 @@ class LocalDataViewModel internal constructor(
             try {
                 val recorded = store.recordReviewedRecipeDraftV1Consent(
                     session.operationKey, session.json, session.request,
-                    session.confirmations, session.reviewedStates, session.review, true)
+                    session.confirmations, session.reviewedStates, session.review, true,
+                    actionProof = actionProof)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 // Room is authoritative. Cleanup failure cannot turn a committed
                 // consent into a false UI failure or trigger an automatic retry.
@@ -408,6 +412,7 @@ class LocalDataViewModel internal constructor(
                 if (pendingRecipeDraft === session) {
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
                         review = session.review, sessionId = session.sessionId,
+                        operationKey = session.operationKey,
                         attemptVersion = recipeDraftConsent.value.attemptVersion + 1,
                         error = "Bestätigung nicht gespeichert: ${e.message}")
                 }
@@ -419,7 +424,8 @@ class LocalDataViewModel internal constructor(
      * original JSON, catalog evidence, digest and operation key in one transaction.
      * This only persists a recipe version; it never books cooking or eating.
      */
-    internal fun saveConfirmedRecipeDraft(approvalBasisDigest: String) {
+    internal fun saveConfirmedRecipeDraft(approvalBasisDigest: String,
+        requireActionAttestation: Boolean = false) {
         val session = pendingReviewedSave ?: return
         val state = recipeDraftConsent.value
         if (state.busy || state.savedRecipeVersionId != null ||
@@ -430,7 +436,8 @@ class LocalDataViewModel internal constructor(
             try {
                 val version = store.saveReviewedRecipeDraftV1(
                     session.operationKey, session.json, session.request,
-                    session.confirmations, session.reviewedStates, session.review, true)
+                    session.confirmations, session.reviewedStates, session.review, true,
+                    requireActionAttestation = requireActionAttestation)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingReviewedSave === session) {
                     pendingReviewedSave = null
