@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-automation-2026-11-04T10:15Z-mw1yogv0-vjlp0beohai",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e:mw1yogv0-vjlp0beohai",
-  "acquiredAtUtc": "2026-11-04T10:15:59.580Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: pinned v1 revalidator UI/FoodStore parity and Android credential confirmation",
-  "workingBranch": "integration-b-credential-ui-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T09:23:03.624Z",
-  "lastReleasedCommit": "6ec7dd9501cd7fec1eba77f6e73091ac01b6e870",
-  "nextStep": "B1: PR #236 merged as 6ec7dd9501cd7fec1eba77f6e73091ac01b6e870 after exact-head CI 41805713463 PASS (589 JVM, 7 Room migrations, lint, pinned schema/Python, Android test compile) and real Android API35 offline emulator CI 41805713460 PASS (5/5 instrumented tests: 3 recipe/Room/Keystore and 2 bundled OCR/barcode, Wi-Fi/data disabled, restart/idempotency/no-backup/revocation). Synthetic JCA test verifier is NOT a real Android device-credential UI attestation; full pinned RecipeDraftRevalidation parity, all-context on-device flow and comprehensive privacy/network evidence remain OPEN. Next B1: connect pinned v1 revalidator to UI/FoodStore and add real Android credential confirmation UI instrumentation with negative replay/context-change checks; no INTEGRATED claim."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T10:21:17.326Z",
+  "lastReleasedCommit": "eae3502e6e0a55d70257825dce037a3a20a7b7ae",
+  "nextStep": "B1 PR #237 head eae3502e6e0a55d70257825dce037a3a20a7b7ae: real Android credential UI + signed proof/nonce/cancel tests. CI 41813328931 and emulator 41813328971 PENDING at release. Next check both; fix same PR branch if FAIL, merge only if PASS and mergeable. Pinned v1 revalidator parity and comprehensive Android privacy/context E2E remain OPEN."
 }
