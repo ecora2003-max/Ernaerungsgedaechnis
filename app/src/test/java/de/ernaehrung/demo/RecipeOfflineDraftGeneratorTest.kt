@@ -186,4 +186,34 @@ class RecipeOfflineDraftGeneratorTest {
         assertNotEquals(RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
     }
 
+    @Test fun independentlyConfirmedAllergenEvidenceAllowsOnlyMatchingCandidate() {
+        val excluded = setOf("ALLERGEN:SOY")
+        val first = RecipeOfflineDraftGenerator.ingredientsFor(0)
+        val evidence = first.associate { it.foodTypeId to mapOf("SOY" to false) }
+        assertEquals(0, RecipeOfflineDraftGenerator.nextAllowedVariant(
+            0, excluded, evidence
+        ))
+        val json = RecipeOfflineDraftGenerator.generate(
+            2, 0, now, "allergen-checked", requestedRestrictions = excluded,
+            independentlyConfirmedAllergens = evidence
+        )
+        val imported = RecipeDraftV1Import.read(json, emptyMap(), now)
+        assertEquals(3, imported.draft.lines.size)
+        assertTrue(imported.draft.lines.all {
+            it.state == RecipeDraftHostGate.State.UNKNOWN
+        })
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(
+                2, 0, now, "allergen-missing", requestedRestrictions = excluded,
+                independentlyConfirmedAllergens = evidence - first.first().foodTypeId
+            )
+        }.isFailure)
+        val preview = RecipeDraftV1Import.review(
+            json,
+            RecipeDraftHostGate.Request(imported.draft.flags, 2, excluded,
+                userConfirmedRecipeSave = false),
+            emptyMap(), emptyMap(), now
+        )
+        assertNull(preview.input)
+    }
 }

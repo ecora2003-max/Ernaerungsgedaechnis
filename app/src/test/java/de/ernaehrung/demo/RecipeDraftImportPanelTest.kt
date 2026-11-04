@@ -19,6 +19,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollTo
+import de.ernaehrung.demo.data.local.BaseUnit
+import de.ernaehrung.demo.data.local.ProductVersionEntity
+import de.ernaehrung.demo.data.local.Quality
+import de.ernaehrung.demo.data.local.Source
 import de.ernaehrung.demo.data.local.RecipeDraftEvidenceForm
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedEvidenceCheckpoint
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedImportCheckpoint
@@ -449,6 +453,69 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
+    @Test fun manuallyMappedAllergenAbsencesAllowUntrustedOfflineProposalOnly() {
+        fun version(id: String, name: String) = ProductVersionEntity(
+            id = id, productId = id.substringBefore("-v"), revision = 1,
+            name = name, brand = null, category = null, barcode = null,
+            baseUnit = BaseUnit.GRAM, packageAmount = null,
+            nutritionBasis = 100_000L, energyKcal = null, proteinGrams = null,
+            fatGrams = null, carbsGrams = null, source = Source.USER,
+            sourceDetail = null, quality = Quality.CONFIRMED,
+            recordedAt = System.currentTimeMillis() - 60_000L,
+            changeReason = "independent manual evidence fixture"
+        )
+        val catalog = listOf(
+            version("rice-v1", "Reis geprüft"),
+            version("beans-v1", "Bohnen geprüft"),
+            version("tomato-v1", "Tomaten geprüft")
+        )
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(catalog, onInvalidate = {},
+                            onDiscardPending = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextReplacement("ALLERGEN:SOY")
+        rule.onNodeWithText("Allergennachweise für Offline-Vorschläge")
+            .performScrollTo().performClick()
+        val choices = listOf(
+            Triple("Reis (dry-rice)", "Reis geprüft · v1 · rice-v1", "dry-rice"),
+            Triple("gegarte Bohnen (cooked-beans)",
+                "Bohnen geprüft · v1 · beans-v1", "cooked-beans"),
+            Triple("Tomaten (tomato)", "Tomaten geprüft · v1 · tomato-v1", "tomato")
+        )
+        for ((label, selected, food) in choices) {
+            val checkbox = rule.onNodeWithTag("recipe_offline_allergen_absent_${food}_SOY")
+            checkbox.performScrollTo().assertIsNotEnabled()
+            rule.onNodeWithText("Produktversion für Allergen-Vorprüfung: $label")
+                .performScrollTo().performClick()
+            rule.onNodeWithText(selected).performClick()
+            rule.onNodeWithTag("recipe_offline_allergen_absent_${food}_SOY")
+                .performScrollTo().performClick()
+        }
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json")
+            .assertTextContains("dry-rice", substring = true)
+        rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(0, reviews) }
+
+        // Changing the allergen clears every prior product-bound absence.
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextReplacement("ALLERGEN:PEANUT")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
         rule.runOnIdle { assertEquals(0, reviews) }
     }
 

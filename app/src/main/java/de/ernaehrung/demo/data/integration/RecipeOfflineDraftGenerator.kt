@@ -94,13 +94,14 @@ internal object RecipeOfflineDraftGenerator {
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
         flags: RecipeDraftHostGate.Flags = RecipeDraftHostGate.Flags(false, false, false),
         trustedSnapshotAt: OffsetDateTime? = null,
-        requestedRestrictions: Set<String> = emptySet()
+        requestedRestrictions: Set<String> = emptySet(),
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
     ): String {
         require(portions in 1..1000) { "portions outside host bounds" }
         require(variant in 0 until VARIANT_COUNT) { "unknown recipe combination" }
         // Enforce user exclusions at the generator boundary as well as UI selection.
         // An unverified allergen is never treated as absent in a proposed draft.
-        require(allowsSuggestion(variant, requestedRestrictions)) {
+        require(allowsSuggestion(variant, requestedRestrictions, independentlyConfirmedAllergens)) {
             "recipe candidate conflicts with exclusions or unverified allergens"
         }
         require(Regex("[A-Za-z0-9-]{1,80}").matches(draftId)) { "invalid draft identifier" }
