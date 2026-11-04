@@ -661,6 +661,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     fun watchRecipeNutrition(id: String) = nutrition.watchRecipe(id)
     suspend fun dayNutrition(date: String) = nutrition.day(date)
     suspend fun recipeNutrition(id: String) = nutrition.recipe(id)
+    internal suspend fun previewRecipeNutrition(input: RecipeInput) = nutrition.preview(input)
     suspend fun setDayStatus(key: String, date: String, status: DayStatus, expectedSnapshot: String, confirmed: Boolean): String = db.withTransaction {
         require(confirmed) { "Erfassungsstatus ausdrücklich bestätigen." }
         WriteRules.date(date)

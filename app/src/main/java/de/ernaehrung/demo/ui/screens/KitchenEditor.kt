@@ -35,6 +35,15 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     // to the ViewModel. No untrusted generator output can activate it on its own.
     if (draftConsent.review != null || draftConsent.error != null) {
         Panel {
+            draftConsent.previewNutrition?.let { nutrition ->
+                Section("Nährwerte der geprüften Vorschau", "Je Soll-Portion aus den zugeordneten Produktversionen")
+                NutrientLines(nutrition, "recipe_draft_preview")
+                Fold("Weitere Nährwerte der Vorschau") {
+                    NutrientLines(nutrition, "recipe_draft_preview", extra = true)
+                }
+                QualityNotes(nutrition)
+                Text("Rezeptvorschau, keine tatsächliche Mahlzeit. Herstellung und Verzehr werden getrennt bestätigt.")
+            }
             draftConsent.review?.let { review ->
                 RecipeDraftDeviceCredentialReview(review,
                     sessionKey = draftConsent.sessionId,

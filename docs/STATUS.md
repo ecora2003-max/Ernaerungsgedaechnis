@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg
 
+## Rezeptvorschau – echte Produktnährwerte vor Bestätigung (04.11.2026)
+
+- Branch `codex-recipe-preview-nutrition-20261104`: Die manuell geprüfte, noch ungespeicherte Rezeptvorschau berechnet pro Soll-Portion die echten Nährwerte ihrer konkreten Room-Produktversionen. Die Küchen-UI zeigt Grund- und weitere Nährstoffe vor der Gerätebestätigung; fehlende Werte bleiben null/Teilsumme, bekannte Null bleibt 0. Kein Rückgriff auf Modell-Nährwerte, keine Versionssubstitution, kein Rezept-/Lager-/Verzehrwrite.
+- Vorschau und berechnete Werte werden an dieselbe geprüfte Session gebunden, bei Bearbeitung verworfen und bei protokollierter Bestätigung ohne neue Buchung angezeigt. **20/20 gezielte Room-/ViewModel-Tests, 0 Fehler/Skips und Android-Testkompilierung PASS**; Gramm/ml, Portionsskalierung, Versionshistorie, unbekannt/0 und Schreibfreiheit geprüft. Die echte Android-Gesamtstrecke prüft zusätzlich die Anzeige vor Consent; noch nicht auf diesem Stand ausgeführt. Volle CI/Schema/Migration/Lint und Geräteprüfung offen.
+- Geräteblockade #246 nach zwei weiteren belegten Läufen neu eingegrenzt: PIN-Fokus und danach fehlende PIN-Oberfläche bei weiterhin aktivem Keyguard. Original-Screenshot/Fensterzustand zeigen eine unzuverlässige Menu-/Swipe-Vorbereitung. Nächster Schritt: Androids vorgesehenen Keyguard-Dismiss-Aufruf verwenden, tatsächlichen Zustand erneut prüfen, PIN weiterhin ausschließlich über echte Systemtasten eingeben; kein Geräte-PASS behaupten.
+
 ## Rezepte v1 – tatsächliche Offline-Laufzeit-Vertragsprüfung (04.11.2026)
 
 - Branch `codex-recipe-v1-runtime-contract-20261104`: vollständiges unverändertes v1-Schema als lokale Java-Ressource eingebunden (Blob `bedde4677342817fe6b883962c8dfbbd60100072`); die Laufzeit prüft vor jeder Import-/FoodStore-Revalidierung sämtliche darin verwendeten Assertions einschließlich verschachtelter/optionaler Felder, lokaler Referenzen und Formate. Kein Netzresolver und kein beliebiger externer Schemadienst; ein falscher Blob oder nicht unterstützte Schema-Keywords scheitern geschlossen. Zusätzliche Host-Semantik, Herkunft und authentifizierter Save bleiben Pflicht.

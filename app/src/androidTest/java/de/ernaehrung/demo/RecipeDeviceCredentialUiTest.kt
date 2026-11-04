@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -337,6 +338,10 @@ class RecipeDeviceCredentialUiTest {
             assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
                 model.recipeDraftConsentState.value.review?.status)
             assertEquals(baseline, database.foodDao().operationCount())
+            compose.onNodeWithTag("recipe_draft_preview_ENERGY").performScrollTo()
+                .assertTextContains("416,5", substring = true)
+            compose.onNodeWithTag("recipe_draft_preview_PROTEIN").performScrollTo()
+                .assertTextContains("Unbekannt", substring = true)
             tag("recipe_draft_consent_checkbox")
             tag("recipe_draft_consent_confirm")
             cancelRealSystemCredential(UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()))
