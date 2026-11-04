@@ -15,8 +15,6 @@ import de.ernaehrung.demo.data.local.Source
  * all of those remain mandatory in the separate v1 review/FoodStore gate.
  */
 internal object RecipeOfflineContextRanking {
-    private typealias Gate = RecipeDraftHostGate
-
     data class Ranked(
         val variant: Int,
         val stockCoveredMilliGrams: Long,
