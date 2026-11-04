@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 separater Verzehr aus Fertigportionen (04.11.2026)
+
+- PR #231 mit gerätegebundenem, FoodStore-validiertem Rezept-Consent nach CI 41752487759 (572 JVM, 7 Room-Migrationen, Lint/Schema/Referenzen) als `a8e902206fe6677b82e21447ca139365d30243b4` integriert; tatsächliche Geräte-/Privacy-Abnahme offen.
+- Branch `integration-b-prepared-consumption-20261104`, Code-/Test-HEAD `46da58e4bf67f2831c29d866fe702040c679b57e`: Küchen-UI bietet einen **separaten bestätigten Verzehr** ausschließlich für nicht stornierte, verfügbare und ausdrücklich freigegebene Produktionschargen; Buchung nur über `FoodStore.consume`. Neue Room-Regression prüft Herstellung ohne Verzehr, separate Bestätigung, idempotenten Retry und Ausschluss ungeprüfter/umgekehrter/leerer Chargen. **PR-CI noch nicht geprüft; keine Geräteabnahme.**
+- B1 nächster Anschluss: CI/PR korrigieren und integrieren; danach tatsächlichen Offline-Generator mit v1-Revalidator und acht Kontextkombinationen an die Küchen-UI anschließen. Android-/Offline-/Privacy-E2E weiterhin offen.
+
 ## Integrator B – B1 gerätegebundener Rezept-Consent (04.11.2026)
 
 - [PR #231](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/231): Die Küchen-UI fordert für den geprüften Digest und die konkrete Rezeptvorgangs-ID eine **einmalige, nur im FoodStore-Prozess vorhandene Challenge** an. Nach erfolgreicher System-Gerätebestätigung signiert ein nicht exportierbarer, authentifizierungsgebundener Android-Keystore-Schlüssel den Digest, Vorgangsschlüssel, Nonce und Zeitstempel. FoodStore prüft Signatur, Zeitfenster und Challenge vor dem transaktionalen ATTESTED-Consent; der produktive Küchen-Save verlangt diesen Ledger-Typ. Keine Herstellung/Verzehrbuchung durch Vorschau/Save.
