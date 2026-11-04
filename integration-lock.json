@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR #237 CI/emulator validation and credential provenance integration",
-  "workingBranch": null,
+  "workingBranch": "integration-b-credential-ui-e2e-20261104",
   "lastReleasedAtUtc": "2026-11-04T10:21:17.326Z",
   "lastReleasedCommit": "eae3502e6e0a55d70257825dce037a3a20a7b7ae",
   "nextStep": "B1 PR #237 head eae3502e6e0a55d70257825dce037a3a20a7b7ae: real Android credential UI + signed proof/nonce/cancel tests. CI 41813328931 and emulator 41813328971 PENDING at release. Next check both; fix same PR branch if FAIL, merge only if PASS and mergeable. Pinned v1 revalidator parity and comprehensive Android privacy/context E2E remain OPEN."
