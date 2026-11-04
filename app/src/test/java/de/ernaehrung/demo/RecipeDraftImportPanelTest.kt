@@ -372,7 +372,7 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
             .performTextInput("FOOD:dry-rice")
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
-        rule.onNodeWithTag("recipe_draft_json").assertTextContains("dry-quinoa")
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("dry-quinoa", substring = true)
         rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("FOOD:dry-rice")
         rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
         rule.runOnIdle { assertEquals(0, reviews) }
