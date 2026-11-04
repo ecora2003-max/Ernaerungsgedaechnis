@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integrator-A-20261104-next-run",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-wocxyqt32qmw2ca7ap",
-  "acquiredAtUtc": "2026-11-04T16:36:48.625Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 PR #239 final CI/merge and next UI shopping flow",
-  "workingBranch": "integration-a-paid-price-purchase-ui-20261104",
-  "lastReleasedAtUtc": "2026-11-04T16:21:12.494Z",
-  "lastReleasedCommit": "ec330d557e796e1d53e3e267899ea2933bba3932",
-  "nextStep": "PR #239 exact SHA ec330d55 CI 41860960943 SUCCESS verified. Next: verify current PR head/main divergence, overlapping PRs, acquire merge lock and merge only if compatible; otherwise continue A1 on existing branch. Device OCR/offline/privacy E2E open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T16:37:51.779Z",
+  "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
+  "nextStep": "A1 PR #239 successfully merged at 74bbc44a after exact SHA ec330d55 CI SUCCESS. Next missing E2E link: historical/offline price comparison to actual FEFO/pack/budget shopping suggestion UI with positive/negative tests. Android device OCR/offline/restart/privacy E2E open."
 }
