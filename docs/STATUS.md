@@ -2,9 +2,9 @@
 
 ## Integrator B – B1 Offline-Generator an Küchen-Review (04.11.2026)
 
-- Branch `integration-b-offline-generator-20261104`, Generator-/UI-/Teststand `c150f7b585a98c8ce34d4398f0e60e1d999e76ff`: 27 deterministische Kombinationen nach `EG-Rezept-KI/CombinatorialGenerator.kt@58bb2d5aec5166d61821a726273ddbcae36ef867` als unbestätigte `recipe.draft`-v1-JSON, direkt in bestehende Küchen-Import-/Review-UI eingespeist. Kein Lager-/Listen-/Angebotszugriff, keine Allergen-/Produkt-/Garzustandsbehauptung und keine Buchung.
-- Neue JVM-Tests: alle 27 Vorschläge durch realen v1-Importer, acht Kontext-Flagkombinationen (nur kontextfreier Modus erlaubt, sieben ohne verifizierte Snapshots abgewiesen), Mengen-/ID-/Consent-Negativfälle; Robolectric-Compose prüft Vorschau ohne Zustimmung. **CI/Android-Gerät/Offline-/Privacy-E2E noch offen; kein Modulabschluss.**
-- Nächster Anschluss: CI auf exaktem PR-HEAD prüfen/korrigieren und mergen; anschließend die sieben kontextabhängigen Modi mit unabhängig typisierten Room-Snapshots, Revalidator und Allergengates tatsächlich verbinden.
+- Branch `integration-b-offline-generator-20261104`, Generator-/UI-/Teststand `0ed38a6cd0e4e7957edcec6e146a559b0b76a6f2`: 27 deterministische Kombinationen nach `EG-Rezept-KI/CombinatorialGenerator.kt@58bb2d5aec5166d61821a726273ddbcae36ef867` als unbestätigte `recipe.draft`-v1-JSON, direkt in bestehende Küchen-Import-/Review-UI eingespeist. Kein Lager-/Listen-/Angebotszugriff, keine Allergen-/Produkt-/Garzustandsbehauptung und keine Buchung.
+- Neue JVM-Tests: alle 27 Vorschläge durch realen v1-Importer, acht Kontext-Flagkombinationen (nur kontextfreier Modus erlaubt, sieben ohne verifizierte Snapshots abgewiesen), Mengen-/ID-/Consent-Negativfälle; Robolectric-Compose prüft Vorschau ohne Zustimmung. [PR-CI 41784617224](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/41784617224) auf Code-/Test-HEAD `0ed38a6`: **579/579 JVM, 7/7 Room-Migrationen, Lint, v1-Schema, Python-Referenzen und Android-Testkompilierung PASS**. Vorheriger CI-Fehllauf 41784018118 (drei Compose-Assertions) wurde durch Erhalt der manuellen JSON-UI-Reihenfolge und korrigierte Textfeld-Semantik behoben. **Android-Gerät/Offline-/Privacy-E2E offen; kein Modulabschluss.**
+- Nächster Anschluss: PR #233 bei unverändertem Code-/Test-HEAD und eigener Sperre mergen; anschließend die sieben kontextabhängigen Modi mit unabhängig typisierten Room-Snapshots, Revalidator und Allergengates tatsächlich verbinden.
 
 
 ## Integrator B – B1 separater Verzehr aus Fertigportionen (04.11.2026)
