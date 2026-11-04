@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integrator-B-2026-11-04-0615",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1nxo7z-luo7gllmvt",
-  "acquiredAtUtc": "2026-11-04T05:15:13.247Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: PR #232 CI prüfen/integrieren und Rezept-Generator-Revalidator-UI-Anschluss fortsetzen",
-  "workingBranch": "integration-b-prepared-consumption-20261104",
-  "lastReleasedAtUtc": "2026-11-04T04:12:43.911Z",
-  "lastReleasedCommit": "a8e902206fe6677b82e21447ca139365d30243b4",
-  "nextStep": "B1: PR #232 auf SHA fe3e8ed97d331c6e0f1337919bb68b08f82296f4 nach CI 41771649944 prüfen, bei PASS mergen; danach Offline-Generator/v1-Revalidator und acht Kontextkombinationen an Küchen-UI anschließen."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T05:24:01.818Z",
+  "lastReleasedCommit": "34e93bbbf3c2d4dc226a77fbe01a7619216f8c69",
+  "nextStep": "B1: auf main nach PR #232 (574 JVM, 7 Room, CI 41778289440 PASS) den deterministischen Offline-Generator als v1 recipe.draft an die Küchen-Import-/Review-UI anschließen; acht Flagkombinationen und Revalidator/Allergen-Gates testen, danach Android-/Offline-/Privacy-E2E."
 }
