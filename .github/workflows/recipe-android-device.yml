@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'app/src/androidTest/**'
+      - 'app/build.gradle.kts'
       - '.github/workflows/recipe-android-device.yml'
 permissions:
   contents: read
@@ -48,6 +49,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             chmod +x gradlew
+            # Ephemeral emulator only: exercise Android's real credential Activity
+            # and auth-bound Keystore, never a synthetic RESULT_OK callback.
+            adb shell locksettings set-pin 2468
             adb shell svc wifi disable
             adb shell svc data disable
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
