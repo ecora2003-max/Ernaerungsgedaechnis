@@ -34,10 +34,11 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
             draftConsent.review?.let { review ->
                 RecipeDraftDeviceCredentialReview(review,
                     sessionKey = draftConsent.sessionId,
+                    operationKey = draftConsent.operationKey,
                     resetVersion = draftConsent.attemptVersion,
                     actionEnabled = !draftConsent.busy && draftConsent.recordedDigest == null &&
-                        draftConsent.sessionId != null) { digest, renderedSessionId ->
-                    model.confirmRecipeDraftConsent(digest, renderedSessionId)
+                        draftConsent.sessionId != null && draftConsent.operationKey != null) { digest, renderedSessionId, proof ->
+                    model.confirmRecipeDraftConsent(digest, renderedSessionId, proof)
                 }
             }
             if (draftConsent.busy) CircularProgressIndicator()
@@ -46,7 +47,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
                 if (draftConsent.savedRecipeVersionId == null) {
                     Text("Rezeptvorschau ausdrücklich bestätigt und lokal protokolliert. Noch kein Rezept gespeichert.")
                     Button(
-                        onClick = { model.saveConfirmedRecipeDraft(digest) },
+                        onClick = { model.saveConfirmedRecipeDraft(digest, requireActionAttestation = true) },
                         enabled = !draftConsent.busy,
                         modifier = Modifier.testTag("recipe_draft_save_confirmed")
                     ) { Text("Geprüfte Rezeptversion jetzt speichern") }
