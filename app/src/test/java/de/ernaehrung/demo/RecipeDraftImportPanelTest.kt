@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollTo
 import de.ernaehrung.demo.data.local.RecipeDraftEvidenceForm
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedEvidenceCheckpoint
@@ -354,6 +355,101 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_context_mapping_reviewed").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().assertIsNotEnabled()
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+    }
+
+    @Test fun offlineFoodExclusionChangesTheVisibleSuggestionButDoesNotConfirmIt() {
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextInput("FOOD:dry-rice")
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("dry-quinoa", substring = true)
+        rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("FOOD:dry-rice")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
+    @Test fun changingPortionsRevokesGeneratedDraftAndOptInCheckpoint() {
+        val checkpoint = object : RecipeDraftEncryptedImportCheckpoint {
+            var saved: String? = null
+            override fun save(json: String) { saved = json }
+            override fun load(): String? = saved
+            override fun discard() { saved = null }
+        }
+        var invalidations = 0
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
+                            onInvalidate = { invalidations++ },
+                            onDiscardPending = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
+        rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(1, invalidations)
+            assertEquals(true, checkpoint.saved?.contains("recipe.draft"))
+        }
+
+        // Explicitly replacing the field avoids cursor-position ambiguity in Compose.
+        // No previous draft, review or opt-in encrypted JSON may remain valid.
+        rule.onNodeWithTag("recipe_offline_portions").performScrollTo()
+            .performTextReplacement("23")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.onNodeWithTag("recipe_draft_json").assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.EditableText, AnnotatedString("")
+            )
+        )
+        rule.runOnIdle {
+            assertEquals(2, invalidations)
+            assertEquals(null, checkpoint.saved)
+            assertEquals(0, reviews)
+        }
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains(
+            "\"portionCount\":23", substring = true
+        )
+        rule.runOnIdle { assertEquals(3, invalidations) }
+    }
+
+    @Test fun unknownAllergenExclusionNeverProducesAnUnverifiedOfflineDraft() {
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextInput("ALLERGEN:SOY")
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(0, reviews) }
     }
 
 }

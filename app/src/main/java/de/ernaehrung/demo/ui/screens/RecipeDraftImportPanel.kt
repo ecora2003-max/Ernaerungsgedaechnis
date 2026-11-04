@@ -77,6 +77,7 @@ internal fun RecipeDraftImportPanel(
     }
     var json by remember { mutableStateOf("") }
     var offlinePortions by remember { mutableStateOf("2") }
+    var offlineRestrictionsText by remember { mutableStateOf("") }
     var offlineVariant by remember { mutableStateOf(0) }
     var useStock by remember { mutableStateOf(false) }
     var useShopping by remember { mutableStateOf(false) }
@@ -271,10 +272,41 @@ internal fun RecipeDraftImportPanel(
             }
         }
         rankingHint?.let { Text(it, Modifier.testTag("recipe_context_ranking_hint")) }
+        fun invalidateGeneratedDraft() {
+            // A new serving count or exclusion must not retain an old JSON
+            // preview, evidence checkpoint or pending FoodStore consent.
+            invalidate()
+            checkpoint.discard()
+            evidenceCheckpoint.discard()
+            json = ""
+            imported = null
+            reviewed = false
+            versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+            allergenAnswers = emptyMap(); restrictionsText = ""
+            rankingHint = null
+            error = null
+        }
+        OutlinedTextField(
+            value = offlineRestrictionsText,
+            onValueChange = { next ->
+                if (next.length <= 512 && next != offlineRestrictionsText) {
+                    invalidateGeneratedDraft()
+                    offlineRestrictionsText = next
+                }
+            },
+            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_restrictions"),
+            label = { Text("Ausschlüsse vor dem Vorschlag (z. B. FOOD:tomato)") },
+            maxLines = 2
+        )
+        Text("Lebensmittel-Ausschlüsse filtern nur Vorschläge. Bei Allergenen ohne unabhängig bestätigte Abwesenheit wird kein Vorschlag erzeugt; eine spätere Einzelprüfung bleibt Pflicht.")
         OutlinedTextField(
             value = offlinePortions,
             onValueChange = { next ->
-                if (next.length <= 4 && next.all(Char::isDigit)) offlinePortions = next
+                if (next.length <= 4 && next.all(Char::isDigit) &&
+                    next != offlinePortions) {
+                    invalidateGeneratedDraft()
+                    offlinePortions = next
+                }
             },
             modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
             label = { Text("Portionen für Offline-Vorschlag (1–1000)") },
@@ -291,21 +323,32 @@ internal fun RecipeDraftImportPanel(
                     val snapshotAt = boundContext?.contentBinding?.snapshotAt?.let {
                         OffsetDateTime.ofInstant(it, ZoneOffset.UTC)
                     }
+                    val requestedRestrictions = offlineRestrictionsText.split(",")
+                        .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                    require(requestedRestrictions.all(Gate::isSupportedRestriction)) {
+                        "unsupported offline restriction"
+                    }
                     val chosenVariant = if (selectedNeedsContext) {
                         val ranked = RecipeOfflineContextRanking.rank(
                             offlinePortions.toInt(), selectedFlags,
                             requireNotNull(boundContext), catalog,
                             rankingVersionIds, rankingReviewed
-                        )
-                        require(ranked.isNotEmpty()) { "no independently mapped recipe candidate" }
+                        ).filter { candidate ->
+                            RecipeOfflineDraftGenerator.allowsSuggestion(
+                                candidate.variant, requestedRestrictions
+                            )
+                        }
+                        require(ranked.isNotEmpty()) { "no independently safe recipe candidate" }
                         val first = ranked.first()
                         rankingHint = "Kontext-Hinweis: potenziell ${first.stockCoveredMilliGrams / 1000} g im Bestand; ${first.shoppingNeedMilliGrams / 1000} g vorgemerkter Einkaufsbedarf. Mengenbasis, Zustand und Allergene weiterhin einzeln prüfen."
                         first.variant
-                    } else offlineVariant
+                    } else requireNotNull(RecipeOfflineDraftGenerator.nextAllowedVariant(
+                        offlineVariant, requestedRestrictions
+                    )) { "no independently safe recipe candidate" }
                     val generated = RecipeOfflineDraftGenerator.generate(
                         offlinePortions.toInt(), chosenVariant,
                         issuedAt, "offline-" + UUID.randomUUID().toString(),
-                        selectedFlags, snapshotAt
+                        selectedFlags, snapshotAt, requestedRestrictions
                     )
                     // Use the identical bounded v1 import boundary as pasted JSON.
                     val checked = RecipeDraftV1Import.read(
@@ -315,15 +358,15 @@ internal fun RecipeDraftImportPanel(
                     evidenceCheckpoint.discard()
                     invalidate()
                     versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+                    allergenAnswers = emptyMap(); restrictionsText = offlineRestrictionsText; reviewed = false
                     json = generated
                     imported = checked
                     error = null
                     if (!selectedNeedsContext) offlineVariant =
-                        (offlineVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
+                        (chosenVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
                 } catch (_: IllegalArgumentException) {
                     rankingHint = null
-                    error = "Offline-Entwurf nicht verfügbar: Produktzuordnung, Kontext, Einheit oder Mengen prüfen."
+                    error = "Offline-Entwurf nicht verfügbar: Ausschlüsse, Allergennachweise, Produktzuordnung, Kontext und Mengen prüfen."
                 }
             }
         ) { Text("Offline-Rezeptvorschlag erzeugen") }

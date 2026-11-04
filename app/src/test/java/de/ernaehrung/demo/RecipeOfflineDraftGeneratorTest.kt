@@ -112,4 +112,78 @@ class RecipeOfflineDraftGeneratorTest {
         assertEquals(listOf(225L, 390L, 360L), three.draft.lines.map { it.amount })
         assertTrue(three.draft.steps.contains("Kühlkette"))
     }
+    @Test fun foodExclusionsSelectTheNextCompatibleOfflineVariantWithoutChangingDraftTrust() {
+        val excluded = setOf("FOOD:dry-rice", "FOOD:tomato")
+        val candidates = (0 until RecipeOfflineDraftGenerator.VARIANT_COUNT).filter {
+            RecipeOfflineDraftGenerator.allowsSuggestion(it, excluded)
+        }
+        assertEquals(12, candidates.size)
+        val first = RecipeOfflineDraftGenerator.nextAllowedVariant(0, excluded)
+        assertEquals(10, first)
+        val draft = RecipeDraftV1Import.read(
+            RecipeOfflineDraftGenerator.generate(2, requireNotNull(first), now, "excluded-food"),
+            emptyMap(), now
+        )
+        assertTrue(draft.draft.lines.none { it.foodTypeId == "dry-rice" || it.foodTypeId == "tomato" })
+        assertTrue(draft.draft.lines.all { it.state == RecipeDraftHostGate.State.UNKNOWN })
+        val preview = RecipeDraftV1Import.review(
+            RecipeOfflineDraftGenerator.generate(2, first, now, "excluded-review"),
+            RecipeDraftHostGate.Request(draft.draft.flags, 2, userConfirmedRecipeSave = false),
+            emptyMap(), emptyMap(), now
+        )
+        assertNull(preview.input)
+    }
+
+    @Test fun unknownAllergenEvidenceBlocksAllSuggestionsUntilEachIngredientIsCleared() {
+        val restriction = setOf("ALLERGEN:SOY")
+        assertNull(RecipeOfflineDraftGenerator.nextAllowedVariant(0, restriction))
+        val selected = RecipeOfflineDraftGenerator.ingredientsFor(0)
+        val confirmedAbsent = selected.associate {
+            it.foodTypeId to mapOf("SOY" to false)
+        }
+        assertEquals(0, RecipeOfflineDraftGenerator.nextAllowedVariant(
+            0, restriction, confirmedAbsent
+        ))
+        val incomplete = confirmedAbsent - selected.first().foodTypeId
+        assertFalse(RecipeOfflineDraftGenerator.allowsSuggestion(0, restriction, incomplete))
+        assertFalse(RecipeOfflineDraftGenerator.allowsSuggestion(
+            0, restriction, confirmedAbsent + (selected.first().foodTypeId to mapOf("SOY" to true))
+        ))
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.nextAllowedVariant(0, setOf("ALLERGEN:"))
+        }.isFailure)
+    }
+
+    @Test fun generatorEnforcesRestrictionsAgainAfterCandidateSelection() {
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "excluded-food-direct",
+                requestedRestrictions = setOf("FOOD:dry-rice"))
+        }.isFailure)
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "unverified-allergen-direct",
+                requestedRestrictions = setOf("ALLERGEN:SOY"))
+        }.isFailure)
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "malformed-restriction-direct",
+                requestedRestrictions = setOf("ALLERGEN:"))
+        }.isFailure)
+
+        val allowedJson = RecipeOfflineDraftGenerator.generate(
+            2, 9, now, "allowed-food-direct",
+            requestedRestrictions = setOf("FOOD:dry-rice")
+        )
+        val imported = RecipeDraftV1Import.read(allowedJson, emptyMap(), now)
+        assertFalse(imported.draft.lines.any { it.foodTypeId == "dry-rice" })
+        val preview = RecipeDraftV1Import.review(
+            allowedJson,
+            RecipeDraftHostGate.Request(
+                imported.draft.flags, 2, setOf("FOOD:dry-rice"),
+                userConfirmedRecipeSave = false
+            ),
+            emptyMap(), emptyMap(), now
+        )
+        assertNull(preview.input)
+        assertNotEquals(RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
+    }
+
 }
