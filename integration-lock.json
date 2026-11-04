@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "EG Integrator B – Rezeptsystem / 2026-11-04 01:07 Europe/Berlin",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1cy219-yipa793pq0f",
-  "acquiredAtUtc": "2026-11-04T00:07:35.373Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1: PR #230 exact-head CI verification and production handoff, then FoodStore user-action attestation",
-  "workingBranch": "integration-b-recipe-production-handoff-20261104",
-  "lastReleasedAtUtc": "2026-11-03T23:16:25.590Z",
-  "lastReleasedCommit": "c4b5957722c31146a837c26e26050694ccfff326",
-  "nextStep": "B1 ACTIVE: continue existing code PR #230 (integration-b-recipe-production-handoff-20261104) on exact head c4b5957722c31146a837c26e26050694ccfff326; inspect CI run 41737431370 and fix any Kotlin/Compose/Robolectric failures; merge only if exact-head PASS and main/lock/overlap rechecked. Then implement independently verifiable FoodStore-side user-action attestation and generator/v1 revalidator, manufacturing and separate consumption Android/offline/privacy E2E. No device tests yet."
+  "task": "B1: independently verifiable FoodStore-side recipe-save user-action attestation",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T00:14:39.302Z",
+  "lastReleasedCommit": "a13591b5628cfe3af35a4d565419442aa087b92d",
+  "nextStep": "B1 ACTIVE: PR #230 merged at a13591b5628cfe3af35a4d565419442aa087b92d after exact-head 35134290f1af400dab04ad5255e175c4d57383f0 CI 41744558402 PASS (569 JVM, 7 Room migrations, Lint, schema/reference gates, Android test compilation; no device tests). Next implement FoodStore-independent cryptographically verifiable user-action attestation bound to device credential, exact digest, operation key and freshness; fail closed on replay/cancel/process death, test positive/negative Room and Android UI, then generator/revalidator eight-context parity and separate manufacturing/consumption offline/privacy E2E. No APK."
 }
