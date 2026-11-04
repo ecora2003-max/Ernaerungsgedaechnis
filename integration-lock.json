@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-automation-kdgzp3u0k2emw1u2odx",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-kdgzp3u0k2emw1u2odx",
-  "acquiredAtUtc": "2026-11-04T08:07:04.437Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: context-aware offline recipe ranking with FoodType/product-version/allergen/quantity safety",
-  "workingBranch": "integration-b-context-ranking-20261104",
-  "lastReleasedAtUtc": "2026-11-04T07:33:15.308Z",
-  "lastReleasedCommit": "fcbabf2e3b33dbfe1a0b7dcbb9f6668db08c670e",
-  "nextStep": "B1: PR #234 merged after exact CI 41792397845 PASS (583 JVM, 7 Room). Typed Room stock/shopping contexts and all eight flag gates are wired through kitchen preview/consent/save; offer modes fail closed. Next implement actual FoodType-to-product-version context-aware offline ranking and allergen/quantity safety, then executed Android/offline/restart/privacy E2E; do not mark INTEGRATED."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T08:17:52.367Z",
+  "lastReleasedCommit": "7643814e35a4122faa28529a2d48e61e89d1ed79",
+  "nextStep": "B1: PR #235 merged on exact CI 41797573350 PASS (589 JVM, 7 Room migrations, lint, v1 schema, Python references, Android test compilation). Independently mapped current FoodType/product versions now rank offline candidates using bound Room stock/shopping quantities, without allergen/cooking-state clearance or bookings. Next execute actual Android emulator/device UI, offline/restart and privacy E2E for full recipe→save→production→separate consumption; full pinned revalidator parity remains open. Do not mark INTEGRATED."
 }
