@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: PR #232 CI prüfen/integrieren und Rezept-Generator-Revalidator-UI-Anschluss fortsetzen",
-  "workingBranch": null,
+  "workingBranch": "integration-b-prepared-consumption-20261104",
   "lastReleasedAtUtc": "2026-11-04T04:12:43.911Z",
   "lastReleasedCommit": "a8e902206fe6677b82e21447ca139365d30243b4",
   "nextStep": "B1: PR #232 auf SHA fe3e8ed97d331c6e0f1337919bb68b08f82296f4 nach CI 41771649944 prüfen, bei PASS mergen; danach Offline-Generator/v1-Revalidator und acht Kontextkombinationen an Küchen-UI anschließen."
