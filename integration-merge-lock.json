@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-scheduled-20261104T1908Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-merge-20261104191831341-593504929",
-  "acquiredAtUtc": "2026-11-04T19:18:31.341Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Merge B1 #242 after exact JVM and Android emulator CI PASS",
-  "workingBranch": "integration-b-recipe-device-privacy-20261104",
-  "lastReleasedAtUtc": "2026-11-04T19:10:47.274Z",
-  "lastReleasedCommit": "6001010cd6810f3772f6265f2730018922bd811f",
-  "nextStep": "B1 #242: workflow PIN/awake fix committed 6001010; device CI on exact SHA pending; acquire new merge token only after green CI, main/PR overlap check."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T19:19:00.769Z",
+  "lastReleasedCommit": "3623a67542620ba3d333e342fa9e675f9a8957f5",
+  "nextStep": "B1 #242 merged as 3623a675 after exact CI 41894420024 and API35 device E2E 41894420084 PASS on 6001010. Continue recipe v1 revalidator/Host/FoodStore save-to-production-to-consumption real UI E2E, Android restart and privacy variants."
 }
