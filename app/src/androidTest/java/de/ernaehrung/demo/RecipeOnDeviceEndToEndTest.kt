@@ -37,6 +37,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +50,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class RecipeOnDeviceEndToEndTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Before fun unlockFixtureDevice() = prepareUnlockedTestDevice()
 
     @Test fun offlineComposeProposalCannotBypassManualReviewOrSave() {
         var reviews = 0

@@ -1,11 +1,18 @@
 name: Android device E2E (offline)
 on:
   workflow_dispatch:
+    inputs:
+      test_class:
+        description: 'Optional: einzelne Instrumentation-Testklasse für gezielte Fehlerprüfung'
+        required: false
+        default: ''
+        type: string
   pull_request:
     paths:
       - 'app/src/androidTest/**'
       - 'app/build.gradle.kts'
       - '.github/workflows/recipe-android-device.yml'
+      - 'tools/run_android_device_tests.sh'
 permissions:
   contents: read
 concurrency:
@@ -40,6 +47,8 @@ jobs:
           sudo chmod 666 /dev/kvm
       - name: Execute shopping/recipe UI, Room restart and bundled OCR offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          EG_ANDROID_TEST_CLASS: ${{ inputs.test_class }}
         with:
           api-level: 35
           target: google_apis
@@ -66,7 +75,7 @@ jobs:
             adb shell input keyevent KEYCODE_HOME
             adb shell svc wifi disable
             adb shell svc data disable
-            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
+            bash tools/run_android_device_tests.sh
       - name: Upload instrumentation evidence only (no downloadable APK)
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -75,5 +84,6 @@ jobs:
           path: |
             app/build/outputs/androidTest-results/connected/
             app/build/reports/androidTests/connected/
+            app/build/outputs/device-diagnostics/
           if-no-files-found: ignore
           retention-days: 7

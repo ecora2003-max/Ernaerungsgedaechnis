@@ -44,6 +44,7 @@ import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,6 +57,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class RecipeDeviceCredentialUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Before fun unlockFixtureDevice() = prepareUnlockedTestDevice()
 
     private val digest = "a".repeat(64)
     private val ready = Gate.Review(

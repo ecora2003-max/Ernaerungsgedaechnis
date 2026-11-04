@@ -27,6 +27,7 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,6 +39,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ShoppingOnDeviceEndToEndTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @Before fun unlockFixtureDevice() = prepareUnlockedTestDevice()
     private var models = ViewModelStore()
 
     private fun tap(text: String) {
