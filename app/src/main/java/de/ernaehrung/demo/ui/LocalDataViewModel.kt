@@ -377,6 +377,17 @@ class LocalDataViewModel internal constructor(
         }
     }
 
+    /** Fresh host-issued nonce: cannot survive process death or authorize another digest. */
+    internal fun beginRecipeDraftCredentialAction(digest: String): String? {
+        val session = pendingRecipeDraft ?: return null
+        if (recipeDraftConsent.value.busy ||
+            recipeDraftConsent.value.recordedDigest != null ||
+            session.review.approvalBasisDigest != digest) return null
+        return runCatching {
+            store.beginRecipeDraftCredentialAction(session.operationKey, digest)
+        }.getOrNull()
+    }
+
     /** Invoked exclusively by the explicit RecipeDraftConsentReview callback.
      * Revalidation and the durable operation ledger remain inside FoodStore.
      * This is UI-action provenance, not an authenticated human identity.
