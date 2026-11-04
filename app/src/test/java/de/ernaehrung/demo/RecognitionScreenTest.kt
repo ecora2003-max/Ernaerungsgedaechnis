@@ -162,7 +162,35 @@ class RecognitionScreenTest {
         }
         rule.waitUntil(15_000) { rule.waitForIdle(); model.receiptReview.value.resolved }
         rule.onNodeWithText("Dieser Bonentwurf wurde bereits übernommen oder verworfen. Gespeicherte Käufe stehen unter Käufe; Lagerzugänge dort separat bestätigen.").performScrollTo()
+        tap("Kauf und private Preisprüfung öffnen ${scan.take(8)}")
+        rule.onNodeWithText("Käufe und Ausgaben", substring = false).assertExists()
+        field("Ausgaben ab JJJJ-MM-TT", "2026-10-01")
+        field("Ausgaben bis JJJJ-MM-TT", "2026-10-30")
+        tap("Ausgabenzeitraum anzeigen")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.expenses.value.report?.purchases?.size == 1 }
+        val paidLine = runBlocking { db.foodDao().receiptLines(db.foodDao().receipts().single().id).first { it.versionId == version } }
+        tap("Privaten Bezahlpreis prüfen ${paidLine.id.take(8)}")
+        rule.onNodeWithText("Privaten historischen Preis ausdrücklich bestätigen ${paidLine.id.take(8)}").assertExists()
         capture("phase5-receipt-small-large-text")
+    }
+
+    @Test fun discardedReceiptNeverOffersPaidPriceHandoff() {
+        runBlocking { FoodStore(db) { clock }.saveReceiptScan("discard-scan", raw, "MANUAL_TEXT") }
+        val model = mount()
+        tap("Bon & OCR")
+        tap("Bonentwurf prüfen discard-")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.receiptReview.value.review != null }
+        tap("Diesen Bonentwurf verwerfen")
+        field("Grund / Herkunft der Bonbestätigung", "Kein eigener Einkauf")
+        tap("Bonentwurf ausdrücklich verwerfen")
+        tap("Bonentwurf verwerfen")
+        saved(model)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.receiptReview.value.resolved }
+        rule.onAllNodesWithText("Kauf und private Preisprüfung öffnen discard-").assertCountEquals(0)
+        runBlocking {
+            assertTrue(db.foodDao().purchases().isEmpty())
+            assertTrue(db.foodDao().allPaidPrices().isEmpty())
+        }
     }
 
     @Test fun changingGuessedMerchantClearsAutomaticAliasBeforePaymentButPreservesOriginalScan() {
