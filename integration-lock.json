@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-run-2026-11-04T14:14:47.108Z-peexfhs",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-2026-11-04T14:14:47.108Z-peexfhsevxik96h6vfyknh",
-  "acquiredAtUtc": "2026-11-04T14:14:47.108Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1: PR #237 credential UI E2E CI repair and integration",
-  "workingBranch": "integration-b-credential-ui-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T13:50:37.889Z",
-  "lastReleasedCommit": "d9b6598112b623331ccf59cb81da18562a0da37e",
-  "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
+  "task": "B1: real Android credential E2E merged, remaining pinned v1 revalidator parity",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T14:24:19.214Z",
+  "lastReleasedCommit": "843feab2792affb7c9d65b921263bcfb74613b98",
+  "nextStep": "B1: inspect pinned EG-Rezept-KI v1 revalidator parity gaps; implement next real generator/revalidator/host/UI validation with focused negative tests on fresh main. PR #237 merged, CI 41845820179 589 JVM/7 Room PASS, device CI 41845819865 7/7 PASS. Full B1/privacy parity still open."
 }
