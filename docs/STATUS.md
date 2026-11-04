@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 Offline-Generator an Küchen-Review (04.11.2026)
+
+- Branch `integration-b-offline-generator-20261104`, Generator-/UI-/Teststand `c150f7b585a98c8ce34d4398f0e60e1d999e76ff`: 27 deterministische Kombinationen nach `EG-Rezept-KI/CombinatorialGenerator.kt@58bb2d5aec5166d61821a726273ddbcae36ef867` als unbestätigte `recipe.draft`-v1-JSON, direkt in bestehende Küchen-Import-/Review-UI eingespeist. Kein Lager-/Listen-/Angebotszugriff, keine Allergen-/Produkt-/Garzustandsbehauptung und keine Buchung.
+- Neue JVM-Tests: alle 27 Vorschläge durch realen v1-Importer, acht Kontext-Flagkombinationen (nur kontextfreier Modus erlaubt, sieben ohne verifizierte Snapshots abgewiesen), Mengen-/ID-/Consent-Negativfälle; Robolectric-Compose prüft Vorschau ohne Zustimmung. **CI/Android-Gerät/Offline-/Privacy-E2E noch offen; kein Modulabschluss.**
+- Nächster Anschluss: CI auf exaktem PR-HEAD prüfen/korrigieren und mergen; anschließend die sieben kontextabhängigen Modi mit unabhängig typisierten Room-Snapshots, Revalidator und Allergengates tatsächlich verbinden.
+
+
 ## Integrator B – B1 separater Verzehr aus Fertigportionen (04.11.2026)
 
 - PR #231 mit gerätegebundenem, FoodStore-validiertem Rezept-Consent nach CI 41752487759 (572 JVM, 7 Room-Migrationen, Lint/Schema/Referenzen) als `a8e902206fe6677b82e21447ca139365d30243b4` integriert; tatsächliche Geräte-/Privacy-Abnahme offen.
