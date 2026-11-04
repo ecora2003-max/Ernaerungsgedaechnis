@@ -320,4 +320,40 @@ class RecipeDraftImportPanelTest {
         }
     }
 
+
+    @Test fun boundRoomContextDoesNotEnableRankingWithoutExplicitProductMappings() {
+        val at = java.time.Instant.now()
+        val flags = de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Flags(
+            true, false, false
+        )
+        val snapshot = de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot(
+            de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Source.STOCK,
+            "room-stock", "revision-1", at, emptyList()
+        )
+        val context = de.ernaehrung.demo.data.integration.RecipeDraftHostGate.typedContext(
+            flags, at,
+            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Evidence(snapshot, true),
+            null, null
+        )
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(),
+                            contextState = de.ernaehrung.demo.ui.RecipeDraftContextUiState(
+                                flags, context
+                            ),
+                            onInvalidate = {}, onDiscardPending = {},
+                            onReview = { _, _, _, _ -> })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_context_stock").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_context_mapping_reviewed").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+    }
+
 }

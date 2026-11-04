@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 mengenbezogene Offline-Kontextauswahl (04.11.2026)
+
+- Implementierung auf Branch `integration-b-context-ranking-20261104` (Code-/Test-Stand `dbac2541876ea3bd3a3904f4d98fa54cd191f60e` vor dieser Statusnotiz): Die Küchen-UI verlangt für kontextbasierte Vorschläge ausdrücklich zugeordnete FoodType→Produktversionen. Der reine Kotlin-Ranker prüft aktuelle, nicht-Demo-Grammversionen und die unveränderte typisierte Room-Kontextbindung, priorisiert potenzielle Bestandsabdeckung und geringeren Einkaufsbedarf; fehlende/unklare Einheiten, alte Versionen, geänderte Snapshots und ungeprüfte Allergenausschlüsse sperren. 27 deterministische Kandidaten bleiben bei fehlendem Kontext ohne automatische Produktzuordnung verfügbar. Keine Buchung oder Allergen-/RAW-/COOKED-Freigabe durch Ranking.
+- Neue Kotlin- und Robolectric-Compose-Regressionen hinzugefügt. **CI/Android-Geräte-/Offline-/Neustart-/Privacy-E2E für diesen Branch noch OFFEN**, daher kein INTEGRATED. Nächster Schritt: exakte PR-CI prüfen/korrigieren, dann die tatsächlich ausgeführte Android-/Offline-/Privacy-Abnahme des vollständigen B1-Pfads durchführen.
+
 ## Integrator B – B1 typisierte Room-Kontexte in Küchen-Review (04.11.2026)
 
 - [PR #234](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/234), Code-/Teststand vor dieser Notiz `6a6a97983`: Ein opt-in-Küchenformular bindet Bestands- und Einkaufs-Snapshots aus derselben Room-Zeitbasis an v1-Generator, unabhängige manuelle Produkt-/Allergenprüfung, FoodStore-Revalidator, Geräteaktions-Consent und Rezeptsave. Kontextdigest wird vor jeder Buchung neu geprüft; Vorschlag und Kontextabruf buchen nichts.
