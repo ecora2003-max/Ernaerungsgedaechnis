@@ -234,25 +234,46 @@ private fun ReceiptEditor(state: LocalDataState, busy: Boolean, operationId: Str
     }
 }
 
+/** Only real, released production output batches are selectable in the kitchen's separate eating action. */
+internal fun eligibleConsumptionBatches(batches: List<BatchRow>, preparedOnly: Boolean): List<BatchRow> =
+    batches.filter { row ->
+        row.stockAmount > 0 && (!preparedOnly ||
+            (row.batch.recipeVersionId != null && !row.originReversed &&
+                row.batch.release == ReleaseStatus.RELEASED))
+    }
+
 @Composable
-private fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId: String, model: LocalDataViewModel) {
+internal fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId: String,
+    model: LocalDataViewModel, preparedOnly: Boolean = false) {
     var batchId by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var day by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var confirmed by rememberSaveable { mutableStateOf(false) }
-    Fold("Testverzehr aus einer Charge") {
-        val batches = state.batches.filter { it.stockAmount > 0 }
+    Fold(if (preparedOnly) "Fertigportionen separat verzehren" else "Testverzehr aus einer Charge") {
+        val batches = eligibleConsumptionBatches(state.batches, preparedOnly)
+        if (preparedOnly) Text("Nur tatsächlich hergestellte und ausdrücklich freigegebene Fertigportionen. Herstellung allein ist kein Verzehr.")
         val batch = batches.find { it.batch.id == batchId }
-        Picker("Charge", batches.map { "${it.productName} · ${it.batch.id}" }, batch?.productName ?: "Bitte wählen") { label -> batchId = batches.first { label.endsWith(it.batch.id) }.batch.id }
-        Field("Verzehrmenge in ${batch?.unit?.label ?: "Basiseinheiten"}", amount, { amount = it })
-        Field("Verzehrdatum JJJJ-MM-TT", day, { day = it })
-        Check("Tatsächlich gegessen · als Testereignis bestätigen", confirmed) { confirmed = it }
-        SaveButton("Testverzehr buchen", busy) {
+        Picker("Charge", batches.map { "${it.productName} · ${it.batch.id}" }, batch?.productName ?: "Bitte wählen") { label ->
+            batchId = batches.first { label.endsWith(it.batch.id) }.batch.id
+            confirmed = false
+        }
+        Field("Verzehrmenge in ${batch?.unit?.label ?: "Basiseinheiten"}", amount, {
+            amount = it
+            confirmed = false
+        })
+        Field("Verzehrdatum JJJJ-MM-TT", day, {
+            day = it
+            confirmed = false
+        })
+        Check(if (preparedOnly) "Fertigportionen tatsächlich gegessen · ausdrücklich bestätigen"
+            else "Tatsächlich gegessen · als Testereignis bestätigen", confirmed) { confirmed = it }
+        SaveButton(if (preparedOnly) "Fertigportionen-Verzehr buchen" else "Testverzehr buchen", busy || batches.isEmpty()) {
             val selected = batch; val quantity = amount; val date = day; val accepted = confirmed
             model.save(operationId) {
                 requireNotNull(selected) { "Charge wählen." }
                 val parsed = Amounts.parse(quantity)
-                consume(operationId, ConsumptionInput(selected.batch.versionId, date, "Testmahlzeit", parsed,
+                consume(operationId, ConsumptionInput(selected.batch.versionId, date,
+                    if (preparedOnly) "Fertigportionen" else "Testmahlzeit", parsed,
                     listOf(Allocation(selected.batch.id, parsed))), accepted)
             }
         }

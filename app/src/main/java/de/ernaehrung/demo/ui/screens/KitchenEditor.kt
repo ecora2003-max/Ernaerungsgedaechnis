@@ -65,6 +65,11 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
         }
     }
     if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model, productionPrefill)
+    // Consumption is a distinct user gesture and FoodStore transaction, never a side effect
+    // of recipe save or production. Only released output batches are offered here.
+    if (eligibleConsumptionBatches(state.batches, preparedOnly = true).isNotEmpty()) {
+        ConsumptionEditor(state, blocked, key, model, preparedOnly = true)
+    }
     state.recipes.forEach { recipe -> Panel {
         Section(recipe.name, "Version ${recipe.revision} · ${Amounts.format(recipe.yieldPortions)} Soll-Portionen")
         state.ingredients.filter { it.ingredient.recipeVersionId == recipe.id }.forEach { item ->
