@@ -50,6 +50,45 @@ internal object RecipeOfflineDraftGenerator {
         }
     }
 
+    /**
+     * Selection-time exclusions are preferences, never verified allergen facts.
+     * Unknown allergen status must not be interpreted as absence. The later
+     * independent catalog/quantity/state review remains mandatory.
+     */
+    fun allowsSuggestion(
+        variant: Int,
+        requestedRestrictions: Set<String>,
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+    ): Boolean {
+        require(requestedRestrictions.all(RecipeDraftHostGate::isSupportedRestriction)) {
+            "unsupported restriction"
+        }
+        val excludedFoods = requestedRestrictions.filter { it.startsWith("FOOD:") }
+            .map { it.removePrefix("FOOD:") }.toSet()
+        val excludedAllergens = requestedRestrictions.filter { it.startsWith("ALLERGEN:") }
+            .map { it.removePrefix("ALLERGEN:") }.toSet()
+        return ingredientsFor(variant).all { ingredient ->
+            ingredient.foodTypeId !in excludedFoods &&
+                excludedAllergens.all { allergen ->
+                    independentlyConfirmedAllergens[ingredient.foodTypeId]?.get(allergen) == false
+                }
+        }
+    }
+
+    fun nextAllowedVariant(
+        startVariant: Int,
+        requestedRestrictions: Set<String>,
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+    ): Int? {
+        require(startVariant in 0 until VARIANT_COUNT)
+        require(requestedRestrictions.all(RecipeDraftHostGate::isSupportedRestriction)) {
+            "unsupported restriction"
+        }
+        return (0 until VARIANT_COUNT).asSequence()
+            .map { (startVariant + it) % VARIANT_COUNT }
+            .firstOrNull { allowsSuggestion(it, requestedRestrictions, independentlyConfirmedAllergens) }
+    }
+
     /** Context flags label separately captured host inputs; variant ranking is not yet context-aware. */
     fun generate(
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
