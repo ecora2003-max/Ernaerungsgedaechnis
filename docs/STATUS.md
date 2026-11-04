@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg
 
+## Einkaufsintegration gesichert, Rezept-Gesamtprüfung (04.11.2026)
+
+- **PR #244 integriert als `31a3945a`**, geprüfter Head `64e5e98d`: App-CI 41921993140 PASS (**606 JVM, 7 Room-Migrationen**, Lint, Schema, gepinnte Python-/v1-Gates), echte API35-Offline-Geräte-CI 41921993124 PASS; Original-XML **9/9 Tests, 0 Fehler/Skips** geprüft. Neue Einkaufskette von OCR über bestätigten Kauf, Preis/Lager und Budgetvorschau bis SQLite-Neuöffnung/Retry/Storno bestanden. System-Kamera-/Picker-Dialog und vollständige Modulparität weiter offen, keine Gesamtfreigabe oder Download-APK.
+- Rezeptkorrekturen auf Code-/Test-SHA `fc578141`: voller lokaler Pflichtlauf **609/609 JVM, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, unverändertes Room-8-Schema und Android-Testkompilierung PASS (4m10s). Zuvor 608/1-Fehler wurde durch den reproduzierbar getesteten UI-Abschlussübergang korrigiert. Die neue echte Allergen-/Gerätecredential-/Save-/Herstellung-/separate-Verzehr-UI-Strecke ist kompiliert, noch nicht ausgeführt.
+- Main einschließlich #244 ohne Force-Push in den bestehenden Rezeptbranch übernommen. Nächster Schritt: exakte GitHub-App-/Referenz-CI und echte API35-Instrumentation des vollständigen Rezeptpfads, reproduzierte Fehler beheben; danach vollständige Laufzeit-v1-Schema-/Generator-/Revalidator-Parität. Keine ungeprüften Änderungen mergen.
+
 ## Rezepte B1 – unmittelbare Bearbeitung nach Consent (04.11.2026)
 
 - Voller lokaler Lauf auf `b7a518f`: Lint, Schema und Android-Testkompilierung PASS; **608 JVM-Tests, 1 Fehler**. Fehlender Übergang im echten ViewModel reproduziert: veröffentlichter abgeschlossener Consent machte die UI bearbeitbar, während der noch aktive Coroutine-Job die sofortige Invalidierung abwies; ein nachfolgender Save konnte dadurch die alte Vorschau verwenden.

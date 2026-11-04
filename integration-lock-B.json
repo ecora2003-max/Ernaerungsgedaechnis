@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-codex-session-1793827977234-g7dklubc71k-integration-lock-B.json",
   "acquiredAtUtc": "2026-11-04T21:33:13.725Z",
-  "lastHeartbeatUtc": "2026-11-04T21:40:35.396Z",
+  "lastHeartbeatUtc": "2026-11-04T22:05:01.033Z",
   "leaseExpiresAtUtc": null,
   "task": "User-authorized Codex exclusive takeover; bootstrap tested owner policy, then complete A1/B1 E2E",
-  "workingBranch": "integration-a-shopping-budget-candidate-ui-20261104",
+  "workingBranch": "codex-recipe-attestation-e2e-20261104",
   "lastReleasedAtUtc": "2026-11-04T21:17:01.414Z",
   "lastReleasedCommit": "ce662fc61fd56cce341020f67e265bbe2dc0457b",
   "nextStep": "B1 PR #243 merged on main as ce662fc after 604/604 JVM, 7/7 Room, Lint, schema/Python gates PASS on exact e3fbd2f; no Android device test for #243. Next functional unit: add actual API35 Android offline/allergen UI→review→FoodStore save→production→separate consumption E2E with restart/privacy negatives; preserve earlier #236/#237/#242 emulator evidence. Do not declare INTEGRATED."
