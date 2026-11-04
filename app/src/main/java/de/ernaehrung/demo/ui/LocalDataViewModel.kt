@@ -477,6 +477,10 @@ class LocalDataViewModel internal constructor(
                 if (pendingRecipeDraft === session) {
                     pendingRecipeDraft = null
                     pendingReviewedSave = session
+                    // Room and cleanup have completed. Release the write guard
+                    // before publishing editable state: a StateFlow observer can
+                    // immediately invalidate this preview from inside the emit.
+                    recipeConsentJob = null
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
                         review = session.review, recordedDigest = recorded)
                 }
@@ -485,6 +489,7 @@ class LocalDataViewModel internal constructor(
             } catch (e: Exception) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingRecipeDraft === session) {
+                    recipeConsentJob = null
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
                         review = session.review, sessionId = session.sessionId,
                         operationKey = session.operationKey,
@@ -516,6 +521,7 @@ class LocalDataViewModel internal constructor(
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingReviewedSave === session) {
                     pendingReviewedSave = null
+                    recipeSaveJob = null
                     recipeDraftConsent.value = recipeDraftConsent.value.copy(
                         busy = false, savedRecipeVersionId = version, error = null)
                 }
@@ -524,6 +530,7 @@ class LocalDataViewModel internal constructor(
             } catch (error: Exception) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingReviewedSave === session) {
+                    recipeSaveJob = null
                     recipeDraftConsent.value = recipeDraftConsent.value.copy(
                         busy = false, error = "Rezeptversion nicht gespeichert: ${error.message}")
                 }

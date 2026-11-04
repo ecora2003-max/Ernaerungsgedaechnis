@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -522,6 +524,25 @@ class RecipeDraftConsentViewModelTest {
         assertNull(vm.recipeDraftConsentState.value.savedRecipeVersionId)
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
         assertEquals(2, db.foodDao().operationCount()) // product + old consent
+    }
+
+    @Test fun immediateObserverEditAfterCommittedConsentCannotSaveTheInvalidatedPreview() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val digest = requireNotNull(preview.review?.approvalBasisDigest)
+        // Inline observer deliberately acts before the emitting consent coroutine
+        // returns. The UI is already editable once this completion is published.
+        val edit = launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
+            vm.clearRecipeDraftConsent()
+            vm.saveConfirmedRecipeDraft(digest)
+        }
+        vm.confirmSignedRecipeTestConsent(digest, preview.sessionId)
+        withTimeout(10_000) { edit.join() }
+        assertNull(vm.recipeDraftConsentState.value.review)
+        assertNull(vm.recipeDraftConsentState.value.recordedDigest)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(2, db.foodDao().operationCount())
     }
 
     @Test fun recoveredRoomConsentRequiresNewSaveGestureAndUsesSameOperationKey() = runBlocking {

@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg
 
+## Rezepte B1 – unmittelbare Bearbeitung nach Consent (04.11.2026)
+
+- Voller lokaler Lauf auf `b7a518f`: Lint, Schema und Android-Testkompilierung PASS; **608 JVM-Tests, 1 Fehler**. Fehlender Übergang im echten ViewModel reproduziert: veröffentlichter abgeschlossener Consent machte die UI bearbeitbar, während der noch aktive Coroutine-Job die sofortige Invalidierung abwies; ein nachfolgender Save konnte dadurch die alte Vorschau verwenden.
+- Schreibschutz wird jetzt nach abgeschlossenem Room-/Cleanup-Schritt **vor** Veröffentlichung des fertigen UI-Zustands freigegeben. Zusätzlicher inline reagierender StateFlow-Test erzwingt genau diese Reihenfolge und erwartet ausschließlich den Consent, keine Rezeptversion. Der vollständige korrigierte Lauf und echte Geräte-E2E müssen noch bestehen.
+
 ## Rezepte B1 – attestierte Schreibgrenze und Wiederaufnahme (04.11.2026)
 
 - Neuer Funktionsbranch `codex-recipe-attestation-e2e-20261104`: FoodStore verlangt für neuen Consent und Rezeptsave zwingend verifizierte Geräteaktion; der bisherige Boolean-Downgrade ist entfernt. Alte unsignierte Ledger bleiben erhalten, können aber weder Wiederaufnahme noch Save autorisieren. Die DAO-Wiederaufnahme las bisher ausschließlich Legacy-Typen und übersah echte attestierte Consents; auf attestierte Einträge korrigiert, ohne Schemaänderung.
