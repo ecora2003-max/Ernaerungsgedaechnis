@@ -27,7 +27,8 @@ internal data class RecipeCredentialChallenge(
     val reviewedInput: RecipeInput,
     val resetVersion: Int,
     val issuedAtElapsedRealtimeMs: Long,
-    val operationKey: String? = null
+    val operationKey: String? = null,
+    val nonce: String? = null
 )
 
 internal object RecipeCredentialResultGate {
@@ -77,6 +78,7 @@ internal fun RecipeDraftDeviceCredentialReview(
     review: RecipeDraftHostGate.Review,
     sessionKey: String?,
     operationKey: String?,
+    requestNonce: (String) -> String?,
     resetVersion: Int,
     actionEnabled: Boolean,
     onAuthenticated: (String, String?, RecipeActionProof) -> Unit
@@ -85,6 +87,7 @@ internal fun RecipeDraftDeviceCredentialReview(
     val latestReview by rememberUpdatedState(review)
     val latestSession by rememberUpdatedState(sessionKey)
     val latestOperationKey by rememberUpdatedState(operationKey)
+    val latestRequestNonce by rememberUpdatedState(requestNonce)
     val latestEnabled by rememberUpdatedState(actionEnabled)
     val latestResetVersion by rememberUpdatedState(resetVersion)
     val latestCallback by rememberUpdatedState(onAuthenticated)
@@ -104,9 +107,9 @@ internal fun RecipeDraftDeviceCredentialReview(
             completed, result.resultCode, latestReview, latestSession,
             latestResetVersion, latestEnabled, stillSecure,
             operationKey = latestOperationKey)
-        val proof = if (accepted && completed?.operationKey != null)
+        val proof = if (accepted && completed?.operationKey != null && completed.nonce != null)
             AndroidRecipeActionProof.sign(completed.operationKey, completed.digest,
-                System.currentTimeMillis()) else null
+                completed.nonce, System.currentTimeMillis()) else null
         if (accepted && proof != null) {
             error = null
             latestCallback(requireNotNull(completed).digest, completed.sessionId, proof)
@@ -128,11 +131,14 @@ internal fun RecipeDraftDeviceCredentialReview(
                 "Gerätesperre bestätigen, um genau diese Rezeptvorschau freizugeben."
             )
         } else null
-        val candidate = if (renderedSession != null && review.input != null) {
+        val nonce = if (renderedSession != null && operationKey != null)
+            latestRequestNonce(digest) else null
+        val candidate = if (renderedSession != null && review.input != null && nonce != null) {
             RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion,
-                SystemClock.elapsedRealtime(), operationKey)
+                SystemClock.elapsedRealtime(), operationKey, nonce)
         } else null
-        if (intent == null || operationKey == null || !AndroidRecipeActionProof.ensureKey() ||
+        if (intent == null || candidate == null || operationKey == null ||
+            !AndroidRecipeActionProof.ensureKey() ||
             !RecipeCredentialResultGate.accepts(
                 candidate, Activity.RESULT_OK, review, sessionKey,
                 resetVersion, actionEnabled, keyguard?.isDeviceSecure == true,
