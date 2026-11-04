@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: FoodStore-side verifiable recipe-save user-action provenance",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-action-proof-20261104",
   "lastReleasedAtUtc": "2026-11-04T00:14:39.302Z",
   "lastReleasedCommit": "a13591b5628cfe3af35a4d565419442aa087b92d",
   "nextStep": "B1 ACTIVE: PR #230 merged at a13591b5628cfe3af35a4d565419442aa087b92d after exact-head 35134290f1af400dab04ad5255e175c4d57383f0 CI 41744558402 PASS (569 JVM, 7 Room migrations, Lint, schema/reference gates, Android test compilation; no device tests). Next implement FoodStore-independent cryptographically verifiable user-action attestation bound to device credential, exact digest, operation key and freshness; fail closed on replay/cancel/process death, test positive/negative Room and Android UI, then generator/revalidator eight-context parity and separate manufacturing/consumption offline/privacy E2E. No APK."
