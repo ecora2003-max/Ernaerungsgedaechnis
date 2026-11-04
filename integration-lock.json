@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integrator-B-2026-11-04T04Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1lj3ff-6segfi3rt9k",
-  "acquiredAtUtc": "2026-11-04T04:07:53.883Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: separat bestätigten Verzehr von hergestellten Rezeptportionen in Küchen-UI integrieren",
-  "workingBranch": "integration-b-prepared-consumption-20261104",
-  "lastReleasedAtUtc": "2026-11-04T03:26:06.610Z",
-  "lastReleasedCommit": null,
-  "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T04:12:43.911Z",
+  "lastReleasedCommit": "a8e902206fe6677b82e21447ca139365d30243b4",
+  "nextStep": "B1: PR #232 auf SHA fe3e8ed97d331c6e0f1337919bb68b08f82296f4 nach CI 41771649944 prüfen, bei PASS mergen; danach Offline-Generator/v1-Revalidator und acht Kontextkombinationen an Küchen-UI anschließen."
 }
