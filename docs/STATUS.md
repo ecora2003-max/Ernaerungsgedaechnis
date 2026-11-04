@@ -1,3 +1,8 @@
+## Codex – reguläre Geräteentsperrung statt zustandsabhängiger Gesten (04.11.2026)
+
+- PR #246: App-CI `41925785592` auf `31a2cf810bb51792e21f0460356f5095a308b0ff` PASS. Geräte-CI `41925785595`: 10 Tests, 8 bereits in der gemeinsamen Vorbereitung gescheitert; SystemUI/Launcher bei aktivem Keyguard, kein PIN-Editor. Kein neuer Rezept-End-to-End-Nachweis.
+- Testvorbereitung fordert jetzt mit `wm dismiss-keyguard` Androids regulären sicheren Entsperrdialog an, wartet auf echten PIN-Editor oder tatsächlich aufgehobenen Keyguard und verwendet weiterhin die realen System-PIN-Tasten. Keine Entfernung der Gerätesperre, keine vorgetäuschten Credential-Ergebnisse. Neuer Geräteversuch steht aus.
+
 # Integration: aktueller Wiedereinstieg
 
 ## Rezepte v1 – tatsächliche Offline-Laufzeit-Vertragsprüfung (04.11.2026)

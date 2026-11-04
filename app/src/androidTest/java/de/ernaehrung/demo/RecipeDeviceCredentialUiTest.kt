@@ -8,6 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -309,7 +312,7 @@ class RecipeDeviceCredentialUiTest {
             ingredients.forEachIndexed { index, ingredient ->
                 val selector = "Produktversion für Allergen-Vorprüfung: ${ingredient.label} (${ingredient.foodTypeId})"
                 tap(selector)
-                compose.onNodeWithText(labels[index]).performClick()
+                compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
                 tag("recipe_offline_allergen_absent_${ingredient.foodTypeId}_SOY")
             }
             tag("recipe_offline_generate")
@@ -320,7 +323,7 @@ class RecipeDeviceCredentialUiTest {
             ingredients.forEachIndexed { index, ingredient ->
                 compose.onAllNodesWithText("Unabhängig geprüfte Katalogversion")[index]
                     .performScrollTo().performClick()
-                compose.onNodeWithText(labels[index]).performClick()
+                compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
                 val position = if (ingredient.basis == "NET") netIndex++ else 0
                 compose.onAllNodesWithText(ingredient.basis)[position]
                     .performScrollTo().performClick()
