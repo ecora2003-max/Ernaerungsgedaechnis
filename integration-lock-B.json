@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-run-20261104T1514Z-t7tnxxvc4amw29bysh",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-t7tnxxvc4amw29bysh",
-  "acquiredAtUtc": "2026-11-04T15:14:12.065Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: v1-Revalidator-Parität in Offline-Rezeptvorschlag und Bestätigungsstrecke",
-  "workingBranch": "integration-b-offline-restriction-selection-20261104",
-  "lastReleasedAtUtc": null,
-  "lastReleasedCommit": null,
-  "nextStep": "B: offenen PR #237 auf echte Geräte-E2E prüfen/reparieren und B1 fortsetzen."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T15:17:41.247Z",
+  "lastReleasedCommit": "28ba45ed39674e027661b7ee55f01de8de403cb7",
+  "nextStep": "B1: PR #240 CI 41856093027 auf exaktem HEAD prüfen, Fehler auf bestehendem Branch beheben; bei PASS mit frischem separatem Merge-Lock und main/PR-Abgleich integrieren. Vollständige Revalidator-/Geräte-/Privacy-Parität bleibt offen."
 }
