@@ -98,8 +98,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 RecipeRoomShoppingSnapshotReader(db).read(shoppingScope, at) else null
             val gate = de.ernaehrung.demo.data.integration.RecipeDraftHostGate
             gate.typedContext(flags, at,
-                stockSnapshot?.let { gate.Evidence(it, true) },
-                shoppingSnapshot?.let { gate.Evidence(it, true) },
+                stockSnapshot?.let { de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Evidence(it, true) },
+                shoppingSnapshot?.let { de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Evidence(it, true) },
                 null)
         }
 
@@ -531,7 +531,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             // Keep the historical no-context digest stable for existing consents.
             val digest = if (!contextRequested) baseDigest else
                 context?.contentBinding?.takeIf {
-                    context.contentBindingRequired &&
+                    context?.contentBindingRequired == true &&
                         it.flags == request.flags &&
                         it.snapshotAt == trustedContextSnapshotAt?.toInstant()
                 }?.let { binding ->
