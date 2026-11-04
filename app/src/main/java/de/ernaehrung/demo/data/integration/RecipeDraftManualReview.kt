@@ -31,7 +31,8 @@ internal object RecipeDraftManualReview {
         choices: Map<String, Choice>,
         restrictions: Set<String>,
         explicitlyReviewed: Boolean,
-        nowMillis: Long
+        nowMillis: Long,
+        independentlyBoundContext: Boolean = false
     ): Prepared {
         require(explicitlyReviewed) { "explicit manual review required" }
         require(nowMillis >= 0L) { "invalid review timestamp" }
@@ -48,9 +49,12 @@ internal object RecipeDraftManualReview {
             "manual review of stale draft"
         }
         val draft = imported.draft
-        // No stock/list/offer snapshot or digest has been independently acquired here.
-        require(!draft.flags.considerStock && !draft.flags.considerShopping &&
-            !draft.flags.considerOffers) { "context evidence unavailable" }
+        // The UI must have independently captured and content-bound exactly the
+        // requested sources. The FoodStore transaction revalidates them again.
+        require((!draft.flags.considerStock && !draft.flags.considerShopping &&
+            !draft.flags.considerOffers) || independentlyBoundContext) {
+            "context evidence unavailable"
+        }
         require(draft.lines.isNotEmpty() && draft.lines.size <= 64)
         val ids = draft.lines.map { it.foodTypeId }
         require(ids.all { it.isNotBlank() } && ids.toSet().size == ids.size)
