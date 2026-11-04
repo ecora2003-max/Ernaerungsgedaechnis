@@ -1,6 +1,5 @@
 package de.ernaehrung.demo
 
-import android.content.Context
 import android.content.pm.ApplicationInfo
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +32,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Base64
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -86,7 +86,6 @@ class RecipeOnDeviceEndToEndTest {
     @Test fun offlineDraftToAttestedRoomSaveProductionSeparateConsumptionAndRestart() = runBlocking {
         val target = InstrumentationRegistry.getInstrumentation().targetContext
         val databaseName = "recipe-device-e2e-" + UUID.randomUUID() + ".db"
-        var db: FoodDatabase? = null
         var clock = System.currentTimeMillis()
         val day = LocalDate.now(ZoneId.of("Europe/Berlin")).toString()
         val keyPair = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
@@ -108,9 +107,9 @@ class RecipeOnDeviceEndToEndTest {
                     FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7,
                     FoodMigrations.MIGRATION_7_8
                 ).build()
+        var db = open()
         try {
-            db = open()
-            var store = FoodStore(requireNotNull(db), { clock }, verifier)
+            var store = FoodStore(db, { clock }, verifier)
             val ingredients = RecipeOfflineDraftGenerator.ingredientsFor(0)
             val versions = ingredients.associate { line ->
                 line.foodTypeId to store.rememberProduct(
@@ -213,7 +212,7 @@ class RecipeOnDeviceEndToEndTest {
             // no duplicate recipe, production or consumption on idempotent retry.
             db.close()
             db = open()
-            store = FoodStore(requireNotNull(db), { clock }, verifier)
+            store = FoodStore(db, { clock }, verifier)
             assertEquals(recipe, store.saveReviewedRecipeDraftV1(
                 key, json, request, facts, states, review, true,
                 requireActionAttestation = true
@@ -222,12 +221,10 @@ class RecipeOnDeviceEndToEndTest {
             store.consume("device-eat", meal, true)
             assertEquals(1, db.foodDao().activeConsumptionCount())
             assertEquals(1_000L, db.foodDao().balance(output))
-            assertEquals(1, db.foodDao().observeRecipes().let {
-                kotlinx.coroutines.flow.first(it)
-            }.size)
+            assertEquals(1, db.foodDao().observeRecipes().first().size)
             assertEquals(0, target.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
         } finally {
-            db?.close()
+            db.close()
             target.deleteDatabase(databaseName)
         }
     }
