@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "manual-A-20261104-162039",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-k57hu18ip5mw2bpphh",
-  "acquiredAtUtc": "2026-11-04T16:20:52.421Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 PR #239 CI prüfen und ggf. integrieren",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-04T15:56:15.853Z",
+  "lastReleasedAtUtc": "2026-11-04T16:21:12.494Z",
   "lastReleasedCommit": "ec330d557e796e1d53e3e267899ea2933bba3932",
-  "nextStep": "A1 PR #239: exact-head CI 41860960943 final conclusion/JUnit prüfen (Logs 592/592, 7 Migrationen, Workflow noch IN_PROGRESS). Bei SUCCESS und nach frischem eigenen Rollen- und Merge-Lock, main-/Fremd-PR-Abgleich, PR mergen; sonst auf gleichem Branch korrigieren. Android/OCR/Offline/Privacy-Geräte-E2E bleiben offen."
+  "nextStep": "PR #239 exact SHA ec330d55 CI 41860960943 SUCCESS verified. Next: verify current PR head/main divergence, overlapping PRs, acquire merge lock and merge only if compatible; otherwise continue A1 on existing branch. Device OCR/offline/privacy E2E open."
 }
