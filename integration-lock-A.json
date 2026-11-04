@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 historical offline price comparison to FEFO package budget shopping UI",
-  "workingBranch": null,
+  "workingBranch": "integration-a-shopping-quote-comparison-20261104",
   "lastReleasedAtUtc": "2026-11-04T16:37:51.779Z",
   "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
   "nextStep": "A1 PR #239 successfully merged at 74bbc44a after exact SHA ec330d55 CI SUCCESS. Next missing E2E link: historical/offline price comparison to actual FEFO/pack/budget shopping suggestion UI with positive/negative tests. Android device OCR/offline/restart/privacy E2E open."
