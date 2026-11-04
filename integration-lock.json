@@ -8,8 +8,8 @@
   "acquiredAtUtc": "2026-11-04T04:07:53.883Z",
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1: PR #231 CI prüfen, korrigieren und geprüfte Rezeptsave-Attestation integrieren",
-  "workingBranch": "integration-b-recipe-action-proof-20261104",
+  "task": "B1: separat bestätigten Verzehr von hergestellten Rezeptportionen in Küchen-UI integrieren",
+  "workingBranch": "integration-b-prepared-consumption-20261104",
   "lastReleasedAtUtc": "2026-11-04T03:26:06.610Z",
   "lastReleasedCommit": null,
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
