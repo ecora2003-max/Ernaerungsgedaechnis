@@ -52,6 +52,18 @@ jobs:
             # Ephemeral emulator only: exercise Android's real credential Activity
             # and auth-bound Keystore, never a synthetic RESULT_OK callback.
             adb shell locksettings set-pin 2468
+            # Keep the API 35 emulator awake while Gradle builds the test APKs.
+            # After provisioning a PIN, explicitly dismiss any newly displayed
+            # lock screen before instrumentation launches MainActivity. Otherwise
+            # Compose has no visible hierarchy and credential UI tests time out.
+            adb shell settings put system screen_off_timeout 1800000
+            adb shell svc power stayon true
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell input keyevent KEYCODE_MENU
+            adb shell input swipe 540 1700 540 400 250
+            adb shell input text 2468
+            adb shell input keyevent KEYCODE_ENTER
+            adb shell input keyevent KEYCODE_HOME
             adb shell svc wifi disable
             adb shell svc data disable
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
