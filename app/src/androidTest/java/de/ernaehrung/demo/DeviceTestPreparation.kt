@@ -30,9 +30,24 @@ internal fun prepareUnlockedTestDevice() {
             ?: device.wait(Until.findObject(By.res("com.android.systemui", "lockPassword")), 5_000L)
             ?: device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000L)
         assertNotNull("CI test device remained locked without an accessible PIN editor", editor)
-        requireNotNull(editor).click()
-        device.executeShellCommand("input text 2468")
-        device.pressEnter()
+        if (editor?.resourceName == "com.android.systemui:id/pinEntry") {
+            // The lockscreen PIN area is not clickable and can remain unfocused.
+            // Shell typing then silently drops every digit. Press the actual OS
+            // keypad instead; this also works without an IME/input connection.
+            for (digit in "2468") {
+                val key = device.wait(Until.findObject(By.res("com.android.systemui", "key$digit")), 5_000L)
+                assertNotNull("System PIN keypad digit unavailable", key)
+                requireNotNull(key).click()
+            }
+            val enter = device.wait(Until.findObject(By.res("com.android.systemui", "key_enter")), 5_000L)
+            assertNotNull("System PIN keypad enter control unavailable", enter)
+            requireNotNull(enter).click()
+        } else {
+            requireNotNull(editor).click()
+            device.waitForIdle()
+            device.executeShellCommand("input text 2468")
+            device.pressEnter()
+        }
         val deadline = SystemClock.uptimeMillis() + 10_000L
         while (keyguard.isKeyguardLocked && SystemClock.uptimeMillis() < deadline) {
             SystemClock.sleep(100L)
