@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 PR #239 final CI/merge and next UI shopping flow",
-  "workingBranch": null,
+  "workingBranch": "integration-a-paid-price-purchase-ui-20261104",
   "lastReleasedAtUtc": "2026-11-04T16:21:12.494Z",
   "lastReleasedCommit": "ec330d557e796e1d53e3e267899ea2933bba3932",
   "nextStep": "PR #239 exact SHA ec330d55 CI 41860960943 SUCCESS verified. Next: verify current PR head/main divergence, overlapping PRs, acquire merge lock and merge only if compatible; otherwise continue A1 on existing branch. Device OCR/offline/privacy E2E open."
