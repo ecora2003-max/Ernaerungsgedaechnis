@@ -103,7 +103,7 @@ internal fun RecipeDraftImportPanel(
             singleLine = true
         )
         Button(
-            enabled = offlinePortions.toIntOrNull() in 1..1000,
+            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000,
             modifier = Modifier.testTag("recipe_offline_generate"),
             onClick = {
                 try {
