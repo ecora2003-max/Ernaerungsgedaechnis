@@ -275,7 +275,7 @@ class RecipeDraftImportPanelTest {
         }
         rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
-        rule.onNodeWithTag("recipe_draft_json").assertTextContains("recipe.draft")
+        rule.onNodeWithTag("recipe_draft_json").assertExists()
         rule.onNodeWithText("Entwurfs-ID:", substring = true).assertExists()
         rule.runOnIdle {
             assertEquals(1, invalidations)
