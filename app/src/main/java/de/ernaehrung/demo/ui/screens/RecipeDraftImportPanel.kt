@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import de.ernaehrung.demo.data.integration.RecipeOfflineDraftGenerator
+import de.ernaehrung.demo.data.integration.RecipeOfflineContextRanking
 import de.ernaehrung.demo.data.integration.RecipeDraftManualReview
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
@@ -80,6 +81,9 @@ internal fun RecipeDraftImportPanel(
     var useStock by remember { mutableStateOf(false) }
     var useShopping by remember { mutableStateOf(false) }
     var useOffers by remember { mutableStateOf(false) }
+    var rankingVersionIds by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var rankingReviewed by remember { mutableStateOf(false) }
+    var rankingHint by remember { mutableStateOf<String?>(null) }
     val selectedFlags = Gate.Flags(useStock, useShopping, useOffers)
     val selectedNeedsContext = useStock || useShopping || useOffers
     val boundContext = contextState.context?.takeIf {
@@ -191,10 +195,13 @@ internal fun RecipeDraftImportPanel(
             enabled = json.isNotBlank(),
             modifier = Modifier.testTag("recipe_draft_json_inspect")
         ) { Text("JSON-Entwurf lokal prüfen") }
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Kontextflags binden lokale Quellen an die Prüfung; die Rezeptauswahl wird noch nicht nach Vorräten oder Einkaufsbedarf optimiert. Externe Angebote ohne geprüfte Rechtequelle bleiben gesperrt. Keine Allergen- oder Garzustandsfreigabe.")
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Bei geprüftem Room-Kontext werden nur ausdrücklich zugeordnete Produktversionen nach potenziellen Gramm-Mengen in Bestand und Einkaufsbedarf sortiert. Keine Allergen-, Abtropfgewichts- oder Garzustandsfreigabe; die spätere Einzelprüfung bleibt Pflicht. Angebote ohne Rechtequelle bleiben gesperrt.")
         fun contextChanged() {
             invalidate()
             onClearContext()
+            rankingVersionIds = emptyMap()
+            rankingReviewed = false
+            rankingHint = null
             imported = null
             versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
             allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
@@ -218,7 +225,12 @@ internal fun RecipeDraftImportPanel(
         if (selectedNeedsContext) {
             Button(
                 enabled = !contextState.busy,
-                onClick = { invalidate(); onRequestContext(selectedFlags) },
+                onClick = {
+                    invalidate()
+                    rankingReviewed = false
+                    rankingHint = null
+                    onRequestContext(selectedFlags)
+                },
                 modifier = Modifier.testTag("recipe_context_refresh")
             ) { Text("Aktuellen lokalen Kontext prüfen") }
             if (contextState.busy) Text("Lokale Kontextprüfung läuft.")
@@ -231,6 +243,34 @@ internal fun RecipeDraftImportPanel(
                 contextState.context?.gaps?.forEach { Text(it) }
             }
         }
+        if (selectedNeedsContext && !useOffers) {
+            Text("Kontextauswahl: Mindestens drei passende Zutaten selbst einer aktuellen Katalogversion zuordnen. Keine automatische Gleichsetzung von FoodType und Produkt. Nur Gramm-Versionen werden verglichen.")
+            RecipeOfflineDraftGenerator.ingredientTypes.forEach { ingredient ->
+                Picker(
+                    "Produktversion für ${ingredient.label} (${ingredient.foodTypeId})",
+                    listOf("Nicht zugeordnet") + labels.values,
+                    rankingVersionIds[ingredient.foodTypeId]?.let { labels[it] }
+                        ?: "Nicht zugeordnet"
+                ) { selected ->
+                    invalidate()
+                    rankingReviewed = false
+                    rankingHint = null
+                    val version = labels.entries.firstOrNull { it.value == selected }?.key
+                    rankingVersionIds = if (version == null)
+                        rankingVersionIds - ingredient.foodTypeId
+                    else rankingVersionIds + (ingredient.foodTypeId to version)
+                }
+            }
+            Row {
+                Checkbox(
+                    checked = rankingReviewed,
+                    onCheckedChange = { rankingReviewed = it; rankingHint = null; invalidate() },
+                    modifier = Modifier.testTag("recipe_context_mapping_reviewed")
+                )
+                Text("Ich habe die ausgewählten FoodType-Produktversionen unabhängig zugeordnet. Die Mengenwertung ist nur ein Planungshinweis.", Modifier.padding(top = 10.dp))
+            }
+        }
+        rankingHint?.let { Text(it, Modifier.testTag("recipe_context_ranking_hint")) }
         OutlinedTextField(
             value = offlinePortions,
             onValueChange = { next ->
@@ -242,7 +282,8 @@ internal fun RecipeDraftImportPanel(
         )
         Button(
             enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000 &&
-                (!selectedNeedsContext || boundContext != null),
+                (!selectedNeedsContext || (boundContext != null && !useOffers &&
+                    rankingReviewed && rankingVersionIds.size >= 3)),
             modifier = Modifier.testTag("recipe_offline_generate"),
             onClick = {
                 try {
@@ -250,8 +291,19 @@ internal fun RecipeDraftImportPanel(
                     val snapshotAt = boundContext?.contentBinding?.snapshotAt?.let {
                         OffsetDateTime.ofInstant(it, ZoneOffset.UTC)
                     }
+                    val chosenVariant = if (selectedNeedsContext) {
+                        val ranked = RecipeOfflineContextRanking.rank(
+                            offlinePortions.toInt(), selectedFlags,
+                            requireNotNull(boundContext), catalog,
+                            rankingVersionIds, rankingReviewed
+                        )
+                        require(ranked.isNotEmpty()) { "no independently mapped recipe candidate" }
+                        val first = ranked.first()
+                        rankingHint = "Kontext-Hinweis: potenziell ${first.stockCoveredMilliGrams / 1000} g im Bestand; ${first.shoppingNeedMilliGrams / 1000} g vorgemerkter Einkaufsbedarf. Mengenbasis, Zustand und Allergene weiterhin einzeln prüfen."
+                        first.variant
+                    } else offlineVariant
                     val generated = RecipeOfflineDraftGenerator.generate(
-                        offlinePortions.toInt(), offlineVariant,
+                        offlinePortions.toInt(), chosenVariant,
                         issuedAt, "offline-" + UUID.randomUUID().toString(),
                         selectedFlags, snapshotAt
                     )
@@ -267,9 +319,11 @@ internal fun RecipeDraftImportPanel(
                     json = generated
                     imported = checked
                     error = null
-                    offlineVariant = (offlineVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
+                    if (!selectedNeedsContext) offlineVariant =
+                        (offlineVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
                 } catch (_: IllegalArgumentException) {
-                    error = "Offline-Entwurf konnte nicht geprüft werden."
+                    rankingHint = null
+                    error = "Offline-Entwurf nicht verfügbar: Produktzuordnung, Kontext, Einheit oder Mengen prüfen."
                 }
             }
         ) { Text("Offline-Rezeptvorschlag erzeugen") }
