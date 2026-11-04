@@ -17,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollTo
 import de.ernaehrung.demo.data.local.RecipeDraftEvidenceForm
 import de.ernaehrung.demo.data.local.RecipeDraftEncryptedEvidenceCheckpoint
@@ -408,10 +409,10 @@ class RecipeDraftImportPanelTest {
             assertEquals(true, checkpoint.saved?.contains("recipe.draft"))
         }
 
-        // Appending a digit changes the requested portion count from 2 to 23.
+        // Explicitly replacing the field avoids cursor-position ambiguity in Compose.
         // No previous draft, review or opt-in encrypted JSON may remain valid.
         rule.onNodeWithTag("recipe_offline_portions").performScrollTo()
-            .performTextInput("3")
+            .performTextReplacement("23")
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
         rule.onNodeWithTag("recipe_draft_json").assert(
             SemanticsMatcher.expectValue(
