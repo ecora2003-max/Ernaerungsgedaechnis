@@ -2,9 +2,8 @@ package de.ernaehrung.demo
 
 import android.app.KeyguardManager
 import android.content.Context
-import androidx.activity.compose.setContent
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -36,7 +35,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class RecipeDeviceCredentialUiTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule val compose = createComposeRule()
 
     private val digest = "a".repeat(64)
     private val ready = Gate.Review(
@@ -126,8 +125,7 @@ class RecipeDeviceCredentialUiTest {
         val nonceGate = RecipeActionNonceGate()
         val callbacks = AtomicInteger(0)
         val received = AtomicReference<RecipeActionProof?>(null)
-        compose.runOnUiThread {
-            compose.activity.setContent {
+        compose.setContent {
                 DemoTheme {
                     RecipeDraftDeviceCredentialReview(
                         review = ready,
@@ -147,7 +145,6 @@ class RecipeDeviceCredentialUiTest {
                         }
                     }
                 }
-            }
         }
         awaitComposeReview()
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
@@ -176,8 +173,7 @@ class RecipeDeviceCredentialUiTest {
         assertSecureEmulator()
         val callbacks = AtomicInteger(0)
         val operationKey = "device-cancel-" + UUID.randomUUID()
-        compose.runOnUiThread {
-            compose.activity.setContent {
+        compose.setContent {
                 DemoTheme {
                     RecipeDraftDeviceCredentialReview(
                         review = ready,
@@ -188,7 +184,6 @@ class RecipeDeviceCredentialUiTest {
                         actionEnabled = true
                     ) { _, _, _ -> callbacks.incrementAndGet() }
                 }
-            }
         }
         awaitComposeReview()
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
