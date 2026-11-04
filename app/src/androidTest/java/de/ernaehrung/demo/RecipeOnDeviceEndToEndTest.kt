@@ -21,6 +21,8 @@ import de.ernaehrung.demo.data.integration.RecipeOfflineDraftGenerator
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.screens.RecipeDraftImportPanel
+import java.io.File
+import java.security.KeyStore
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.time.Instant
@@ -224,6 +226,40 @@ class RecipeOnDeviceEndToEndTest {
         } finally {
             db.close()
             target.deleteDatabase(databaseName)
+        }
+    }
+
+    @Test fun optionalDraftCheckpointUsesAndroidKeystoreNoBackupAndRevocation() {
+        val target = InstrumentationRegistry.getInstrumentation().targetContext
+        val unique = UUID.randomUUID().toString()
+        val alias = "eg.recipe.device.e2e." + unique
+        val fileName = "recipe-device-e2e-" + unique
+        var now = System.currentTimeMillis()
+        val checkpoint = PrivateRecipeDraftEncryptedImportCheckpoint(
+            target, { now },
+            { PrivateRecipeDraftEncryptedImportCheckpoint.androidKey(alias) },
+            fileName
+        )
+        val privateFile = File(target.noBackupFilesDir, fileName)
+        val secret = "PRIVATE-UNCONFIRMED-RECIPE-" + unique
+        try {
+            assertNull(checkpoint.load())
+            checkpoint.save(secret)
+            assertTrue(privateFile.exists())
+            assertFalse(privateFile.readText(Charsets.ISO_8859_1).contains(secret))
+            assertEquals(secret, checkpoint.load())
+            now += PrivateRecipeDraftEncryptedImportCheckpoint.MAX_AGE_MS + 1L
+            assertNull(checkpoint.load())
+            assertFalse(privateFile.exists())
+            checkpoint.save(secret)
+            checkpoint.discard()
+            assertNull(checkpoint.load())
+        } finally {
+            checkpoint.discard()
+            KeyStore.getInstance("AndroidKeyStore").apply {
+                load(null)
+                if (containsAlias(alias)) deleteEntry(alias)
+            }
         }
     }
 }
