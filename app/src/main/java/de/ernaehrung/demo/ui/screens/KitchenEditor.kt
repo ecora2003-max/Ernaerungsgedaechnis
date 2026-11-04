@@ -35,6 +35,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
                 RecipeDraftDeviceCredentialReview(review,
                     sessionKey = draftConsent.sessionId,
                     operationKey = draftConsent.operationKey,
+                    requestNonce = model::beginRecipeDraftCredentialAction,
                     resetVersion = draftConsent.attemptVersion,
                     actionEnabled = !draftConsent.busy && draftConsent.recordedDigest == null &&
                         draftConsent.sessionId != null && draftConsent.operationKey != null) { digest, renderedSessionId, proof ->
