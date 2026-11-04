@@ -356,4 +356,49 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
     }
 
+    @Test fun offlineFoodExclusionChangesTheVisibleSuggestionButDoesNotConfirmIt() {
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextInput("FOOD:dry-rice")
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains(
+            "\\"foodTypeId\\":\\"dry-quinoa\\""
+        )
+        rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("FOOD:dry-rice")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
+    @Test fun unknownAllergenExclusionNeverProducesAnUnverifiedOfflineDraft() {
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), onInvalidate = {},
+                            onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+            .performTextInput("ALLERGEN:SOY")
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(0, reviews) }
+    }
+
 }
