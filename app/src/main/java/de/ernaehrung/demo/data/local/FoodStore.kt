@@ -35,7 +35,8 @@ data class ConsumptionInput(val versionId: String, val date: String, val meal: S
     val quality: Quality = Quality.UNKNOWN, val note: String? = null)
 
 /** Single application write boundary. Exceptions roll back every effect, including operation IDs. */
-class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis) {
+class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis,
+    private val actionProofVerifier: RecipeActionProofVerifier = AndroidRecipeActionProof) {
     private val dao = db.foodDao()
     private val stock = StockOperations(db, now)
     private val kitchen = KitchenOperations(db, now)
@@ -110,7 +111,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         expectedPreview: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
         confirmed: Boolean,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
-        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null,
+        actionProof: RecipeActionProof? = null
     ): String = db.withTransaction {
         require(confirmed && request.userConfirmedRecipeSave) {
             "Rezeptentwurf nur nach separater Nutzeraktion bestätigen."
@@ -132,6 +134,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             "Bestätigung bezieht sich nicht auf die aktuelle geprüfte Rezeptvorschau."
         }
         val digest = requireNotNull(current.approvalBasisDigest)
+        val consentKind = if (actionProof != null) {
+            require(actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
+                "Gerätegebundene Rezeptaktion fehlt, ist ungültig oder abgelaufen."
+            }
+            "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
+        } else "RECIPE_DRAFT_CONSENT_V1"
         val consentKey = recipeDraftConsentKey(key)
         val hash = recipeDraftConsentFingerprint(key, digest)
         val previous = dao.operation(consentKey)
@@ -143,7 +151,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             require(recipeDraftSaveOperationCompatible(existingSaveOperation, previous.recordedAt, actionAt)) {
                 "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
             }
-            require(previous.kind == "RECIPE_DRAFT_CONSENT_V1" &&
+            require(previous.kind == consentKind &&
                 previous.fingerprint == hash && previous.resultId == digest &&
                 previous.recordedAt in 0L..actionAt) {
                 // A future-dated ledger row is not an already performed action.
@@ -160,7 +168,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(existingSaveOperation == null) {
             "Rezeptvorgangs-ID ist bereits durch einen anderen Vorgang belegt."
         }
-        dao.insertOperation(OperationEntity(consentKey, "RECIPE_DRAFT_CONSENT_V1",
+        dao.insertOperation(OperationEntity(consentKey, consentKind,
             hash, actionAt, digest))
         digest
     }
@@ -189,6 +197,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                     val key = operation.id.substring(prefix.length)
                     val existingSaveOperation = dao.operation(key)
                     isValidRecipeDraftSaveKey(key) &&
+                        operation.kind in setOf("RECIPE_DRAFT_CONSENT_V1",
+                            "RECIPE_DRAFT_ATTESTED_CONSENT_V1") &&
                         recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt, checkedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
@@ -270,7 +280,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         expectedPreview: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
         confirmed: Boolean,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
-        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null,
+        requireActionAttestation: Boolean = false
     ): String = db.withTransaction {
         require(confirmed && request.userConfirmedRecipeSave) {
             "Rezeptübernahme separat und ausdrücklich bestätigen."
@@ -296,7 +307,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val digest = requireNotNull(current.approvalBasisDigest)
         val consent = dao.operation(recipeDraftConsentKey(key))
         require(consent != null &&
-            consent.kind == "RECIPE_DRAFT_CONSENT_V1" &&
+            (if (requireActionAttestation)
+                consent.kind == "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
+            else consent.kind in setOf("RECIPE_DRAFT_CONSENT_V1",
+                "RECIPE_DRAFT_ATTESTED_CONSENT_V1")) &&
             consent.resultId == digest &&
             consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
             consent.recordedAt in 0L..saveAt) {
