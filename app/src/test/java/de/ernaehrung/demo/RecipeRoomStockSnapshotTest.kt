@@ -84,10 +84,48 @@ class RecipeRoomStockSnapshotTest {
         val preview = review(snapshot)
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
         assertNotNull(preview.input)
-        // Active context is not yet backed by independent save-action provenance.
-        assertNull(preview.approvalBasisDigest)
+        // A typed snapshot can now bind a digest; consent is still a separate action.
+        assertNotNull(preview.approvalBasisDigest)
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+
+    @Test fun typedStockContextNeedsSeparateConsentAndFoodStoreRevalidationBeforeSave() = runBlocking {
+        val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
+        val context = Gate.typedContext(flags, at, Gate.Evidence(snapshot, true), null, null)
+        val before = db.foodDao().operationCount()
+        val preview = store.previewRecipeDraftV1(json, request, confirmations(), states,
+            context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
+        assertNotNull(preview.approvalBasisDigest)
+        assertEquals(before, db.foodDao().operationCount())
+        val key = "recipe-context-stock-consent"
+        assertTrue(runCatching {
+            store.saveReviewedRecipeDraftV1(key, json, request, confirmations(), states,
+                preview, true, context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
+        }.isFailure)
+        val tampered = context.copy(stock = snapshot.copy(revision = "unverified-revision"))
+        assertTrue(runCatching {
+            store.recordReviewedRecipeDraftV1Consent(key, json, request, confirmations(),
+                states, preview, true, tampered,
+                OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
+        }.isFailure)
+        assertEquals(before, db.foodDao().operationCount())
+        val recorded = store.recordReviewedRecipeDraftV1Consent(
+            key, json, request, confirmations(), states, preview, true,
+            context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
+        assertEquals(preview.approvalBasisDigest, recorded)
+        val saved = store.saveReviewedRecipeDraftV1(
+            key, json, request, confirmations(), states, preview, true,
+            context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
+        assertNotNull(db.foodDao().recipeVersion(saved))
+        assertEquals(saved, store.saveReviewedRecipeDraftV1(
+            key, json, request, confirmations(), states, preview, true,
+            context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC)))
+        assertEquals(2_000L, db.foodDao().balance(batchId))
+        assertEquals(0, db.foodDao().consumptionCount())
+        assertEquals(before + 2, db.foodDao().operationCount())
     }
 
     @Test fun missingOriginReceiptMovementCannotMasqueradeAsKnownZeroStock() = runBlocking {
