@@ -84,7 +84,7 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals("g", snapshot.lines.single().unit)
         val result = review(snapshot)
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)
-        assertNull(result.approvalBasisDigest) // no authenticated action
+        assertNotNull(result.approvalBasisDigest) // content-bound preview; no user action yet
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
