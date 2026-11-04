@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import de.ernaehrung.demo.data.integration.RecipeOfflineDraftGenerator
 import de.ernaehrung.demo.data.integration.RecipeOfflineContextRanking
+import de.ernaehrung.demo.data.integration.RecipeOfflineAllergenEvidence
 import de.ernaehrung.demo.data.integration.RecipeDraftManualReview
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
@@ -78,6 +79,8 @@ internal fun RecipeDraftImportPanel(
     var json by remember { mutableStateOf("") }
     var offlinePortions by remember { mutableStateOf("2") }
     var offlineRestrictionsText by remember { mutableStateOf("") }
+    var offlineAllergenVersions by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var offlineAllergenAbsent by remember { mutableStateOf<Set<Pair<String, String>>>(emptySet()) }
     var offlineVariant by remember { mutableStateOf(0) }
     var useStock by remember { mutableStateOf(false) }
     var useShopping by remember { mutableStateOf(false) }
@@ -86,6 +89,9 @@ internal fun RecipeDraftImportPanel(
     var rankingReviewed by remember { mutableStateOf(false) }
     var rankingHint by remember { mutableStateOf<String?>(null) }
     val selectedFlags = Gate.Flags(useStock, useShopping, useOffers)
+    val offlineAllergens = offlineRestrictionsText.split(",").map { it.trim() }
+        .filter { it.startsWith("ALLERGEN:") && Gate.isSupportedRestriction(it) }
+        .map { it.removePrefix("ALLERGEN:") }.distinct()
     val selectedNeedsContext = useStock || useShopping || useOffers
     val boundContext = contextState.context?.takeIf {
         contextState.flags == selectedFlags && !contextState.busy &&
@@ -201,6 +207,8 @@ internal fun RecipeDraftImportPanel(
             invalidate()
             onClearContext()
             rankingVersionIds = emptyMap()
+            offlineAllergenVersions = emptyMap()
+            offlineAllergenAbsent = emptySet()
             rankingReviewed = false
             rankingHint = null
             imported = null
@@ -260,6 +268,9 @@ internal fun RecipeDraftImportPanel(
                     rankingVersionIds = if (version == null)
                         rankingVersionIds - ingredient.foodTypeId
                     else rankingVersionIds + (ingredient.foodTypeId to version)
+                    offlineAllergenAbsent = offlineAllergenAbsent.filterNot {
+                        it.first == ingredient.foodTypeId
+                    }.toSet()
                 }
             }
             Row {
@@ -291,6 +302,8 @@ internal fun RecipeDraftImportPanel(
             onValueChange = { next ->
                 if (next.length <= 512 && next != offlineRestrictionsText) {
                     invalidateGeneratedDraft()
+                    offlineAllergenAbsent = emptySet()
+                    offlineAllergenVersions = emptyMap()
                     offlineRestrictionsText = next
                 }
             },
@@ -299,6 +312,54 @@ internal fun RecipeDraftImportPanel(
             maxLines = 2
         )
         Text("Lebensmittel-Ausschlüsse filtern nur Vorschläge. Bei Allergenen ohne unabhängig bestätigte Abwesenheit wird kein Vorschlag erzeugt; eine spätere Einzelprüfung bleibt Pflicht.")
+        if (offlineAllergens.isNotEmpty()) {
+            Fold("Allergennachweise für Offline-Vorschläge") {
+                Text("Nur für die Vorschlagsauswahl: Jede Allergen-Abwesenheit muss für eine aktuell zugeordnete Produktversion separat anhand unabhängiger Angaben geprüft werden. Diese Vorprüfung wird nicht in den Entwurf übernommen und ersetzt niemals die spätere vollständige Rezeptprüfung.")
+                RecipeOfflineDraftGenerator.ingredientTypes.forEach { ingredient ->
+                    val food = ingredient.foodTypeId
+                    val selectedVersion = if (selectedNeedsContext)
+                        rankingVersionIds[food] else offlineAllergenVersions[food]
+                    if (!selectedNeedsContext) {
+                        Picker(
+                            "Produktversion für Allergen-Vorprüfung: ${ingredient.label} ($food)",
+                            listOf("Nicht zugeordnet") + labels.values,
+                            selectedVersion?.let { labels[it] } ?: "Nicht zugeordnet"
+                        ) { selected ->
+                            invalidateGeneratedDraft()
+                            val version = labels.entries.firstOrNull {
+                                it.value == selected
+                            }?.key
+                            offlineAllergenVersions = if (version == null)
+                                offlineAllergenVersions - food
+                            else offlineAllergenVersions + (food to version)
+                            offlineAllergenAbsent = offlineAllergenAbsent.filterNot {
+                                it.first == food
+                            }.toSet()
+                        }
+                    }
+                    offlineAllergens.forEach { allergen ->
+                        val key = food to allergen
+                        Row {
+                            Checkbox(
+                                checked = key in offlineAllergenAbsent,
+                                enabled = selectedVersion != null,
+                                onCheckedChange = { checked ->
+                                    invalidateGeneratedDraft()
+                                    offlineAllergenAbsent = if (checked)
+                                        offlineAllergenAbsent + key
+                                    else offlineAllergenAbsent - key
+                                },
+                                modifier = Modifier.testTag(
+                                    "recipe_offline_allergen_absent_${food}_${allergen}"
+                                )
+                            )
+                            Text("${ingredient.label}: ${allergen} für die ausgewählte Produktversion unabhängig als nicht enthalten geprüft",
+                                Modifier.padding(top = 10.dp))
+                        }
+                    }
+                }
+            }
+        }
         OutlinedTextField(
             value = offlinePortions,
             onValueChange = { next ->
@@ -328,27 +389,31 @@ internal fun RecipeDraftImportPanel(
                     require(requestedRestrictions.all(Gate::isSupportedRestriction)) {
                         "unsupported offline restriction"
                     }
+                    val confirmedAllergenAbsences = RecipeOfflineAllergenEvidence.confirmedAbsent(
+                        catalog,
+                        if (selectedNeedsContext) rankingVersionIds else offlineAllergenVersions,
+                        offlineAllergenAbsent, requestedRestrictions,
+                        issuedAt.toInstant().toEpochMilli()
+                    )
                     val chosenVariant = if (selectedNeedsContext) {
                         val ranked = RecipeOfflineContextRanking.rank(
                             offlinePortions.toInt(), selectedFlags,
                             requireNotNull(boundContext), catalog,
-                            rankingVersionIds, rankingReviewed
-                        ).filter { candidate ->
-                            RecipeOfflineDraftGenerator.allowsSuggestion(
-                                candidate.variant, requestedRestrictions
-                            )
-                        }
+                            rankingVersionIds, rankingReviewed,
+                            requestedRestrictions, confirmedAllergenAbsences
+                        )
                         require(ranked.isNotEmpty()) { "no independently safe recipe candidate" }
                         val first = ranked.first()
                         rankingHint = "Kontext-Hinweis: potenziell ${first.stockCoveredMilliGrams / 1000} g im Bestand; ${first.shoppingNeedMilliGrams / 1000} g vorgemerkter Einkaufsbedarf. Mengenbasis, Zustand und Allergene weiterhin einzeln prüfen."
                         first.variant
                     } else requireNotNull(RecipeOfflineDraftGenerator.nextAllowedVariant(
-                        offlineVariant, requestedRestrictions
+                        offlineVariant, requestedRestrictions, confirmedAllergenAbsences
                     )) { "no independently safe recipe candidate" }
                     val generated = RecipeOfflineDraftGenerator.generate(
                         offlinePortions.toInt(), chosenVariant,
                         issuedAt, "offline-" + UUID.randomUUID().toString(),
-                        selectedFlags, snapshotAt, requestedRestrictions
+                        selectedFlags, snapshotAt, requestedRestrictions,
+                        confirmedAllergenAbsences
                     )
                     // Use the identical bounded v1 import boundary as pasted JSON.
                     val checked = RecipeDraftV1Import.read(
