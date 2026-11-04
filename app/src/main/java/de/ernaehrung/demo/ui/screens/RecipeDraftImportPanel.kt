@@ -31,10 +31,12 @@ import de.ernaehrung.demo.data.local.RecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.Quality
 import de.ernaehrung.demo.data.local.Source
+import de.ernaehrung.demo.ui.RecipeDraftContextUiState
 import de.ernaehrung.demo.ui.Choices
 import de.ernaehrung.demo.ui.Fold
 import de.ernaehrung.demo.ui.Picker
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -47,6 +49,9 @@ internal fun RecipeDraftImportPanel(
     catalog: List<ProductVersionEntity>,
     editingEnabled: Boolean = true,
     recordedDigest: String? = null,
+    contextState: RecipeDraftContextUiState = RecipeDraftContextUiState(),
+    onRequestContext: (Gate.Flags) -> Unit = {},
+    onClearContext: () -> Unit = {},
     checkpointStore: RecipeDraftEncryptedImportCheckpoint? = null,
     evidenceCheckpointStore: RecipeDraftEncryptedEvidenceCheckpoint? = null,
     onInvalidate: () -> Unit,
@@ -72,6 +77,16 @@ internal fun RecipeDraftImportPanel(
     var json by remember { mutableStateOf("") }
     var offlinePortions by remember { mutableStateOf("2") }
     var offlineVariant by remember { mutableStateOf(0) }
+    var useStock by remember { mutableStateOf(false) }
+    var useShopping by remember { mutableStateOf(false) }
+    var useOffers by remember { mutableStateOf(false) }
+    val selectedFlags = Gate.Flags(useStock, useShopping, useOffers)
+    val selectedNeedsContext = useStock || useShopping || useOffers
+    val boundContext = contextState.context?.takeIf {
+        contextState.flags == selectedFlags && !contextState.busy &&
+            it.projectedFlags == selectedFlags && it.gaps.isEmpty() &&
+            it.contentBindingRequired && it.contentBinding != null
+    }
     var imported by remember { mutableStateOf<RecipeDraftV1Import.Imported?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var versionIds by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -176,7 +191,46 @@ internal fun RecipeDraftImportPanel(
             enabled = json.isNotBlank(),
             modifier = Modifier.testTag("recipe_draft_json_inspect")
         ) { Text("JSON-Entwurf lokal prüfen") }
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen ohne Lager-, Einkaufs- oder Angebotskontext. Kein Allergen- oder Garzustandsnachweis.")
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Kontext ist nur mit unabhängig gebundenen Room-Snapshots verfügbar; externe Angebote ohne geprüfte Rechtequelle bleiben gesperrt. Keine Allergen- oder Garzustandsfreigabe.")
+        fun contextChanged() {
+            invalidate()
+            onClearContext()
+            imported = null
+            versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+            allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+            evidenceCheckpoint.discard()
+        }
+        Row {
+            Checkbox(useStock, { if (it != useStock) { contextChanged(); useStock = it } },
+                modifier = Modifier.testTag("recipe_context_stock"))
+            Text("Bestand berücksichtigen", Modifier.padding(top = 12.dp))
+        }
+        Row {
+            Checkbox(useShopping, { if (it != useShopping) { contextChanged(); useShopping = it } },
+                modifier = Modifier.testTag("recipe_context_shopping"))
+            Text("Einkaufsbedarf berücksichtigen", Modifier.padding(top = 12.dp))
+        }
+        Row {
+            Checkbox(useOffers, { if (it != useOffers) { contextChanged(); useOffers = it } },
+                modifier = Modifier.testTag("recipe_context_offers"))
+            Text("Geprüfte Angebote berücksichtigen", Modifier.padding(top = 12.dp))
+        }
+        if (selectedNeedsContext) {
+            Button(
+                enabled = !contextState.busy,
+                onClick = { invalidate(); onRequestContext(selectedFlags) },
+                modifier = Modifier.testTag("recipe_context_refresh")
+            ) { Text("Aktuellen lokalen Kontext prüfen") }
+            if (contextState.busy) Text("Lokale Kontextprüfung läuft.")
+            contextState.error?.let { Text(it) }
+            val binding = boundContext?.contentBinding
+            if (binding != null) {
+                Text("Room-Kontext gebunden: Bestand ${boundContext.stock?.lines?.size ?: 0}, Einkauf ${boundContext.shopping?.lines?.size ?: 0} Zeilen. Vorschlag bleibt unbestätigt.")
+            } else if (!contextState.busy) {
+                Text("Kontext nicht vollständig freigegeben. Unbekannte Quellen sind nicht leer oder null Bestand.")
+                contextState.context?.gaps?.forEach { Text(it) }
+            }
+        }
         OutlinedTextField(
             value = offlinePortions,
             onValueChange = { next ->
@@ -187,13 +241,19 @@ internal fun RecipeDraftImportPanel(
             singleLine = true
         )
         Button(
-            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000,
+            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000 &&
+                (!selectedNeedsContext || boundContext != null),
             modifier = Modifier.testTag("recipe_offline_generate"),
             onClick = {
                 try {
+                    val issuedAt = OffsetDateTime.now()
+                    val snapshotAt = boundContext?.contentBinding?.snapshotAt?.let {
+                        OffsetDateTime.ofInstant(it, ZoneOffset.UTC)
+                    }
                     val generated = RecipeOfflineDraftGenerator.generate(
                         offlinePortions.toInt(), offlineVariant,
-                        OffsetDateTime.now(), "offline-" + UUID.randomUUID().toString()
+                        issuedAt, "offline-" + UUID.randomUUID().toString(),
+                        selectedFlags, snapshotAt
                     )
                     // Use the identical bounded v1 import boundary as pasted JSON.
                     val checked = RecipeDraftV1Import.read(
@@ -220,8 +280,17 @@ internal fun RecipeDraftImportPanel(
             Text("Entwurfs-ID: ${parsed.draftId} · ${draft.lines.size} Zutaten")
             val contextRequested = draft.flags.considerStock || draft.flags.considerShopping ||
                 draft.flags.considerOffers
+            val verifiedContext = contextState.context?.takeIf {
+                contextRequested && !contextState.busy &&
+                    contextState.flags == draft.flags &&
+                    it.projectedFlags == draft.flags && it.gaps.isEmpty() &&
+                    it.contentBindingRequired &&
+                    it.contentBinding?.snapshotAt == parsed.snapshotAt?.toInstant()
+            }?.contentBinding != null
             if (contextRequested) {
-                Text("Kontextflags aktiv: Ohne unabhängig geprüfte Bestands-, Listen- und Angebots-Snapshots ist die Übernahme gesperrt.")
+                Text(if (verifiedContext)
+                    "Unabhängig gebundener Kontext vorhanden; FoodStore prüft alle Quellen vor Bestätigung und Speichern erneut."
+                else "Kontextflags aktiv: Fehlender, veralteter oder abweichender Host-Snapshot sperrt die Übernahme.")
             }
             OutlinedTextField(
                 restrictionsText, { evidenceCheckpoint.discard(); invalidate(); restrictionsText = it },
@@ -349,7 +418,7 @@ internal fun RecipeDraftImportPanel(
                     Modifier.padding(top = 10.dp))
             }
             Button(
-                enabled = reviewed && !contextRequested,
+                enabled = reviewed && (!contextRequested || verifiedContext),
                 modifier = Modifier.testTag("recipe_draft_manual_review"),
                 onClick = {
                     try {
@@ -364,7 +433,7 @@ internal fun RecipeDraftImportPanel(
                         }
                         val prepared = RecipeDraftManualReview.prepare(
                             parsed, catalog, choices, restrictions, reviewed,
-                            System.currentTimeMillis()
+                            System.currentTimeMillis(), independentlyBoundContext = verifiedContext
                         )
                         error = null
                         reviewed = false
