@@ -126,6 +126,7 @@ class LocalShoppingComparisonUiTest {
         runBlocking {
             assertTrue(database.foodDao().shoppingMarks("2026-10-30", "2026-11-05", "2026-10-30").isEmpty())
         }
+        tap("Auf Einkaufsliste abhaken ${version.take(8)} · kein Kauf")
         tap("Auswahl / Markierung speichern ${version.take(8)}")
         rule.waitUntil(15_000) {
             rule.waitForIdle()
