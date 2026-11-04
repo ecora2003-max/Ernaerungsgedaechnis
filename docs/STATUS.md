@@ -1,5 +1,22 @@
 # Integration: aktueller Wiedereinstieg
 
+## Einkauf A1 – Android-UI-Startfehler untersucht (04.11.2026)
+
+- Device-Run 41919858488 auf `9fc4b12`: **9 echte API35-Tests, 5 Fehler, 0 Skips**. Original-XML/Logcat ausgewertet: beide unveränderten Credential-Tests ohne erste Compose-Hierarchie, zwei weitere alte UI-Tests ebenfalls ohne Oberfläche, neuer Einkaufstest bereits beim initialen Lifecycle-/Datenladen blockiert. Hintergrund-OCR, SQLite und private Keystore-Prüfung bestehen; Logcat meldet weiterhin Lockscreen-Oberfläche. Dies ist kein bestandenes A1-Gate.
+- Testvorbereitung entsperrt jetzt vor jedem UI-Test einen tatsächlich gesperrten CI-Emulator über dessen echte PIN-Oberfläche und prüft den Keyguardzustand; kein gefälschtes Activity-Ergebnis, keine Entfernung der Gerätesperre. Fehlerartefakte erhalten zusätzlich Fensterzustand und Screenshot des ausschließlich synthetischen CI-Geräts. Neuer exakter CI-/Gerätelauf erforderlich.
+
+## Einkauf A1 – fehlenden Android-Gesamtablauf ergänzt (04.11.2026)
+
+- #244 ergänzt `ShoppingOnDeviceEndToEndTest`: echte gebündelte ML-Kit-OCR aus synthetischem Content-URI → reale manuelle Produktkorrektur und negative unbestätigte Zahlung → ausdrücklicher Kauf → separate private Preis- und Lagerbestätigung → Ausgabenabgleich → Bedarf/Packungs-/Budgetvorschau und gespeicherte Auswahl. Anschließend UI/ViewModel abbauen, echte SQLite-Datei erneut öffnen, Kauf-/Scan-Retry und geordnetes Storno an FoodStore prüfen. Keine synthetischen Activity-Ergebnisse und keine neue Kaufbuchung durch Vorschläge.
+- Lokal SDK 35/Build Tools 34/JDK 21: Android-Testkompilierung bestanden; noch **kein ausgeführter neuer Gerätetest**. Vorheriger aktualisierter #244-Head `63844f8` hat App-CI 41918486333 bestanden. Neue exakte CI einschließlich API35-Offline-Instrumentation nach Push erforderlich. System-Kamera-/Picker-Dialog, vollständige Geräteprivacy und kanonische externe Filial-/Quellendaten bleiben eigene offene Gates.
+- Konkreter nächster B1-Defekt am tatsächlichen Code identifiziert: interner Rezeptsave akzeptiert bei `requireActionAttestation=false` weiterhin unsignierte Legacy-Consents. Nach Einkaufsintegration auf zwingend attestierten FoodStore-Save umstellen und die bisherigen positiven Hosttests mit signierten Testbelegen erhalten; anschließend reale vollständige Rezept-UI bis Herstellung/separatem Verzehr belegen.
+
+## Einkauf A1 – vorhandenen Budget-PR #244 fortgesetzt (04.11.2026)
+
+- Bestehender Branch `integration-a-shopping-budget-candidate-ui-20261104` ohne Force-Push mit aktuellem main einschließlich Rezept-PR #243 und Codex-Modus #245 zusammengeführt. Die zwei bereits grünen Budgettests bleiben erhalten; voller App-/Room-/Lint-/Schema-/Referenzlauf auf aktualisierter Basis nach Push erforderlich. Keine zweite Funktionsbranch und keine neue APK.
+- Modus #245 ist als `bde3319f` integriert; beide Sicherheits-CIs 41918075888 und 41918075826 auf exakt `cd325382` PASS. Alle fünf Referenz-HEADs erneut nur lesend bestätigt: Architektur `9871c9de`, Preise `5c52bf70`, Produkte `6a04f651`, Einkauf `a3e13b14`, Rezepte `6581eabd`; v1-Schema unverändert.
+- Bestandsaufnahme am tatsächlichen Code: Scan/OCR und manuelle Korrektur, Kauf, separate Lager-/private Preisbestätigung, Planbedarf und Offline-Packungsvergleich sind lokal angeschlossen. Hauptnavigation enthält weiterhin Demoansichten; vollständige A1-/B1-UI→FoodStore-Geräteketten und vollständige Modulparität bleiben offen. Vorhandene echte API35-Belege nicht durch bloße Testkompilierung ersetzen. Nächster Anschluss: aktualisierten #244-CI-Head prüfen und fehlende echte Android-UI-/Offline-/Neustartstrecken ergänzen.
+
 ## Codex-Übernahme und belastbarer Ausgangsstand (04.11.2026)
 
 - Nutzerautorisierter exklusiver Einzelentwicklermodus; alle drei Sperren vor Reservierung regulär FREE, eigene Kennung `codex-exclusive-ernaehrung-20261104`, separate Session-/CAS-Tokens. A/B/III/IV bleiben pausiert. Neue Erwerbs-/Prüf-/Heartbeat-/Freigabewerkzeuge und konservative Wächtererweiterung; lokal **41/41 Python-Sicherheitstests PASS**. PR-CI nach Push prüfen; keine Änderung an App-Daten oder Vertragsversion.

@@ -17,6 +17,7 @@ import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.LocalDataViewModel
 import de.ernaehrung.demo.ui.screens.LocalDataContent
+import de.ernaehrung.demo.ui.screens.shoppingCandidateBudgetAfter
 import java.time.Instant
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -162,5 +163,73 @@ class LocalShoppingComparisonUiTest {
             assertTrue(database.foodDao().allPaidPrices().isEmpty())
             assertEquals(0, database.foodDao().consumptionCount())
         }
+    }
+    @Test fun reconciledBudgetPreviewsPackChoicesWithoutAnyPurchase() {
+        val database = database()
+        val (version, budgetId) = runBlocking {
+            val store = FoodStore(database) { now }
+            val v = plan(store)
+            store.savePrice("budget-price-a", PriceInput(v, "Markt A", "2026-10-30", 200_000, 199,
+                true, true, "200 g nutzbar", "2026-10-30", "2026-11-05", true, "Lokal geprüft"))
+            store.savePrice("budget-price-b", PriceInput(v, "Markt B", "2026-10-30", 400_000, 350,
+                true, true, "400 g nutzbar", "2026-10-30", "2026-11-05", true, "Lokal geprüft"))
+            val budget = store.saveBudget("budget-limit", BudgetInput("Testbudget",
+                "2026-10-30", "2026-10-30", 500L, true, "Bewusst festgelegt"))
+            val scope = ShoppingScope("2026-10-30", "2026-11-05", "2026-10-30", budget)
+            val before = store.shoppingReport(scope)
+            val line = before.items.single()
+            assertNull(shoppingCandidateBudgetAfter(before, line, line.quotes.single { it.costCents == 350L }))
+            val expenses = store.expenseReport(ExpenseScope("2026-10-30", "2026-10-30"))
+            store.setExpenseStatus("budget-expenses-reviewed", ExpenseStatusInput(expenses.scope,
+                true, expenses.snapshot, "Alle Zahlungen im Testzeitraum geprüft"), true)
+            val after = store.shoppingReport(scope)
+            assertEquals(150L, shoppingCandidateBudgetAfter(after, after.items.single(),
+                after.items.single().quotes.single { it.costCents == 350L }))
+            assertEquals(102L, shoppingCandidateBudgetAfter(after, after.items.single(),
+                after.items.single().quotes.single { it.costCents == 398L }))
+            v to budget
+        }
+        val model = mount(database)
+        tap("Einkauf")
+        model.showShopping("2026-10-30", 7L, "2026-10-30", budgetId)
+        rule.waitUntil(15_000) {
+            rule.waitForIdle()
+            model.shopping.value.report?.scope?.budgetId == budgetId &&
+                model.shopping.value.report?.items?.singleOrNull()?.need?.versionId == version
+        }
+        val cheapest = model.shopping.value.report!!.items.single().quotes.single { it.costCents == 350L }.offer!!.id
+        rule.onNodeWithTag("shopping_budget_candidate_$cheapest").performScrollTo()
+            .assertTextContains("1,50 €", substring = true)
+        runBlocking {
+            assertTrue(database.foodDao().purchases().isEmpty())
+            assertTrue(database.foodDao().shoppingMarks("2026-10-30", "2026-11-05", "2026-10-30").isEmpty())
+            assertEquals(0, database.foodDao().consumptionCount())
+        }
+    }
+
+    @Test fun unreconciledBudgetDoesNotDisplayInventedAvailableMoney() {
+        val database = database()
+        val budgetId = runBlocking {
+            val store = FoodStore(database) { now }
+            val v = plan(store)
+            store.savePrice("unreconciled-a", PriceInput(v, "Markt A", "2026-10-30", 200_000, 199,
+                true, true, "200 g nutzbar", "2026-10-30", "2026-11-05", true, "Lokal geprüft"))
+            store.savePrice("unreconciled-b", PriceInput(v, "Markt B", "2026-10-30", 400_000, 350,
+                true, true, "400 g nutzbar", "2026-10-30", "2026-11-05", true, "Lokal geprüft"))
+            store.saveBudget("unreconciled-budget", BudgetInput("Testbudget",
+                "2026-10-30", "2026-10-30", 500L, true, "Bewusst festgelegt"))
+        }
+        val model = mount(database)
+        tap("Einkauf")
+        model.showShopping("2026-10-30", 7L, "2026-10-30", budgetId)
+        rule.waitUntil(15_000) {
+            rule.waitForIdle()
+            model.shopping.value.report?.scope?.budgetId == budgetId &&
+                model.shopping.value.report?.items?.singleOrNull()?.quotes?.size == 2
+        }
+        val id = model.shopping.value.report!!.items.single().quotes.first().offer!!.id
+        rule.onAllNodesWithTag("shopping_budget_candidate_$id").assertCountEquals(0)
+        rule.onNodeWithText("Budgetwirkung nicht berechenbar:", substring = true).performScrollTo().assertExists()
+        runBlocking { assertTrue(database.foodDao().purchases().isEmpty()) }
     }
 }
