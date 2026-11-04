@@ -1,5 +1,9 @@
 package de.ernaehrung.demo.data.integration
 
+import de.eg.recipe.CombinatorialGenerator
+import de.eg.recipe.JsonOutput
+import de.eg.recipe.RecipeEngine as Core
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
@@ -12,43 +16,33 @@ import java.time.format.DateTimeFormatter
  * independent catalog review and FoodStore consent remain mandatory.
  */
 internal object RecipeOfflineDraftGenerator {
-    private data class Component(
-        val foodTypeId: String, val label: String, val gramsPerPortion: Long,
-        val basis: String
-    )
-
-    private val grains = listOf(
-        Component("dry-rice", "Reis", 75, "NET"),
-        Component("dry-quinoa", "Quinoa", 70, "NET"),
-        Component("dry-bulgur", "Bulgur", 75, "NET")
-    )
-    private val legumes = listOf(
-        Component("cooked-beans", "gegarte Bohnen", 130, "DRAINED"),
-        Component("cooked-chickpeas", "gegarte Kichererbsen", 130, "DRAINED"),
-        Component("cooked-lentils", "gegarte Linsen", 130, "DRAINED")
-    )
-    private val vegetables = listOf(
-        Component("tomato", "Tomaten", 120, "NET"),
-        Component("carrot", "Karotten", 120, "NET"),
-        Component("bell-pepper", "Paprika", 120, "NET")
-    )
+    // Keep existing variant selection order stable; quantities, states, labels
+    // and preparation steps come from the unchanged pinned module grammar.
+    private val grains = listOf("dry-rice", "dry-quinoa", "dry-bulgur")
+    private val legumes = listOf("cooked-beans", "cooked-chickpeas", "cooked-lentils")
+    private val vegetables = listOf("tomato", "carrot", "bell-pepper")
+    private val grammar by lazy {
+        CombinatorialGenerator().generate(Core.Request("host-grammar",
+            "2000-01-01T00:00:00Z", LocalDate.of(2000, 1, 1), 1))
+    }
 
     const val VARIANT_COUNT = 27
 
-    /** The exact generator grammar, exposed for independently mapped context ranking. */
     data class Ingredient(val foodTypeId: String, val label: String,
         val gramsPerPortion: Long, val basis: String)
 
-    val ingredientTypes: List<Ingredient> = (grains + legumes + vegetables).map {
-        Ingredient(it.foodTypeId, it.label, it.gramsPerPortion, it.basis)
+    private fun ingredient(id: String): Ingredient {
+        val line = grammar.first { c -> c.ingredients.any { it.foodTypeId == id } }
+            .ingredients.single { it.foodTypeId == id }
+        return Ingredient(id, line.label, requireNotNull(line.quantity.amount), line.quantity.basis.name)
     }
+
+    val ingredientTypes: List<Ingredient> by lazy { (grains + legumes + vegetables).map(::ingredient) }
 
     fun ingredientsFor(variant: Int): List<Ingredient> {
         require(variant in 0 until VARIANT_COUNT)
-        return listOf(grains[variant / 9], legumes[(variant / 3) % 3],
-            vegetables[variant % 3]).map {
-            Ingredient(it.foodTypeId, it.label, it.gramsPerPortion, it.basis)
-        }
+        return listOf(grains[variant / 9], legumes[(variant / 3) % 3], vegetables[variant % 3])
+            .map(::ingredient)
     }
 
     /**
@@ -69,7 +63,7 @@ internal object RecipeOfflineDraftGenerator {
         val excludedAllergens = requestedRestrictions.filter { it.startsWith("ALLERGEN:") }
             .map { it.removePrefix("ALLERGEN:") }.toSet()
         return ingredientsFor(variant).all { ingredient ->
-            ingredient.foodTypeId !in excludedFoods &&
+            excludedFoods.none { it.equals(ingredient.foodTypeId, ignoreCase = true) } &&
                 excludedAllergens.all { allergen ->
                     independentlyConfirmedAllergens[ingredient.foodTypeId]?.get(allergen) == false
                 }
@@ -114,44 +108,23 @@ internal object RecipeOfflineDraftGenerator {
         require(!needsContext || !trustedSnapshotAt!!.toInstant().isBefore(java.time.Instant.EPOCH)) {
             "invalid context snapshot instant"
         }
-        val grain = grains[variant / 9]
-        val legume = legumes[(variant / 3) % 3]
-        val vegetable = vegetables[variant % 3]
-        val components = listOf(grain, legume, vegetable)
-        val ingredients = components.joinToString(",") { component ->
-            val grams = Math.multiplyExact(component.gramsPerPortion, portions.toLong())
-            """{"label":${quoted(component.label)},"foodTypeId":${quoted(component.foodTypeId)},"sourceStatus":"UNKNOWN","quantity":{"amount":$grams,"unit":"g","basis":${quoted(component.basis)},"confirmed":false}}"""
-        }
-        val steps = listOf(
-            "Hände und Zutaten auf hygienischen Zustand prüfen; Gemüse gründlich reinigen.",
-            "${grain.label} mit Wasser nach Verpackungshinweis vollständig garen; Roh- und Gargewicht nicht verwechseln.",
-            "${legume.label} auf sicheren bereits gegarten Zustand prüfen und vor dem Servieren ausreichend erhitzen.",
-            "${vegetable.label} putzen, klein schneiden und mit den gegarten Zutaten kombinieren.",
-            "In $portions Portionen teilen; bei Meal-Prep Kühlkette und Lagerdauer gesondert prüfen."
-        ).joinToString(",") { quoted(it) }
-        val warnings = listOf(
-            "Allergene und konkrete Produktversionen sind nicht geprüft.",
-            "Mengenbasis und Roh-/Garzustand müssen unabhängig bestätigt werden."
-        ).joinToString(",") { quoted(it) }
-        val title = "${grain.label} mit ${legume.label} und ${vegetable.label}"
-        // OffsetDateTime.toString() omits zero seconds; RFC3339 requires them.
         val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-        val contextMeta = if (needsContext) ",\"inputsSnapshotAt\":${quoted(requireNotNull(trustedSnapshotAt).format(formatter))}" else ""
-        return """{"contractVersion":"1.0.0-draft","messageType":"recipe.draft","meta":{"producer":"EG-Rezept-KI-offline-host","traceId":${quoted(draftId)},"createdAt":${quoted(issuedAt.format(formatter))}$contextMeta},"payload":{"draftId":${quoted(draftId)},"title":${quoted(title)},"portionCount":$portions,"ingredients":[$ingredients],"steps":[$steps],"flags":{"considerStock":${flags.considerStock},"considerShopping":${flags.considerShopping},"considerOffers":${flags.considerOffers}},"warnings":[$warnings],"status":"DRAFT"}}"""
-    }
-
-    private fun quoted(value: String): String = buildString {
-        append('"')
-        value.forEach { c ->
-            when (c) {
-                '"' -> append("\\\"")
-                '\\' -> append("\\\\")
-                '\n' -> append("\\n")
-                '\r' -> append("\\r")
-                '\t' -> append("\\t")
-                else -> if (c.code < 0x20) append("\\u%04x".format(c.code)) else append(c)
-            }
-        }
-        append('"')
+        val request = Core.Request(draftId, issuedAt.format(formatter), issuedAt.toLocalDate(), portions,
+            Core.Flags(flags.considerStock, flags.considerShopping, flags.considerOffers),
+            restrictions = requestedRestrictions.sorted().map { Core.Restriction(it, true) })
+        val foodIds = ingredientsFor(variant).map { it.foodTypeId }
+        val candidate = CombinatorialGenerator().generate(request).single {
+            it.ingredients.map { line -> line.foodTypeId } == foodIds
+        }.copy(id = draftId)
+        val result = Core.propose(request, Core.RecipeFacts(emptyMap()), Core.ProvidedCandidates(listOf(candidate)))
+        require(result.rejected.isEmpty()) { "reference generator rejected this candidate" }
+        val message = result.messages.single().toMutableMap()
+        @Suppress("UNCHECKED_CAST")
+        val metadata = (message.getValue("meta") as Map<String, Any?>).toMutableMap()
+        // This timestamp is captured by the host, never supplied by a model.
+        metadata["inputsSnapshotAt"] = if (needsContext) requireNotNull(trustedSnapshotAt).format(formatter) else null
+        message["meta"] = metadata
+        // Reference nutrition remains unknown until independent catalog review.
+        return JsonOutput.encode(message)
     }
 }

@@ -102,7 +102,9 @@ internal object RecipeDraftHostGate {
         /** Null unless independently validated AND separately confirmed. No side effects. */
         val input: RecipeInput?,
         /** Host-issued preview binding; null for generic, blocked or unbound reviews. */
-        val approvalBasisDigest: String? = null
+        val approvalBasisDigest: String? = null,
+        /** Independent upstream findings remain review information, never consent. */
+        val referenceReport: RecipeReferenceV1.Report? = null
     )
 
     /**

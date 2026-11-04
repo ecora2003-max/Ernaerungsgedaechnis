@@ -1,3 +1,9 @@
+## Codex – echter gepinnter Rezeptkern in Arbeit (04.11.2026)
+
+- Übernommene, unveränderte reine Kotlin-Quellen und Originaltests aus `EG-Rezept-KI@6581eabd5c9c38e387fb0b73f4c9747b75d323e3`: Engine, Kombinationsgenerator, Import und Revalidator. Herkunft/Hashes in `tools/recipe_reference_v1_manifest.json`. Generator nutzt jetzt die Originalgrammatik; unabhängiger Hostadapter revalidiert mit konkreten Katalogversionen, Mengenbasis/Zustand und niemals aufgewerteten Teil-Allergennachweisen vor FoodStore-Consent/Save.
+- Erste gezielte JVM-/Originaltestprüfung und Android-Testkompilierung PASS; weitere Host-/Room-Paritätsfälle, vollständige CI und Geräteprüfung noch offen. Keine Modulfreigabe.
+- Prioritärer Gerätebefund aus PR #246, Run `41928448642`: reguläre Entsperrung erfolgreich, **8/10 Tests bestanden**, Rezept-Review-Timeout und Kauf-Retry mit abweichender rekonstruierter Positionsreihenfolge zu bearbeiten.
+
 ## Codex – vollständige lokale Prüfung der Rezept-Nährwertvorschau (04.11.2026)
 
 - Funktionscommit `9a1509a`, mit aktuellem sicherem Geräte-Testaufbau und v1-Schema auf `3c2959f` zusammengeführt. `lintDebug testDebugUnitTest compileDebugAndroidTestKotlin` erfolgreich; frische XML: **614/614 Tests, 0 Fehler/Skips, 7/7 Room-Migrationspfade**. Kein Room-Schemawechsel.

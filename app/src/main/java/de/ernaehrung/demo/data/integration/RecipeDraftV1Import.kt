@@ -264,10 +264,18 @@ internal object RecipeDraftV1Import {
         reviewedStates: Map<String, Gate.State>, now: OffsetDateTime,
         context: Gate.Context<*, *, *>? = null,
         /** Independently timestamped host snapshot; never copied from model JSON. */
-        trustedContextSnapshotAt: OffsetDateTime? = null
+        trustedContextSnapshotAt: OffsetDateTime? = null,
+        catalog: List<de.ernaehrung.demo.data.local.ProductVersionEntity> = emptyList()
     ): Gate.Review = try {
         val imported = read(json, reviewedStates, now)
-        val base = Gate.review(imported.draft, request, facts, context)
+        val host = Gate.review(imported.draft, request, facts, context)
+        val reference = RecipeReferenceV1.revalidate(json, request, facts, now, catalog, context)
+        val base = host.copy(
+            status = if (reference.blockers.isNotEmpty()) Gate.Status.BLOCKED else host.status,
+            blockers = host.blockers + reference.blockers.map { "REFERENCE_$it" },
+            input = if (reference.blockers.isNotEmpty()) null else host.input,
+            referenceReport = reference
+        )
         val needsContext = request.flags.considerStock ||
             request.flags.considerShopping || request.flags.considerOffers
         when {
