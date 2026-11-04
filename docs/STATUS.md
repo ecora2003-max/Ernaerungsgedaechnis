@@ -1,5 +1,10 @@
 # Integration: aktueller Wiedereinstieg
 
+## Einkauf A1 – Android-UI-Startfehler untersucht (04.11.2026)
+
+- Device-Run 41919858488 auf `9fc4b12`: **9 echte API35-Tests, 5 Fehler, 0 Skips**. Original-XML/Logcat ausgewertet: beide unveränderten Credential-Tests ohne erste Compose-Hierarchie, zwei weitere alte UI-Tests ebenfalls ohne Oberfläche, neuer Einkaufstest bereits beim initialen Lifecycle-/Datenladen blockiert. Hintergrund-OCR, SQLite und private Keystore-Prüfung bestehen; Logcat meldet weiterhin Lockscreen-Oberfläche. Dies ist kein bestandenes A1-Gate.
+- Testvorbereitung entsperrt jetzt vor jedem UI-Test einen tatsächlich gesperrten CI-Emulator über dessen echte PIN-Oberfläche und prüft den Keyguardzustand; kein gefälschtes Activity-Ergebnis, keine Entfernung der Gerätesperre. Fehlerartefakte erhalten zusätzlich Fensterzustand und Screenshot des ausschließlich synthetischen CI-Geräts. Neuer exakter CI-/Gerätelauf erforderlich.
+
 ## Einkauf A1 – fehlenden Android-Gesamtablauf ergänzt (04.11.2026)
 
 - #244 ergänzt `ShoppingOnDeviceEndToEndTest`: echte gebündelte ML-Kit-OCR aus synthetischem Content-URI → reale manuelle Produktkorrektur und negative unbestätigte Zahlung → ausdrücklicher Kauf → separate private Preis- und Lagerbestätigung → Ausgabenabgleich → Bedarf/Packungs-/Budgetvorschau und gespeicherte Auswahl. Anschließend UI/ViewModel abbauen, echte SQLite-Datei erneut öffnen, Kauf-/Scan-Retry und geordnetes Storno an FoodStore prüfen. Keine synthetischen Activity-Ergebnisse und keine neue Kaufbuchung durch Vorschläge.

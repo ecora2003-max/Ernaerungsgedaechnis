@@ -66,7 +66,17 @@ jobs:
             adb shell input keyevent KEYCODE_HOME
             adb shell svc wifi disable
             adb shell svc data disable
+            # Preserve the actual foreground/lock state when any UI test fails.
+            # These artifacts contain only this ephemeral synthetic test device.
+            set +e
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
+            test_result=$?
+            if [ "$test_result" -ne 0 ]; then
+              mkdir -p app/build/outputs/device-diagnostics
+              adb shell dumpsys window > app/build/outputs/device-diagnostics/window.txt
+              adb exec-out screencap -p > app/build/outputs/device-diagnostics/screen.png
+            fi
+            exit "$test_result"
       - name: Upload instrumentation evidence only (no downloadable APK)
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -75,5 +85,6 @@ jobs:
           path: |
             app/build/outputs/androidTest-results/connected/
             app/build/reports/androidTests/connected/
+            app/build/outputs/device-diagnostics/
           if-no-files-found: ignore
           retention-days: 7
