@@ -33,9 +33,18 @@ class RecipeDraftDeviceCredentialGateTest {
         enabled: Boolean = true,
         deviceSecure: Boolean = true,
         pending: RecipeCredentialChallenge? = challenge,
-        nowElapsedRealtimeMs: Long = 1_000L
+        nowElapsedRealtimeMs: Long = 1_000L,
+        operationKey: String? = null
     ) = RecipeCredentialResultGate.accepts(pending, code, current, session,
-        resetVersion, enabled, deviceSecure, nowElapsedRealtimeMs)
+        resetVersion, enabled, deviceSecure, nowElapsedRealtimeMs, operationKey)
+
+    @Test fun credentialChallengeCannotSwitchToAnotherOperationKey() {
+        val bound = challenge.copy(operationKey = "recipe-op-1",
+            nonce = "00000000-0000-4000-8000-000000000001")
+        assertTrue(accepts(pending = bound, operationKey = "recipe-op-1"))
+        assertFalse(accepts(pending = bound, operationKey = "recipe-op-2"))
+        assertFalse(accepts(pending = bound, operationKey = null))
+    }
 
     @Test fun successfulSystemResultMatchesOnlyLiveBoundSession() {
         assertTrue(accepts())

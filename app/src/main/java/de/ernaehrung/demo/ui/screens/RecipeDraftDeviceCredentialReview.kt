@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate
 import de.ernaehrung.demo.data.local.RecipeInput
+import de.ernaehrung.demo.data.local.RecipeActionProof
+import de.ernaehrung.demo.data.local.AndroidRecipeActionProof
 
 /** A device-authentication result is usable only for its original live UI preview. */
 internal data class RecipeCredentialChallenge(
@@ -24,7 +26,9 @@ internal data class RecipeCredentialChallenge(
     val sessionId: String,
     val reviewedInput: RecipeInput,
     val resetVersion: Int,
-    val issuedAtElapsedRealtimeMs: Long
+    val issuedAtElapsedRealtimeMs: Long,
+    val operationKey: String? = null,
+    val nonce: String? = null
 )
 
 internal object RecipeCredentialResultGate {
@@ -36,8 +40,10 @@ internal object RecipeCredentialResultGate {
         resetVersion: Int,
         actionEnabled: Boolean,
         deviceSecure: Boolean,
-        nowElapsedRealtimeMs: Long = SystemClock.elapsedRealtime()
+        nowElapsedRealtimeMs: Long = SystemClock.elapsedRealtime(),
+        operationKey: String? = null
     ): Boolean = challenge != null &&
+        challenge.operationKey == operationKey &&
         resultCode == Activity.RESULT_OK &&
         // A successful result cannot be reused if the secure device lock was removed
         // while the system confirmation Activity was in flight.
@@ -64,26 +70,30 @@ internal object RecipeCredentialResultGate {
  * field or caller Boolean alone never launches that checkpoint from this screen.
  *
  * The Activity result is transient and is NOT a cryptographic FoodStore
- * attestation. Durable, independently verifiable save provenance and real
- * device/privacy E2E remain separate integration gates.
+ * attestation on its own. The signed proof is verified inside FoodStore;
+ * hardware execution and full privacy E2E remain separate acceptance gates.
  */
 @Composable
 internal fun RecipeDraftDeviceCredentialReview(
     review: RecipeDraftHostGate.Review,
     sessionKey: String?,
+    operationKey: String?,
+    requestNonce: (String) -> String?,
     resetVersion: Int,
     actionEnabled: Boolean,
-    onAuthenticated: (String, String?) -> Unit
+    onAuthenticated: (String, String?, RecipeActionProof) -> Unit
 ) {
     val context = LocalContext.current
     val latestReview by rememberUpdatedState(review)
     val latestSession by rememberUpdatedState(sessionKey)
+    val latestOperationKey by rememberUpdatedState(operationKey)
+    val latestRequestNonce by rememberUpdatedState(requestNonce)
     val latestEnabled by rememberUpdatedState(actionEnabled)
     val latestResetVersion by rememberUpdatedState(resetVersion)
     val latestCallback by rememberUpdatedState(onAuthenticated)
     // A host transition invalidates even an in-flight OS result. In particular,
     // a changed preview/session or disabled-then-reenabled action cannot reuse it.
-    var challenge by remember(sessionKey, resetVersion, review, actionEnabled) {
+    var challenge by remember(sessionKey, operationKey, resetVersion, review, actionEnabled) {
         mutableStateOf<RecipeCredentialChallenge?>(null)
     }
     var retryVersion by remember { mutableIntStateOf(0) }
@@ -93,12 +103,16 @@ internal fun RecipeDraftDeviceCredentialReview(
         challenge = null // Consume every result, including cancellation and stale results.
         val stillSecure = (context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)
             ?.isDeviceSecure == true
-        if (RecipeCredentialResultGate.accepts(
-                completed, result.resultCode, latestReview, latestSession,
-                latestResetVersion, latestEnabled, stillSecure
-            )) {
+        val accepted = RecipeCredentialResultGate.accepts(
+            completed, result.resultCode, latestReview, latestSession,
+            latestResetVersion, latestEnabled, stillSecure,
+            operationKey = latestOperationKey)
+        val proof = if (accepted && completed?.operationKey != null && completed.nonce != null)
+            AndroidRecipeActionProof.sign(completed.operationKey, completed.digest,
+                completed.nonce, System.currentTimeMillis()) else null
+        if (accepted && proof != null) {
             error = null
-            latestCallback(requireNotNull(completed).digest, completed.sessionId)
+            latestCallback(requireNotNull(completed).digest, completed.sessionId, proof)
         } else {
             error = "Gerätebestätigung abgebrochen oder Rezeptvorschau inzwischen verändert."
             retryVersion++ // A retry needs a new checkbox and explicit button gesture.
@@ -108,7 +122,7 @@ internal fun RecipeDraftDeviceCredentialReview(
         review = review,
         sessionKey = sessionKey,
         resetVersion = resetVersion + retryVersion,
-        actionEnabled = actionEnabled && challenge == null
+        actionEnabled = actionEnabled && operationKey != null && challenge == null
     ) { digest, renderedSession ->
         val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         val intent = if (keyguard?.isDeviceSecure == true) {
@@ -117,14 +131,18 @@ internal fun RecipeDraftDeviceCredentialReview(
                 "Gerätesperre bestätigen, um genau diese Rezeptvorschau freizugeben."
             )
         } else null
-        val candidate = if (renderedSession != null && review.input != null) {
+        val nonce = if (renderedSession != null && operationKey != null)
+            latestRequestNonce(digest) else null
+        val candidate = if (renderedSession != null && review.input != null && nonce != null) {
             RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion,
-                SystemClock.elapsedRealtime())
+                SystemClock.elapsedRealtime(), operationKey, nonce)
         } else null
-        if (intent == null ||
+        if (intent == null || candidate == null || operationKey == null ||
+            !AndroidRecipeActionProof.ensureKey() ||
             !RecipeCredentialResultGate.accepts(
                 candidate, Activity.RESULT_OK, review, sessionKey,
-                resetVersion, actionEnabled, keyguard?.isDeviceSecure == true
+                resetVersion, actionEnabled, keyguard?.isDeviceSecure == true,
+                operationKey = operationKey
             )
         ) {
             error = "Eine sichere Gerätesperre und eine aktuelle Rezeptvorschau sind erforderlich."

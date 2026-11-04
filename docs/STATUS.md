@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 gerätegebundener Rezept-Consent (04.11.2026)
+
+- [PR #231](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/231): Die Küchen-UI fordert für den geprüften Digest und die konkrete Rezeptvorgangs-ID eine **einmalige, nur im FoodStore-Prozess vorhandene Challenge** an. Nach erfolgreicher System-Gerätebestätigung signiert ein nicht exportierbarer, authentifizierungsgebundener Android-Keystore-Schlüssel den Digest, Vorgangsschlüssel, Nonce und Zeitstempel. FoodStore prüft Signatur, Zeitfenster und Challenge vor dem transaktionalen ATTESTED-Consent; der produktive Küchen-Save verlangt diesen Ledger-Typ. Keine Herstellung/Verzehrbuchung durch Vorschau/Save.
+- Code-/Test-HEAD vor dieser Statusnotiz: `b3490025d6ff1b1484b2ab386412a7e5a5755218`; **PR-CI PENDING**, keine Hardware-/Offline-/Privacy-Abnahme. Synthetischer Room/JCA-Test prüft gültige Attestation, Manipulation, Ablauf, einmaligen Nonce-Verbrauch und Prozessneustart. Der alte interne unsignierte Host-Aufruf bleibt zur Kompatibilität vorhanden und ist **kein global durchgesetzter Authentifizierungsnachweis**.
+- Nächster B1-Anschluss: PR-CI auf exaktem SHA prüfen/korrigieren, unsignierte interne Save-Umgehung schließen, danach Generator/v1-Revalidator mit acht Kontextkombinationen und Herstellung→separaten Verzehr samt echten Android-/Offline-/Privacy-E2E verbinden.
+
 ## Integrator B – B1 Rezeptsave→Herstellung-UI-Handoff (04.11.2026)
 
 - PR #229 wurde nach exakter CI 41728714642 (568 JVM, 7 Room-Migrationen) als `6f1343d9` gemergt. Die gespeicherte Rezeptversion ist im KitchenEditor sichtbar; weiterhin keine automatische Herstellung oder Verzehrbuchung.
