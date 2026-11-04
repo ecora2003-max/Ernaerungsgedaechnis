@@ -92,43 +92,7 @@ internal fun RecipeDraftImportPanel(
             return@Fold
         }
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen ohne Lager-, Einkaufs- oder Angebotskontext. Kein Allergen- oder Garzustandsnachweis.")
-        OutlinedTextField(
-            value = offlinePortions,
-            onValueChange = { next ->
-                if (next.length <= 4 && next.all(Char::isDigit)) offlinePortions = next
-            },
-            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
-            label = { Text("Portionen für Offline-Vorschlag (1–1000)") },
-            singleLine = true
-        )
-        Button(
-            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000,
-            modifier = Modifier.testTag("recipe_offline_generate"),
-            onClick = {
-                try {
-                    val generated = RecipeOfflineDraftGenerator.generate(
-                        offlinePortions.toInt(), offlineVariant,
-                        OffsetDateTime.now(), "offline-" + UUID.randomUUID().toString()
-                    )
-                    // Use the identical bounded v1 import boundary as pasted JSON.
-                    val checked = RecipeDraftV1Import.read(
-                        generated, emptyMap(), OffsetDateTime.now()
-                    )
-                    checkpoint.discard()
-                    evidenceCheckpoint.discard()
-                    invalidate()
-                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
-                    json = generated
-                    imported = checked
-                    error = null
-                    offlineVariant = (offlineVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
-                } catch (_: IllegalArgumentException) {
-                    error = "Offline-Entwurf konnte nicht geprüft werden."
-                }
-            }
-        ) { Text("Offline-Rezeptvorschlag erzeugen") }
+
         Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
         Column {
             Button(
@@ -212,6 +176,43 @@ internal fun RecipeDraftImportPanel(
             enabled = json.isNotBlank(),
             modifier = Modifier.testTag("recipe_draft_json_inspect")
         ) { Text("JSON-Entwurf lokal prüfen") }
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen ohne Lager-, Einkaufs- oder Angebotskontext. Kein Allergen- oder Garzustandsnachweis.")
+        OutlinedTextField(
+            value = offlinePortions,
+            onValueChange = { next ->
+                if (next.length <= 4 && next.all(Char::isDigit)) offlinePortions = next
+            },
+            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
+            label = { Text("Portionen für Offline-Vorschlag (1–1000)") },
+            singleLine = true
+        )
+        Button(
+            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000,
+            modifier = Modifier.testTag("recipe_offline_generate"),
+            onClick = {
+                try {
+                    val generated = RecipeOfflineDraftGenerator.generate(
+                        offlinePortions.toInt(), offlineVariant,
+                        OffsetDateTime.now(), "offline-" + UUID.randomUUID().toString()
+                    )
+                    // Use the identical bounded v1 import boundary as pasted JSON.
+                    val checked = RecipeDraftV1Import.read(
+                        generated, emptyMap(), OffsetDateTime.now()
+                    )
+                    checkpoint.discard()
+                    evidenceCheckpoint.discard()
+                    invalidate()
+                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                    allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+                    json = generated
+                    imported = checked
+                    error = null
+                    offlineVariant = (offlineVariant + 1) % RecipeOfflineDraftGenerator.VARIANT_COUNT
+                } catch (_: IllegalArgumentException) {
+                    error = "Offline-Entwurf konnte nicht geprüft werden."
+                }
+            }
+        ) { Text("Offline-Rezeptvorschlag erzeugen") }
         error?.let { Text(it, Modifier.testTag("recipe_draft_import_error")) }
         imported?.let { parsed ->
             val draft = parsed.draft
