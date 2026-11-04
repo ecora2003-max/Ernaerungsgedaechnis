@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "manual-parallel-lock-cutover-20261104",
-  "ownerChatId": "user-directed-parallel-lock-migration",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "manual-parallel-lock-cutover-20261104-20261104T1425",
-  "acquiredAtUtc": "2026-11-04T14:29:23.790Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "Replace single lock with A/B/merge independent locks and watcher",
-  "workingBranch": "governance/parallel-a-b-locks-20261104",
-  "lastReleasedAtUtc": "2026-11-04T14:24:19.214Z",
-  "lastReleasedCommit": "843feab2792affb7c9d65b921263bcfb74613b98",
-  "nextStep": "B1: inspect pinned EG-Rezept-KI v1 revalidator parity gaps; implement next real generator/revalidator/host/UI validation with focused negative tests on fresh main. PR #237 merged, CI 41845820179 589 JVM/7 Room PASS, device CI 41845819865 7/7 PASS. Full B1/privacy parity still open."
+  "task": "LEGACY LOCK RETIRED; A and B each own role lock; merge serialized separately",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T14:30:58.728Z",
+  "lastReleasedCommit": "fe69aa1a3f499e0cf83c51ad2420ca7a86e4f7d9",
+  "nextStep": "Do not acquire this lock. Use integration-lock-A.json, integration-lock-B.json and integration-merge-lock.json."
 }
