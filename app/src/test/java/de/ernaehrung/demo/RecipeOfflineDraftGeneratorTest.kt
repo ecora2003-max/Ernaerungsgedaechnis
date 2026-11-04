@@ -57,6 +57,30 @@ class RecipeOfflineDraftGeneratorTest {
         }
     }
 
+
+    @Test fun allEightContextFlagsAreEncodedButNeverSelfAuthorizeARecipe() {
+        val capturedAt = now.minusSeconds(30)
+        for (mask in 0..7) {
+            val flags = RecipeDraftHostGate.Flags(
+                mask and 1 != 0, mask and 2 != 0, mask and 4 != 0
+            )
+            val json = RecipeOfflineDraftGenerator.generate(
+                2, 0, now, "context-$mask", flags,
+                if (mask == 0) null else capturedAt
+            )
+            val imported = RecipeDraftV1Import.read(json, emptyMap(), now)
+            assertEquals(flags, imported.draft.flags)
+            assertEquals(if (mask == 0) null else capturedAt.toInstant(),
+                imported.snapshotAt?.toInstant())
+            val request = RecipeDraftHostGate.Request(flags, 2, userConfirmedRecipeSave = true)
+            val preview = RecipeDraftV1Import.review(
+                json, request, emptyMap(), emptyMap(), now
+            )
+            assertNotEquals(RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
+            assertNull(preview.approvalBasisDigest)
+        }
+    }
+
     @Test fun invalidPortionsVariantAndUntrustedIdentifierCannotBecomeDrafts() {
         assertTrue(runCatching {
             RecipeOfflineDraftGenerator.generate(0, 0, now, "offline-zero")
