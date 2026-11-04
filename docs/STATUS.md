@@ -1,3 +1,8 @@
+## Codex – vollständige lokale Prüfung der Rezept-Nährwertvorschau (04.11.2026)
+
+- Funktionscommit `9a1509a`, mit aktuellem sicherem Geräte-Testaufbau und v1-Schema auf `3c2959f` zusammengeführt. `lintDebug testDebugUnitTest compileDebugAndroidTestKotlin` erfolgreich; frische XML: **614/614 Tests, 0 Fehler/Skips, 7/7 Room-Migrationspfade**. Kein Room-Schemawechsel.
+- Neue Vorschau vor Gerätebestätigung: echte, exakt zugeordnete Artikelversionen, unterschiedliche Mengenbasen und g/ml, Teilwerte und unbekannte Nährwerte; keine Rezept-/Bestands-/Verzehrbuchung. Eigene neue Gerätetest-Assertions noch nicht ausgeführt; PR-CI und Android-Nachweis stehen aus.
+
 ## Codex – reguläre Geräteentsperrung statt zustandsabhängiger Gesten (04.11.2026)
 
 - PR #246: App-CI `41925785592` auf `31a2cf810bb51792e21f0460356f5095a308b0ff` PASS. Geräte-CI `41925785595`: 10 Tests, 8 bereits in der gemeinsamen Vorbereitung gescheitert; SystemUI/Launcher bei aktivem Keyguard, kein PIN-Editor. Kein neuer Rezept-End-to-End-Nachweis.
