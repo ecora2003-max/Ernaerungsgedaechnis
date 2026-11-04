@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-codex-session-1793827977234-g7dklubc71k-integration-lock-A.json",
   "acquiredAtUtc": "2026-11-04T21:33:07.182Z",
-  "lastHeartbeatUtc": null,
+  "lastHeartbeatUtc": "2026-11-04T21:40:35.396Z",
   "leaseExpiresAtUtc": null,
   "task": "User-authorized Codex exclusive takeover; bootstrap tested owner policy, then complete A1/B1 E2E",
-  "workingBranch": "codex-exclusive-integration-20261104",
+  "workingBranch": "integration-a-shopping-budget-candidate-ui-20261104",
   "lastReleasedAtUtc": "2026-11-04T20:45:23.641Z",
   "lastReleasedCommit": "838f00ce0c23367c6214d6f84259eb2c86d5010c",
   "nextStep": "A1 PR #244 head 838f00ce: Room/Compose candidate budget preview + two tests; CI 41909547708 pending. Check exact-head CI/JUnit, fix on existing branch if FAIL, then merge only under newly acquired merge lock after main/overlap verification. Device/OCR/offline/privacy E2E open."
