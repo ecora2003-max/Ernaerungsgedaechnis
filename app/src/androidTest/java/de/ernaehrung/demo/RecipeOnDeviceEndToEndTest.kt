@@ -161,7 +161,7 @@ class RecipeOnDeviceEndToEndTest {
             val key = "device-recipe-save"
             assertTrue(runCatching {
                 store.saveReviewedRecipeDraftV1(key, json, request, facts, states,
-                    review, true, requireActionAttestation = true)
+                    review, true)
             }.isFailure)
             val digest = requireNotNull(review.approvalBasisDigest)
             val nonce = store.beginRecipeDraftCredentialAction(key, digest)
@@ -178,8 +178,7 @@ class RecipeOnDeviceEndToEndTest {
                 key, json, request, facts, states, review, true, actionProof = proof
             ))
             val recipe = store.saveReviewedRecipeDraftV1(
-                key, json, request, facts, states, review, true,
-                requireActionAttestation = true
+                key, json, request, facts, states, review, true
             )
             assertNotNull(db.foodDao().recipeVersion(recipe))
             assertEquals(0, db.foodDao().consumptionCount())
@@ -216,8 +215,7 @@ class RecipeOnDeviceEndToEndTest {
             db = open()
             store = FoodStore(db, { clock }, verifier)
             assertEquals(recipe, store.saveReviewedRecipeDraftV1(
-                key, json, request, facts, states, review, true,
-                requireActionAttestation = true
+                key, json, request, facts, states, review, true
             ))
             assertEquals(output, store.produce("device-cook", production, true))
             store.consume("device-eat", meal, true)

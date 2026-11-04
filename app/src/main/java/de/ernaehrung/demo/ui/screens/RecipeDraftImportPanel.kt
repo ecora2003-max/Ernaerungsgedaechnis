@@ -606,7 +606,7 @@ internal fun RecipeDraftImportPanel(
                     }
                 }
             ) { Text("Geprüfte Vorschau zur separaten Bestätigung") }
-            Text("Die anschließende Bestätigung speichert höchstens einen Consent-Checkpoint, kein Rezept und keinen Verzehr. Keine Identitätsauthentifizierung.")
+            Text("Die nächste Gerätebestätigung gilt nur für diese Vorschau. Erst eine weitere ausdrückliche Aktion speichert das Rezept; Herstellung und Verzehr bleiben getrennte Schritte.")
         }
     }
 }

@@ -46,7 +46,7 @@ class RecipeDraftCatalogSaveTest {
         db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java
         ).build()
-        store = FoodStore(db) { at }
+        store = signedRecipeStore(db) { at }
         versionId = store.rememberProduct("product-rice", ProductInput("Reis",
             source = Source.USER, quality = Quality.CONFIRMED))
     }
@@ -73,7 +73,7 @@ class RecipeDraftCatalogSaveTest {
         key: String, expected: Gate.Review, text: String = json,
         facts: Map<String, Catalog.ConfirmedLine>? = null,
         req: Gate.Request = request, confirmedAction: Boolean = true
-    ) = store.recordReviewedRecipeDraftV1Consent(key, text, req,
+    ) = store.recordSignedRecipeTestConsent(key, text, req,
         facts ?: confirmed(), states, expected, confirmedAction)
 
     private suspend fun rejected(block: suspend () -> Unit) {
@@ -133,7 +133,7 @@ class RecipeDraftCatalogSaveTest {
         val digest = requireNotNull(ready.approvalBasisDigest)
         val malformed = "line\\nsecond"
         dao.insertOperation(OperationEntity(
-            "RECIPE_DRAFT_CONSENT_V1:" + malformed, "RECIPE_DRAFT_CONSENT_V1",
+            "RECIPE_DRAFT_CONSENT_V1:" + malformed, "RECIPE_DRAFT_ATTESTED_CONSENT_V1",
             WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", malformed, digest),
             at, digest
         ))
@@ -165,7 +165,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun recoveryPrefersNewestConfirmedKeyAndFallsBackWhenItIsOccupied() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("older-consent", ready)
@@ -190,7 +190,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun recoveredConsentRejectsRecipeOperationWithMissingVersion() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("valid-consent", ready)
@@ -210,7 +210,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun recoveredConsentRejectsRecipeOperationOlderThanConfirmation() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("saved-valid", ready)
@@ -233,7 +233,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun futureDatedCompletedRecipeCannotBeRecoveredOrReplayedBeforeItsWriteInstant() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("future-completed", ready)
@@ -267,7 +267,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun recoveredConsentRejectsRecipeOperationPointingAtAnEarlierVersion() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         val digest = requireNotNull(ready.approvalBasisDigest)
         consent("genuine-save", ready)
@@ -292,7 +292,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun replayCannotPromoteAnUnrelatedLaterRecipeRevisionToFirstDraftSave() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         consent("original-draft", ready)
         val firstVersion = save("original-draft", ready)
@@ -338,7 +338,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun saveRejectsMatchingRecipeReplayRecordedBeforeConsent() = runBlocking {
         var clock = at
-        store = FoodStore(db) { clock }
+        store = signedRecipeStore(db) { clock }
         val ready = preview()
         consent("valid-recipe", ready)
         val savedVersion = save("valid-recipe", ready)
@@ -377,7 +377,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun invalidHostClockRejectsConsentAndRecipeSaveWithoutPartialWrites() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val ready = preview()
         val before = dao.operationCount()
 
@@ -408,7 +408,7 @@ class RecipeDraftCatalogSaveTest {
         var clockReads = 0
         // A second clock read would cross the validity boundary or throw,
         // leaving recipe history inconsistent with the approved snapshot.
-        store = FoodStore(db) {
+        store = signedRecipeStore(db) {
             clockReads++
             if (clockReads == 1) saveAt else error("Recipe save sampled the clock twice")
         }
@@ -422,7 +422,7 @@ class RecipeDraftCatalogSaveTest {
         assertTrue(dao.allPaidPrices().isEmpty())
 
         // A valid retry must retain the original physical timestamp and version.
-        store = FoodStore(db) { saveAt + 60_000L }
+        store = signedRecipeStore(db) { saveAt + 60_000L }
         assertEquals(version, save("single-instant-save", ready))
         assertEquals(saveAt, dao.recipeVersion(version)!!.recordedAt)
         assertEquals(before + 1, dao.operationCount())
@@ -433,7 +433,7 @@ class RecipeDraftCatalogSaveTest {
         consent("invalid-first-instant", ready)
         val before = dao.operationCount()
         var clockReads = 0
-        store = FoodStore(db) {
+        store = signedRecipeStore(db) {
             clockReads++
             if (clockReads == 1) -1L else at
         }
@@ -444,7 +444,7 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(before, dao.operationCount())
         assertEquals(0, dao.consumptionCount())
 
-        store = FoodStore(db) { at }
+        store = signedRecipeStore(db) { at }
         assertNotNull(dao.recipeVersion(save("invalid-first-instant", ready)))
         assertEquals(before + 1, dao.operationCount())
     }
@@ -640,7 +640,7 @@ class RecipeDraftCatalogSaveTest {
         val before = dao.operationCount()
         val digest = consent("consent-audit", ready)
         val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:consent-audit"))
-        assertEquals("RECIPE_DRAFT_CONSENT_V1", checkpoint.kind)
+        assertEquals("RECIPE_DRAFT_ATTESTED_CONSENT_V1", checkpoint.kind)
         assertEquals(digest, checkpoint.resultId)
         assertEquals(at, checkpoint.recordedAt)
         assertEquals(digest, consent("consent-audit", ready))
@@ -657,7 +657,7 @@ class RecipeDraftCatalogSaveTest {
         val digest = requireNotNull(ready.approvalBasisDigest)
         val before = dao.operationCount()
         dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:forged",
-            "RECIPE_DRAFT_CONSENT_V1", "not-the-bound-fingerprint", at, digest))
+            "RECIPE_DRAFT_ATTESTED_CONSENT_V1", "not-the-bound-fingerprint", at, digest))
         dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:wrong-kind",
             "RECIPE", "not-a-consent", at, digest))
         assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
@@ -675,7 +675,7 @@ class RecipeDraftCatalogSaveTest {
         val key = "future-ledger"
         val fingerprint = WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
         dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$key",
-            "RECIPE_DRAFT_CONSENT_V1", fingerprint, at + 60_000L, digest))
+            "RECIPE_DRAFT_ATTESTED_CONSENT_V1", fingerprint, at + 60_000L, digest))
         val before = dao.operationCount()
         assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
         rejected { consent(key, ready) }
@@ -691,7 +691,7 @@ class RecipeDraftCatalogSaveTest {
         val key = "negative-ledger"
         val fingerprint = WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
         dao.insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$key",
-            "RECIPE_DRAFT_CONSENT_V1", fingerprint, -1L, digest))
+            "RECIPE_DRAFT_ATTESTED_CONSENT_V1", fingerprint, -1L, digest))
         assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
         rejected { consent(key, ready) }
         rejected { save(key, ready) }
@@ -707,7 +707,7 @@ class RecipeDraftCatalogSaveTest {
             val facts: Map<String, Catalog.ConfirmedLine>
             val ready: Gate.Review
             try {
-                val firstStore = FoodStore(firstDb) { at }
+                val firstStore = signedRecipeStore(firstDb) { at }
                 val id = firstStore.rememberProduct("restart-product",
                     ProductInput("Reis", source = Source.USER, quality = Quality.CONFIRMED))
                 val v = requireNotNull(firstDb.foodDao().version(id))
@@ -716,7 +716,7 @@ class RecipeDraftCatalogSaveTest {
                     allergens = mapOf("SOY" to false)))
                 ready = firstStore.previewRecipeDraftV1(json, request, facts, states)
                 assertNotNull(ready.approvalBasisDigest)
-                firstStore.recordReviewedRecipeDraftV1Consent("restart-save", json,
+                firstStore.recordSignedRecipeTestConsent("restart-save", json,
                     request, facts, states, ready, true)
                 assertNull(firstDb.foodDao().operation("restart-save"))
             } finally {
@@ -724,7 +724,7 @@ class RecipeDraftCatalogSaveTest {
             }
             val secondDb = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
             try {
-                val secondStore = FoodStore(secondDb) { at }
+                val secondStore = signedRecipeStore(secondDb) { at }
                 assertEquals(ready.approvalBasisDigest,
                     secondDb.foodDao().operation("RECIPE_DRAFT_CONSENT_V1:restart-save")?.resultId)
                 assertEquals("restart-save",
@@ -748,7 +748,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun futureDatedDraftCannotBeConfirmedOrSavedBeforeItsCreationInstant() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val futureJson = json.replace(
             "\"createdAt\":\"2026-11-01T04:00:00Z\"",
             "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
@@ -781,17 +781,21 @@ class RecipeDraftCatalogSaveTest {
         val futureJson = json.replace(
             "\"createdAt\":\"2026-11-01T04:00:00Z\"",
             "\"createdAt\":\"2026-11-01T05:02:00+01:00\"")
-        store = FoodStore(db) { at + 120_000L }
+        store = signedRecipeStore(db) { at + 120_000L }
         val freshFacts = confirmed().mapValues { (_, fact) ->
             fact.copy(confirmedAt = at + 120_000L)
         }
         val ready = preview(futureJson, freshFacts)
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
         var clockReads = 0
-        store = FoodStore(db) {
+        store = signedRecipeStore(db) {
             if (clockReads++ == 0) at + 120_000L else at
         }
-        val digest = consent("clock-shift", ready, text = futureJson, facts = freshFacts)
+        val proof = SignedRecipeTestProof.issue(store, "clock-shift",
+            requireNotNull(ready.approvalBasisDigest))
+        clockReads = 0 // Challenge issuance is a separate action before this transaction.
+        val digest = store.recordReviewedRecipeDraftV1Consent("clock-shift", futureJson,
+            request, freshFacts, states, ready, true, actionProof = proof)
         assertEquals(ready.approvalBasisDigest, digest)
         val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:clock-shift"))
         assertEquals(at + 120_000L, checkpoint.recordedAt)
@@ -799,7 +803,7 @@ class RecipeDraftCatalogSaveTest {
         // A clock rollback must not let the subsequent save predate creation.
         rejected { save("clock-shift", ready, text = futureJson, facts = freshFacts) }
         assertNull(dao.operation("clock-shift"))
-        store = FoodStore(db) { at + 120_000L }
+        store = signedRecipeStore(db) { at + 120_000L }
         assertNotNull(dao.recipeVersion(save("clock-shift", ready,
             text = futureJson, facts = freshFacts)))
         assertEquals(0, dao.consumptionCount())
@@ -809,14 +813,18 @@ class RecipeDraftCatalogSaveTest {
         val ready = preview()
         val facts = confirmed()
         val before = dao.operationCount()
-        val consentDigests = (1..8).map {
+        val proof = SignedRecipeTestProof.issue(store, "concurrent-recipe",
+            requireNotNull(ready.approvalBasisDigest))
+        val consentAttempts = (1..8).map {
             async(Dispatchers.Default) {
-                store.recordReviewedRecipeDraftV1Consent(
-                    "concurrent-recipe", json, request, facts, states, ready, true)
+                runCatching { store.recordReviewedRecipeDraftV1Consent(
+                    "concurrent-recipe", json, request, facts, states, ready, true,
+                    actionProof = proof) }
             }
         }.awaitAll()
-        assertEquals(1, consentDigests.toSet().size)
-        assertEquals(ready.approvalBasisDigest, consentDigests.first())
+        assertEquals(1, consentAttempts.count { it.isSuccess })
+        assertEquals(7, consentAttempts.count { it.isFailure })
+        assertEquals(ready.approvalBasisDigest, consentAttempts.single { it.isSuccess }.getOrThrow())
         assertEquals(before + 1, dao.operationCount())
 
         val recipeIds = (1..8).map {
@@ -836,7 +844,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun unconsumedConsentExpiresAndCannotBeRecoveredOrUsedForNewSave() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val ready = preview()
         val digest = consent("expired-consent", ready)
         val checkpoint = requireNotNull(dao.operation("RECIPE_DRAFT_CONSENT_V1:expired-consent"))
@@ -858,7 +866,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun consentFiveMinuteBoundaryAllowsSaveButCompletedRecipeReplaySurvivesExpiry() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val ready = preview()
         val digest = consent("fresh-boundary", ready)
         trustedClock = at + 300_000L
@@ -877,7 +885,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun expiredCheckpointCannotBeRefreshedButNewConsentKeyWorks() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val ready = preview()
         val digest = consent("old-checkpoint", ready)
         trustedClock = at + 300_000L
@@ -902,7 +910,7 @@ class RecipeDraftCatalogSaveTest {
 
     @Test fun expiredConsentCannotReplayUnrelatedManualRecipeOperation() = runBlocking {
         var trustedClock = at
-        store = FoodStore(db) { trustedClock }
+        store = signedRecipeStore(db) { trustedClock }
         val ready = preview()
         consent("unrelated-existing", ready)
         val input = requireNotNull(ready.input)
@@ -919,7 +927,7 @@ class RecipeDraftCatalogSaveTest {
         // A product may have existed earlier, but a confirmation of that product
         // is not consent for a recipe draft created only later.
         val draftCreatedAt = at + 60_000L
-        store = FoodStore(db) { at + 120_000L }
+        store = signedRecipeStore(db) { at + 120_000L }
         val laterDraft = json.replace("2026-11-01T04:00:00Z",
             "2026-11-01T04:01:00Z")
         val staleFacts = confirmed() // confirmation at 'at', before this draft exists

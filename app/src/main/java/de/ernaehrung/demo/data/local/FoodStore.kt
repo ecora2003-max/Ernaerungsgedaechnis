@@ -132,11 +132,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
 
     /**
      * Durable, separate confirmation checkpoint for one already reviewed draft.
-     * This records a host-side action and its time in the existing append-only
-     * operation ledger; it is NOT proof of a human/UI gesture. No recipe, stock,
-     * purchase or consumption is written by this checkpoint.
-     *
-     * The UI must eventually supply independently authenticated action provenance.
+     * Verifies the device signature and this process's one-shot challenge before
+     * recording an attested action in the append-only operation ledger. No
+     * recipe, stock, purchase or consumption is written by this checkpoint.
      */
     internal suspend fun recordReviewedRecipeDraftV1Consent(
         key: String,
@@ -170,13 +168,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             "Bestätigung bezieht sich nicht auf die aktuelle geprüfte Rezeptvorschau."
         }
         val digest = requireNotNull(current.approvalBasisDigest)
-        val consentKind = if (actionProof != null) {
-            require(recipeActionNonceGate.consume(actionProof, key, digest, actionAt) &&
-                actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
-                "Gerätegebundene Rezeptaktion fehlt, ist ungültig oder abgelaufen."
-            }
-            "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
-        } else "RECIPE_DRAFT_CONSENT_V1"
+        require(actionProof != null &&
+            recipeActionNonceGate.consume(actionProof, key, digest, actionAt) &&
+            actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
+            "Gerätegebundene Rezeptaktion fehlt, ist ungültig oder abgelaufen."
+        }
+        val consentKind = "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
         val consentKey = recipeDraftConsentKey(key)
         val hash = recipeDraftConsentFingerprint(key, digest)
         val previous = dao.operation(consentKey)
@@ -234,8 +231,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                     val key = operation.id.substring(prefix.length)
                     val existingSaveOperation = dao.operation(key)
                     isValidRecipeDraftSaveKey(key) &&
-                        operation.kind in setOf("RECIPE_DRAFT_CONSENT_V1",
-                            "RECIPE_DRAFT_ATTESTED_CONSENT_V1") &&
+                        operation.kind == "RECIPE_DRAFT_ATTESTED_CONSENT_V1" &&
                         recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt, checkedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
@@ -317,8 +313,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         expectedPreview: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
         confirmed: Boolean,
         context: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<*, *, *>? = null,
-        trustedContextSnapshotAt: java.time.OffsetDateTime? = null,
-        requireActionAttestation: Boolean = false
+        trustedContextSnapshotAt: java.time.OffsetDateTime? = null
     ): String = db.withTransaction {
         require(confirmed && request.userConfirmedRecipeSave) {
             "Rezeptübernahme separat und ausdrücklich bestätigen."
@@ -344,10 +339,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val digest = requireNotNull(current.approvalBasisDigest)
         val consent = dao.operation(recipeDraftConsentKey(key))
         require(consent != null &&
-            (if (requireActionAttestation)
-                consent.kind == "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
-            else consent.kind in setOf("RECIPE_DRAFT_CONSENT_V1",
-                "RECIPE_DRAFT_ATTESTED_CONSENT_V1")) &&
+            consent.kind == "RECIPE_DRAFT_ATTESTED_CONSENT_V1" &&
             consent.resultId == digest &&
             consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
             consent.recordedAt in 0L..saveAt) {

@@ -47,7 +47,7 @@ class RecipeRoomStockSnapshotTest {
         db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java
         ).build()
-        store = FoodStore(db) { at.toEpochMilli() }
+        store = signedRecipeStore(db) { at.toEpochMilli() }
         versionId = store.rememberProduct("room-stock-product",
             ProductInput("Reis", source = Source.USER, quality = Quality.CONFIRMED))
         locationId = store.addLocation("room-stock-location", "Küche", true)
@@ -107,12 +107,12 @@ class RecipeRoomStockSnapshotTest {
         }.isFailure)
         val tampered = context.copy(stock = snapshot.copy(revision = "unverified-revision"))
         assertTrue(runCatching {
-            store.recordReviewedRecipeDraftV1Consent(key, json, request, confirmations(),
+            store.recordSignedRecipeTestConsent(key, json, request, confirmations(),
                 states, preview, true, tampered,
                 OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
         }.isFailure)
         assertEquals(before, db.foodDao().operationCount())
-        val recorded = store.recordReviewedRecipeDraftV1Consent(
+        val recorded = store.recordSignedRecipeTestConsent(
             key, json, request, confirmations(), states, preview, true,
             context, OffsetDateTime.ofInstant(at, java.time.ZoneOffset.UTC))
         assertEquals(preview.approvalBasisDigest, recorded)
@@ -209,12 +209,12 @@ class RecipeRoomStockSnapshotTest {
     @Test fun incompleteOrUnbalancedTransferCannotBecomeRecipeStock() = runBlocking {
         val target = store.addLocation("transfer-review-target", "Speisekammer", true)
         val transferAt = at.plusSeconds(60)
-        val writer = FoodStore(db) { transferAt.toEpochMilli() }
+        val writer = signedRecipeStore(db) { transferAt.toEpochMilli() }
         val operationId = "transfer-review-operation"
         val destination = writer.transfer(operationId,
             TransferInput(batchId, target, 500L, "2026-11-01",
                 "Bestand umgelagert", conditionsConfirmed = true), true)
-        val reader = FoodStore(db) { transferAt.plusSeconds(1).toEpochMilli() }
+        val reader = signedRecipeStore(db) { transferAt.plusSeconds(1).toEpochMilli() }
         val valid = requireNotNull(reader.readRecipeRoomStockSnapshot())
         assertEquals(2, valid.lines.size)
         assertEquals(1_500L, valid.lines.single { it.identity == "batch:$batchId" }.amountMilli)
@@ -349,12 +349,12 @@ class RecipeRoomStockSnapshotTest {
         val otherBatch = store.receive("allocation-orphan-other-receipt",
             BatchInput(versionId, locationId, 300L, acquiredOn = "2026-11-01",
                 release = ReleaseStatus.RELEASED), true)
-        val later = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(60).toEpochMilli() }
         val consumptionId = later.consume("allocation-orphan-consumption",
             ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
                 listOf(Allocation(batchId, 100L)),
                 occurredAt = at.plusSeconds(30).toEpochMilli()), true)
-        val reader = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val reader = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         val complete = requireNotNull(reader.readRecipeRoomStockSnapshot())
         assertEquals(2, complete.lines.size)
         val beforeOperations = db.foodDao().operationCount()
@@ -385,12 +385,12 @@ class RecipeRoomStockSnapshotTest {
     }
 
     @Test fun duplicateConsumptionMovementForOneAllocationFailsClosed() = runBlocking {
-        val later = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(60).toEpochMilli() }
         later.consume("allocation-duplicate-consumption",
             ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
                 listOf(Allocation(batchId, 100L)),
                 occurredAt = at.plusSeconds(30).toEpochMilli()), true)
-        val reader = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val reader = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         val complete = requireNotNull(reader.readRecipeRoomStockSnapshot())
         val beforeOperations = db.foodDao().operationCount()
         val beforeConsumption = db.foodDao().consumptionCount()
@@ -411,10 +411,10 @@ class RecipeRoomStockSnapshotTest {
     @Test fun stockReviewExpiresAtExactMillisecondNotRoundedSeconds() = runBlocking {
         val snapshot = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
-        val atLimit = FoodStore(db) { at.plusMillis(300_000).toEpochMilli() }
+        val atLimit = signedRecipeStore(db) { at.plusMillis(300_000).toEpochMilli() }
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
             review(snapshot, atLimit).status)
-        val justExpired = FoodStore(db) { at.plusMillis(300_001).toEpochMilli() }
+        val justExpired = signedRecipeStore(db) { at.plusMillis(300_001).toEpochMilli() }
         val stale = review(snapshot, justExpired)
         assertEquals(Gate.Status.REVIEW_REQUIRED, stale.status)
         assertTrue("ROOM_STOCK_SNAPSHOT_STALE_OR_CHANGED" in stale.gaps)
@@ -497,7 +497,7 @@ class RecipeRoomStockSnapshotTest {
     @Test fun movementBeforeBatchAcquisitionDayCannotAuthorizeLaterRecipeStock() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val beforeOperations = db.foodDao().operationCount()
-        val later = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         val receiptOperation = requireNotNull(db.foodDao().batch(batchId)).originOperationId
 
         // The receipt's persisted movement occurred on 1 November. A legacy
@@ -543,7 +543,7 @@ class RecipeRoomStockSnapshotTest {
 
         // The following Berlin day must not expose an expired batch as current
         // stock merely because its amount is zero. Valid positive stock remains.
-        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val nextDay = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         val next = requireNotNull(nextDay.readRecipeRoomStockSnapshot())
         assertEquals(1, next.lines.size)
         assertEquals("batch:$batchId", next.lines.single().identity)
@@ -561,7 +561,7 @@ class RecipeRoomStockSnapshotTest {
         // A valid batch and movement do not make a product version known
         // before its recorded creation time. No stock or recipe is booked.
         assertNull(store.readRecipeRoomStockSnapshot())
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         // Advancing the snapshot clock must not turn a receipt predating its
         // product version into legitimate inventory.
         assertNull(later.readRecipeRoomStockSnapshot())
@@ -581,7 +581,7 @@ class RecipeRoomStockSnapshotTest {
         store.receive("second-stock-receipt",
             BatchInput(secondVersion, locationId, 500L, acquiredOn = "2026-11-01",
                 release = ReleaseStatus.RELEASED), true)
-        val later = FoodStore(db) { at.plusSeconds(90).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(90).toEpochMilli() }
         val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(2, valid.lines.size)
         val before = db.foodDao().operationCount()
@@ -648,7 +648,7 @@ class RecipeRoomStockSnapshotTest {
         // The movement's old timestamp cannot override a future-dated
         // originating receipt operation in the same physical stock snapshot.
         assertNull(store.readRecipeRoomStockSnapshot())
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         // The origin's movement is still earlier than its author. A later
         // snapshot cannot repair this inconsistent persisted chronology.
         assertNull(later.readRecipeRoomStockSnapshot())
@@ -675,7 +675,7 @@ class RecipeRoomStockSnapshotTest {
             arrayOf(at.plusSeconds(60).toEpochMilli(), "movement-author-future"))
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         // Passing the future author timestamp is not enough: the movement
         // still claims it was recorded before its author existed.
         assertNull(later.readRecipeRoomStockSnapshot())
@@ -699,7 +699,7 @@ class RecipeRoomStockSnapshotTest {
         db.openHelper.writableDatabase.execSQL(
             "UPDATE operations SET recordedAt = ? WHERE id = ?",
             arrayOf(authorTime, "movement-author-chronology"))
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         assertNull(later.readRecipeRoomStockSnapshot())
         // A consistent later recording is valid; no new FoodStore event or
         // consumption may be created by repairing read-only evidence.
@@ -743,7 +743,7 @@ class RecipeRoomStockSnapshotTest {
             "Legacy future record", at.plusSeconds(60).toEpochMilli(),
             occurredOn = "2026-11-01"))
         assertNull(store.readRecipeRoomStockSnapshot())
-        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(120).toEpochMilli() }
         val current = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertEquals(2_500L, current.lines.single().amountMilli)
         assertNotEquals(original.revision, current.revision)
@@ -759,7 +759,7 @@ class RecipeRoomStockSnapshotTest {
             operation, 500L, MovementKind.RECEIPT, null, Source.USER,
             "Legacy future day", at.toEpochMilli(), occurredOn = "2026-11-02"))
         assertNull(store.readRecipeRoomStockSnapshot())
-        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val nextDay = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         // Even after the calendar day arrives, a confirmed operation from the
         // previous day cannot authorize a physical event in its future.
         assertNull(nextDay.readRecipeRoomStockSnapshot())
@@ -779,7 +779,7 @@ class RecipeRoomStockSnapshotTest {
     }
 
     @Test fun dayOnlyReceiptAfterItsAuthorRemainsInvalidAtLaterSnapshotUntilRepaired() = runBlocking {
-        val later = FoodStore(db) { at.plusSeconds(2 * 86_400).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(2 * 86_400).toEpochMilli() }
         val original = requireNotNull(later.readRecipeRoomStockSnapshot())
         val operations = db.foodDao().operationCount()
         val receipt = requireNotNull(db.foodDao().batch(batchId)).originOperationId
@@ -821,7 +821,7 @@ class RecipeRoomStockSnapshotTest {
             "Legacy occurrence after snapshot", at.toEpochMilli(),
             occurredOn = "2026-11-01"))
         assertNull(store.readRecipeRoomStockSnapshot())
-        val later = FoodStore(db) { at.plusSeconds(121).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(121).toEpochMilli() }
         // The physical event was recorded as confirmed before it happened.
         // Advancing the snapshot clock must not repair that contradiction.
         assertNull(later.readRecipeRoomStockSnapshot())
@@ -839,10 +839,10 @@ class RecipeRoomStockSnapshotTest {
         val recordedAt = at.plusSeconds(60).toEpochMilli()
         val actualAt = at.plusSeconds(30).toEpochMilli()
         val key = "late-occurrence-consumption"
-        FoodStore(db) { recordedAt }.consume(key,
+        signedRecipeStore(db) { recordedAt }.consume(key,
             ConsumptionInput(versionId, "2026-11-01", "Snack", 100L,
                 listOf(Allocation(batchId, 100L)), occurredAt = actualAt), true)
-        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(120).toEpochMilli() }
         val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
         val operations = db.foodDao().operationCount()
         assertEquals(1_900L, valid.lines.single().amountMilli)
@@ -851,7 +851,7 @@ class RecipeRoomStockSnapshotTest {
             "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
             arrayOf(at.plusSeconds(90).toEpochMilli(), key))
         assertNull(later.readRecipeRoomStockSnapshot())
-        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val nextDay = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         assertNull(nextDay.readRecipeRoomStockSnapshot())
         assertEquals(operations, db.foodDao().operationCount())
         assertEquals(1, db.foodDao().consumptionCount())
@@ -903,7 +903,7 @@ class RecipeRoomStockSnapshotTest {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         // Receipt is recorded at 'at'; occurrence is later, but precedes the single write instant.
         var clock = at.plusSeconds(60).toEpochMilli()
-        val movingClockStore = FoodStore(db) { clock++ }
+        val movingClockStore = signedRecipeStore(db) { clock++ }
         val input = ConsumptionInput(versionId, "2026-11-01", "Mittag", 100L,
             listOf(Allocation(batchId, 100L)),
             occurredAt = at.plusSeconds(30).toEpochMilli())
@@ -916,7 +916,7 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(operation.recordedAt, movements.single().recordedAt)
         assertEquals(input.occurredAt, movements.single().occurredAt)
         assertEquals(1, db.foodDao().consumptionCount())
-        val current = requireNotNull(FoodStore(db) { at.plusSeconds(61).toEpochMilli() }.readRecipeRoomStockSnapshot())
+        val current = requireNotNull(signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }.readRecipeRoomStockSnapshot())
         assertEquals(1_900L, current.lines.single().amountMilli)
         assertNotEquals(original.revision, current.revision)
     }
@@ -926,7 +926,7 @@ class RecipeRoomStockSnapshotTest {
         // The second wall-clock read would already be the following Berlin day.
         val instant = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
         var clock = instant
-        val movingClockStore = FoodStore(db) { clock++ }
+        val movingClockStore = signedRecipeStore(db) { clock++ }
         val input = BatchInput(versionId, locationId, 250L, acquiredOn = "2026-11-01",
             release = ReleaseStatus.RELEASED)
         val before = db.foodDao().operationCount()
@@ -940,7 +940,7 @@ class RecipeRoomStockSnapshotTest {
         assertEquals(operation.recordedAt, movement.recordedAt)
         assertEquals("2026-11-01", movement.occurredOn)
         assertEquals(before + 1, db.foodDao().operationCount())
-        val asOfReceipt = FoodStore(db) { instant }
+        val asOfReceipt = signedRecipeStore(db) { instant }
         val snapshot = requireNotNull(asOfReceipt.readRecipeRoomStockSnapshot())
         assertEquals(250L, snapshot.lines.single { it.identity == "batch:$batch" }.amountMilli)
         assertEquals(0, db.foodDao().consumptionCount())
@@ -950,7 +950,7 @@ class RecipeRoomStockSnapshotTest {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
         var clock = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
-        val movingClockStore = FoodStore(db) { clock++ }
+        val movingClockStore = signedRecipeStore(db) { clock++ }
         val input = BatchInput(versionId, locationId, 250L, acquiredOn = "2026-11-02",
             release = ReleaseStatus.RELEASED)
         assertTrue(runCatching {
@@ -967,7 +967,7 @@ class RecipeRoomStockSnapshotTest {
     @Test fun productRevisionKeepsOneRecordedAtAcrossBerlinMidnightAndRetry() = runBlocking {
         val instant = Instant.parse("2026-11-01T22:59:59.999Z").toEpochMilli()
         var clock = instant
-        val movingClockStore = FoodStore(db) { clock++ }
+        val movingClockStore = signedRecipeStore(db) { clock++ }
         val input = ProductInput("Haferflocken", source = Source.USER, quality = Quality.CONFIRMED)
         val before = db.foodDao().operationCount()
         val versionId = movingClockStore.rememberProduct("product-revision-midnight", input)
@@ -983,7 +983,7 @@ class RecipeRoomStockSnapshotTest {
 
     @Test fun negativeProductEventTimeRollsBackWithoutCreatingRevision() = runBlocking {
         val before = db.foodDao().operationCount()
-        val invalidClockStore = FoodStore(db) { -1L }
+        val invalidClockStore = signedRecipeStore(db) { -1L }
         val result = runCatching {
             invalidClockStore.rememberProduct("product-negative-timestamp",
                 ProductInput("Unzulässiger Zeitbeleg", quality = Quality.CONFIRMED))
@@ -1000,7 +1000,7 @@ class RecipeRoomStockSnapshotTest {
         val recorded = Instant.parse("2026-11-02T00:10:00Z").toEpochMilli()
         // UTC still says 1 November, but Berlin already says 2 November.
         val occurred = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
-        val later = FoodStore(db) { recorded }
+        val later = signedRecipeStore(db) { recorded }
         val input = ConsumptionInput(versionId, "2026-11-01", "Abendessen", 100L,
             listOf(Allocation(batchId, 100L)), occurredAt = occurred)
         assertTrue(runCatching {
@@ -1017,7 +1017,7 @@ class RecipeRoomStockSnapshotTest {
     @Test fun confirmedConsumptionAcceptsMatchingBerlinDayAcrossUtcMidnightAndReplays() = runBlocking {
         val recorded = Instant.parse("2026-11-02T00:10:00Z").toEpochMilli()
         val occurred = Instant.parse("2026-11-01T23:30:00Z").toEpochMilli()
-        val later = FoodStore(db) { recorded }
+        val later = signedRecipeStore(db) { recorded }
         val input = ConsumptionInput(versionId, "2026-11-02", "Frühstück", 100L,
             listOf(Allocation(batchId, 100L)), occurredAt = occurred)
         val before = db.foodDao().operationCount()
@@ -1043,7 +1043,7 @@ class RecipeRoomStockSnapshotTest {
             batchId, operation, 100L, MovementKind.RECEIPT, occurred,
             Source.USER, "Contradictory legacy physical date", recorded,
             occurredOn = "2026-11-01"))
-        val later = FoodStore(db) { recorded }
+        val later = signedRecipeStore(db) { recorded }
         assertNull(later.readRecipeRoomStockSnapshot())
         assertEquals(0, db.foodDao().consumptionCount())
         assertEquals(0, db.foodDao().movements(operation).count { it.delta < 0L })
@@ -1123,7 +1123,7 @@ class RecipeRoomStockSnapshotTest {
             arrayOf(at.minusSeconds(60).toEpochMilli(), "stock-before-origin-author"))
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
-        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(120).toEpochMilli() }
         assertNull(later.readRecipeRoomStockSnapshot())
 
         db.openHelper.writableDatabase.execSQL(
@@ -1140,11 +1140,11 @@ class RecipeRoomStockSnapshotTest {
         val occurredAt = at.plusSeconds(30).toEpochMilli()
         val recordedAt = at.plusSeconds(60).toEpochMilli()
         val key = "stock-physical-before-origin"
-        val confirmed = FoodStore(db) { recordedAt }
+        val confirmed = signedRecipeStore(db) { recordedAt }
         val input = ConsumptionInput(versionId, "2026-11-01", "Snack", 100L,
             listOf(Allocation(batchId, 100L)), occurredAt = occurredAt)
         confirmed.consume(key, input, true)
-        val later = FoodStore(db) { at.plusSeconds(120).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(120).toEpochMilli() }
         val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
         val operations = db.foodDao().operationCount()
         assertEquals(1_900L, valid.lines.single().amountMilli)
@@ -1157,7 +1157,7 @@ class RecipeRoomStockSnapshotTest {
             "UPDATE stock_movements SET occurredAt = ? WHERE operationId = ?",
             arrayOf(at.minusSeconds(30).toEpochMilli(), key))
         assertNull(later.readRecipeRoomStockSnapshot())
-        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val nextDay = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         assertNull(nextDay.readRecipeRoomStockSnapshot())
         assertEquals(operations, db.foodDao().operationCount())
         assertEquals(1, db.foodDao().consumptionCount())
@@ -1188,7 +1188,7 @@ class RecipeRoomStockSnapshotTest {
             arrayOf("2026-10-31", "legacy-day-only-correction"))
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(valid).status)
-        val nextDay = FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        val nextDay = signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
         assertNull(nextDay.readRecipeRoomStockSnapshot())
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
@@ -1204,11 +1204,11 @@ class RecipeRoomStockSnapshotTest {
 
     @Test fun legacyConsumptionFallbackDayBeforeBatchOriginFailsClosed() = runBlocking {
         val occurredAt = at.plusSeconds(30).toEpochMilli()
-        val confirmed = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val confirmed = signedRecipeStore(db) { at.plusSeconds(60).toEpochMilli() }
         val key = "legacy-consumption-fallback-day"
         confirmed.consume(key, ConsumptionInput(versionId, "2026-11-01", "Snack",
             100L, listOf(Allocation(batchId, 100L)), occurredAt = occurredAt), true)
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         val valid = requireNotNull(later.readRecipeRoomStockSnapshot())
         val before = db.foodDao().operationCount()
         assertEquals(1_900L, valid.lines.single().amountMilli)
@@ -1222,7 +1222,7 @@ class RecipeRoomStockSnapshotTest {
             "UPDATE consumption_events SET date = ? WHERE operationId = ?",
             arrayOf("2026-10-31", key))
         assertNull(later.readRecipeRoomStockSnapshot())
-        assertNull(FoodStore(db) { at.plusSeconds(86_400).toEpochMilli() }
+        assertNull(signedRecipeStore(db) { at.plusSeconds(86_400).toEpochMilli() }
             .readRecipeRoomStockSnapshot())
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(1, db.foodDao().consumptionCount())
@@ -1251,7 +1251,7 @@ class RecipeRoomStockSnapshotTest {
             arrayOf(openedAt, batchId))
         assertNull(store.readRecipeRoomStockSnapshot())
         assertEquals(Gate.Status.REVIEW_REQUIRED, review(original).status)
-        val later = FoodStore(db) { at.plusSeconds(61).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(61).toEpochMilli() }
         val laterSnapshot = requireNotNull(later.readRecipeRoomStockSnapshot())
         assertNotEquals(original.revision, laterSnapshot.revision)
 
@@ -1273,7 +1273,7 @@ class RecipeRoomStockSnapshotTest {
     @Test fun invalidThawTimestampFailsClosedUntilEvidenceIsRepaired() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val operations = db.foodDao().operationCount()
-        val later = FoodStore(db) { at.plusSeconds(30).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(30).toEpochMilli() }
 
         db.openHelper.writableDatabase.execSQL(
             "UPDATE batches SET thawedAt = ? WHERE id = ?",
@@ -1298,7 +1298,7 @@ class RecipeRoomStockSnapshotTest {
     @Test fun openingAndThawingBeforeAcquisitionDayRemainInvalidAtLaterSnapshots() = runBlocking {
         val original = requireNotNull(store.readRecipeRoomStockSnapshot())
         val operations = db.foodDao().operationCount()
-        val later = FoodStore(db) { at.plusSeconds(2 * 86_400).toEpochMilli() }
+        val later = signedRecipeStore(db) { at.plusSeconds(2 * 86_400).toEpochMilli() }
 
         // Simulate a receipt legitimately confirmed on the acquisition day,
         // while preserving the original product version from the prior day.
@@ -1357,7 +1357,7 @@ class RecipeRoomStockSnapshotTest {
 
     @Test fun consumptionMovementRequiresMatchingEventAndBatchAllocation() = runBlocking {
         val eventAt = at.plusSeconds(30).toEpochMilli()
-        val after = FoodStore(db) { at.plusSeconds(60).toEpochMilli() }
+        val after = signedRecipeStore(db) { at.plusSeconds(60).toEpochMilli() }
         val key = "room-stock-consumption-evidence"
         after.consume(key, ConsumptionInput(versionId, "2026-11-01", "Snack",
             100L, listOf(Allocation(batchId, 100L)), occurredAt = eventAt), true)

@@ -499,8 +499,7 @@ class LocalDataViewModel internal constructor(
      * original JSON, catalog evidence, digest and operation key in one transaction.
      * This only persists a recipe version; it never books cooking or eating.
      */
-    internal fun saveConfirmedRecipeDraft(approvalBasisDigest: String,
-        requireActionAttestation: Boolean = false) {
+    internal fun saveConfirmedRecipeDraft(approvalBasisDigest: String) {
         val session = pendingReviewedSave ?: return
         val state = recipeDraftConsent.value
         if (state.busy || state.savedRecipeVersionId != null ||
@@ -513,8 +512,7 @@ class LocalDataViewModel internal constructor(
                     session.operationKey, session.json, session.request,
                     session.confirmations, session.reviewedStates, session.review, true,
                     context = session.context,
-                    trustedContextSnapshotAt = session.trustedContextSnapshotAt,
-                    requireActionAttestation = requireActionAttestation)
+                    trustedContextSnapshotAt = session.trustedContextSnapshotAt)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingReviewedSave === session) {
                     pendingReviewedSave = null

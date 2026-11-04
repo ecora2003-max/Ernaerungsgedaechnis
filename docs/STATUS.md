@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg
 
+## Rezepte B1 – attestierte Schreibgrenze und Wiederaufnahme (04.11.2026)
+
+- Neuer Funktionsbranch `codex-recipe-attestation-e2e-20261104`: FoodStore verlangt für neuen Consent und Rezeptsave zwingend verifizierte Geräteaktion; der bisherige Boolean-Downgrade ist entfernt. Alte unsignierte Ledger bleiben erhalten, können aber weder Wiederaufnahme noch Save autorisieren. Die DAO-Wiederaufnahme las bisher ausschließlich Legacy-Typen und übersah echte attestierte Consents; auf attestierte Einträge korrigiert, ohne Schemaänderung.
+- Vier bestehende Host-/ViewModel-/Room-Suites mit synthetischem JCA-Signer auf denselben Pflichtpfad umgestellt; **114/114 gezielte JVM-Tests, 0 Fehler/Skips PASS**. Bestehende Zeit-/Restart-/Rollback-/Parallelitätsregressionen erhalten; zwei explizite Regressionen für Legacy-Sperre und signierte Wiederaufnahme ergänzt. Android-Testkompilierung des damaligen Stands PASS; neue vollständige reale Credential-/Allergen-/Koch-/separate-Verzehr-UI-Strecke zusätzlich ergänzt, noch nicht ausgeführt. Vollständige App-CI/Referenz-/Schema-/Geräteprüfung offen.
+- Einkaufs-PR #244 auf `9fc4b12`: App-CI 41919858496 PASS. Device-CI 41919858488 FAIL: 9 Tests ausgeführt, 5 Compose-Timeouts einschließlich vormals bestandener UI-Tests; OCR/Room-Tests bestehen. Zuerst Emulator-/UI-Startursache anhand tatsächlicher Belege korrigieren, kein Merge bei fehlgeschlagenem Gerätetest. Danach neue B1-Strecke tatsächlich auf API35 ausführen.
+
 ## Einkauf A1 – fehlenden Android-Gesamtablauf ergänzt (04.11.2026)
 
 - #244 ergänzt `ShoppingOnDeviceEndToEndTest`: echte gebündelte ML-Kit-OCR aus synthetischem Content-URI → reale manuelle Produktkorrektur und negative unbestätigte Zahlung → ausdrücklicher Kauf → separate private Preis- und Lagerbestätigung → Ausgabenabgleich → Bedarf/Packungs-/Budgetvorschau und gespeicherte Auswahl. Anschließend UI/ViewModel abbauen, echte SQLite-Datei erneut öffnen, Kauf-/Scan-Retry und geordnetes Storno an FoodStore prüfen. Keine synthetischen Activity-Ergebnisse und keine neue Kaufbuchung durch Vorschläge.

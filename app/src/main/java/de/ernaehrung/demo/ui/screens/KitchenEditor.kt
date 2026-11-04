@@ -52,7 +52,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
                 if (draftConsent.savedRecipeVersionId == null) {
                     Text("Rezeptvorschau ausdrücklich bestätigt und lokal protokolliert. Noch kein Rezept gespeichert.")
                     Button(
-                        onClick = { model.saveConfirmedRecipeDraft(digest, requireActionAttestation = true) },
+                        onClick = { model.saveConfirmedRecipeDraft(digest) },
                         enabled = !draftConsent.busy,
                         modifier = Modifier.testTag("recipe_draft_save_confirmed")
                     ) { Text("Geprüfte Rezeptversion jetzt speichern") }
