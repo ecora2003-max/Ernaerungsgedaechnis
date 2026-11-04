@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-20261104-1811Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261104181106212-bqvgih3b",
-  "acquiredAtUtc": "2026-11-04T18:11:06.212Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 Android device privacy E2E: revoke opt-in encrypted draft on changed servings",
-  "workingBranch": "integration-b-recipe-device-privacy-20261104",
-  "lastReleasedAtUtc": "2026-11-04T17:28:45.588Z",
-  "lastReleasedCommit": "2248e917aef9e4e676ddeaa9caaccd34429a11d1",
-  "nextStep": "B1 PR #240 auf Branch integration-b-offline-restriction-selection-20261104, HEAD 2248e917: Portionenzahl-Änderung invalidiert JSON/Review/verschlüsselten Checkpoint; neue Compose-Testkorrektur performTextReplacement(23) nach CI 41876076467 (598 Tests, 1 Fehler in Test-Zeile 427 durch unbestimmte Cursorposition). CI 41877450079 auf EXAKTEM HEAD abwarten/prüfen; bei PASS aktuelle main-Basis/Fremdpfade und exakte CI prüfen, eigene Rollen- plus neue Merge-Sperre erwerben, erst dann #240 mergen; bei FAIL im selben Branch gezielt korrigieren. Danach B1 FoodStore-Attestation/Android-Offline-/Privacy-E2E weiterführen. Keine Gerätetests dieses Laufs."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T18:15:39.240Z",
+  "lastReleasedCommit": "6147637e482de48e5e66d82900390bb9eb0a0216",
+  "nextStep": "B1: PR #240 nach PASS 41877450079 als f4e0c7a gemergt. PR #242 (Branch integration-b-recipe-device-privacy-20261104, HEAD 6147637e) testet echten Android-Offline-FOOD-Ausschluss, Keystore-NoBackup-Checkpoint und Widerruf bei Portionsänderung. Exakte CI 41885287797 und Android-Emulator-E2E 41885287796 prüfen; bei FAIL gezielt denselben Branch korrigieren, bei PASS frische B- und Merge-Sperren, main-/Fremdpfad-/CI-Abgleich, dann #242 mergen. Danach B1 v1-Revalidator-/Context-/FoodStore-Geräteparität fortsetzen; kein vollständiger INTEGRATED-Status."
 }
