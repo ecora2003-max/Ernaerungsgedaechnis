@@ -253,10 +253,20 @@ internal fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId
         val batches = eligibleConsumptionBatches(state.batches, preparedOnly)
         if (preparedOnly) Text("Nur tatsächlich hergestellte und ausdrücklich freigegebene Fertigportionen. Herstellung allein ist kein Verzehr.")
         val batch = batches.find { it.batch.id == batchId }
-        Picker("Charge", batches.map { "${it.productName} · ${it.batch.id}" }, batch?.productName ?: "Bitte wählen") { label -> batchId = batches.first { label.endsWith(it.batch.id) }.batch.id }
-        Field("Verzehrmenge in ${batch?.unit?.label ?: "Basiseinheiten"}", amount, { amount = it })
-        Field("Verzehrdatum JJJJ-MM-TT", day, { day = it })
-        Check("Tatsächlich gegessen · als Testereignis bestätigen", confirmed) { confirmed = it }
+        Picker("Charge", batches.map { "${it.productName} · ${it.batch.id}" }, batch?.productName ?: "Bitte wählen") { label ->
+            batchId = batches.first { label.endsWith(it.batch.id) }.batch.id
+            confirmed = false
+        }
+        Field("Verzehrmenge in ${batch?.unit?.label ?: "Basiseinheiten"}", amount, {
+            amount = it
+            confirmed = false
+        })
+        Field("Verzehrdatum JJJJ-MM-TT", day, {
+            day = it
+            confirmed = false
+        })
+        Check(if (preparedOnly) "Fertigportionen tatsächlich gegessen · ausdrücklich bestätigen"
+            else "Tatsächlich gegessen · als Testereignis bestätigen", confirmed) { confirmed = it }
         SaveButton(if (preparedOnly) "Fertigportionen-Verzehr buchen" else "Testverzehr buchen", busy || batches.isEmpty()) {
             val selected = batch; val quantity = amount; val date = day; val accepted = confirmed
             model.save(operationId) {
