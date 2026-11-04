@@ -69,8 +69,12 @@ class RecipeDeviceCredentialUiTest {
         awaitSystemCredentialActivity(device)
         // Foreground package alone does not mean the SystemUI/Settings PIN editor
         // has been inflated and focused. Never send blind keystrokes to the app.
+        // API 35 exposes a SystemUI ImeAwareEditText at lockPassword.
+        // The editor is not a plain android.widget.EditText class.
         val pinEditor = device.wait(
-            Until.findObject(By.clazz("android.widget.EditText")), 15_000L
+            Until.findObject(By.res("com.android.systemui", "lockPassword")), 15_000L
+        ) ?: device.wait(
+            Until.findObject(By.clazz("android.widget.EditText")), 5_000L
         ) ?: device.wait(
             Until.findObject(By.res("com.android.settings", "password_entry")), 5_000L
         )
@@ -99,6 +103,21 @@ class RecipeDeviceCredentialUiTest {
             if (device.currentPackageName != appPackage) device.pressBack()
         }
         compose.waitUntil(15_000) { device.currentPackageName == appPackage }
+    }
+
+    private fun awaitComposeReview() {
+        // The API 35 software emulator can delay its first Compose surface
+        // even after MainActivity reports that it has been displayed.
+        compose.waitUntil(25_000) {
+            try {
+                compose.onNodeWithTag("recipe_draft_consent_checkbox").assertExists()
+                true
+            } catch (_: AssertionError) {
+                false
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
     }
 
     @Test fun systemCredentialSuccessSignsOnlyTheLiveOperationAndNonceIsOneShot() {
@@ -130,6 +149,7 @@ class RecipeDeviceCredentialUiTest {
                 }
             }
         }
+        awaitComposeReview()
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
         enterRealSystemPin()
@@ -170,6 +190,7 @@ class RecipeDeviceCredentialUiTest {
                 }
             }
         }
+        awaitComposeReview()
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
