@@ -83,7 +83,9 @@ class PreparedPortionConsumptionRoomTest {
             all.single { it.batch.id == rawBatch }
         )
         assertTrue(eligibleConsumptionBatches(candidates, true).isEmpty())
-        assertEquals(1, eligibleConsumptionBatches(candidates, false).size)
+        // The general stock selector is evaluated on actual rows, not synthetic
+        // copies representing different invalid kitchen states of one batch.
+        assertEquals(listOf(output), eligibleConsumptionBatches(all, false).map { it.batch.id })
         assertEquals(0, db.foodDao().consumptionCount())
     }
 }
