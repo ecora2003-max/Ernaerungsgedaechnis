@@ -52,7 +52,7 @@ class RecipeOfflineAllergenEvidenceTest {
             catalog.map { it.copy(recordedAt = now + 1) } to mapping,
             catalog.map { it.copy(source = Source.DEMO) } to mapping,
             catalog.map { it.copy(quality = Quality.ESTIMATED) } to mapping,
-            catalog.map { it.copy(baseUnit = BaseUnit.PIECE) } to mapping,
+            catalog.map { it.copy(baseUnit = BaseUnit.PORTION) } to mapping,
             catalog to (mapping + ("tomato" to "rice-v1"))
         )
         cases.forEachIndexed { i, (versions, selected) ->
