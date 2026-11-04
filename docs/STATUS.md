@@ -1,5 +1,11 @@
 # Integration: aktueller Wiedereinstieg (01.11.2026)
 
+## Integrator B – B1 typisierte Room-Kontexte in Küchen-Review (04.11.2026)
+
+- [PR #234](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/234), Code-/Teststand vor dieser Notiz `6a6a97983`: Ein opt-in-Küchenformular bindet Bestands- und Einkaufs-Snapshots aus derselben Room-Zeitbasis an v1-Generator, unabhängige manuelle Produkt-/Allergenprüfung, FoodStore-Revalidator, Geräteaktions-Consent und Rezeptsave. Kontextdigest wird vor jeder Buchung neu geprüft; Vorschlag und Kontextabruf buchen nichts.
+- Acht Flagkombinationen werden geprüft: vier ohne Angebotsflag können mit tatsächlich vorhandenen Room-Belegen gebunden werden; vier mit Angebotsflag bleiben ohne unabhängig genehmigte Rechte-/Store-/Artikelquelle **gesperrt**. Die 27 Offline-Rezepte werden noch **nicht** nach Vorrat/Einkaufsbedarf gerankt. JVM-/Room-/Robolectric-Regressionen ergänzt; **PR-CI PENDING**, Android-/Neustart-/Offline-/Privacy-Geräte-E2E **OFFEN**, kein INTEGRATED.
+- Nächster konkreter B1-Schritt: PR-CI auf exakt neuem SHA prüfen und korrigieren; danach reale FoodType↔Produktversionszuordnung für kontextabhängige Rezeptauswahl samt Allergen-/Mengen-/Zustandsprüfung und ausgeführte Android-/Offline-/Privacy-Abnahme ergänzen.
+
 ## Integrator B – B1 Offline-Generator an Küchen-Review (04.11.2026)
 
 - Branch `integration-b-offline-generator-20261104`, Generator-/UI-/Teststand `0ed38a6cd0e4e7957edcec6e146a559b0b76a6f2`: 27 deterministische Kombinationen nach `EG-Rezept-KI/CombinatorialGenerator.kt@58bb2d5aec5166d61821a726273ddbcae36ef867` als unbestätigte `recipe.draft`-v1-JSON, direkt in bestehende Küchen-Import-/Review-UI eingespeist. Kein Lager-/Listen-/Angebotszugriff, keine Allergen-/Produkt-/Garzustandsbehauptung und keine Buchung.
