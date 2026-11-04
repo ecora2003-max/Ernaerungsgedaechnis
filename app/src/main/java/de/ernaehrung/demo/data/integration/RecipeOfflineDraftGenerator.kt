@@ -37,13 +37,19 @@ internal object RecipeOfflineDraftGenerator {
     /** Only context-free generation is enabled until approved typed snapshots exist. */
     fun generate(
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
-        flags: RecipeDraftHostGate.Flags = RecipeDraftHostGate.Flags(false, false, false)
+        flags: RecipeDraftHostGate.Flags = RecipeDraftHostGate.Flags(false, false, false),
+        trustedSnapshotAt: OffsetDateTime? = null
     ): String {
         require(portions in 1..1000) { "portions outside host bounds" }
         require(variant in 0 until VARIANT_COUNT) { "unknown recipe combination" }
         require(Regex("[A-Za-z0-9-]{1,80}").matches(draftId)) { "invalid draft identifier" }
-        require(!flags.considerStock && !flags.considerShopping && !flags.considerOffers) {
-            "context snapshots not independently available for offline generation"
+        val needsContext = flags.considerStock || flags.considerShopping || flags.considerOffers
+        require(!needsContext || (trustedSnapshotAt != null &&
+            !trustedSnapshotAt.toInstant().isAfter(issuedAt.toInstant()))) {
+            "context requires an independently captured host snapshot before generation"
+        }
+        require(!needsContext || !trustedSnapshotAt!!.toInstant().isBefore(java.time.Instant.EPOCH)) {
+            "invalid context snapshot instant"
         }
         val grain = grains[variant / 9]
         val legume = legumes[(variant / 3) % 3]
@@ -65,7 +71,8 @@ internal object RecipeOfflineDraftGenerator {
             "Mengenbasis und Roh-/Garzustand müssen unabhängig bestätigt werden."
         ).joinToString(",") { quoted(it) }
         val title = "${grain.label} mit ${legume.label} und ${vegetable.label}"
-        return """{"contractVersion":"1.0.0-draft","messageType":"recipe.draft","meta":{"producer":"EG-Rezept-KI-offline-host","traceId":${quoted(draftId)},"createdAt":${quoted(issuedAt.toString())}},"payload":{"draftId":${quoted(draftId)},"title":${quoted(title)},"portionCount":$portions,"ingredients":[$ingredients],"steps":[$steps],"flags":{"considerStock":false,"considerShopping":false,"considerOffers":false},"warnings":[$warnings],"status":"DRAFT"}}"""
+        val contextMeta = if (needsContext) ",\"inputsSnapshotAt\":${quoted(requireNotNull(trustedSnapshotAt).toString())}" else ""
+        return """{"contractVersion":"1.0.0-draft","messageType":"recipe.draft","meta":{"producer":"EG-Rezept-KI-offline-host","traceId":${quoted(draftId)},"createdAt":${quoted(issuedAt.toString())}$contextMeta},"payload":{"draftId":${quoted(draftId)},"title":${quoted(title)},"portionCount":$portions,"ingredients":[$ingredients],"steps":[$steps],"flags":{"considerStock":${flags.considerStock},"considerShopping":${flags.considerShopping},"considerOffers":${flags.considerOffers}},"warnings":[$warnings],"status":"DRAFT"}}"""
     }
 
     private fun quoted(value: String): String = buildString {
