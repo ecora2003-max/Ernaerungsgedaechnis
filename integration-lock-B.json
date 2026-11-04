@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR #240 CI and recipe end-to-end implementation",
-  "workingBranch": null,
+  "workingBranch": "integration-b-offline-restriction-selection-20261104",
   "lastReleasedAtUtc": "2026-11-04T17:28:45.588Z",
   "lastReleasedCommit": "2248e917aef9e4e676ddeaa9caaccd34429a11d1",
   "nextStep": "B1 PR #240 auf Branch integration-b-offline-restriction-selection-20261104, HEAD 2248e917: Portionenzahl-Änderung invalidiert JSON/Review/verschlüsselten Checkpoint; neue Compose-Testkorrektur performTextReplacement(23) nach CI 41876076467 (598 Tests, 1 Fehler in Test-Zeile 427 durch unbestimmte Cursorposition). CI 41877450079 auf EXAKTEM HEAD abwarten/prüfen; bei PASS aktuelle main-Basis/Fremdpfade und exakte CI prüfen, eigene Rollen- plus neue Merge-Sperre erwerben, erst dann #240 mergen; bei FAIL im selben Branch gezielt korrigieren. Danach B1 FoodStore-Attestation/Android-Offline-/Privacy-E2E weiterführen. Keine Gerätetests dieses Laufs."
