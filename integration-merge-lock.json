@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-20261104-2108Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-merge-20261104211626385-934305414",
-  "acquiredAtUtc": "2026-11-04T21:16:26.385Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Merge B1 PR243 after exact-head CI 41913413053 success",
-  "workingBranch": "integration-b-recipe-allergen-proposals-20261104",
-  "lastReleasedAtUtc": "2026-11-04T19:41:52.009Z",
-  "lastReleasedCommit": "d756fa1b9e0b091a564fdffb31851cc2ebedde5d",
-  "nextStep": "A1 PR #241 merged after exact-head CI success and nonoverlapping main changes. Next: connect historical/offline price basis and FEFO/budget suggestion in next A1 UI step; Android device/OCR/offline/privacy gates remain open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T21:16:53.762Z",
+  "lastReleasedCommit": "ce662fc61fd56cce341020f67e265bbe2dc0457b",
+  "nextStep": "B1 PR #243 merged after exact-head CI 41913413053 PASS (604 JVM/7 Room). Next: actual Android API35 allergen selection, offline/restart/privacy E2E; complete v1 generator/revalidator parity and recipe-save->production->separate-consumption gates."
 }
