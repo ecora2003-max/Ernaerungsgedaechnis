@@ -35,8 +35,12 @@ data class ConsumptionInput(val versionId: String, val date: String, val meal: S
     val quality: Quality = Quality.UNKNOWN, val note: String? = null)
 
 /** Single application write boundary. Exceptions roll back every effect, including operation IDs. */
-class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis,
-    private val actionProofVerifier: RecipeActionProofVerifier = AndroidRecipeActionProof) {
+class FoodStore(private val db: FoodDatabase, private val now: () -> Long = System::currentTimeMillis) {
+    private var actionProofVerifier: RecipeActionProofVerifier = AndroidRecipeActionProof
+    internal constructor(db: FoodDatabase, now: () -> Long,
+        verifier: RecipeActionProofVerifier) : this(db, now) {
+        actionProofVerifier = verifier
+    }
     private val dao = db.foodDao()
     private val recipeActionNonceGate = RecipeActionNonceGate()
 
