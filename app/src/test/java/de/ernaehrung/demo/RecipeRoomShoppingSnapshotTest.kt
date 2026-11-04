@@ -74,6 +74,33 @@ class RecipeRoomShoppingSnapshotTest {
             context, OffsetDateTime.parse("2026-11-01T04:00:00Z"))
     }
 
+
+    @Test fun eightFlagSelectionsUseActualRoomSourcesAndNeverInventApprovedOffers() = runBlocking {
+        store.savePlan("context-flags-plan", plan(200_000L))
+        val location = store.addLocation("context-flags-location", "Küche", true)
+        store.receive("context-flags-receipt", BatchInput(versionId, location,
+            300_000L, acquiredOn = day, release = ReleaseStatus.RELEASED), true)
+        val before = db.foodDao().operationCount()
+        for (mask in 0..7) {
+            val selected = Gate.Flags(mask and 1 != 0, mask and 2 != 0, mask and 4 != 0)
+            val context = store.readRecipeTypedContext(selected, scope)
+            assertEquals(selected, context.projectedFlags)
+            assertEquals(selected.considerStock, context.stock != null)
+            assertEquals(selected.considerShopping, context.shopping != null)
+            assertNull(context.offers)
+            if (selected.considerOffers) {
+                assertTrue(context.gaps.contains("OFFERS_SNAPSHOT_UNAVAILABLE"))
+                assertNull(context.contentBinding)
+            } else {
+                assertTrue(context.gaps.isEmpty())
+                assertNotNull(context.contentBinding)
+                assertEquals(selected, context.contentBinding?.flags)
+            }
+        }
+        assertEquals(before, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun roomPlanningNeedBindsButReviewNeverBooks() = runBlocking {
         store.savePlan("shopping-plan", plan(200_000L))
         val before = db.foodDao().operationCount()
@@ -84,7 +111,7 @@ class RecipeRoomShoppingSnapshotTest {
         assertEquals("g", snapshot.lines.single().unit)
         val result = review(snapshot)
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, result.status)
-        assertNull(result.approvalBasisDigest) // no authenticated action
+        assertNotNull(result.approvalBasisDigest) // content-bound preview; no user action yet
         assertEquals(before, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }

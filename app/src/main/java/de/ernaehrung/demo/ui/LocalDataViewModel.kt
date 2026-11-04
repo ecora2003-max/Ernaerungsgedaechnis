@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.recognition.*
+import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as RecipeGate
+import de.ernaehrung.demo.data.integration.RecipeContextContentBinding as ContextBinding
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import android.net.Uri
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -32,6 +36,17 @@ data class RecognitionUiState(val data: RecognitionData? = null, val error: Stri
 data class AliasUiState(val busy: Boolean = false, val match: AliasMatch? = null, val error: String? = null, val queryText: String = "")
 data class LookupUiState(val busy: Boolean = false, val result: ProductLookup? = null, val error: String? = null)
 data class ReceiptReviewUiState(val review: ReceiptReview? = null, val resolved: Boolean = false, val error: String? = null)
+internal typealias RecipeTypedContext = RecipeGate.Context<
+    ContextBinding.Snapshot, ContextBinding.Snapshot, ContextBinding.Snapshot>
+
+/** Read-only host-selected Room context; an unavailable source never becomes zero. */
+internal data class RecipeDraftContextUiState(
+    val flags: RecipeGate.Flags = RecipeGate.Flags(false, false, false),
+    val context: RecipeTypedContext? = null,
+    val busy: Boolean = false,
+    val error: String? = null
+)
+
 /** A host-bound preview and the result of its separate, explicit UI action. */
 internal data class RecipeDraftConsentUiState(
     val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review? = null,
@@ -251,8 +266,46 @@ class LocalDataViewModel internal constructor(
         val request: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Request,
         val confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         val reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
-        val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review
+        val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
+        val context: RecipeTypedContext?,
+        val trustedContextSnapshotAt: OffsetDateTime?
     )
+    private val recipeContext = MutableStateFlow(RecipeDraftContextUiState())
+    internal val recipeContextState = recipeContext.asStateFlow()
+    private var recipeContextJob: kotlinx.coroutines.Job? = null
+
+    /** Explicitly opt in to independent Room snapshots; never a booking. */
+    internal fun requestRecipeDraftContext(flags: RecipeGate.Flags) {
+        if (recipeConsentJob?.isActive == true || recipeSaveJob?.isActive == true) return
+        recipeContextJob?.cancel()
+        clearRecipeDraftConsent()
+        recipeContext.value = RecipeDraftContextUiState(flags = flags, busy = true)
+        recipeContextJob = viewModelScope.launch {
+            try {
+                val today = AppCalendar.today()
+                val scope = if (flags.considerShopping)
+                    ShoppingScope(today.toString(), today.plusDays(7).toString(), today.toString())
+                else null
+                val context = store.readRecipeTypedContext(flags, scope)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                recipeContext.value = RecipeDraftContextUiState(flags, context)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                recipeContext.value = RecipeDraftContextUiState(flags, error =
+                    "Lokaler Rezeptkontext nicht verfügbar: ${e.message}")
+            }
+        }
+    }
+
+    internal fun clearRecipeDraftContext() {
+        if (recipeConsentJob?.isActive == true || recipeSaveJob?.isActive == true) return
+        recipeContextJob?.cancel()
+        recipeContext.value = RecipeDraftContextUiState()
+        clearRecipeDraftConsent()
+    }
+
     private val recipeDraftConsent = MutableStateFlow(RecipeDraftConsentUiState())
     internal val recipeDraftConsentState = recipeDraftConsent.asStateFlow()
     private var pendingRecipeDraft: PendingRecipeDraft? = null
@@ -318,10 +371,18 @@ class LocalDataViewModel internal constructor(
             line.copy(allergens = line.allergens.toMap())
         }
         val immutableRequest = request.copy(confirmedRestrictions = request.confirmedRestrictions.toSet())
+        val needsContext = request.flags.considerStock || request.flags.considerShopping ||
+            request.flags.considerOffers
+        val selectedContext = recipeContext.value.takeIf {
+            needsContext && !it.busy && it.flags == request.flags
+        }?.context
+        val selectedAt = selectedContext?.contentBinding?.snapshotAt?.let {
+            OffsetDateTime.ofInstant(it, ZoneOffset.UTC)
+        }
         recipePreviewJob = viewModelScope.launch {
             try {
                 val review = store.previewRecipeDraftV1(json, immutableRequest,
-                    immutableFacts, reviewedStates.toMap())
+                    immutableFacts, reviewedStates.toMap(), selectedContext, selectedAt)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val ready = review.status ==
                     de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
@@ -351,13 +412,14 @@ class LocalDataViewModel internal constructor(
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     pendingRecipeDraft = PendingRecipeDraft(
                         key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
-                        immutableFacts, reviewedStates.toMap(), review)
+                        immutableFacts, reviewedStates.toMap(), review,
+                        selectedContext, selectedAt)
                 } else if (recordedKey != null) {
                     // Recovered Room consent permits a separate save gesture,
                     // never replay of a previous device-authentication result.
                     pendingReviewedSave = PendingRecipeDraft(
                         recordedKey, "", json, immutableRequest, immutableFacts,
-                        reviewedStates.toMap(), review)
+                        reviewedStates.toMap(), review, selectedContext, selectedAt)
                     // A durable Room checkpoint wins over a stale pending-key file.
                     runCatching {
                         pendingKeyStore.finish(requireNotNull(review.approvalBasisDigest), recordedKey)
@@ -405,6 +467,8 @@ class LocalDataViewModel internal constructor(
                 val recorded = store.recordReviewedRecipeDraftV1Consent(
                     session.operationKey, session.json, session.request,
                     session.confirmations, session.reviewedStates, session.review, true,
+                    context = session.context,
+                    trustedContextSnapshotAt = session.trustedContextSnapshotAt,
                     actionProof = actionProof)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 // Room is authoritative. Cleanup failure cannot turn a committed
@@ -448,6 +512,8 @@ class LocalDataViewModel internal constructor(
                 val version = store.saveReviewedRecipeDraftV1(
                     session.operationKey, session.json, session.request,
                     session.confirmations, session.reviewedStates, session.review, true,
+                    context = session.context,
+                    trustedContextSnapshotAt = session.trustedContextSnapshotAt,
                     requireActionAttestation = requireActionAttestation)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (pendingReviewedSave === session) {
