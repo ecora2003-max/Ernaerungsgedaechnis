@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integration II – B1 2026-11-04 03:07 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1h88ln-db1p052ykm",
-  "acquiredAtUtc": "2026-11-04T02:07:28.907Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1: resume PR #231 CI and integrate verified recipe-save action provenance",
+  "task": "Automatisch wiederhergestellt nach mindestens 30 Minuten Inaktivitaet",
   "workingBranch": null,
-  "lastReleasedAtUtc": "2026-11-04T01:17:41.756Z",
-  "lastReleasedCommit": "0351497e71f148a531e02b800271b21a152bfd3c",
-  "nextStep": "B1 ACTIVE: PR #231 on integration-b-recipe-action-proof-20261104, exact code/test HEAD 0351497e71f148a531e02b800271b21a152bfd3c, CI 41752487759 IN_PROGRESS at last check; DO NOT MERGE until exact-head PASS and latest main/lock/overlap verification. Functional UI→ViewModel→FoodStore→Room device-credential signature + one-shot nonce and synthetic Room/JCA tests added. On next run inspect CI/JUnit; fix Kotlin/tests on SAME branch if FAIL; merge only after PASS. Then close legacy unsigned bypass, connect generator/v1 revalidator eight contexts, production and separate consumption; Android hardware/offline/privacy E2E OPEN. No APK."
+  "lastReleasedAtUtc": "2026-11-04T03:26:06.610Z",
+  "lastReleasedCommit": null,
+  "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
 }
