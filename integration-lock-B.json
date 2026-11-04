@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR240 final CI and recipe v1 offline path",
-  "workingBranch": null,
+  "workingBranch": "integration-b-offline-restriction-selection-20261104",
   "lastReleasedAtUtc": "2026-11-04T16:26:22.768Z",
   "lastReleasedCommit": "1171b0389b9a3ff14e7bffa49623fe01c546f7ab",
   "nextStep": "B1 PR #240: CI 41867138268 on head 1171b038 prüfen, bei PASS mit frischer eigener Rollen- und exklusiver Merge-Sperre aktuellen main-/Fremd-PR-Abgleich und Mergefähigkeit prüfen; bei FAIL im selben Rezeptbranch korrigieren. Danach v1-Revalidator-/Privacy-/Geräte-E2E weiter schließen."
