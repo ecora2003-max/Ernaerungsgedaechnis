@@ -14,16 +14,17 @@ import sys
 from typing import Callable, Iterator
 
 import integration_idle_recovery as recovery
+from integration_codex_lock import CODEX_ID
 
 A_ID = "6ae64ea269448191ac8f0b8a5fd206cb"
 B_ID = "6ae659b2cf2081918f3414dce24a090e"
 
-# Fixed allowlist. A cannot recover B's file, B cannot recover A's;
-# only A or B can acquire/recover the common merge lock.
+# Codex acquisition requires all three locks. Legacy A/B owners remain eligible
+# for conservative recovery only; their automations must remain paused.
 LOCK_SCOPES = {
-    "A": ("integration-lock-A.json", frozenset((A_ID,))),
-    "B": ("integration-lock-B.json", frozenset((B_ID,))),
-    "MERGE": ("integration-merge-lock.json", frozenset((A_ID, B_ID))),
+    "A": ("integration-lock-A.json", frozenset((A_ID, CODEX_ID))),
+    "B": ("integration-lock-B.json", frozenset((B_ID, CODEX_ID))),
+    "MERGE": ("integration-merge-lock.json", frozenset((A_ID, B_ID, CODEX_ID))),
 }
 
 

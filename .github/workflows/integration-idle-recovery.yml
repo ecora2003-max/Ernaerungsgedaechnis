@@ -1,4 +1,4 @@
-name: Parallel A/B and merge lock recovery (30 minutes)
+name: Integration lock recovery (30 minutes)
 
 on:
   pull_request:
@@ -6,6 +6,8 @@ on:
       - "tools/integration_idle_recovery.py"
       - "tools/test_integration_idle_recovery.py"
       - "tools/integration_parallel_lock_recovery.py"
+      - "tools/integration_codex_lock.py"
+      - "tools/test_integration_codex_lock.py"
       - "tools/test_integration_parallel_locks.py"
       - "integration-lock-A.json"
       - "integration-lock-B.json"
@@ -33,6 +35,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools -p "test_integration_idle_recovery.py" -v
           python3 -m unittest discover -s tools -p "test_integration_parallel_locks.py" -v
+          python3 -m unittest discover -s tools -p "test_integration_codex_lock.py" -v
 
   recover:
     if: github.event_name != 'pull_request'

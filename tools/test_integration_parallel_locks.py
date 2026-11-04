@@ -5,7 +5,7 @@ import unittest
 
 import integration_idle_recovery as legacy
 from integration_parallel_lock_recovery import (
-    A_ID, B_ID, LOCK_SCOPES, recover_all, scoped_lock,
+    A_ID, B_ID, CODEX_ID, LOCK_SCOPES, recover_all, scoped_lock,
 )
 
 NOW = datetime(2026, 11, 4, 18, 0, tzinfo=timezone.utc)
@@ -73,16 +73,16 @@ def prepared_store():
 
 class ParallelLockRecoveryTests(unittest.TestCase):
     def test_disjoint_owner_scope_and_explicit_merge_scope(self):
-        self.assertEqual(LOCK_SCOPES["A"][1], frozenset((A_ID,)))
-        self.assertEqual(LOCK_SCOPES["B"][1], frozenset((B_ID,)))
-        self.assertEqual(LOCK_SCOPES["MERGE"][1], frozenset((A_ID, B_ID)))
+        self.assertEqual(LOCK_SCOPES["A"][1], frozenset((A_ID, CODEX_ID)))
+        self.assertEqual(LOCK_SCOPES["B"][1], frozenset((B_ID, CODEX_ID)))
+        self.assertEqual(LOCK_SCOPES["MERGE"][1], frozenset((A_ID, B_ID, CODEX_ID)))
         self.assertEqual(len({p for p, _ in LOCK_SCOPES.values()}), 3)
 
     def test_scope_does_not_change_default_legacy_state(self):
         before = legacy.LOCK_PATH, legacy.ALLOWED_AUTOMATIONS
         with scoped_lock("A"):
             self.assertEqual(legacy.LOCK_PATH, "integration-lock-A.json")
-            self.assertEqual(legacy.ALLOWED_AUTOMATIONS, frozenset((A_ID,)))
+            self.assertEqual(legacy.ALLOWED_AUTOMATIONS, frozenset((A_ID, CODEX_ID)))
         self.assertEqual((legacy.LOCK_PATH, legacy.ALLOWED_AUTOMATIONS), before)
 
     def test_unknown_scope_cannot_write(self):
@@ -112,7 +112,7 @@ class ParallelLockRecoveryTests(unittest.TestCase):
         self.assertEqual(legacy.parse_lock(store[a_path]["text"]).values["state"], "ACTIVE")
 
     def test_merge_lock_can_recover_either_registered_owner(self):
-        for owner in (A_ID, B_ID):
+        for owner in (A_ID, B_ID, CODEX_ID):
             with self.subTest(owner=owner):
                 store = prepared_store()
                 merge_path = LOCK_SCOPES["MERGE"][0]
