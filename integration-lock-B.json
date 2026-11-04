@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 v1 recipe review to FoodStore save and manufacturing/consumption continuation",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-allergen-proposals-20261104",
   "lastReleasedAtUtc": "2026-11-04T19:19:09.522Z",
   "lastReleasedCommit": "3623a67542620ba3d333e342fa9e675f9a8957f5",
   "nextStep": "B1 #242 erfolgreich als 3623a675 gemergt; vollständige JVM/Lint/Schema/Referenz-CI 41894420024 PASS und 8/8 Android API35 Offline/Privacy/Room/Device-Credential E2E 41894420084 PASS auf exakt 6001010. Nächster Funktionsanschluss: v1-Revalidator-Parität und tatsächlicher Android UI→Host→FoodStore Rezeptsave→Herstellung→separater Verzehr mit Wiederanlauf/Privacy; kein B1-INTEGRATED."
