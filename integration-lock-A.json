@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
+  "ownerRunId": null,
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
+  "lastHeartbeatUtc": null,
+  "leaseExpiresAtUtc": null,
+  "task": "A1: Kauf / Bon / privater Preis / Einkaufsvorschlag",
+  "workingBranch": null,
+  "lastReleasedAtUtc": null,
+  "lastReleasedCommit": null,
+  "nextStep": "A: nächste konkrete Einkaufssystem-Funktion und offene PRs fortsetzen."
+}

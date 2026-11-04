@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
+  "ownerRunId": null,
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
+  "lastHeartbeatUtc": null,
+  "leaseExpiresAtUtc": null,
+  "task": "B1: Rezept / Review / FoodStore / Herstellung / separater Verzehr",
+  "workingBranch": null,
+  "lastReleasedAtUtc": null,
+  "lastReleasedCommit": null,
+  "nextStep": "B: offenen PR #237 auf echte Geräte-E2E prüfen/reparieren und B1 fortsetzen."
+}

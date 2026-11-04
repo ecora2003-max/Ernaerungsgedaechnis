@@ -1,10 +1,15 @@
-name: Standalone integration lock recovery (30 minutes)
+name: Parallel A/B and merge lock recovery (30 minutes)
 
 on:
   pull_request:
     paths:
       - "tools/integration_idle_recovery.py"
       - "tools/test_integration_idle_recovery.py"
+      - "tools/integration_parallel_lock_recovery.py"
+      - "tools/test_integration_parallel_locks.py"
+      - "integration-lock-A.json"
+      - "integration-lock-B.json"
+      - "integration-merge-lock.json"
       - "integration-lock.json"
       - ".github/workflows/integration-idle-recovery.yml"
   schedule:
@@ -25,7 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify standalone JSON lock and recovery tests
-        run: python3 -m unittest discover -s tools -p "test_integration_idle_recovery.py" -v
+        run: |
+          python3 -m unittest discover -s tools -p "test_integration_idle_recovery.py" -v
+          python3 -m unittest discover -s tools -p "test_integration_parallel_locks.py" -v
 
   recover:
     if: github.event_name != 'pull_request'
@@ -44,4 +51,4 @@ jobs:
       - name: Restore stale or conservatively recoverable lock
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 tools/integration_idle_recovery.py --repo "$GITHUB_REPOSITORY"
+        run: python3 tools/integration_parallel_lock_recovery.py --repo "$GITHUB_REPOSITORY"

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
+  "ownerRunId": null,
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
+  "lastHeartbeatUtc": null,
+  "leaseExpiresAtUtc": null,
+  "task": "Exklusive Main-Merge- und gemeinsame-Dateien-Integration",
+  "workingBranch": null,
+  "lastReleasedAtUtc": null,
+  "lastReleasedCommit": null,
+  "nextStep": "A/B: vor shared-file-Änderung oder Merge beide Sperren-Eigentümer verifizieren."
+}
