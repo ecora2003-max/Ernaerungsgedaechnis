@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 Offline-Generator v1-Revalidator und Küchen-UI End-to-End",
-  "workingBranch": null,
+  "workingBranch": "integration-b-offline-generator-20261104",
   "lastReleasedAtUtc": "2026-11-04T05:24:01.818Z",
   "lastReleasedCommit": "34e93bbbf3c2d4dc226a77fbe01a7619216f8c69",
   "nextStep": "B1: auf main nach PR #232 (574 JVM, 7 Room, CI 41778289440 PASS) den deterministischen Offline-Generator als v1 recipe.draft an die Küchen-Import-/Review-UI anschließen; acht Flagkombinationen und Revalidator/Allergen-Gates testen, danach Android-/Offline-/Privacy-E2E."
