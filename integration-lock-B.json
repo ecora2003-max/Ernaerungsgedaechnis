@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR242 Android emulator E2E CI und Recipe Save-Verzehr-Anschluss",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-device-privacy-20261104",
   "lastReleasedAtUtc": "2026-11-04T18:15:39.240Z",
   "lastReleasedCommit": "6147637e482de48e5e66d82900390bb9eb0a0216",
   "nextStep": "B1: PR #240 nach PASS 41877450079 als f4e0c7a gemergt. PR #242 (Branch integration-b-recipe-device-privacy-20261104, HEAD 6147637e) testet echten Android-Offline-FOOD-Ausschluss, Keystore-NoBackup-Checkpoint und Widerruf bei Portionsänderung. Exakte CI 41885287797 und Android-Emulator-E2E 41885287796 prüfen; bei FAIL gezielt denselben Branch korrigieren, bei PASS frische B- und Merge-Sperren, main-/Fremdpfad-/CI-Abgleich, dann #242 mergen. Danach B1 v1-Revalidator-/Context-/FoodStore-Geräteparität fortsetzen; kein vollständiger INTEGRATED-Status."
