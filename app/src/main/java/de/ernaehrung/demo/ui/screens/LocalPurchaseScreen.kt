@@ -17,7 +17,7 @@ internal fun LocalPurchaseScreen(data: LocalDataState, blocked: Boolean, operati
     var end by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     Heading("Käufe und Ausgaben", "Manuelle Testereignisse · EUR")
     Hint("Ein bestätigter bezahlter Einkauf zählt einmal als Ausgabe. Belegpositionen werden getrennt ins Lager gebucht. Leere Beträge und Kaufdaten bleiben unbekannt.", Sage)
-    key(operationId) { PurchaseEditor(guard, operation, model) }
+    key(operationId) { PurchaseEditor(data.versions, guard, operation, model) }
     Field("Ausgaben ab JJJJ-MM-TT", start, { start = it })
     Field("Ausgaben bis JJJJ-MM-TT", end, { end = it })
     Action("Ausgabenzeitraum anzeigen", true) { model.showExpenses(start, end) }
@@ -43,13 +43,14 @@ internal fun LocalPurchaseScreen(data: LocalDataState, blocked: Boolean, operati
 }
 
 @Composable
-private fun PurchaseEditor(blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
+private fun PurchaseEditor(versions: List<ProductVersionEntity>, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
     var merchant by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf("") }
     var total by rememberSaveable { mutableStateOf("") }
     var originals by rememberSaveable { mutableStateOf(listOf("")) }
     var names by rememberSaveable { mutableStateOf(listOf("")) }
     var prices by rememberSaveable { mutableStateOf(listOf("")) }
+    var versionIds by rememberSaveable { mutableStateOf(listOf("")) }
     var reason by rememberSaveable { mutableStateOf("") }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     Fold("Bezahlten Einkauf erfassen") {
@@ -62,9 +63,16 @@ private fun PurchaseEditor(blocked: State<Boolean>, operation: State<String>, mo
             Field("Originalbontext ${index + 1} · nur wenn lesbar", originals[index], { text -> originals = originals.toMutableList().apply { this[index] = text }; confirmed = false })
             Field("Eigene Bezeichnung ${index + 1} · optional", names[index], { text -> names = names.toMutableList().apply { this[index] = text }; confirmed = false })
             Field("Positionsbetrag ${index + 1} in EUR · optional", prices[index], { text -> prices = prices.toMutableList().apply { this[index] = text }; confirmed = false })
+            IdPicker("Produktversion Belegposition ${index + 1}",
+                listOf("" to "Produktversion noch ungeklärt") + versions.map {
+                    it.id to "${it.name} · v${it.revision} · ${it.id.take(8)}"
+                }, versionIds[index]) { selected ->
+                versionIds = versionIds.toMutableList().apply { this[index] = selected }
+                confirmed = false
+            }
         }
         Action("Weitere Belegposition", true) {
-            if (originals.size < 200) { originals = originals + ""; names = names + ""; prices = prices + ""; confirmed = false }
+            if (originals.size < 200) { originals = originals + ""; names = names + ""; prices = prices + ""; versionIds = versionIds + ""; confirmed = false }
         }
         Text("Leere Positionsfelder erzeugen keine Position. Produkt, nutzbare Menge und Lagerort können später geklärt werden.")
         Field("Grund / Herkunft der Kauferfassung", reason, { reason = it; confirmed = false })
@@ -72,10 +80,10 @@ private fun PurchaseEditor(blocked: State<Boolean>, operation: State<String>, mo
         SaveButton("Bezahlten Einkauf speichern", blocked.value) {
             val key = operation.value; val accepted = confirmed
             val shop = merchant.trim().takeIf(String::isNotEmpty); val day = date.trim().takeIf(String::isNotEmpty)
-            val paid = total; val why = reason; val raw = originals.toList(); val labels = names.toList(); val costs = prices.toList()
+            val paid = total; val why = reason; val raw = originals.toList(); val labels = names.toList(); val costs = prices.toList(); val chosenVersions = versionIds.toList()
             model.save(key) {
                 val lines = raw.indices.filter { raw[it].isNotBlank() || labels[it].isNotBlank() || costs[it].isNotBlank() }.map {
-                    PurchaseLineInput(raw[it].takeIf(String::isNotBlank), labels[it].takeIf(String::isNotBlank), totalCents = optionalCents(costs[it]))
+                    PurchaseLineInput(raw[it].takeIf(String::isNotBlank), labels[it].takeIf(String::isNotBlank), chosenVersions[it].takeIf(String::isNotEmpty), totalCents = optionalCents(costs[it]))
                 }
                 savePurchase(key, PurchaseInput(shop, day, optionalCents(paid), lines, why), accepted)
             }
@@ -131,6 +139,9 @@ private fun PurchaseHistory(purchase: PurchaseView, data: LocalDataState, blocke
             Text("${line.line.interpretedName ?: "Bezeichnung unbekannt"} · Position ${line.line.id.take(8)}")
             line.line.originalText?.let { Text("Original: $it") }
             Text("Positionsbetrag: ${line.line.totalCents?.let(Money::format) ?: "Ungeklärt"} · wird nicht zusätzlich als Ausgabe gezählt")
+            if (value.cancellation == null && line.line.versionId != null) {
+                HistoricalPaidPriceEditor(value.event.operationId, line.line, blocked, operation, model)
+            }
             val stockId = line.booking?.operationId ?: line.line.stockOperationId
             if (stockId != null) {
                 Text("Lagerzugang: $stockId${if (line.reversedBy != null) " · storniert, keine erneute Buchung dieser Position" else " · bereits gebucht"}")
@@ -138,6 +149,54 @@ private fun PurchaseHistory(purchase: PurchaseView, data: LocalDataState, blocke
             } else if (value.cancellation == null) PurchaseStockEditor(line.line, value.receipt.purchasedOn, data, blocked, operation, model)
         } }
         if (value.cancellation == null) PurchaseReversalEditor(value.event.operationId, true, blocked, operation, model)
+    }
+}
+
+/** A separately confirmed private receipt-line price, never a live offer or stock event. */
+@Composable
+private fun HistoricalPaidPriceEditor(purchaseOperationId: String, line: ReceiptLineEntity,
+    blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
+    val versionId = line.versionId ?: return
+    var units by rememberSaveable { mutableStateOf("") }
+    var discount by rememberSaveable { mutableStateOf("") }
+    var deposit by rememberSaveable { mutableStateOf("") }
+    var discountChecked by rememberSaveable { mutableStateOf(false) }
+    var excludesDeposit by rememberSaveable { mutableStateOf(false) }
+    var unitsChecked by rememberSaveable { mutableStateOf(false) }
+    var productChecked by rememberSaveable { mutableStateOf(false) }
+    var reason by rememberSaveable { mutableStateOf("") }
+    var confirmed by rememberSaveable { mutableStateOf(false) }
+    val suffix = line.id.take(8)
+    Fold("Privaten Bezahlpreis prüfen $suffix") {
+        Text("Belegposition $suffix · Produktversion ${versionId.take(8)} · Positionsbetrag ${line.totalCents?.let(Money::format) ?: "unbekannt"}")
+        Hint("Nur tatsächlich bezahlte Lebensmittelpositionen. Stückzahl, Rabatte und Pfand getrennt am Originalbeleg prüfen. Dies ist kein aktuelles Händlerangebot.")
+        Field("Bezahlte Einheiten $suffix", units, { units = it; confirmed = false })
+        Field("Zugeordneter Rabatt in EUR $suffix", discount, { discount = it; confirmed = false })
+        Field("Pfand je Einheit in EUR · optional $suffix", deposit, { deposit = it; confirmed = false })
+        Check("Rabattzuordnung vollständig geprüft $suffix", discountChecked) { discountChecked = it; confirmed = false }
+        Check("Positionsbetrag ohne Pfand geprüft $suffix", excludesDeposit) { excludesDeposit = it; confirmed = false }
+        Check("Bezahlte Einheiten geprüft $suffix", unitsChecked) { unitsChecked = it; confirmed = false }
+        Check("Lebensmittel und Produktversion geprüft $suffix", productChecked) { productChecked = it; confirmed = false }
+        Field("Grund der privaten Preisbestätigung $suffix", reason, { reason = it; confirmed = false })
+        Check("Privaten historischen Preis ausdrücklich bestätigen $suffix", confirmed) { confirmed = it }
+        SaveButton("Privaten Bezahlpreis speichern $suffix", blocked.value) {
+            val key = operation.value
+            val input = PaidPriceBasisReview(
+                purchaseOperationId = purchaseOperationId,
+                receiptLineId = line.id,
+                expectedProductVersionId = versionId,
+                purchaseUnits = units.trim().toLongOrNull(),
+                allocatedDiscountCents = optionalCents(discount),
+                depositPerUnitCents = optionalCents(deposit),
+                discountReconciled = discountChecked,
+                amountExcludesDeposit = excludesDeposit,
+                unitsConfirmed = unitsChecked,
+                foodAndProductConfirmed = productChecked,
+                basisReason = reason.trim()
+            )
+            val accepted = confirmed
+            model.save(key) { saveHistoricalPaidPrice(key, input, accepted) }
+        }
     }
 }
 
