@@ -1,5 +1,12 @@
 # Integration: aktueller Wiedereinstieg
 
+## Rezepte v1 – tatsächliche Offline-Laufzeit-Vertragsprüfung (04.11.2026)
+
+- Branch `codex-recipe-v1-runtime-contract-20261104`: vollständiges unverändertes v1-Schema als lokale Java-Ressource eingebunden (Blob `bedde4677342817fe6b883962c8dfbbd60100072`); die Laufzeit prüft vor jeder Import-/FoodStore-Revalidierung sämtliche darin verwendeten Assertions einschließlich verschachtelter/optionaler Felder, lokaler Referenzen und Formate. Kein Netzresolver und kein beliebiger externer Schemadienst; ein falscher Blob oder nicht unterstützte Schema-Keywords scheitern geschlossen. Zusätzliche Host-Semantik, Herkunft und authentifizierter Save bleiben Pflicht.
+- Gemeinsame **70 Vektoren (27 gültig/43 ungültig)** einschließlich aller acht Kontextflags gegen Python Draft202012Validator/FormatChecker und Kotlin geprüft; **37/37 gezielte JVM-Tests, 0 Fehler/Skips**, Android-Testkompilierung PASS. Der erste Lauf reproduzierte sieben Generatorfehler: `OffsetDateTime.toString()` ließ bei glatten Minuten Sekunden weg. Generator/Context-Metadaten jetzt RFC3339-konform mit erhaltener Präzision, alle 27 Kombinationen bestehen den wirklichen Import.
+- Volle App-/Room-/Lint-/Schema-/Referenz-CI und echte Android-Ressourcen-/Offline-Prüfung auf finalem Head noch offen. Keine Vertragsversion, Migration, Buchung oder externe Übertragung geändert. Nächster funktionaler Anschluss: v1-Generator/Revalidator-Parität und unabhängig berechnete Nährwertvorschau vor dem Save vervollständigen.
+- #246 bleibt Draft: App-CI 41923828103 auf `23df4636` PASS; Geräte-CI 41923828169 scheiterte vor dem App-Ablauf an unfokussiertem System-PIN-Feld (Original-XML/Logcat/Screenshot geprüft). Eigene isolierte Korrektur `31a2cf81` bedient die tatsächlichen System-Ziffern-/Enter-Tasten statt wirkungsloser Texteingabe; im bestehenden Rezept-PR gesichert, neue exakte Geräte-CI erforderlich.
+
 ## Einkaufsintegration gesichert, Rezept-Gesamtprüfung (04.11.2026)
 
 - **PR #244 integriert als `31a3945a`**, geprüfter Head `64e5e98d`: App-CI 41921993140 PASS (**606 JVM, 7 Room-Migrationen**, Lint, Schema, gepinnte Python-/v1-Gates), echte API35-Offline-Geräte-CI 41921993124 PASS; Original-XML **9/9 Tests, 0 Fehler/Skips** geprüft. Neue Einkaufskette von OCR über bestätigten Kauf, Preis/Lager und Budgetvorschau bis SQLite-Neuöffnung/Retry/Storno bestanden. System-Kamera-/Picker-Dialog und vollständige Modulparität weiter offen, keine Gesamtfreigabe oder Download-APK.

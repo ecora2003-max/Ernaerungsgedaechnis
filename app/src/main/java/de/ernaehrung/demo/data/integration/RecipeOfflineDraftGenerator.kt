@@ -1,6 +1,7 @@
 package de.ernaehrung.demo.data.integration
 
 import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Offline recipe.draft v1 producer adapted from the deterministic three-component
@@ -133,8 +134,10 @@ internal object RecipeOfflineDraftGenerator {
             "Mengenbasis und Roh-/Garzustand müssen unabhängig bestätigt werden."
         ).joinToString(",") { quoted(it) }
         val title = "${grain.label} mit ${legume.label} und ${vegetable.label}"
-        val contextMeta = if (needsContext) ",\"inputsSnapshotAt\":${quoted(requireNotNull(trustedSnapshotAt).toString())}" else ""
-        return """{"contractVersion":"1.0.0-draft","messageType":"recipe.draft","meta":{"producer":"EG-Rezept-KI-offline-host","traceId":${quoted(draftId)},"createdAt":${quoted(issuedAt.toString())}$contextMeta},"payload":{"draftId":${quoted(draftId)},"title":${quoted(title)},"portionCount":$portions,"ingredients":[$ingredients],"steps":[$steps],"flags":{"considerStock":${flags.considerStock},"considerShopping":${flags.considerShopping},"considerOffers":${flags.considerOffers}},"warnings":[$warnings],"status":"DRAFT"}}"""
+        // OffsetDateTime.toString() omits zero seconds; RFC3339 requires them.
+        val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+        val contextMeta = if (needsContext) ",\"inputsSnapshotAt\":${quoted(requireNotNull(trustedSnapshotAt).format(formatter))}" else ""
+        return """{"contractVersion":"1.0.0-draft","messageType":"recipe.draft","meta":{"producer":"EG-Rezept-KI-offline-host","traceId":${quoted(draftId)},"createdAt":${quoted(issuedAt.format(formatter))}$contextMeta},"payload":{"draftId":${quoted(draftId)},"title":${quoted(title)},"portionCount":$portions,"ingredients":[$ingredients],"steps":[$steps],"flags":{"considerStock":${flags.considerStock},"considerShopping":${flags.considerShopping},"considerOffers":${flags.considerOffers}},"warnings":[$warnings],"status":"DRAFT"}}"""
     }
 
     private fun quoted(value: String): String = buildString {

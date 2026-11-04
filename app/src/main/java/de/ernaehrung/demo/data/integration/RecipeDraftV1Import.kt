@@ -9,8 +9,8 @@ import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
  * Narrow, fail-closed v1 recipe.draft JSON boundary. Never trusts claimed confirmation,
  * nutrition, allergens, raw/cooked state or booking status from a generator.
  *
- * This checks the consumed v1 fields and additional host rules, but is NOT a general
- * JSON-Schema 2020-12 validator. Full pinned-schema validation remains a release gate.
+ * The pinned contract is checked at runtime before additional host semantics.
+ * Optional claims remain untrusted even when structurally schema-valid.
  */
 internal object RecipeDraftV1Import {
     data class Imported(
@@ -133,6 +133,7 @@ internal object RecipeDraftV1Import {
     fun read(json: String, reviewedStates: Map<String, Gate.State>,
              now: OffsetDateTime): Imported {
         val message = RecipeDraftBoundedJson.decode(json)
+        RecipeDraftContractV1.requireValid(message)
         require(message.keys == setOf("contractVersion", "messageType", "meta", "payload")) {
             "unexpected v1 envelope fields"
         }

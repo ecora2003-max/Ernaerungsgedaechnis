@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - 'app/src/androidTest/**'
+      - 'app/src/main/java/de/ernaehrung/demo/data/integration/Recipe*.kt'
+      - 'app/src/main/resources/integration/recipe-contract-v1.json'
       - 'app/build.gradle.kts'
       - '.github/workflows/recipe-android-device.yml'
       - 'tools/run_android_device_tests.sh'
