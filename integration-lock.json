@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: PR #230 exact-head CI verification and production handoff, then FoodStore user-action attestation",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-production-handoff-20261104",
   "lastReleasedAtUtc": "2026-11-03T23:16:25.590Z",
   "lastReleasedCommit": "c4b5957722c31146a837c26e26050694ccfff326",
   "nextStep": "B1 ACTIVE: continue existing code PR #230 (integration-b-recipe-production-handoff-20261104) on exact head c4b5957722c31146a837c26e26050694ccfff326; inspect CI run 41737431370 and fix any Kotlin/Compose/Robolectric failures; merge only if exact-head PASS and main/lock/overlap rechecked. Then implement independently verifiable FoodStore-side user-action attestation and generator/v1 revalidator, manufacturing and separate consumption Android/offline/privacy E2E. No device tests yet."
