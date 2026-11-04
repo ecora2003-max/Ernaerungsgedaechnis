@@ -51,9 +51,20 @@ class RecipeDeviceCredentialUiTest {
             keyguard.isDeviceSecure)
     }
 
+    private fun awaitSystemCredentialActivity(device: UiDevice) {
+        val appPackage = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        // The external credential Activity starts asynchronously. Pressing Back before
+        // it is foregrounded can close our own Activity and leave no Compose hierarchy.
+        compose.waitUntil(15_000) {
+            val foreground = device.currentPackageName
+            foreground != null && foreground != appPackage
+        }
+        device.waitForIdle()
+    }
+
     private fun enterRealSystemPin() {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        device.waitForIdle()
+        awaitSystemCredentialActivity(device)
         // Android's system credential Activity, not an app-owned dialog.
         device.executeShellCommand("input text 2468")
         device.pressEnter()
@@ -131,8 +142,21 @@ class RecipeDeviceCredentialUiTest {
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        device.waitForIdle()
+        awaitSystemCredentialActivity(device)
         device.pressBack()
+        // Wait for the external Activity to finish and Compose to resume. A direct
+        // assertion races the ActivityResult callback and may see no app hierarchy.
+        compose.waitUntil(20_000) {
+            try {
+                compose.onNodeWithText("Gerätebestätigung abgebrochen", substring = true)
+                    .assertExists()
+                true
+            } catch (_: AssertionError) {
+                false
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
         compose.onNodeWithText("Gerätebestätigung abgebrochen", substring = true)
             .assertExists()
         compose.runOnIdle { assertEquals(0, callbacks.get()) }
