@@ -7,6 +7,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -226,6 +228,84 @@ class RecipeOnDeviceEndToEndTest {
         } finally {
             db.close()
             target.deleteDatabase(databaseName)
+        }
+    }
+
+    @Test fun offlineRestrictionServingEditRevokesEncryptedDraftOnRealAndroid() {
+        val target = InstrumentationRegistry.getInstrumentation().targetContext
+        val unique = UUID.randomUUID().toString()
+        val alias = "eg.recipe.device.edit." + unique
+        val fileName = "recipe-device-edit-" + unique
+        val checkpoint = PrivateRecipeDraftEncryptedImportCheckpoint(
+            target, System::currentTimeMillis,
+            { PrivateRecipeDraftEncryptedImportCheckpoint.androidKey(alias) },
+            fileName
+        )
+        val privateFile = File(target.noBackupFilesDir, fileName)
+        var reviews = 0
+        try {
+            compose.runOnUiThread {
+                compose.activity.setContent {
+                    DemoTheme {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                            RecipeDraftImportPanel(
+                                catalog = emptyList(),
+                                checkpointStore = checkpoint,
+                                evidenceCheckpointStore = object :
+                                    RecipeDraftEncryptedEvidenceCheckpoint {
+                                    override fun save(form: RecipeDraftEvidenceForm) = Unit
+                                    override fun load(): RecipeDraftEvidenceForm? = null
+                                    override fun discard() = Unit
+                                },
+                                onInvalidate = {},
+                                onDiscardPending = {},
+                                onReview = { _, _, _, _ -> reviews++ }
+                            )
+                        }
+                    }
+                }
+            }
+            compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
+                .performClick()
+            compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+                .performTextReplacement("FOOD:dry-rice")
+            compose.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+            compose.onNodeWithTag("recipe_draft_json")
+                .assertTextContains("dry-quinoa", substring = true)
+            compose.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+
+            // The user opts in to encrypted retention. No Room consent or recipe
+            // write is possible merely because a proposal was generated or saved.
+            compose.onNodeWithTag("recipe_draft_encrypted_save")
+                .performScrollTo().performClick()
+            compose.waitForIdle()
+            assertNotNull(checkpoint.load())
+            assertTrue(privateFile.exists())
+            assertFalse(privateFile.readText(Charsets.ISO_8859_1).contains("dry-quinoa"))
+
+            // A new serving count revokes the old JSON and encrypted checkpoint,
+            // even if the same FOOD exclusion remains selected.
+            compose.onNodeWithTag("recipe_offline_portions").performScrollTo()
+                .performTextReplacement("3")
+            compose.onNodeWithText("Entwurf:", substring = true).assertDoesNotExist()
+            compose.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+            compose.waitForIdle()
+            assertNull(checkpoint.load())
+            assertFalse(privateFile.exists())
+            compose.runOnIdle { assertEquals(0, reviews) }
+
+            compose.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+            compose.onNodeWithText("3 Soll-Portionen", substring = true).assertExists()
+            compose.onNodeWithTag("recipe_draft_json")
+                .assertTextContains("dry-quinoa", substring = true)
+            compose.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+            compose.runOnIdle { assertEquals(0, reviews) }
+        } finally {
+            checkpoint.discard()
+            KeyStore.getInstance("AndroidKeyStore").apply {
+                load(null)
+                if (containsAlias(alias)) deleteEntry(alias)
+            }
         }
     }
 
