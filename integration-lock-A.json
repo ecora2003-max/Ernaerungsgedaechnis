@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "EG Integrator A – Einkaufssystem, 2026-11-04 16:41 CET",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-mw2ab9yt-vu57kh1owo",
-  "acquiredAtUtc": "2026-11-04T15:41:39.509Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 PR #239 CI/Code-Korrektur, FoodStore-Kauf zu privater Preishistorie",
-  "workingBranch": "integration-a-paid-price-purchase-ui-20261104",
-  "lastReleasedAtUtc": "2026-11-04T14:44:02.521Z",
-  "lastReleasedCommit": "5e43ab071ddfe8c556a4ea0077186ff24131ce64",
-  "nextStep": "A1 PR #239: exact-head CI 41850424588/JUnit prüfen, ggf. Kotlin-/Compose-Fehler auf demselben Branch korrigieren; nur bei PASS und neuem Merge-Lock mergen. Danach echte Kamera/OCR-/Offline-/Privacy-Geräte-E2E."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T15:56:15.853Z",
+  "lastReleasedCommit": "ec330d557e796e1d53e3e267899ea2933bba3932",
+  "nextStep": "A1 PR #239: exact-head CI 41860960943 final conclusion/JUnit prüfen (Logs 592/592, 7 Migrationen, Workflow noch IN_PROGRESS). Bei SUCCESS und nach frischem eigenen Rollen- und Merge-Lock, main-/Fremd-PR-Abgleich, PR mergen; sonst auf gleichem Branch korrigieren. Android/OCR/Offline/Privacy-Geräte-E2E bleiben offen."
 }
