@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-run-20261104T1213Z-kq9f9b",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-2026-11-04T12:13:41.464Z-hbnfxoxss4",
-  "acquiredAtUtc": "2026-11-04T12:13:41.464Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "B1 PR #237: fix credential confirmation emulator E2E on existing branch",
-  "workingBranch": "integration-b-credential-ui-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T11:23:59.263Z",
-  "lastReleasedCommit": "81c4da16abd5d8f26de25cbe713247b794fb32e4",
-  "nextStep": "B1 PR #237 head 81c4da16: routine CI 41819611451 PASS; emulator 41819611484 FAIL 2/7 credential tests (PIN input before SystemUI editor ready; first Back hides keyboard). PR body updated with logcat evidence. Repair real credential editor synchronization and cancellation in existing PR; rerun both CI on exact HEAD, merge only PASS. v1 revalidator parity and full privacy E2E remain OPEN."
+  "task": "Automatisch wiederhergestellt nach mindestens 30 Minuten Inaktivitaet",
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T13:50:37.889Z",
+  "lastReleasedCommit": "d9b6598112b623331ccf59cb81da18562a0da37e",
+  "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
 }
