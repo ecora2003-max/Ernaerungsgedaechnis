@@ -3,6 +3,7 @@ package de.ernaehrung.demo
 import android.app.KeyguardManager
 import android.content.Context
 import androidx.activity.compose.setContent
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -105,7 +106,7 @@ class RecipeDeviceCredentialUiTest {
             proof, operationKey, digest, System.currentTimeMillis()))
         assertFalse("A second save attempt cannot replay the same action nonce",
             nonceGate.consume(proof, operationKey, digest, System.currentTimeMillis()))
-        compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        compose.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
         compose.runOnIdle { assertEquals(1, callbacks.get()) }
     }
 
