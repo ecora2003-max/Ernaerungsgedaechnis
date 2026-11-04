@@ -10,7 +10,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import de.ernaehrung.demo.data.integration.RecipeDraftHostGate as Gate
 import de.ernaehrung.demo.data.local.AndroidRecipeActionProof
 import de.ernaehrung.demo.data.local.RecipeActionNonceGate
@@ -65,9 +67,38 @@ class RecipeDeviceCredentialUiTest {
     private fun enterRealSystemPin() {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         awaitSystemCredentialActivity(device)
-        // Android's system credential Activity, not an app-owned dialog.
+        // Foreground package alone does not mean the SystemUI/Settings PIN editor
+        // has been inflated and focused. Never send blind keystrokes to the app.
+        val pinEditor = device.wait(
+            Until.findObject(By.clazz("android.widget.EditText")), 15_000L
+        ) ?: device.wait(
+            Until.findObject(By.res("com.android.settings", "password_entry")), 5_000L
+        )
+        assertNotNull("Real Android credential editor did not become accessible", pinEditor)
+        requireNotNull(pinEditor).click()
+        device.waitForIdle()
+        // ADB inputs actual digits into the focused OS-owned credential editor;
+        // it does not forge an Activity result or bypass Android Keystore.
         device.executeShellCommand("input text 2468")
         device.pressEnter()
+    }
+
+    private fun cancelRealSystemCredential(device: UiDevice) {
+        val appPackage = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        awaitSystemCredentialActivity(device)
+        // Prefer the OS cancel control. If absent, the first Back can dismiss
+        // only the IME, so send a second Back only while the OS remains foreground.
+        val cancel = device.findObject(By.text("Cancel"))
+            ?: device.findObject(By.text("CANCEL"))
+            ?: device.findObject(By.text("Abbrechen"))
+        if (cancel != null) {
+            cancel.click()
+        } else {
+            device.pressBack()
+            device.waitForIdle(1_500L)
+            if (device.currentPackageName != appPackage) device.pressBack()
+        }
+        compose.waitUntil(15_000) { device.currentPackageName == appPackage }
     }
 
     @Test fun systemCredentialSuccessSignsOnlyTheLiveOperationAndNonceIsOneShot() {
@@ -142,8 +173,7 @@ class RecipeDeviceCredentialUiTest {
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        awaitSystemCredentialActivity(device)
-        device.pressBack()
+        cancelRealSystemCredential(device)
         // Wait for the external Activity to finish and Compose to resume. A direct
         // assertion races the ActivityResult callback and may see no app hierarchy.
         compose.waitUntil(20_000) {
