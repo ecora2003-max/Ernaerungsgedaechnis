@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-codex-session-1793827977234-g7dklubc71k-integration-merge-lock.json",
   "acquiredAtUtc": "2026-11-04T21:32:57.736Z",
-  "lastHeartbeatUtc": "2026-11-04T22:36:05.569Z",
+  "lastHeartbeatUtc": "2026-11-04T22:43:12.061Z",
   "leaseExpiresAtUtc": null,
   "task": "User-authorized Codex exclusive takeover; bootstrap tested owner policy, then complete A1/B1 E2E",
-  "workingBranch": "codex-recipe-preview-nutrition-20261104",
+  "workingBranch": "codex-recipe-attestation-e2e-20261104",
   "lastReleasedAtUtc": "2026-11-04T21:16:53.762Z",
   "lastReleasedCommit": "ce662fc61fd56cce341020f67e265bbe2dc0457b",
   "nextStep": "B1 PR #243 merged after exact-head CI 41913413053 PASS (604 JVM/7 Room). Next: actual Android API35 allergen selection, offline/restart/privacy E2E; complete v1 generator/revalidator parity and recipe-save->production->separate-consumption gates."
