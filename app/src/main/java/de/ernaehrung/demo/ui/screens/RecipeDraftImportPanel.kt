@@ -272,22 +272,25 @@ internal fun RecipeDraftImportPanel(
             }
         }
         rankingHint?.let { Text(it, Modifier.testTag("recipe_context_ranking_hint")) }
+        fun invalidateGeneratedDraft() {
+            // A new serving count or exclusion must not retain an old JSON
+            // preview, evidence checkpoint or pending FoodStore consent.
+            invalidate()
+            checkpoint.discard()
+            evidenceCheckpoint.discard()
+            json = ""
+            imported = null
+            reviewed = false
+            versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+            allergenAnswers = emptyMap(); restrictionsText = ""
+            rankingHint = null
+            error = null
+        }
         OutlinedTextField(
             value = offlineRestrictionsText,
             onValueChange = { next ->
                 if (next.length <= 512 && next != offlineRestrictionsText) {
-                    // A changed exclusion must not leave a previously reviewed
-                    // draft or pending FoodStore consent looking applicable.
-                    invalidate()
-                    checkpoint.discard()
-                    evidenceCheckpoint.discard()
-                    json = ""
-                    imported = null
-                    reviewed = false
-                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); restrictionsText = ""
-                    rankingHint = null
-                    error = null
+                    invalidateGeneratedDraft()
                     offlineRestrictionsText = next
                 }
             },
@@ -299,7 +302,11 @@ internal fun RecipeDraftImportPanel(
         OutlinedTextField(
             value = offlinePortions,
             onValueChange = { next ->
-                if (next.length <= 4 && next.all(Char::isDigit)) offlinePortions = next
+                if (next.length <= 4 && next.all(Char::isDigit) &&
+                    next != offlinePortions) {
+                    invalidateGeneratedDraft()
+                    offlinePortions = next
+                }
             },
             modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
             label = { Text("Portionen für Offline-Vorschlag (1–1000)") },

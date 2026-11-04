@@ -378,6 +378,58 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals(0, reviews) }
     }
 
+    @Test fun changingPortionsRevokesGeneratedDraftAndOptInCheckpoint() {
+        val checkpoint = object : RecipeDraftEncryptedImportCheckpoint {
+            var saved: String? = null
+            override fun save(json: String) { saved = json }
+            override fun load(): String? = saved
+            override fun discard() { saved = null }
+        }
+        var invalidations = 0
+        var reviews = 0
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
+                            onInvalidate = { invalidations++ },
+                            onDiscardPending = {},
+                            onReview = { _, _, _, _ -> reviews++ })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
+        rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(1, invalidations)
+            assertEquals(true, checkpoint.saved?.contains("recipe.draft"))
+        }
+
+        // Appending a digit changes the requested portion count from 2 to 23.
+        // No previous draft, review or opt-in encrypted JSON may remain valid.
+        rule.onNodeWithTag("recipe_offline_portions").performScrollTo()
+            .performTextInput("3")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.onNodeWithTag("recipe_draft_json").assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.EditableText, AnnotatedString("")
+            )
+        )
+        rule.runOnIdle {
+            assertEquals(2, invalidations)
+            assertEquals(null, checkpoint.saved)
+            assertEquals(0, reviews)
+        }
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains(
+            "\"portionCount\":23", substring = true
+        )
+        rule.runOnIdle { assertEquals(3, invalidations) }
+    }
+
     @Test fun unknownAllergenExclusionNeverProducesAnUnverifiedOfflineDraft() {
         var reviews = 0
         rule.runOnUiThread {
