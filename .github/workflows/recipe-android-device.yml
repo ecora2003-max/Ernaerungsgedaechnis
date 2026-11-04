@@ -1,4 +1,4 @@
-name: Recipe Android device E2E (offline)
+name: Android device E2E (offline)
 on:
   workflow_dispatch:
   pull_request:
@@ -38,7 +38,7 @@ jobs:
         run: |
           test -e /dev/kvm
           sudo chmod 666 /dev/kvm
-      - name: Execute Android UI, Room restart and bundled OCR offline
+      - name: Execute shopping/recipe UI, Room restart and bundled OCR offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 35
