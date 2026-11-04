@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-scheduled-20261104T1908Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261104190858444-517295228",
-  "acquiredAtUtc": "2026-11-04T19:08:58.444Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR242 Android emulator E2E CI und Recipe Save-Verzehr-Anschluss",
-  "workingBranch": "integration-b-recipe-device-privacy-20261104",
-  "lastReleasedAtUtc": "2026-11-04T18:15:39.240Z",
-  "lastReleasedCommit": "6147637e482de48e5e66d82900390bb9eb0a0216",
-  "nextStep": "B1: PR #240 nach PASS 41877450079 als f4e0c7a gemergt. PR #242 (Branch integration-b-recipe-device-privacy-20261104, HEAD 6147637e) testet echten Android-Offline-FOOD-Ausschluss, Keystore-NoBackup-Checkpoint und Widerruf bei Portionsänderung. Exakte CI 41885287797 und Android-Emulator-E2E 41885287796 prüfen; bei FAIL gezielt denselben Branch korrigieren, bei PASS frische B- und Merge-Sperren, main-/Fremdpfad-/CI-Abgleich, dann #242 mergen. Danach B1 v1-Revalidator-/Context-/FoodStore-Geräteparität fortsetzen; kein vollständiger INTEGRATED-Status."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T19:19:09.522Z",
+  "lastReleasedCommit": "3623a67542620ba3d333e342fa9e675f9a8957f5",
+  "nextStep": "B1 #242 erfolgreich als 3623a675 gemergt; vollständige JVM/Lint/Schema/Referenz-CI 41894420024 PASS und 8/8 Android API35 Offline/Privacy/Room/Device-Credential E2E 41894420084 PASS auf exakt 6001010. Nächster Funktionsanschluss: v1-Revalidator-Parität und tatsächlicher Android UI→Host→FoodStore Rezeptsave→Herstellung→separater Verzehr mit Wiederanlauf/Privacy; kein B1-INTEGRATED."
 }
