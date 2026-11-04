@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integrator-B-run-11-2026-11-04T09:06:29.997Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1w73l9-dh31ycz2wyv",
-  "acquiredAtUtc": "2026-11-04T09:06:29.997Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: full pinned recipe v1 revalidator parity and Android offline/privacy end-to-end",
-  "workingBranch": "integration-b-android-device-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T08:17:52.367Z",
-  "lastReleasedCommit": "7643814e35a4122faa28529a2d48e61e89d1ed79",
-  "nextStep": "B1: PR #235 merged on exact CI 41797573350 PASS (589 JVM, 7 Room migrations, lint, v1 schema, Python references, Android test compilation). Independently mapped current FoodType/product versions now rank offline candidates using bound Room stock/shopping quantities, without allergen/cooking-state clearance or bookings. Next execute actual Android emulator/device UI, offline/restart and privacy E2E for full recipe→save→production→separate consumption; full pinned revalidator parity remains open. Do not mark INTEGRATED."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T09:23:03.624Z",
+  "lastReleasedCommit": "6ec7dd9501cd7fec1eba77f6e73091ac01b6e870",
+  "nextStep": "B1: PR #236 merged as 6ec7dd9501cd7fec1eba77f6e73091ac01b6e870 after exact-head CI 41805713463 PASS (589 JVM, 7 Room migrations, lint, pinned schema/Python, Android test compile) and real Android API35 offline emulator CI 41805713460 PASS (5/5 instrumented tests: 3 recipe/Room/Keystore and 2 bundled OCR/barcode, Wi-Fi/data disabled, restart/idempotency/no-backup/revocation). Synthetic JCA test verifier is NOT a real Android device-credential UI attestation; full pinned RecipeDraftRevalidation parity, all-context on-device flow and comprehensive privacy/network evidence remain OPEN. Next B1: connect pinned v1 revalidator to UI/FoodStore and add real Android credential confirmation UI instrumentation with negative replay/context-change checks; no INTEGRATED claim."
 }
