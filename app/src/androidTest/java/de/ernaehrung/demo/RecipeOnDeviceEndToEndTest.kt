@@ -74,6 +74,19 @@ class RecipeOnDeviceEndToEndTest {
                 }
             }
         }
+        // Wait for the real Compose root on the software-rendered emulator;
+        // ActivityTaskManager "Displayed" alone is not a ready UI assertion.
+        compose.waitUntil(25_000) {
+            try {
+                compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
+                    .assertExists()
+                true
+            } catch (_: AssertionError) {
+                false
+            } catch (_: IllegalStateException) {
+                false
+            }
+        }
         compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
             .performClick()
         compose.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
