@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-20261104-1620Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261104162043105-r911344599",
-  "acquiredAtUtc": "2026-11-04T16:20:43.105Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR240 CI und Rezept-Revalidator-Anschluss",
-  "workingBranch": "integration-b-offline-restriction-selection-20261104",
-  "lastReleasedAtUtc": "2026-11-04T16:17:48.472Z",
-  "lastReleasedCommit": "8d5d66599b4aeed15ad80d514209cf13b3a2db90",
-  "nextStep": "B1 PR #240: CI 41865550536 auf HEAD 8d5d665 prüfen. Bei PASS und unverändertem Test-HEAD mit neuer Merge-Sperre, main-/Fremd-PR-Abgleich mergen; bei FAIL selben Branch korrigieren. Danach fehlenden v1-Revalidator-/Geräte-/Privacy-Anschluss gezielt ergänzen."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T16:26:22.768Z",
+  "lastReleasedCommit": "1171b0389b9a3ff14e7bffa49623fe01c546f7ab",
+  "nextStep": "B1 PR #240: CI 41867138268 on head 1171b038 prüfen, bei PASS mit frischer eigener Rollen- und exklusiver Merge-Sperre aktuellen main-/Fremd-PR-Abgleich und Mergefähigkeit prüfen; bei FAIL im selben Rezeptbranch korrigieren. Danach v1-Revalidator-/Privacy-/Geräte-E2E weiter schließen."
 }
