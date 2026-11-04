@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: full pinned recipe v1 revalidator parity and Android offline/privacy end-to-end",
-  "workingBranch": null,
+  "workingBranch": "integration-b-android-device-e2e-20261104",
   "lastReleasedAtUtc": "2026-11-04T08:17:52.367Z",
   "lastReleasedCommit": "7643814e35a4122faa28529a2d48e61e89d1ed79",
   "nextStep": "B1: PR #235 merged on exact CI 41797573350 PASS (589 JVM, 7 Room migrations, lint, v1 schema, Python references, Android test compilation). Independently mapped current FoodType/product versions now rank offline candidates using bound Room stock/shopping quantities, without allergen/cooking-state clearance or bookings. Next execute actual Android emulator/device UI, offline/restart and privacy E2E for full recipe→save→production→separate consumption; full pinned revalidator parity remains open. Do not mark INTEGRATED."
