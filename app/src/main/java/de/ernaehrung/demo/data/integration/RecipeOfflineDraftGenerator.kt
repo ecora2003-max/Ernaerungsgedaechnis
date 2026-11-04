@@ -34,6 +34,22 @@ internal object RecipeOfflineDraftGenerator {
 
     const val VARIANT_COUNT = 27
 
+    /** The exact generator grammar, exposed for independently mapped context ranking. */
+    data class Ingredient(val foodTypeId: String, val label: String,
+        val gramsPerPortion: Long, val basis: String)
+
+    val ingredientTypes: List<Ingredient> = (grains + legumes + vegetables).map {
+        Ingredient(it.foodTypeId, it.label, it.gramsPerPortion, it.basis)
+    }
+
+    fun ingredientsFor(variant: Int): List<Ingredient> {
+        require(variant in 0 until VARIANT_COUNT)
+        return listOf(grains[variant / 9], legumes[(variant / 3) % 3],
+            vegetables[variant % 3]).map {
+            Ingredient(it.foodTypeId, it.label, it.gramsPerPortion, it.basis)
+        }
+    }
+
     /** Context flags label separately captured host inputs; variant ranking is not yet context-aware. */
     fun generate(
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
