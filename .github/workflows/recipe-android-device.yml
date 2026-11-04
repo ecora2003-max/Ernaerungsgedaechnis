@@ -1,0 +1,63 @@
+name: Recipe Android device E2E (offline)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/src/androidTest/**'
+      - '.github/workflows/recipe-android-device.yml'
+permissions:
+  contents: read
+concurrency:
+  group: recipe-device-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  recipe-device:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact PR code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            **/*.gradle.kts
+            gradle.properties
+            gradle/wrapper/gradle-wrapper.properties
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
+      - name: Enable emulator KVM
+        run: |
+          test -e /dev/kvm
+          sudo chmod 666 /dev/kvm
+      - name: Execute Android UI, Room restart and bundled OCR offline
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            chmod +x gradlew
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest
+      - name: Upload instrumentation evidence only (no downloadable APK)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: recipe-android-device-e2e-results
+          path: |
+            app/build/outputs/androidTest-results/connected/
+            app/build/reports/androidTests/connected/
+          if-no-files-found: ignore
+          retention-days: 7
