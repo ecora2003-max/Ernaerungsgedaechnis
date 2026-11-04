@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1: PR #237 credential UI E2E CI repair and integration",
-  "workingBranch": null,
+  "workingBranch": "integration-b-credential-ui-e2e-20261104",
   "lastReleasedAtUtc": "2026-11-04T13:50:37.889Z",
   "lastReleasedCommit": "d9b6598112b623331ccf59cb81da18562a0da37e",
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
