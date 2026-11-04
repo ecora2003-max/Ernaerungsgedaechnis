@@ -34,7 +34,7 @@ internal object RecipeOfflineDraftGenerator {
 
     const val VARIANT_COUNT = 27
 
-    /** Only context-free generation is enabled until approved typed snapshots exist. */
+    /** Context flags label separately captured host inputs; variant ranking is not yet context-aware. */
     fun generate(
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
         flags: RecipeDraftHostGate.Flags = RecipeDraftHostGate.Flags(false, false, false),
