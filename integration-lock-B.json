@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-20261104-1715Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-20261104171519793-559045413882",
-  "acquiredAtUtc": "2026-11-04T17:15:19.793Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR240 final CI and recipe v1 offline path",
-  "workingBranch": "integration-b-offline-restriction-selection-20261104",
-  "lastReleasedAtUtc": "2026-11-04T16:26:22.768Z",
-  "lastReleasedCommit": "1171b0389b9a3ff14e7bffa49623fe01c546f7ab",
-  "nextStep": "B1 PR #240: CI 41867138268 on head 1171b038 prüfen, bei PASS mit frischer eigener Rollen- und exklusiver Merge-Sperre aktuellen main-/Fremd-PR-Abgleich und Mergefähigkeit prüfen; bei FAIL im selben Rezeptbranch korrigieren. Danach v1-Revalidator-/Privacy-/Geräte-E2E weiter schließen."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T17:28:45.588Z",
+  "lastReleasedCommit": "2248e917aef9e4e676ddeaa9caaccd34429a11d1",
+  "nextStep": "B1 PR #240 auf Branch integration-b-offline-restriction-selection-20261104, HEAD 2248e917: Portionenzahl-Änderung invalidiert JSON/Review/verschlüsselten Checkpoint; neue Compose-Testkorrektur performTextReplacement(23) nach CI 41876076467 (598 Tests, 1 Fehler in Test-Zeile 427 durch unbestimmte Cursorposition). CI 41877450079 auf EXAKTEM HEAD abwarten/prüfen; bei PASS aktuelle main-Basis/Fremdpfade und exakte CI prüfen, eigene Rollen- plus neue Merge-Sperre erwerben, erst dann #240 mergen; bei FAIL im selben Branch gezielt korrigieren. Danach B1 FoodStore-Attestation/Android-Offline-/Privacy-E2E weiterführen. Keine Gerätetests dieses Laufs."
 }
