@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae64ea269448191ac8f0b8a5fd206cb",
-  "ownerChatId": "Integrator-A-20261104-next-run",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae64ea269448191ac8f0b8a5fd206cb-merge-5smxsttnvkfmw2caxw5",
-  "acquiredAtUtc": "2026-11-04T16:37:23.093Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Exclusive merge of CI-PASS A1 PR #239",
-  "workingBranch": "integration-a-paid-price-purchase-ui-20261104",
-  "lastReleasedAtUtc": "2026-11-04T15:45:03.003Z",
-  "lastReleasedCommit": "ec330d557e796e1d53e3e267899ea2933bba3932",
-  "nextStep": "PR #239 A1 OCR→Kaufpreis-Review: exact-head CI prüfen; bei PASS neuen Merge-Lock erwerben und main-merge prüfen."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T16:37:44.676Z",
+  "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
+  "nextStep": "PR #239 merged on main; continue A1 historical/offline comparison to FEFO/pack/budget shopping suggestion UI; Android OCR/offline/privacy device E2E open."
 }
