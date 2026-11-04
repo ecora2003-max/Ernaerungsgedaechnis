@@ -18,7 +18,7 @@ import de.ernaehrung.demo.ui.*
 
 @Composable
 internal fun LocalRecognitionScreen(data: LocalDataState, blocked: Boolean, operationId: String,
-    model: LocalDataViewModel, initialMode: String) {
+    model: LocalDataViewModel, initialMode: String, onShowPurchases: () -> Unit = {}) {
     val ui by model.recognition.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
     var mode by rememberSaveable { mutableStateOf(initialMode) }
@@ -30,7 +30,7 @@ internal fun LocalRecognitionScreen(data: LocalDataState, blocked: Boolean, oper
     if (recognition == null) { if (ui.error == null) CircularProgressIndicator(); return }
     when (mode) {
         "Barcode & Produkt" -> BarcodeProductEditor(data, guard, operation, model)
-        "Bon & OCR" -> ReceiptRecognitionEditor(data, recognition, guard, operation, model)
+        "Bon & OCR" -> ReceiptRecognitionEditor(data, recognition, guard, operation, model, onShowPurchases)
         "Aliase" -> key(operationId) { AliasEditor(data, recognition, guard, operation, model) }
     }
 }
