@@ -481,9 +481,19 @@ class RecipeDraftConsentViewModelTest {
         val saved = withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.savedRecipeVersionId != null }
         }
-        assertNotNull(db.foodDao().recipeVersion(requireNotNull(saved.savedRecipeVersionId)))
+        val savedVersion = requireNotNull(saved.savedRecipeVersionId)
+        assertNotNull(db.foodDao().recipeVersion(savedVersion))
         assertEquals(1, db.foodDao().observeRecipes().first().size)
         assertEquals(3, db.foodDao().operationCount()) // product + consent + recipe
+        // The kitchen handoff only selects the persisted version; it cannot cook or eat.
+        vm.prepareProductionForSavedRecipe("unreviewed-version")
+        assertNull(vm.productionPrefillState.value)
+        vm.prepareProductionForSavedRecipe(savedVersion)
+        assertEquals(savedVersion, vm.productionPrefillState.value?.recipeVersionId)
+        assertEquals(1, vm.productionPrefillState.value?.requestSequence)
+        vm.prepareProductionForSavedRecipe(savedVersion) // repeated tap must reopen the form
+        assertEquals(2, vm.productionPrefillState.value?.requestSequence)
+        assertEquals(3, db.foodDao().operationCount())
         vm.saveConfirmedRecipeDraft(digest) // duplicate UI gesture is ignored
         assertEquals(3, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())

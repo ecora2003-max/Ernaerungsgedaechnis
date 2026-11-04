@@ -43,6 +43,8 @@ internal data class RecipeDraftConsentUiState(
     val error: String? = null
 )
 
+internal data class ProductionPrefillUiState(val recipeVersionId: String, val requestSequence: Int)
+
 data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emptyList(), val text: PhotoText? = null,
     val method: String? = null, val message: String? = null)
 
@@ -255,6 +257,17 @@ class LocalDataViewModel internal constructor(
     private var pendingRecipeDraft: PendingRecipeDraft? = null
     // This is a durable Room consent key, not cryptographic human identity proof.
     private var pendingReviewedSave: PendingRecipeDraft? = null
+    private val productionPrefill = MutableStateFlow<ProductionPrefillUiState?>(null)
+    internal val productionPrefillState = productionPrefill.asStateFlow()
+
+    /** UI handoff only: never books a production or consumes stock. */
+    internal fun prepareProductionForSavedRecipe(recipeVersionId: String) {
+        if (recipeVersionId.isNotBlank() &&
+            recipeDraftConsent.value.savedRecipeVersionId == recipeVersionId) {
+            productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
+                (productionPrefill.value?.requestSequence ?: 0) + 1)
+        }
+    }
     private var recipeSaveJob: kotlinx.coroutines.Job? = null
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
     private var recipeConsentJob: kotlinx.coroutines.Job? = null
@@ -269,6 +282,7 @@ class LocalDataViewModel internal constructor(
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
         pendingReviewedSave = null
+        productionPrefill.value = null
         // Editing invalidates the gesture, never the short-lived opaque key:
         // retyping JSON after process death must not erase its pending operation.
         // A different revalidated digest replaces the key on the next preview.
@@ -297,6 +311,7 @@ class LocalDataViewModel internal constructor(
         recipePreviewJob?.cancel()
         pendingRecipeDraft = null
         pendingReviewedSave = null
+        productionPrefill.value = null
         recipeDraftConsent.value = RecipeDraftConsentUiState(busy = true)
         val immutableFacts = confirmations.mapValues { (_, line) ->
             line.copy(allergens = line.allergens.toMap())
