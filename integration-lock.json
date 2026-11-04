@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "Integrator-B-2026-11-04-0710",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-mw1pw96s-gt0xk0mgdg",
-  "acquiredAtUtc": "2026-11-04T06:10:06.340Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 Offline-Generator v1-Revalidator und Küchen-UI End-to-End",
-  "workingBranch": "integration-b-offline-generator-20261104",
-  "lastReleasedAtUtc": "2026-11-04T05:24:01.818Z",
-  "lastReleasedCommit": "34e93bbbf3c2d4dc226a77fbe01a7619216f8c69",
-  "nextStep": "B1: auf main nach PR #232 (574 JVM, 7 Room, CI 41778289440 PASS) den deterministischen Offline-Generator als v1 recipe.draft an die Küchen-Import-/Review-UI anschließen; acht Flagkombinationen und Revalidator/Allergen-Gates testen, danach Android-/Offline-/Privacy-E2E."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T06:31:40.373Z",
+  "lastReleasedCommit": "1ff796fcfdab8460a9c4b98ad92ff29a540250d6",
+  "nextStep": "B1: PR #233 merged after CI 41785460976 PASS (579 JVM, 7 Room). Next implement approved typed Room stock/shopping/offer snapshot projections for seven context-enabled flag combinations, bind v1 Revalidator and allergen checks in kitchen review, then actual Android/offline/privacy E2E."
 }
