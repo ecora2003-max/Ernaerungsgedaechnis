@@ -76,6 +76,33 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         }
 
 
+    /**
+     * Capture the three independently selected context sources at ONE Room instant.
+     * Stock and shopping are local read-only projections. External offers have no
+     * configured rights-checked provider in the kitchen: requested offers stay
+     * unavailable, never silently interpreted as an empty approved collection.
+     * The resulting content binding is only change evidence, not user consent.
+     */
+    internal suspend fun readRecipeTypedContext(
+        flags: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Flags,
+        shoppingScope: ShoppingScope? = null
+    ): de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Context<
+        de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot,
+        de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot,
+        de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot> =
+        db.withTransaction {
+            val at = java.time.Instant.ofEpochMilli(now())
+            val stockSnapshot = if (flags.considerStock)
+                RecipeRoomStockSnapshotReader(dao).read(at) else null
+            val shoppingSnapshot = if (flags.considerShopping && shoppingScope != null)
+                RecipeRoomShoppingSnapshotReader(db).read(shoppingScope, at) else null
+            val gate = de.ernaehrung.demo.data.integration.RecipeDraftHostGate
+            gate.typedContext(flags, at,
+                stockSnapshot?.let { gate.Evidence(it, true) },
+                shoppingSnapshot?.let { gate.Evidence(it, true) },
+                null)
+        }
+
     /** Authorized host-cache offers; the caller must supply independent rights and store gates. */
     internal suspend fun readRecipeAuthorizedOffersSnapshot(
         scope: RecipeAuthorizedOffersReader.Scope,
@@ -496,10 +523,22 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val contextRequested = request.flags.considerStock ||
             request.flags.considerShopping || request.flags.considerOffers
         return if (review.status ==
-            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
-            !contextRequested) {
-            review.copy(approvalBasisDigest = recipeDraftApprovalBasisDigest(
-                json, request, confirmations, reviewedStates, trustedContextSnapshotAt))
+            de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE) {
+            val baseDigest = recipeDraftApprovalBasisDigest(
+                json, request, confirmations, reviewedStates, trustedContextSnapshotAt)
+            // A context-bound save must attest the exact independently revalidated
+            // snapshot content, not merely the three booleans or snapshot time.
+            // Keep the historical no-context digest stable for existing consents.
+            val digest = if (!contextRequested) baseDigest else
+                context?.contentBinding?.takeIf {
+                    context.contentBindingRequired &&
+                        it.flags == request.flags &&
+                        it.snapshotAt == trustedContextSnapshotAt?.toInstant()
+                }?.let { binding ->
+                    WriteRules.fingerprint("RECIPE_DRAFT_CONTEXT_APPROVAL_V1",
+                        baseDigest, binding.digest)
+                }
+            review.copy(approvalBasisDigest = digest)
         } else review
     }
 
