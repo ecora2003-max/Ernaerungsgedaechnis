@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR243 CI/merge and recipe UI-to-FoodStore continuation",
-  "workingBranch": null,
+  "workingBranch": "integration-b-recipe-allergen-proposals-20261104",
   "lastReleasedAtUtc": "2026-11-04T20:14:21.258Z",
   "lastReleasedCommit": "7a198ba45f85db70d0cb9f9ca07dd382f096eb4d",
   "nextStep": "B1 PR #243 branch integration-b-recipe-allergen-proposals-20261104: CI 41904411578 auf exaktem HEAD 7a198ba prüfen; bei FAIL Kotlin/Compose-Test korrigieren, bei PASS aktuelle main-/Fremd-PR-Basis und eigene Rollen-/exklusive Merge-Sperre prüfen und ggf. mergen. Danach echter API35-Gerätetest für allergenbegrenzte UI-Vorschlagsauswahl und vollständige v1-Revalidator-/FoodStore-Rezeptsave→Herstellung→separaten Verzehr-Android-Abnahme. Kein B1-INTEGRATED."
