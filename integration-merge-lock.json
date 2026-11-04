@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "state": "ACTIVE",
-  "ownerAutomationId": "6ae659b2cf2081918f3414dce24a090e",
-  "ownerChatId": "B-20261104-1811Z",
+  "state": "FREE",
+  "ownerAutomationId": null,
+  "ownerChatId": null,
   "ownerRunId": null,
-  "ownerRunToken": "6ae659b2cf2081918f3414dce24a090e-merge-20261104181249177-zziunwp",
-  "acquiredAtUtc": "2026-11-04T18:12:49.177Z",
+  "ownerRunToken": null,
+  "acquiredAtUtc": null,
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "Merge CI-green PR #240, no code overlap with main",
-  "workingBranch": "integration-b-offline-restriction-selection-20261104",
-  "lastReleasedAtUtc": "2026-11-04T16:37:44.676Z",
-  "lastReleasedCommit": "74bbc44addcf16cc4a10735a8fc9e3bef5a24e77",
-  "nextStep": "PR #239 merged on main; continue A1 historical/offline comparison to FEFO/pack/budget shopping suggestion UI; Android OCR/offline/privacy device E2E open."
+  "workingBranch": null,
+  "lastReleasedAtUtc": "2026-11-04T18:13:39.882Z",
+  "lastReleasedCommit": "f4e0c7a59d67eaeb7469e99842525b16f225062c",
+  "nextStep": "PR #240 merged after exact CI 41877450079; next B1 independent recipe UI/Host step and device/privacy acceptance."
 }
