@@ -54,6 +54,31 @@ fun interface RecipeActionProofVerifier {
 }
 
 /** Auth-bound private key is non-exportable. Device credential is required to sign. */
+/**
+ * In-memory challenge only. A process restart discards it; cancellation/retry
+ * replaces the nonce, and consumption is one-shot even if the DB write fails.
+ */
+internal class RecipeActionNonceGate {
+    private data class Pending(val digest: String, val nonce: String, val issuedAt: Long)
+    private val pending = mutableMapOf<String, Pending>()
+
+    @Synchronized fun issue(key: String, digest: String, now: Long): String {
+        require(now >= 0L)
+        RecipeActionProofPayload.bytes(RecipeActionProof(key, digest, now,
+            UUID.randomUUID().toString(), ""))
+        val nonce = UUID.randomUUID().toString()
+        pending[key] = Pending(digest, nonce, now)
+        return nonce
+    }
+
+    @Synchronized fun consume(proof: RecipeActionProof, key: String, digest: String,
+        now: Long): Boolean {
+        val challenge = pending.remove(key) ?: return false
+        return challenge.digest == digest && challenge.nonce == proof.nonce &&
+            now >= challenge.issuedAt && now - challenge.issuedAt <= 300_000L
+    }
+}
+
 internal object AndroidRecipeActionProof : RecipeActionProofVerifier {
     private const val ALIAS = "eg_recipe_credential_action_v1"
 
@@ -78,8 +103,8 @@ internal object AndroidRecipeActionProof : RecipeActionProofVerifier {
     }.getOrDefault(false)
 
     /** Call only after the system credential Activity returned RESULT_OK. */
-    fun sign(key: String, digest: String, now: Long): RecipeActionProof? = runCatching {
-        val unsigned = RecipeActionProof(key, digest, now, UUID.randomUUID().toString(), "")
+    fun sign(key: String, digest: String, nonce: String, now: Long): RecipeActionProof? = runCatching {
+        val unsigned = RecipeActionProof(key, digest, now, nonce, "")
         val message = RecipeActionProofPayload.bytes(unsigned)
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         val privateKey = requireNotNull(store.getKey(ALIAS, null) as? java.security.PrivateKey)
