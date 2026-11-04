@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "B1 PR240 CI und Rezept-Revalidator-Anschluss",
-  "workingBranch": null,
+  "workingBranch": "integration-b-offline-restriction-selection-20261104",
   "lastReleasedAtUtc": "2026-11-04T16:17:48.472Z",
   "lastReleasedCommit": "8d5d66599b4aeed15ad80d514209cf13b3a2db90",
   "nextStep": "B1 PR #240: CI 41865550536 auf HEAD 8d5d665 prüfen. Bei PASS und unverändertem Test-HEAD mit neuer Merge-Sperre, main-/Fremd-PR-Abgleich mergen; bei FAIL selben Branch korrigieren. Danach fehlenden v1-Revalidator-/Geräte-/Privacy-Anschluss gezielt ergänzen."
