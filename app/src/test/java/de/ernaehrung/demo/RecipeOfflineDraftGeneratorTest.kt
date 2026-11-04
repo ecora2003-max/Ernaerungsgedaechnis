@@ -154,4 +154,36 @@ class RecipeOfflineDraftGeneratorTest {
         }.isFailure)
     }
 
+    @Test fun generatorEnforcesRestrictionsAgainAfterCandidateSelection() {
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "excluded-food-direct",
+                requestedRestrictions = setOf("FOOD:dry-rice"))
+        }.isFailure)
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "unverified-allergen-direct",
+                requestedRestrictions = setOf("ALLERGEN:SOY"))
+        }.isFailure)
+        assertTrue(runCatching {
+            RecipeOfflineDraftGenerator.generate(2, 0, now, "malformed-restriction-direct",
+                requestedRestrictions = setOf("ALLERGEN:"))
+        }.isFailure)
+
+        val allowedJson = RecipeOfflineDraftGenerator.generate(
+            2, 9, now, "allowed-food-direct",
+            requestedRestrictions = setOf("FOOD:dry-rice")
+        )
+        val imported = RecipeDraftV1Import.read(allowedJson, emptyMap(), now)
+        assertFalse(imported.draft.lines.any { it.foodTypeId == "dry-rice" })
+        val preview = RecipeDraftV1Import.review(
+            allowedJson,
+            RecipeDraftHostGate.Request(
+                imported.draft.flags, 2, setOf("FOOD:dry-rice"),
+                userConfirmedRecipeSave = false
+            ),
+            emptyMap(), emptyMap(), now
+        )
+        assertNull(preview.input)
+        assertNotEquals(RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE, preview.status)
+    }
+
 }

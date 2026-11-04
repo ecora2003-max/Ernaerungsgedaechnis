@@ -341,7 +341,7 @@ internal fun RecipeDraftImportPanel(
                     val generated = RecipeOfflineDraftGenerator.generate(
                         offlinePortions.toInt(), chosenVariant,
                         issuedAt, "offline-" + UUID.randomUUID().toString(),
-                        selectedFlags, snapshotAt
+                        selectedFlags, snapshotAt, requestedRestrictions
                     )
                     // Use the identical bounded v1 import boundary as pasted JSON.
                     val checked = RecipeDraftV1Import.read(
