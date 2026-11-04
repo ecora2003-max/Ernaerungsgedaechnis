@@ -258,6 +258,37 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
         rule.runOnIdle { assertEquals(null, checkpoint.saved) }
     }
+
+    @Test fun selectingRoomContextRequiresIndependentSnapshotBeforeGeneration() {
+        var requested = 0
+        var lastFlags: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Flags? = null
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                DemoTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        RecipeDraftImportPanel(emptyList(),
+                            onInvalidate = {},
+                            onDiscardPending = {},
+                            onRequestContext = { flags -> requested++; lastFlags = flags },
+                            onReview = { _, _, _, _ -> })
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithTag("recipe_context_stock").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_offline_generate").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag("recipe_context_refresh").performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals(1, requested)
+            assertEquals(true, lastFlags?.considerStock)
+            assertEquals(false, lastFlags?.considerShopping)
+            assertEquals(false, lastFlags?.considerOffers)
+        }
+        // No fake empty context is produced when the host has not returned one.
+        rule.onNodeWithTag("recipe_offline_generate").assertIsNotEnabled()
+    }
+
     @Test fun offlineGeneratorCreatesVisibleV1DraftButNeverConfirmsOrBooks() {
         var invalidations = 0
         var reviews = 0
