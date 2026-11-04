@@ -9,7 +9,7 @@
   "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
   "task": "A1 PR #241 CI prüfen und sicheren Merge; anschließend nächste UI-Host-Funktion",
-  "workingBranch": null,
+  "workingBranch": "integration-a-shopping-quote-comparison-20261104",
   "lastReleasedAtUtc": "2026-11-04T17:43:02.992Z",
   "lastReleasedCommit": "4a1c175433f6f7f7ba2e0e86897febd166883759",
   "nextStep": "A1 PR #241: exact-head CI run 41879785334 and fresh JUnit/XML verify on 4a1c1754; correct same branch if FAIL. If PASS, acquire fresh A role and exclusive merge lock, compare current main and B PR overlap, merge safely. Device/OCR/offline/privacy E2E still OPEN."
