@@ -15,6 +15,12 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
@@ -456,7 +462,7 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals(0, reviews) }
     }
 
-    @Test fun manuallyMappedAllergenAbsencesAllowUntrustedOfflineProposalOnly() {
+    @Test fun allergenProposalRequiresASeparateFullManualReviewBeforeHostPreview() {
         fun version(id: String, name: String) = ProductVersionEntity(
             id = id, productId = id.substringBefore("-v"), revision = 1,
             name = name, brand = null, category = null, barcode = null,
@@ -510,13 +516,31 @@ class RecipeDraftImportPanelTest {
         rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
         rule.runOnIdle { assertEquals(0, reviews) }
 
+        choices.forEach { (_, selected, food) ->
+            fun field(text: String) = rule.onNode(hasText(text) and
+                hasAnyAncestor(hasTestTag("recipe_draft_line_$food")))
+            field("Unabhängig geprüfte Katalogversion")
+                .performScrollTo().performClick()
+            rule.onNode(hasText(selected) and hasAnyAncestor(isPopup())).performClick()
+            val basis = if (food == "cooked-beans") "DRAINED" else "NET"
+            field(basis).performScrollTo().performClick().assertIsSelected()
+            field(if (food == "cooked-beans") "COOKED" else "RAW")
+                .performScrollTo().performClick().assertIsSelected()
+            field("Nachweislich nicht enthalten")
+                .performScrollTo().performClick()
+        }
+        rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
+        rule.onNodeWithTag("recipe_draft_import_error").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(1, reviews) }
+
         // Changing the allergen clears every prior product-bound absence.
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
             .performTextReplacement("ALLERGEN:PEANUT")
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
-        rule.runOnIdle { assertEquals(0, reviews) }
+        rule.runOnIdle { assertEquals(1, reviews) }
     }
 
 }

@@ -9,6 +9,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -319,24 +321,26 @@ class RecipeDeviceCredentialUiTest {
             compose.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
             assertEquals(baseline, database.foodDao().operationCount())
             assertTrue(database.foodDao().observeRecipes().first().isEmpty())
-            var netIndex = 0
             ingredients.forEachIndexed { index, ingredient ->
-                compose.onAllNodesWithText("Unabhängig geprüfte Katalogversion")[index]
+                fun lineField(text: String) = compose.onNode(hasText(text) and
+                    hasAnyAncestor(hasTestTag("recipe_draft_line_${ingredient.foodTypeId}")))
+                lineField("Unabhängig geprüfte Katalogversion")
                     .performScrollTo().performClick()
                 compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
-                val position = if (ingredient.basis == "NET") netIndex++ else 0
-                compose.onAllNodesWithText(ingredient.basis)[position]
-                    .performScrollTo().performClick()
+                lineField(ingredient.basis).performScrollTo().performClick().assertIsSelected()
                 val state = if (ingredient.foodTypeId.startsWith("cooked-")) "COOKED" else "RAW"
-                compose.onAllNodesWithText(state)[index].performScrollTo().performClick()
-                compose.onAllNodesWithText("Nachweislich nicht enthalten")[index]
+                lineField(state).performScrollTo().performClick().assertIsSelected()
+                lineField("Nachweislich nicht enthalten")
                     .performScrollTo().performClick()
             }
             tag("recipe_draft_manual_review_checkbox")
             tag("recipe_draft_manual_review")
+            compose.onNodeWithTag("recipe_draft_import_error").assertDoesNotExist()
             compose.waitUntil(25_000) {
-                !model.recipeDraftConsentState.value.busy && model.recipeDraftConsentState.value.review != null
+                !model.recipeDraftConsentState.value.busy &&
+                    (model.recipeDraftConsentState.value.review != null || model.recipeDraftConsentState.value.error != null)
             }
+            assertNull(model.recipeDraftConsentState.value.error)
             assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
                 model.recipeDraftConsentState.value.review?.status)
             assertEquals(baseline, database.foodDao().operationCount())

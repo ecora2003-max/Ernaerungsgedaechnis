@@ -1,3 +1,9 @@
+## Codex – Rezeptformular vollständig bedienbar geprüft (05.11.2026)
+
+- Positiver Review lokal reproduziert: verschachtelte horizontale Auswahlzeilen ließen Testaktionen außerhalb des sichtbaren Bereichs landen. Mengenbasis, Zustand und Allergenoptionen brechen jetzt um; Testaktionen sind an die konkrete Zutat gebunden und prüfen die Auswahl. Verständliche konkrete Fehlerhinweise ergänzt. **13/13 vollständige Formulartests PASS**, Android-Testkompilierung PASS.
+- Kauf-Neustarttest wiederholt exakt die ursprüngliche OCR-Positionsreihenfolge statt zufälliger persistierter Zeilen-IDs; der stabile FoodStore-Fingerabdruck bleibt unverändert. Neuer Gerätelauf noch offen.
+- Zwischenzeitliche Inaktivität: Wächter hat am 04.11. um 23:41 UTC alle drei Sperren regulär freigegeben. Am 05.11. waren alle drei FREE; neue vollständige Codex-Session mit frischen getrennten CAS-Tokens regulär erworben. Keine fremde Sperre überschrieben. Bestehende Branches/PRs unverändert fortgesetzt.
+
 ## Codex – reguläre Geräteentsperrung statt zustandsabhängiger Gesten (04.11.2026)
 
 - PR #246: App-CI `41925785592` auf `31a2cf810bb51792e21f0460356f5095a308b0ff` PASS. Geräte-CI `41925785595`: 10 Tests, 8 bereits in der gemeinsamen Vorbereitung gescheitert; SystemUI/Launcher bei aktivem Keyguard, kein PIN-Editor. Kein neuer Rezept-End-to-End-Nachweis.
