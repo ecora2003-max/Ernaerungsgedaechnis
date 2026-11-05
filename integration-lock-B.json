@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-285b17c69ed14afdb2618aa174d136e1",
   "acquiredAtUtc": "2026-11-05T08:12:42.745Z",
-  "lastHeartbeatUtc": "2026-11-05T09:08:58.934Z",
+  "lastHeartbeatUtc": "2026-11-05T09:15:19.450Z",
   "leaseExpiresAtUtc": null,
   "task": "Bestehende FEFO-Integration PR251 abschließen und reale System-Kamera-/Offline-/Neustartprüfung fortsetzen",
-  "workingBranch": "codex-recipe-request-preferences-20261105",
+  "workingBranch": "codex-health-connect-import-20261105",
   "lastReleasedAtUtc": "2026-11-05T05:39:40.503Z",
   "lastReleasedCommit": "32fdae471c5ecef64e0f03c1ac1549c083a785a5",
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
