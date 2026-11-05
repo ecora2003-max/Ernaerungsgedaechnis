@@ -102,7 +102,9 @@ private fun LocalMealEditor(state: LocalDataState, date: String, blocked: Boolea
     var note by rememberSaveable { mutableStateOf("") }
     var confirmed by rememberSaveable { mutableStateOf(false) }
     Fold("Tatsächlichen Verzehr erfassen") {
-        WrappingChoices(listOf("Ohne Lagerbezug", "Aus Charge"), mode, "meal_source_") { mode = it; confirmed = false }
+        WrappingChoices(listOf("Ohne Lagerbezug", "Aus Charge", "Bestand nach FEFO"), mode, "meal_source_") {
+            mode = it; confirmed = false
+        }
         Text("Datum: $date. Einen anderen Tag oben auswählen.")
         val batch = state.batches.find { it.batch.id == batchId }
         val version = if (mode == "Aus Charge") state.versions.find { it.id == batch?.batch?.versionId } else state.versions.find { it.id == versionId }
@@ -118,15 +120,53 @@ private fun LocalMealEditor(state: LocalDataState, date: String, blocked: Boolea
         Field("Mahlzeit / Beschreibung", name, { name = it; confirmed = false })
         Field("Gegessene Menge in ${version?.baseUnit?.label ?: "Basiseinheit"}", amount, { amount = it; confirmed = false })
         Field("Verzehrnotiz · optional", note, { note = it; confirmed = false })
-        Check("Tatsächlich gegessen · lokal speichern", confirmed) { confirmed = it }
-        SaveButton("Verzehr lokal buchen", blocked || version == null) {
+        val asOf = AppCalendar.today().toString()
+        val preview = if (mode == "Bestand nach FEFO") remember(state.versions, state.batches, state.locations, versionId, amount, date, asOf) {
+            MealStockPreviews.build(state.versions, state.batches, state.locations, versionId,
+                amount.takeIf(String::isNotBlank)?.let { runCatching { Amounts.parse(it) }.getOrNull() }, date, asOf)
+        } else null
+        preview?.let { proposal ->
+            Panel {
+                Section("Vorgeschlagene Chargenentnahmen", "Frühestes Haltbarkeitsdatum zuerst · noch keine Buchung")
+                proposal.issue?.let { Text(it) }
+                proposal.allocations.forEach { allocation ->
+                    val row = state.batches.single { it.batch.id == allocation.batchId }
+                    Text("${Amounts.format(allocation.amount)} ${row.unit.label} · ${row.locationName} · ${row.batch.id}",
+                        Modifier.testTag("meal_fefo_${allocation.batchId}"))
+                    Text("Verbrauchsdatum: ${row.batch.useBy ?: "unbekannt"} · MHD: ${row.batch.bestBefore ?: "unbekannt"}")
+                }
+                proposal.missing?.let { missing ->
+                    Text("Nicht gedeckt: ${Amounts.format(missing)} ${version?.baseUnit?.label.orEmpty()}",
+                        Modifier.testTag("meal_fefo_missing"))
+                }
+                proposal.excluded.forEach { excluded -> Text("${excluded.batchId}: ${excluded.reason.label}") }
+                Text("Alle angezeigten Entnahmen werden erst nach Bestätigung gemeinsam geprüft und gebucht. Änderungen am Vorschlag erfordern eine neue Bestätigung.")
+            }
+        }
+        // This approval is deliberately live-only: any proposal/form change or
+        // Activity recreation requires a fresh gesture, even if stock later
+        // returns to a previously displayed combination.
+        var stockApproved by remember(preview?.digest, mode, version?.id, amount, date, name, note) { mutableStateOf(false) }
+        val gestureMatches = if (preview == null) confirmed else preview.complete && stockApproved
+        if (preview == null || preview.complete) Check("Tatsächlich gegessen · lokal speichern", gestureMatches) {
+            if (preview == null) confirmed = it else stockApproved = it
+        }
+        SaveButton("Verzehr lokal buchen", blocked || version == null || preview != null && !preview.complete) {
             val selected = version; val selectedBatch = batch; val modeValue = mode; val quantity = amount
-            val title = name; val notes = note.takeIf { it.isNotBlank() }; val accept = confirmed
+            val title = name; val notes = note.takeIf { it.isNotBlank() }; val accept = gestureMatches
+            val selectedPreview = preview
             model.save(key) {
                 requireNotNull(selected) { "Artikelversion wählen." }
                 val parsed = quantity.takeIf { it.isNotBlank() }?.let(Amounts::parse)
-                val allocations = if (modeValue == "Aus Charge") listOf(Allocation(requireNotNull(selectedBatch) { "Charge wählen." }.batch.id,
-                    requireNotNull(parsed) { "Für Lagerentnahmen ist eine genaue Menge erforderlich." })) else emptyList()
+                val allocations = when (modeValue) {
+                    "Aus Charge" -> listOf(Allocation(requireNotNull(selectedBatch) { "Charge wählen." }.batch.id,
+                        requireNotNull(parsed) { "Für Lagerentnahmen ist eine genaue Menge erforderlich." }))
+                    "Bestand nach FEFO" -> {
+                        require(selectedPreview?.complete == true) { "Bestandsvorschlag ist unvollständig. Menge oder Chargen prüfen." }
+                        selectedPreview.allocations.map { Allocation(it.batchId, it.amount) }
+                    }
+                    else -> emptyList()
+                }
                 consume(key, ConsumptionInput(selected.id, date, title, parsed, allocations, note = notes), accept)
             }
         }
