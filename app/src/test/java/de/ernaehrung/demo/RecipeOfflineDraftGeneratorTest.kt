@@ -14,7 +14,7 @@ import org.junit.Test
 class RecipeOfflineDraftGeneratorTest {
     private val now = OffsetDateTime.parse("2026-11-04T06:00:00Z")
 
-    @Test fun all27CombinationsPassTheRealV1ImporterWithoutGrantingTrust() {
+    @Test fun all30OfficialCandidatesPassTheRealV1ImporterWithoutGrantingTrust() {
         val titles = mutableSetOf<String>()
         for (variant in 0 until RecipeOfflineDraftGenerator.VARIANT_COUNT) {
             val json = RecipeOfflineDraftGenerator.generate(2, variant, now, "offline-$variant")
@@ -34,7 +34,7 @@ class RecipeOfflineDraftGeneratorTest {
             assertNotEquals(RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE, review.status)
             assertNull(review.input)
         }
-        assertEquals(27, titles.size)
+        assertEquals(30, titles.size)
     }
 
     @Test fun eightContextCombinationsFailClosedWithoutApprovedTypedSnapshots() {
@@ -89,7 +89,7 @@ class RecipeOfflineDraftGeneratorTest {
             RecipeOfflineDraftGenerator.generate(1001, 0, now, "offline-large")
         }.isFailure)
         assertTrue(runCatching {
-            RecipeOfflineDraftGenerator.generate(2, 27, now, "offline-variant")
+            RecipeOfflineDraftGenerator.generate(2, 30, now, "offline-variant")
         }.isFailure)
         assertTrue(runCatching {
             RecipeOfflineDraftGenerator.generate(2, -1, now, "offline-negative")
@@ -117,7 +117,7 @@ class RecipeOfflineDraftGeneratorTest {
         val candidates = (0 until RecipeOfflineDraftGenerator.VARIANT_COUNT).filter {
             RecipeOfflineDraftGenerator.allowsSuggestion(it, excluded)
         }
-        assertEquals(12, candidates.size)
+        assertEquals(14, candidates.size)
         val first = RecipeOfflineDraftGenerator.nextAllowedVariant(0, excluded)
         assertEquals(10, first)
         val draft = RecipeDraftV1Import.read(

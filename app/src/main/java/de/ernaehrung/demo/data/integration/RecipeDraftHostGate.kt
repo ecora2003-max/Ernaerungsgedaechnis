@@ -95,7 +95,8 @@ internal object RecipeDraftHostGate {
         val flags: Flags, val portions: Int,
         val confirmedRestrictions: Set<String> = emptySet(),
         /** Must originate from a separate explicit user action, never the model. */
-        val userConfirmedRecipeSave: Boolean = false
+        val userConfirmedRecipeSave: Boolean = false,
+        val preferences: RecipeRequestPreferences = RecipeRequestPreferences()
     )
     data class Review(
         val status: Status, val blockers: Set<String>, val gaps: Set<String>,
@@ -161,6 +162,8 @@ internal object RecipeDraftHostGate {
         context: Context<*, *, *>? = null
     ): Review {
         val blockers = linkedSetOf<String>()
+        if (runCatching { request.preferences.validate(request.portions) }.isFailure)
+            blockers += "INVALID_REQUEST_PREFERENCES"
         val gaps = linkedSetOf<String>()
         val anyRequested = request.flags.considerStock ||
             request.flags.considerShopping || request.flags.considerOffers

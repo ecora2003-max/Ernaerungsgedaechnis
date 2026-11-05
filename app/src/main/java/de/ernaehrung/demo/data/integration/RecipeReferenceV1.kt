@@ -22,7 +22,9 @@ internal object RecipeReferenceV1 {
         val partial: Map<String, BigDecimal?>,
         val nutritionGaps: Map<String, List<String>>,
         val contextNotes: List<String>,
-        val ingredientContexts: List<Map<String, Any?>>
+        val ingredientContexts: List<Map<String, Any?>>,
+        val targets: List<Map<String, Any?>>,
+        val preferences: RecipeRequestPreferences
     )
 
     fun revalidate(
@@ -94,14 +96,14 @@ internal object RecipeReferenceV1 {
                 input.capturedAt.atOffset(java.time.ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
                 entries, "host-snapshot:${input.revision}", "CONFIRMED")
         }
-        val coreRequest = Core.Request("host-revalidation", now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+        val coreRequest = request.preferences.applyTo(Core.Request("host-revalidation", now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
             now.toLocalDate(), request.portions, flags,
             restrictions = request.confirmedRestrictions.sorted().map { Core.Restriction(it, true) },
             stock = if (flags.considerStock) snapshot(projected?.stock, RecipeContextContentBinding.Source.STOCK) else null,
             shopping = if (flags.considerShopping) snapshot(projected?.shopping, RecipeContextContentBinding.Source.SHOPPING) else null,
             // Bound offer rows lack the upstream price/validity/provenance DTO.
             // Do not fabricate those facts from an offer ID or amount.
-            offers = null)
+            offers = null))
         val states = facts.filterValues { it.stateConfirmed && it.state != null }
             .mapValues { Core.State.valueOf(requireNotNull(it.value.state).name) }
         val result = RecipeDraftRevalidation.revalidate(RecipeDraftBoundedJson.decode(json),
@@ -126,6 +128,10 @@ internal object RecipeReferenceV1 {
         val ingredients = (extension?.get("ingredientsContext") as? List<*>)?.map { item ->
             (item as Map<*, *>).entries.associate { (key, value) -> (key as String) to value }
         }.orEmpty()
-        return Report(blockers, findings, amounts("total"), amounts("perPortion"), amounts("knownPartial"), gaps, notes, ingredients)
+        val targets = (extension?.get("targetsEvaluation") as? List<*>)?.map { item ->
+            (item as Map<*, *>).entries.associate { (key, value) -> (key as String) to value }
+        }.orEmpty()
+        return Report(blockers, findings, amounts("total"), amounts("perPortion"), amounts("knownPartial"),
+            gaps, notes, ingredients, targets, request.preferences)
     }
 }

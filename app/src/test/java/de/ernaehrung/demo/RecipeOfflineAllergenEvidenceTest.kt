@@ -80,4 +80,15 @@ class RecipeOfflineAllergenEvidenceTest {
             )
         }.isFailure)
     }
+    @Test fun millilitreIngredientEvidenceRequiresItsExactUnitWithoutInventingDensity() {
+        val water = version("water-v1").copy(baseUnit = BaseUnit.MILLILITRE)
+        val facts = RecipeOfflineAllergenEvidence.confirmedAbsent(listOf(water), mapOf("water" to water.id),
+            setOf("water" to "SOY"), restriction, now)
+        assertEquals(false, facts["water"]?.get("SOY"))
+        assertTrue(runCatching {
+            RecipeOfflineAllergenEvidence.confirmedAbsent(listOf(water.copy(baseUnit = BaseUnit.GRAM)),
+                mapOf("water" to water.id), setOf("water" to "SOY"), restriction, now)
+        }.isFailure)
+    }
+
 }

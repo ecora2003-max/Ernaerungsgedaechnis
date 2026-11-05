@@ -309,6 +309,20 @@ class RecipeDeviceCredentialUiTest {
             var model = mount(store)
             val baseline = database.foodDao().operationCount()
             tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+            tap("Vorgaben für den Rezeptvorschlag")
+            tag("recipe_pref_meal_Hauptmahlzeit")
+            compose.onNodeWithTag("recipe_pref_minutes").performScrollTo().performTextReplacement("35")
+            tap("Verfügbare Küchengeräte ausdrücklich angeben")
+            tap("Kochstelle verfügbar"); tap("Kochtopf verfügbar")
+            compose.onNodeWithTag("recipe_pref_budget").performScrollTo().performTextReplacement("0")
+            compose.onNodeWithTag("recipe_pref_freeze").performScrollTo().performTextReplacement("1")
+            compose.onNodeWithTag("recipe_pref_capacity").performScrollTo().performTextReplacement("2")
+            tap("Eigene Nährwertbereiche je Portion")
+            compose.onNodeWithTag("recipe_pref_min_energyKcal").performScrollTo().performTextReplacement("400")
+            compose.onNodeWithTag("recipe_pref_max_energyKcal").performScrollTo().performTextReplacement("450")
+            compose.onNodeWithTag("recipe_pref_min_proteinG").performScrollTo().performTextReplacement("0")
+            tap("Eigene Nährwertbereiche je Portion")
+            tap("Vorgaben für den Rezeptvorschlag")
             compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
                 .performTextReplacement("ALLERGEN:SOY")
             tag("recipe_offline_generate")
@@ -364,6 +378,12 @@ class RecipeDeviceCredentialUiTest {
             compose.waitUntil(25_000) {
                 model.recipeDraftConsentState.value.recordedDigest != null
             }
+            val reference = requireNotNull(model.recipeDraftConsentState.value.review?.referenceReport)
+            assertEquals(35, reference.preferences.maxMinutes)
+            assertEquals(0L, reference.preferences.budgetCents)
+            assertEquals(setOf("HOB", "POT"), reference.preferences.equipment)
+            assertEquals("IN_RANGE", reference.targets.single { it["nutrient"] == "energyKcal" }["status"])
+            assertEquals("UNKNOWN", reference.targets.single { it["nutrient"] == "proteinG" }["status"])
             val digest = requireNotNull(model.recipeDraftConsentState.value.recordedDigest)
             val consentKey = requireNotNull(store.recordedRecipeDraftV1ConsentKey(digest))
             assertEquals("RECIPE_DRAFT_ATTESTED_CONSENT_V1",
@@ -377,7 +397,7 @@ class RecipeDeviceCredentialUiTest {
             tag("recipe_production_prepare")
             ingredients.forEachIndexed { index, ingredient ->
                 choose("Zutatencharge ${index + 1}", batches[index])
-                field("Tatsächliche Zutatmenge ${index + 1} in g", (ingredient.gramsPerPortion * 2).toString())
+                field("Tatsächliche Zutatmenge ${index + 1} in g", (ingredient.amountPerPortion * 2).toString())
             }
             field("Tatsächlich hergestellte Portionen", "2")
             choose("Fertigportionen lagern in", location)
@@ -398,7 +418,7 @@ class RecipeDeviceCredentialUiTest {
             val output = database.foodDao().planningBatches().single { it.batch.id !in batches }.batch
             assertEquals(2_000L, database.foodDao().balance(output.id))
             val production = ProductionInput(recipe, 2_000L,
-                ingredients.mapIndexed { index, ingredient -> Allocation(batches[index], ingredient.gramsPerPortion * 2_000L) },
+                ingredients.mapIndexed { index, ingredient -> Allocation(batches[index], ingredient.amountPerPortion * 2_000L) },
                 location, day, true, storage, release = ReleaseStatus.RELEASED)
             tap("Neuen Vorgang beginnen")
             tap("Fertigportionen separat verzehren")
