@@ -3,11 +3,28 @@ package de.ernaehrung.demo
 import android.app.KeyguardManager
 import androidx.activity.compose.setContent
 import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -19,11 +36,19 @@ import de.ernaehrung.demo.data.local.RecipeActionNonceGate
 import de.ernaehrung.demo.data.local.RecipeActionProof
 import de.ernaehrung.demo.data.local.RecipeInput
 import de.ernaehrung.demo.data.local.RecipeItemInput
+import de.ernaehrung.demo.data.local.*
+import de.ernaehrung.demo.data.integration.RecipeOfflineDraftGenerator
 import de.ernaehrung.demo.ui.DemoTheme
+import de.ernaehrung.demo.ui.LocalDataViewModel
+import de.ernaehrung.demo.ui.screens.LocalDataContent
 import de.ernaehrung.demo.ui.screens.RecipeDraftDeviceCredentialReview
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -214,5 +239,201 @@ class RecipeDeviceCredentialUiTest {
         compose.onNodeWithText("Gerätebestätigung abgebrochen", substring = true)
             .assertExists()
         compose.runOnIdle { assertEquals(0, callbacks.get()) }
+    }
+
+    @Test fun offlineAllergenProposalThroughRealCredentialFoodStoreCookingAndSeparateEatingUi() = runBlocking {
+        assertSecureEmulator()
+        val target = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseName = "recipe-full-ui-" + UUID.randomUUID() + ".db"
+        fun open() = Room.databaseBuilder(target, FoodDatabase::class.java, databaseName)
+            .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3,
+                FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5,
+                FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7,
+                FoodMigrations.MIGRATION_7_8).build()
+        var database = open()
+        var models = ViewModelStore()
+        fun tap(label: String) {
+            compose.waitUntil(25_000) {
+                compose.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText(label).performScrollTo().performClick()
+        }
+        fun tag(label: String) = compose.onNodeWithTag(label).performScrollTo().performClick()
+        fun field(label: String, value: String) = compose.onNodeWithText(label)
+            .performScrollTo().performTextReplacement(value)
+        fun choose(label: String, id: String) {
+            tag(label)
+            tag("choose_$id")
+        }
+        fun mount(store: FoodStore): LocalDataViewModel {
+            val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(store) as T
+            })[LocalDataViewModel::class.java]
+            compose.runOnUiThread {
+                compose.activity.setContent {
+                    DemoTheme {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                            LocalDataContent(model, "Küche")
+                        }
+                    }
+                }
+            }
+            compose.waitUntil(25_000) { !model.state.value.loading }
+            return model
+        }
+        fun saved(model: LocalDataViewModel, expected: Boolean = true) {
+            compose.waitUntil(25_000) { !model.saveState.value.busy && model.saveState.value.message != null }
+            assertEquals(model.saveState.value.message, expected, model.saveState.value.succeeded)
+        }
+        try {
+            var store = FoodStore(database) // Real Android Keystore verifier; no injected test signer.
+            val day = LocalDate.now(ZoneId.of("Europe/Berlin")).toString()
+            val ingredients = RecipeOfflineDraftGenerator.ingredientsFor(0)
+            val versions = ingredients.mapIndexed { index, ingredient ->
+                store.rememberProduct("full-product-${ingredient.foodTypeId}", ProductInput(
+                    ingredient.label, source = Source.USER, quality = Quality.CONFIRMED,
+                    energyKcal = listOf(350.0, 100.0, 20.0)[index]))
+            }
+            val labels = versions.map { id -> requireNotNull(database.foodDao().version(id)).let {
+                "${it.name} · v${it.revision} · ${it.id}"
+            } }
+            val location = store.addLocation("full-location", "Geprüfte Küche", true)
+            val batches = versions.mapIndexed { index, id ->
+                store.receive("full-stock-$index", BatchInput(id, location, 500_000L,
+                    day, release = ReleaseStatus.RELEASED), true)
+            }
+            var model = mount(store)
+            val baseline = database.foodDao().operationCount()
+            tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+            compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
+                .performTextReplacement("ALLERGEN:SOY")
+            tag("recipe_offline_generate")
+            compose.onNodeWithTag("recipe_draft_import_error").assertExists()
+            assertEquals(baseline, database.foodDao().operationCount())
+            tap("Allergennachweise für Offline-Vorschläge")
+            ingredients.forEachIndexed { index, ingredient ->
+                val selector = "Produktversion für Allergen-Vorprüfung: ${ingredient.label} (${ingredient.foodTypeId})"
+                tap(selector)
+                compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
+                tag("recipe_offline_allergen_absent_${ingredient.foodTypeId}_SOY")
+            }
+            tag("recipe_offline_generate")
+            compose.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
+            assertEquals(baseline, database.foodDao().operationCount())
+            assertTrue(database.foodDao().observeRecipes().first().isEmpty())
+            ingredients.forEachIndexed { index, ingredient ->
+                fun lineField(text: String) = compose.onNode(hasText(text) and
+                    hasAnyAncestor(hasTestTag("recipe_draft_line_${ingredient.foodTypeId}")))
+                lineField("Unabhängig geprüfte Katalogversion")
+                    .performScrollTo().performClick()
+                compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
+                lineField(ingredient.basis).performScrollTo().performClick().assertIsSelected()
+                val state = if (ingredient.foodTypeId.startsWith("cooked-")) "COOKED" else "RAW"
+                lineField(state).performScrollTo().performClick().assertIsSelected()
+                lineField("Nachweislich nicht enthalten")
+                    .performScrollTo().performClick()
+            }
+            tag("recipe_draft_manual_review_checkbox")
+            tag("recipe_draft_manual_review")
+            compose.onNodeWithTag("recipe_draft_import_error").assertDoesNotExist()
+            compose.waitUntil(25_000) {
+                !model.recipeDraftConsentState.value.busy &&
+                    (model.recipeDraftConsentState.value.review != null || model.recipeDraftConsentState.value.error != null)
+            }
+            assertNull(model.recipeDraftConsentState.value.error)
+            assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE,
+                model.recipeDraftConsentState.value.review?.status)
+            assertEquals(baseline, database.foodDao().operationCount())
+            compose.onNodeWithTag("recipe_draft_preview_ENERGY").performScrollTo()
+                .assertTextContains("416,5", substring = true)
+            compose.onNodeWithTag("recipe_draft_preview_PROTEIN").performScrollTo()
+                .assertTextContains("Unbekannt", substring = true)
+            tag("recipe_draft_consent_checkbox")
+            tag("recipe_draft_consent_confirm")
+            cancelRealSystemCredential(UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()))
+            awaitComposeReview()
+            assertNull(model.recipeDraftConsentState.value.recordedDigest)
+            assertEquals(baseline, database.foodDao().operationCount())
+            tag("recipe_draft_consent_checkbox")
+            tag("recipe_draft_consent_confirm")
+            enterRealSystemPin()
+            compose.waitUntil(25_000) {
+                model.recipeDraftConsentState.value.recordedDigest != null
+            }
+            val digest = requireNotNull(model.recipeDraftConsentState.value.recordedDigest)
+            val consentKey = requireNotNull(store.recordedRecipeDraftV1ConsentKey(digest))
+            assertEquals("RECIPE_DRAFT_ATTESTED_CONSENT_V1",
+                database.foodDao().operation("RECIPE_DRAFT_CONSENT_V1:$consentKey")?.kind)
+            assertTrue(database.foodDao().observeRecipes().first().isEmpty())
+            tag("recipe_draft_save_confirmed")
+            compose.waitUntil(25_000) { model.recipeDraftConsentState.value.savedRecipeVersionId != null }
+            val recipe = requireNotNull(model.recipeDraftConsentState.value.savedRecipeVersionId)
+            assertEquals(0, database.foodDao().consumptionCount())
+            assertEquals(3, database.foodDao().planningBatches().size)
+            tag("recipe_production_prepare")
+            ingredients.forEachIndexed { index, ingredient ->
+                choose("Zutatencharge ${index + 1}", batches[index])
+                field("Tatsächliche Zutatmenge ${index + 1} in g", (ingredient.gramsPerPortion * 2).toString())
+            }
+            field("Tatsächlich hergestellte Portionen", "2")
+            choose("Fertigportionen lagern in", location)
+            tap("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft")
+            val storage = "Saubere Behälter und Kühlplatz tatsächlich geprüft"
+            field("Geprüfte Lagerbedingungen und Platz beschreiben", storage)
+            tap("Fertigportionen für diesen Test ausdrücklich freigeben")
+            tap("Herstellung buchen")
+            saved(model, false)
+            assertEquals(3, database.foodDao().planningBatches().size)
+            tap("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen")
+            tap("Herstellung buchen")
+            saved(model)
+            assertEquals(0, database.foodDao().consumptionCount())
+            val output = database.foodDao().planningBatches().single { it.batch.id !in batches }.batch
+            assertEquals(2_000L, database.foodDao().balance(output.id))
+            val production = ProductionInput(recipe, 2_000L,
+                ingredients.mapIndexed { index, ingredient -> Allocation(batches[index], ingredient.gramsPerPortion * 2_000L) },
+                location, day, true, storage, release = ReleaseStatus.RELEASED)
+            tap("Neuen Vorgang beginnen")
+            tap("Fertigportionen separat verzehren")
+            tap("Charge")
+            val outputName = model.state.value.batches.single { it.batch.id == output.id }.productName
+            compose.onNodeWithText("$outputName · ${output.id}").performClick()
+            field("Verzehrmenge in Portion", "1")
+            tap("Fertigportionen-Verzehr buchen")
+            saved(model, false)
+            assertEquals(0, database.foodDao().consumptionCount())
+            tap("Fertigportionen tatsächlich gegessen · ausdrücklich bestätigen")
+            tap("Fertigportionen-Verzehr buchen")
+            saved(model)
+            compose.waitUntil(25_000) { model.state.value.operations.any { it.operation.kind == "CONSUMPTION" } }
+            val eatKey = model.state.value.operations.single { it.operation.kind == "CONSUMPTION" }.operation.id
+            assertEquals(1, database.foodDao().activeConsumptionCount())
+            assertEquals(1_000L, database.foodDao().balance(output.id))
+            val nutrition = store.dayNutrition(day).totals
+            assertEquals(416.5, requireNotNull(nutrition[Nutrient.ENERGY].knownAmount).toDouble(), 0.0001)
+            assertTrue(nutrition[Nutrient.ENERGY].complete)
+            assertNull(nutrition[Nutrient.PROTEIN].knownAmount) // Unknown remains unknown.
+            assertTrue(database.foodDao().purchases().isEmpty())
+            assertTrue(database.foodDao().allPaidPrices().isEmpty())
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            database.close()
+            database = open()
+            store = FoodStore(database)
+            models = ViewModelStore()
+            model = mount(store)
+            compose.waitUntil(25_000) { model.state.value.recipes.any { it.id == recipe } }
+            assertNull(model.recipeDraftConsentState.value.review)
+            assertEquals(output.id, store.produce(output.originOperationId, production, true))
+            store.consume(eatKey, ConsumptionInput(output.versionId, day, "Fertigportionen",
+                1_000L, listOf(Allocation(output.id, 1_000L))), true)
+            assertEquals(1, database.foodDao().observeRecipes().first().size)
+            assertEquals(1, database.foodDao().activeConsumptionCount())
+            assertEquals(1_000L, database.foodDao().balance(output.id))
+        } finally {
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            database.close()
+            target.deleteDatabase(databaseName)
+        }
     }
 }

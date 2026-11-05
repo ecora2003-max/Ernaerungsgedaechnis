@@ -1,0 +1,880 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ecora2003-max/EG-Architecture/blob/main/contracts/v1/contract.schema.json",
+  "title": "Ernährungsgedächtnis interchange messages",
+  "description": "Draft semantic interchange contract. Independent of Room. Missing is not zero; nullable values remain unknown.",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "messageType",
+    "meta",
+    "payload"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0.0-draft"
+    },
+    "messageType": {
+      "enum": [
+        "price.observation",
+        "product.match",
+        "receipt.line",
+        "comparison.result",
+        "recipe.draft"
+      ]
+    },
+    "meta": {
+      "$ref": "#/$defs/Meta"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "const": "price.observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/PriceObservation"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "const": "product.match"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/ProductMatch"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "const": "receipt.line"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/ReceiptLine"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "const": "comparison.result"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/ComparisonResult"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "messageType": {
+            "const": "recipe.draft"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "$ref": "#/$defs/RecipeDraft"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Meta": {
+      "type": "object",
+      "required": [
+        "producer",
+        "createdAt",
+        "traceId"
+      ],
+      "properties": {
+        "producer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "inputsSnapshotAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "coverageNote": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Source": {
+      "type": "object",
+      "required": [
+        "origin",
+        "observedAt",
+        "rightsStatus",
+        "dataQuality"
+      ],
+      "properties": {
+        "origin": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceUpdatedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "evidenceKind": {
+          "enum": [
+            "LIVE_RESPONSE",
+            "OFFICIAL_WEB",
+            "USER_CONFIRMED_RECEIPT",
+            "THIRD_PARTY",
+            "STATIC_ANALYSIS",
+            "ESTIMATE",
+            "UNKNOWN"
+          ]
+        },
+        "rightsStatus": {
+          "enum": [
+            "PERMITTED",
+            "UNVERIFIED",
+            "RESTRICTED"
+          ]
+        },
+        "dataQuality": {
+          "enum": [
+            "CONFIRMED",
+            "SOURCED",
+            "ESTIMATED",
+            "UNKNOWN"
+          ]
+        },
+        "parserVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "Scope": {
+      "type": "object",
+      "required": [
+        "retailerId",
+        "scopeType"
+      ],
+      "properties": {
+        "retailerId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scopeType": {
+          "enum": [
+            "STORE_CONFIRMED",
+            "REGION_CONFIRMED",
+            "CHAIN_WIDE_REPORTED",
+            "ONLINE",
+            "UNKNOWN"
+          ]
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scopeType": {
+                "const": "STORE_CONFIRMED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "storeId"
+            ],
+            "properties": {
+              "storeId": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "Quantity": {
+      "type": "object",
+      "required": [
+        "amount",
+        "unit",
+        "basis",
+        "confirmed"
+      ],
+      "properties": {
+        "amount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Integer in specified unit. Null means unknown; no automatic conversion between piece and g/ml."
+        },
+        "unit": {
+          "enum": [
+            "g",
+            "ml",
+            "portion",
+            "piece"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "NET",
+            "DRAINED",
+            "GROSS",
+            "PIECE",
+            "PER_PORTION",
+            "UNKNOWN"
+          ]
+        },
+        "confirmed": {
+          "type": "boolean"
+        },
+        "packageCount": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "Article": {
+      "type": "object",
+      "required": [
+        "label",
+        "organic",
+        "brandKind"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "foodTypeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gtin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{8}([0-9]{4}([0-9]{1}([0-9]{1})?)?)?$"
+        },
+        "retailerArticleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "brandName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "brandKind": {
+          "enum": [
+            "MANUFACTURER",
+            "PRIVATE_LABEL",
+            "UNKNOWN"
+          ]
+        },
+        "organic": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "PriceObservation": {
+      "type": "object",
+      "required": [
+        "observationId",
+        "article",
+        "scope",
+        "priceCents",
+        "currency",
+        "priceKind",
+        "source"
+      ],
+      "properties": {
+        "observationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "article": {
+          "$ref": "#/$defs/Article"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "priceCents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "currency": {
+          "const": "EUR"
+        },
+        "priceKind": {
+          "enum": [
+            "SALE",
+            "CURRENT_DISPLAYED",
+            "LISTED_REGULAR",
+            "REFERENCE_OLD",
+            "HISTORICAL_PAID",
+            "ONLINE_LISTED",
+            "UNKNOWN"
+          ]
+        },
+        "validFrom": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "validUntil": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "depositCents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "conditional": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        },
+        "availability": {
+          "enum": [
+            "IN_STOCK_REPORTED",
+            "OUT_OF_STOCK_REPORTED",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "ProductMatch": {
+      "type": "object",
+      "required": [
+        "requestId",
+        "candidate",
+        "matchLevel",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate": {
+          "$ref": "#/$defs/Article"
+        },
+        "matchLevel": {
+          "enum": [
+            "EXACT_SKU",
+            "SAME_FOOD_VARIANT",
+            "FUNCTIONAL_SUBSTITUTE",
+            "NOT_COMPARABLE",
+            "UNKNOWN"
+          ]
+        },
+        "status": {
+          "enum": [
+            "CONFIRMED_BY_USER",
+            "SUGGESTED",
+            "AMBIGUOUS",
+            "REJECTED",
+            "UNKNOWN"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ReceiptLine": {
+      "type": "object",
+      "required": [
+        "lineId",
+        "receiptId",
+        "retailerId",
+        "rawText",
+        "lineKind",
+        "confirmed"
+      ],
+      "properties": {
+        "lineId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receiptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retailerId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rawText": {
+          "type": "string"
+        },
+        "lineKind": {
+          "enum": [
+            "FOOD",
+            "NON_FOOD",
+            "DEPOSIT",
+            "DISCOUNT",
+            "RETURN",
+            "UNKNOWN"
+          ]
+        },
+        "amountCents": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confirmed": {
+          "type": "boolean"
+        },
+        "purchaseAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "gtin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retailerArticleId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "linkedArticle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Article"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "ComparisonAlternative": {
+      "type": "object",
+      "required": [
+        "observationId",
+        "pricePerBaseUnitMilliCents",
+        "basis",
+        "comparability",
+        "priceDifferenceCents"
+      ],
+      "properties": {
+        "observationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pricePerBaseUnitMilliCents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Illustrative optional precomputed rate; basis must specify comparator. Deterministic comparison engine may instead carry exact numerator/denominator."
+        },
+        "basis": {
+          "enum": [
+            "kg",
+            "l",
+            "piece",
+            "unknown"
+          ]
+        },
+        "comparability": {
+          "enum": [
+            "EXACT_SKU",
+            "SAME_FOOD_VARIANT",
+            "FUNCTIONAL_SUBSTITUTE",
+            "UNKNOWN"
+          ]
+        },
+        "bioDifference": {
+          "enum": [
+            "SAME",
+            "DIFFERENT",
+            "UNKNOWN"
+          ]
+        },
+        "priceDifferenceCents": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "ComparisonResult": {
+      "type": "object",
+      "required": [
+        "comparisonId",
+        "targetObservationId",
+        "shoppingDate",
+        "alternatives",
+        "signals",
+        "incomplete"
+      ],
+      "properties": {
+        "comparisonId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetObservationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "shoppingDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ComparisonAlternative"
+          }
+        },
+        "signals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "RED_SAME_BIO_CHEAPER",
+              "ORANGE_DIFFERENT_BIO_CHEAPER",
+              "GREY_MAY_BE_CHEAPER"
+            ]
+          }
+        },
+        "incomplete": {
+          "type": "boolean"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "Ingredient": {
+      "type": "object",
+      "required": [
+        "label",
+        "quantity",
+        "sourceStatus"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "foodTypeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "productRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "$ref": "#/$defs/Quantity"
+        },
+        "sourceStatus": {
+          "enum": [
+            "CONFIRMED",
+            "SOURCED",
+            "ESTIMATED",
+            "UNKNOWN"
+          ]
+        },
+        "allergenNotes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "RecipeDraft": {
+      "type": "object",
+      "required": [
+        "draftId",
+        "title",
+        "portionCount",
+        "ingredients",
+        "steps",
+        "flags",
+        "warnings"
+      ],
+      "properties": {
+        "draftId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "portionCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "ingredients": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Ingredient"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flags": {
+          "type": "object",
+          "required": [
+            "considerStock",
+            "considerShopping",
+            "considerOffers"
+          ],
+          "properties": {
+            "considerStock": {
+              "type": "boolean"
+            },
+            "considerShopping": {
+              "type": "boolean"
+            },
+            "considerOffers": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "nutrition": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "const": "DRAFT"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

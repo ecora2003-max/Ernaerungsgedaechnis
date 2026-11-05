@@ -34,7 +34,6 @@ import de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedImportCheckpoint
 import de.ernaehrung.demo.data.local.Quality
 import de.ernaehrung.demo.data.local.Source
 import de.ernaehrung.demo.ui.RecipeDraftContextUiState
-import de.ernaehrung.demo.ui.Choices
 import de.ernaehrung.demo.ui.Fold
 import de.ernaehrung.demo.ui.Picker
 import java.time.OffsetDateTime
@@ -524,7 +523,8 @@ internal fun RecipeDraftImportPanel(
                 }
             ) { Text("Unbestätigtes Prüf-Formular laden") }
             draft.lines.forEach { line ->
-                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    .testTag("recipe_draft_line_${line.foodTypeId}")) {
                     Text("${line.label} (${line.foodTypeId}) · ${line.amount ?: "Menge unbekannt"} ${line.unit} · Modellbasis ${line.basis}")
                     Picker(
                         "Unabhängig geprüfte Katalogversion",
@@ -537,16 +537,18 @@ internal fun RecipeDraftImportPanel(
                             (labels.entries.firstOrNull { it.value == selected }?.key ?: ""))
                     }
                     Text("Mengenbasis separat am Produkt prüfen")
-                    Choices(listOf("Ungeprüft", line.basis.name),
-                        bases[line.foodTypeId]?.name ?: "Ungeprüft") { selected ->
+                    WrappingChoices(listOf("Ungeprüft", line.basis.name),
+                        bases[line.foodTypeId]?.name ?: "Ungeprüft",
+                        "recipe_draft_basis_${line.foodTypeId}_") { selected ->
                         evidenceCheckpoint.discard()
                         invalidate()
                         bases = if (selected == "Ungeprüft") bases - line.foodTypeId
                         else bases + (line.foodTypeId to line.basis)
                     }
                     Text("Zubereitungszustand separat prüfen")
-                    Choices(listOf("Ungeprüft", "RAW", "COOKED"),
-                        states[line.foodTypeId]?.name ?: "Ungeprüft") { selected ->
+                    WrappingChoices(listOf("Ungeprüft", "RAW", "COOKED"),
+                        states[line.foodTypeId]?.name ?: "Ungeprüft",
+                        "recipe_draft_state_${line.foodTypeId}_") { selected ->
                         evidenceCheckpoint.discard()
                         invalidate()
                         states = if (selected == "Ungeprüft") states - line.foodTypeId
@@ -560,8 +562,9 @@ internal fun RecipeDraftImportPanel(
                             null -> "Unbekannt"
                         }
                         Text("Allergen ${allergen}: unabhängige Prüfung dieser Zutat")
-                        Choices(listOf("Unbekannt", "Nachweislich enthalten",
-                            "Nachweislich nicht enthalten"), selected) { answer ->
+                        WrappingChoices(listOf("Unbekannt", "Nachweislich enthalten",
+                            "Nachweislich nicht enthalten"), selected,
+                            "recipe_draft_allergen_${line.foodTypeId}_${allergen}_") { answer ->
                             evidenceCheckpoint.discard()
                             invalidate()
                             allergenAnswers = allergenAnswers + (key to when (answer) {
@@ -601,12 +604,24 @@ internal fun RecipeDraftImportPanel(
                         reviewed = false
                         onReview(json, prepared.request, prepared.confirmations,
                             prepared.reviewedStates)
-                    } catch (_: IllegalArgumentException) {
-                        error = "Manuelle Prüfung unvollständig oder widersprüchlich: Version, Mengenbasis, Zustand und Ausschlüsse prüfen."
+                    } catch (failure: IllegalArgumentException) {
+                        error = when (failure.message) {
+                            "missing or duplicate catalog version", "catalog version not independently current and sourced" ->
+                                "Produktzuordnung unvollständig oder veraltet. Für jede Zutat eine aktuelle geprüfte Katalogversion auswählen."
+                            "basis and preparation state must be manually reviewed consistently" ->
+                                "Mengenbasis oder Zubereitungszustand unvollständig. Für jede Zutat beides separat prüfen und auswählen."
+                            "all restricted allergens need explicit per-line answers (unknown allowed)" ->
+                                "Allergenprüfung unvollständig. Jeden erfassten Ausschluss für jede Zutat separat beantworten."
+                            "duplicate product version" ->
+                                "Dieselbe Produktversion wurde mehreren unterschiedlichen Zutaten zugeordnet. Zuordnung korrigieren."
+                            "manual review of stale draft", "manual review predates draft creation" ->
+                                "Entwurfszeitpunkt nicht mehr aktuell. Einen neuen Entwurf erzeugen oder erneut importieren und prüfen."
+                            else -> "Manuelle Prüfung unvollständig oder widersprüchlich: Version, Mengenbasis, Zustand und Ausschlüsse prüfen."
+                        }
                     }
                 }
             ) { Text("Geprüfte Vorschau zur separaten Bestätigung") }
-            Text("Die anschließende Bestätigung speichert höchstens einen Consent-Checkpoint, kein Rezept und keinen Verzehr. Keine Identitätsauthentifizierung.")
+            Text("Die nächste Gerätebestätigung gilt nur für diese Vorschau. Erst eine weitere ausdrückliche Aktion speichert das Rezept; Herstellung und Verzehr bleiben getrennte Schritte.")
         }
     }
 }

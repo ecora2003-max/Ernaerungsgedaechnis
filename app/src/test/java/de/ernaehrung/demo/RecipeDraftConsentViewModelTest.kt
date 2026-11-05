@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -52,16 +54,17 @@ class RecipeDraftConsentViewModelTest {
         db = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java
         ).build()
-        val store = FoodStore(db) { at }
+        val store = signedRecipeStore(db) { at }
         runBlocking {
             val id = store.rememberProduct("ui-product", ProductInput("Reis",
-                source = Source.USER, quality = Quality.CONFIRMED))
+                source = Source.USER, quality = Quality.CONFIRMED,
+                energyKcal = 350.0, fatGrams = 0.0))
             val v = requireNotNull(db.foodDao().version(id))
             facts = mapOf("rice" to Catalog.ConfirmedLine("rice", v.id, v.revision,
                 v.recordedAt, at, BaseUnit.GRAM, Gate.Basis.NET, Gate.State.RAW,
                 allergens = mapOf("SOY" to false)))
         }
-        vm = LocalDataViewModel(store)
+        vm = signedRecipeModel(store)
     }
 
     @After fun tearDown() {
@@ -73,21 +76,37 @@ class RecipeDraftConsentViewModelTest {
         vm.recipeDraftConsentState.first { !it.busy && it.review != null }
     }
 
+    @Test fun reviewedVersionNutritionAppearsBeforeConsentAndIsRemovedWhenThePreviewChanges() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val nutrition = requireNotNull(preview.previewNutrition)
+        assertEquals(350.0, requireNotNull(nutrition[Nutrient.ENERGY].knownAmount).toDouble(), 0.0001)
+        assertEquals(0, requireNotNull(nutrition[Nutrient.FAT].knownAmount).signum())
+        assertNull(nutrition[Nutrient.PROTEIN].knownAmount)
+        assertNull(preview.recordedDigest)
+        assertEquals(1, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        vm.clearRecipeDraftConsent()
+        assertNull(vm.recipeDraftConsentState.value.previewNutrition)
+        assertEquals(1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun digestMismatchCannotRecordAndExplicitCallbackRecordsExactlyOneConsent() = runBlocking {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val review = requireNotNull(ready().review)
         assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, review.status)
         val digest = requireNotNull(review.approvalBasisDigest)
         assertNull(vm.recipeDraftConsentState.value.recordedDigest)
-        vm.confirmRecipeDraftConsent("f".repeat(64), vm.recipeDraftConsentState.value.sessionId)
+        vm.confirmSignedRecipeTestConsent("f".repeat(64), vm.recipeDraftConsentState.value.sessionId)
         assertEquals(1, db.foodDao().operationCount()) // only the product creation
         assertNull(vm.recipeDraftConsentState.value.recordedDigest)
-        vm.confirmRecipeDraftConsent(digest, vm.recipeDraftConsentState.value.sessionId)
+        vm.confirmSignedRecipeTestConsent(digest, vm.recipeDraftConsentState.value.sessionId)
         val recorded = withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
         assertEquals(digest, recorded.recordedDigest)
-        vm.confirmRecipeDraftConsent(digest, vm.recipeDraftConsentState.value.sessionId) // local duplicate gesture is ignored
+        vm.confirmSignedRecipeTestConsent(digest, vm.recipeDraftConsentState.value.sessionId) // local duplicate gesture is ignored
         assertEquals(2, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().allPaidPrices().isEmpty())
@@ -101,9 +120,9 @@ class RecipeDraftConsentViewModelTest {
         vm.prepareRecipeDraftConsent(revised, request, facts, states)
         val newDigest = requireNotNull(ready().review?.approvalBasisDigest)
         assertNotEquals(oldDigest, newDigest)
-        vm.confirmRecipeDraftConsent(oldDigest, vm.recipeDraftConsentState.value.sessionId)
+        vm.confirmSignedRecipeTestConsent(oldDigest, vm.recipeDraftConsentState.value.sessionId)
         assertEquals(1, db.foodDao().operationCount())
-        vm.confirmRecipeDraftConsent(newDigest, vm.recipeDraftConsentState.value.sessionId)
+        vm.confirmSignedRecipeTestConsent(newDigest, vm.recipeDraftConsentState.value.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == newDigest }
         }
@@ -119,9 +138,9 @@ class RecipeDraftConsentViewModelTest {
         val second = ready()
         assertEquals(digest, second.review?.approvalBasisDigest)
         assertNotEquals(oldToken, second.sessionId)
-        vm.confirmRecipeDraftConsent(digest, oldToken)
+        vm.confirmSignedRecipeTestConsent(digest, oldToken)
         assertEquals(1, db.foodDao().operationCount())
-        vm.confirmRecipeDraftConsent(digest, second.sessionId)
+        vm.confirmSignedRecipeTestConsent(digest, second.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
@@ -133,7 +152,7 @@ class RecipeDraftConsentViewModelTest {
         val first = ready()
         val digest = requireNotNull(first.review?.approvalBasisDigest)
         val originalKey = requireNotNull(first.sessionId)
-        vm.confirmRecipeDraftConsent(digest, originalKey)
+        vm.confirmSignedRecipeTestConsent(digest, originalKey)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
@@ -142,7 +161,7 @@ class RecipeDraftConsentViewModelTest {
 
         // A new ViewModel represents lost in-memory session state. It must
         // discover the old operation key, not create a new consent gesture.
-        val recreated = LocalDataViewModel(FoodStore(db) { at })
+        val recreated = signedRecipeModel(signedRecipeStore(db) { at })
         recreated.prepareRecipeDraftConsent(json, request, facts, states)
         val restored = withTimeout(10_000) {
             recreated.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -150,8 +169,8 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(digest, restored.recordedDigest)
         // A recovered ledger operation is NOT a recovered UI gesture.
         assertNull(restored.sessionId)
-        assertNotNull(FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
-        recreated.confirmRecipeDraftConsent(digest, originalKey)
+        assertNotNull(signedRecipeStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
+        recreated.confirmSignedRecipeTestConsent(digest, originalKey)
         assertEquals(before, db.foodDao().operationCount())
 
         // A different raw draft is a different approval basis, even when the
@@ -177,7 +196,7 @@ class RecipeDraftConsentViewModelTest {
         val pendingKeys = PrivateRecipeDraftPendingKeyStore(context) { at }
         pendingKeys.discard()
         try {
-            val firstVm = LocalDataViewModel(FoodStore(db) { at },
+            val firstVm = signedRecipeModel(signedRecipeStore(db) { at },
                 pendingKeyStore = pendingKeys)
             firstVm.prepareRecipeDraftConsent(json, request, facts, states)
             val first = withTimeout(10_000) {
@@ -188,7 +207,7 @@ class RecipeDraftConsentViewModelTest {
             val persistedKey = pendingKeys.resumeOrCreate(digest)
             assertEquals(1, db.foodDao().operationCount())
 
-            val newVm = LocalDataViewModel(FoodStore(db) { at },
+            val newVm = signedRecipeModel(signedRecipeStore(db) { at },
                 pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
             newVm.prepareRecipeDraftConsent(json, request, facts, states)
             val resumed = withTimeout(10_000) {
@@ -197,21 +216,21 @@ class RecipeDraftConsentViewModelTest {
             assertEquals(digest, resumed.review?.approvalBasisDigest)
             assertNotEquals(oldGesture, resumed.sessionId)
             assertEquals(persistedKey, pendingKeys.resumeOrCreate(digest))
-            newVm.confirmRecipeDraftConsent(digest, oldGesture)
+            newVm.confirmSignedRecipeTestConsent(digest, oldGesture)
             assertEquals(1, db.foodDao().operationCount())
             assertNull(newVm.recipeDraftConsentState.value.recordedDigest)
 
-            newVm.confirmRecipeDraftConsent(digest, resumed.sessionId)
+            newVm.confirmSignedRecipeTestConsent(digest, resumed.sessionId)
             withTimeout(10_000) {
                 newVm.recipeDraftConsentState.first { it.recordedDigest == digest }
             }
             assertEquals(persistedKey,
-                FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
+                signedRecipeStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
             assertEquals(2, db.foodDao().operationCount())
             assertEquals(0, db.foodDao().consumptionCount())
             assertTrue(db.foodDao().observeRecipes().first().isEmpty())
 
-            val afterRestart = LocalDataViewModel(FoodStore(db) { at },
+            val afterRestart = signedRecipeModel(signedRecipeStore(db) { at },
                 pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
             afterRestart.prepareRecipeDraftConsent(json, request, facts, states)
             val recorded = withTimeout(10_000) {
@@ -230,7 +249,7 @@ class RecipeDraftConsentViewModelTest {
         val keys = PrivateRecipeDraftPendingKeyStore(context) { at }
         keys.discard()
         try {
-            val originalVm = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
+            val originalVm = signedRecipeModel(signedRecipeStore(db) { at }, pendingKeyStore = keys)
             originalVm.prepareRecipeDraftConsent(json, request, facts, states)
             val original = withTimeout(10_000) {
                 originalVm.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -239,7 +258,7 @@ class RecipeDraftConsentViewModelTest {
             val oldSession = requireNotNull(original.sessionId)
             val firstKey = keys.resumeOrCreate(digest)
 
-            val restarted = LocalDataViewModel(FoodStore(db) { at },
+            val restarted = signedRecipeModel(signedRecipeStore(db) { at },
                 pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context) { at })
             // The import panel invalidates its preview on every typed character.
             repeat(4) { restarted.clearRecipeDraftConsent() }
@@ -250,13 +269,13 @@ class RecipeDraftConsentViewModelTest {
             }
             assertEquals(digest, restored.review?.approvalBasisDigest)
             assertNotEquals(oldSession, restored.sessionId)
-            restarted.confirmRecipeDraftConsent(digest, oldSession)
+            restarted.confirmSignedRecipeTestConsent(digest, oldSession)
             assertEquals(1, db.foodDao().operationCount())
-            restarted.confirmRecipeDraftConsent(digest, restored.sessionId)
+            restarted.confirmSignedRecipeTestConsent(digest, restored.sessionId)
             withTimeout(10_000) {
                 restarted.recipeDraftConsentState.first { it.recordedDigest == digest }
             }
-            assertEquals(firstKey, FoodStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
+            assertEquals(firstKey, signedRecipeStore(db) { at }.recordedRecipeDraftV1ConsentKey(digest))
             assertEquals(2, db.foodDao().operationCount())
             assertEquals(0, db.foodDao().consumptionCount())
         } finally {
@@ -269,7 +288,7 @@ class RecipeDraftConsentViewModelTest {
         val keys = PrivateRecipeDraftPendingKeyStore(context) { at }
         keys.discard()
         try {
-            val controlled = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
+            val controlled = signedRecipeModel(signedRecipeStore(db) { at }, pendingKeyStore = keys)
             controlled.prepareRecipeDraftConsent(json, request, facts, states)
             val old = withTimeout(10_000) {
                 controlled.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -278,7 +297,7 @@ class RecipeDraftConsentViewModelTest {
             val keyBefore = keys.resumeOrCreate(digest)
             controlled.discardPendingRecipeDraftConsent()
             assertNull(controlled.recipeDraftConsentState.value.sessionId)
-            controlled.confirmRecipeDraftConsent(digest, old.sessionId)
+            controlled.confirmSignedRecipeTestConsent(digest, old.sessionId)
             assertEquals(1, db.foodDao().operationCount())
             controlled.prepareRecipeDraftConsent(json, request, facts, states)
             val next = withTimeout(10_000) {
@@ -303,7 +322,7 @@ class RecipeDraftConsentViewModelTest {
             override fun discard() { key = null }
             override fun finish(approvalDigest: String, operationKey: String) = Unit
         }
-        val firstVm = LocalDataViewModel(FoodStore(db) { clock }, pendingKeyStore = keys)
+        val firstVm = signedRecipeModel(signedRecipeStore(db) { clock }, pendingKeyStore = keys)
         firstVm.prepareRecipeDraftConsent(json, request, facts, states)
         val first = withTimeout(10_000) {
             firstVm.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -311,16 +330,16 @@ class RecipeDraftConsentViewModelTest {
         val digest = requireNotNull(first.review?.approvalBasisDigest)
         val oldKey = requireNotNull(keys.key)
         val oldSession = requireNotNull(first.sessionId)
-        firstVm.confirmRecipeDraftConsent(digest, oldSession)
+        firstVm.confirmSignedRecipeTestConsent(digest, oldSession)
         withTimeout(10_000) {
             firstVm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
         assertEquals(oldKey, keys.key) // cleanup intentionally lost
         assertEquals(2, db.foodDao().operationCount())
-        assertTrue(FoodStore(db) { clock }.isRecipeDraftOperationKeyUnavailable(oldKey))
+        assertTrue(signedRecipeStore(db) { clock }.isRecipeDraftOperationKeyUnavailable(oldKey))
 
         clock += 300_001L // consent expired; pending-key retention is still 24h
-        val restarted = LocalDataViewModel(FoodStore(db) { clock }, pendingKeyStore = keys)
+        val restarted = signedRecipeModel(signedRecipeStore(db) { clock }, pendingKeyStore = keys)
         restarted.prepareRecipeDraftConsent(json, request, facts, states)
         val fresh = withTimeout(10_000) {
             restarted.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -329,9 +348,9 @@ class RecipeDraftConsentViewModelTest {
         assertNull(fresh.recordedDigest)
         assertNotEquals(oldKey, keys.key)
         assertNotEquals(oldSession, fresh.sessionId)
-        restarted.confirmRecipeDraftConsent(digest, oldSession)
+        restarted.confirmSignedRecipeTestConsent(digest, oldSession)
         assertEquals(2, db.foodDao().operationCount())
-        restarted.confirmRecipeDraftConsent(digest, fresh.sessionId)
+        restarted.confirmSignedRecipeTestConsent(digest, fresh.sessionId)
         withTimeout(10_000) {
             restarted.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
@@ -352,9 +371,9 @@ class RecipeDraftConsentViewModelTest {
             override fun discard() { key = null }
             override fun finish(approvalDigest: String, operationKey: String) = Unit
         }
-        val controlled = LocalDataViewModel(FoodStore(db) { at }, pendingKeyStore = keys)
-        assertTrue(FoodStore(db) { at }.isRecipeDraftOperationKeyUnavailable("ui-product"))
-        assertFalse(FoodStore(db) { at }.isRecipeDraftOperationKeyUnavailable("unused-key"))
+        val controlled = signedRecipeModel(signedRecipeStore(db) { at }, pendingKeyStore = keys)
+        assertTrue(signedRecipeStore(db) { at }.isRecipeDraftOperationKeyUnavailable("ui-product"))
+        assertFalse(signedRecipeStore(db) { at }.isRecipeDraftOperationKeyUnavailable("unused-key"))
         controlled.prepareRecipeDraftConsent(json, request, facts, states)
         val state = withTimeout(10_000) {
             controlled.recipeDraftConsentState.first { !it.busy && it.review != null }
@@ -362,7 +381,7 @@ class RecipeDraftConsentViewModelTest {
         assertEquals("fresh-pending-after-collision", keys.key)
         assertEquals(1, db.foodDao().operationCount())
         val digest = requireNotNull(state.review?.approvalBasisDigest)
-        controlled.confirmRecipeDraftConsent(digest, state.sessionId)
+        controlled.confirmSignedRecipeTestConsent(digest, state.sessionId)
         withTimeout(10_000) {
             controlled.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
@@ -380,7 +399,7 @@ class RecipeDraftConsentViewModelTest {
         vm.clearRecipeDraftConsent()
         assertNull(vm.recipeDraftConsentState.value.review)
         assertNull(vm.recipeDraftConsentState.value.sessionId)
-        vm.confirmRecipeDraftConsent(digest, session)
+        vm.confirmSignedRecipeTestConsent(digest, session)
         assertEquals(1, db.foodDao().operationCount())
         assertEquals(0, db.foodDao().consumptionCount())
     }
@@ -390,7 +409,7 @@ class RecipeDraftConsentViewModelTest {
         val entered = java.util.concurrent.CountDownLatch(1)
         val release = java.util.concurrent.CountDownLatch(1)
         val holdTransaction = java.util.concurrent.atomic.AtomicBoolean(false)
-        val guardedVm = LocalDataViewModel(FoodStore(db) {
+        val guardedVm = signedRecipeModel(signedRecipeStore(db) {
             if (holdTransaction.get()) {
                 entered.countDown()
                 check(release.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
@@ -405,8 +424,9 @@ class RecipeDraftConsentViewModelTest {
         }
         val digest = requireNotNull(preview.review?.approvalBasisDigest)
         val session = requireNotNull(preview.sessionId)
+        val proof = requireNotNull(SignedRecipeTestProof.issue(guardedVm, digest))
         holdTransaction.set(true)
-        guardedVm.confirmRecipeDraftConsent(digest, session)
+        guardedVm.confirmRecipeDraftConsent(digest, session, proof)
         try {
             assertTrue("consent must reach the Room transaction",
                 entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
@@ -431,7 +451,7 @@ class RecipeDraftConsentViewModelTest {
         val input = RecipeInput("Reis", 2, listOf(RecipeItemInput(versionId, 200_000)), "Kochen")
         val justBeforeMidnight = java.time.Instant.parse("2026-11-01T23:59:59.999Z").toEpochMilli()
         var calls = 0
-        val store = FoodStore(db) {
+        val store = signedRecipeStore(db) {
             calls++
             justBeforeMidnight + (calls - 1) * 5_000L
         }
@@ -451,7 +471,7 @@ class RecipeDraftConsentViewModelTest {
     @Test fun invalidRecipeSaveClockRollsBackWithoutHistoryOrRecipe() = runBlocking {
         val versionId = db.foodDao().allVersions().single().id
         val input = RecipeInput("Reis", 2, listOf(RecipeItemInput(versionId, 200_000)), "Kochen")
-        val store = FoodStore(db) { -1L }
+        val store = signedRecipeStore(db) { -1L }
         val failure = runCatching { store.saveRecipe("invalid-time-recipe", input) }.exceptionOrNull()
         assertTrue(failure is IllegalArgumentException)
         assertNull(db.foodDao().operation("invalid-time-recipe"))
@@ -469,7 +489,7 @@ class RecipeDraftConsentViewModelTest {
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
         assertEquals(1, db.foodDao().operationCount())
 
-        vm.confirmRecipeDraftConsent(digest, preview.sessionId)
+        vm.confirmSignedRecipeTestConsent(digest, preview.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
@@ -504,7 +524,7 @@ class RecipeDraftConsentViewModelTest {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val first = ready()
         val oldDigest = requireNotNull(first.review?.approvalBasisDigest)
-        vm.confirmRecipeDraftConsent(oldDigest, first.sessionId)
+        vm.confirmSignedRecipeTestConsent(oldDigest, first.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == oldDigest }
         }
@@ -523,15 +543,34 @@ class RecipeDraftConsentViewModelTest {
         assertEquals(2, db.foodDao().operationCount()) // product + old consent
     }
 
+    @Test fun immediateObserverEditAfterCommittedConsentCannotSaveTheInvalidatedPreview() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val digest = requireNotNull(preview.review?.approvalBasisDigest)
+        // Inline observer deliberately acts before the emitting consent coroutine
+        // returns. The UI is already editable once this completion is published.
+        val edit = launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
+            vm.recipeDraftConsentState.first { it.recordedDigest == digest }
+            vm.clearRecipeDraftConsent()
+            vm.saveConfirmedRecipeDraft(digest)
+        }
+        vm.confirmSignedRecipeTestConsent(digest, preview.sessionId)
+        withTimeout(10_000) { edit.join() }
+        assertNull(vm.recipeDraftConsentState.value.review)
+        assertNull(vm.recipeDraftConsentState.value.recordedDigest)
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(2, db.foodDao().operationCount())
+    }
+
     @Test fun recoveredRoomConsentRequiresNewSaveGestureAndUsesSameOperationKey() = runBlocking {
         vm.prepareRecipeDraftConsent(json, request, facts, states)
         val preview = ready()
         val digest = requireNotNull(preview.review?.approvalBasisDigest)
-        vm.confirmRecipeDraftConsent(digest, preview.sessionId)
+        vm.confirmSignedRecipeTestConsent(digest, preview.sessionId)
         withTimeout(10_000) {
             vm.recipeDraftConsentState.first { it.recordedDigest == digest }
         }
-        val recreated = LocalDataViewModel(FoodStore(db) { at })
+        val recreated = signedRecipeModel(signedRecipeStore(db) { at })
         recreated.prepareRecipeDraftConsent(json, request, facts, states)
         val restored = withTimeout(10_000) {
             recreated.recipeDraftConsentState.first { !it.busy && it.recordedDigest == digest }

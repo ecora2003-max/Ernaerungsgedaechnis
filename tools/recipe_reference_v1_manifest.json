@@ -1,0 +1,15 @@
+{
+  "repository": "ecora2003-max/EG-Rezept-KI",
+  "commit": "6581eabd5c9c38e387fb0b73f4c9747b75d323e3",
+  "coreArchiveSha256": "a5c53a77dfdf74d0cfc6497db5f415cf2abb0a32e7a3a0363ca2dc9f59581838",
+  "sha256": {
+    "app/src/main/java/de/eg/recipe/RecipeEngine.kt": "90a5c4bc0367e9897fe6a9a0ba13a4ac03621b59ff3572067c5bec8b60d14713",
+    "app/src/test/java/de/eg/recipe/RecipeEngineTest.kt": "3c44896e299564c72bf09db9bd07047262b0a13b0a327b674b23d2805d1e7447",
+    "app/src/main/java/de/eg/recipe/CombinatorialGenerator.kt": "5352861860ca29590ad2ddb38adfddab4abf35aa77d4c0673ee8ec6bf47b9c4b",
+    "app/src/test/java/de/eg/recipe/CombinatorialGeneratorTest.kt": "8e925dd117ad56e4d20475d612e7a86a0382791f9e13f8c78869d32b3bfa8507",
+    "app/src/main/java/de/eg/recipe/RecipeDraftImport.kt": "44044bfb12e809d99d6f16037c351fc217b1b34f399b87d33aa92f2f3f727c95",
+    "app/src/test/java/de/eg/recipe/RecipeDraftImportTest.kt": "531eb816c2639a9e48635ef9e62b4e95ca8b2b5406e262304be2b5d6ac28a43b",
+    "app/src/main/java/de/eg/recipe/RecipeDraftRevalidation.kt": "7f679f40d8f1f59f4f03db223fd31e3d17d3a159e5cd87f522718a6338ac0d37",
+    "app/src/test/java/de/eg/recipe/RecipeDraftRevalidationTest.kt": "091999d8e6637664706046bfd9f77f0a0feb812ccf65ba80a4060649697faaf5"
+  }
+}

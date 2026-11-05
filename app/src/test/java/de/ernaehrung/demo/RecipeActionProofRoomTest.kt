@@ -86,7 +86,7 @@ class RecipeActionProofRoomTest {
 
     private suspend fun attestedSave(key: String, review: Gate.Review) =
         store.saveReviewedRecipeDraftV1(key, json, request, facts, states, review,
-            true, requireActionAttestation = true)
+            true)
 
     private suspend fun rejected(action: suspend () -> Unit) {
         try { action(); fail("Expected FoodStore rejection") }
@@ -108,6 +108,21 @@ class RecipeActionProofRoomTest {
         assertTrue(db.foodDao().allPaidPrices().isEmpty())
         assertEquals(1, db.foodDao().observeRecipes().first().size)
         rejected { consent("proof-ok", review, proof) } // nonce already consumed
+    }
+
+    @Test fun referenceRevalidatorBlocksCaseVariantFoodExclusionAtTheActualFoodStoreBoundary() = runBlocking {
+        val before = db.foodDao().operationCount()
+        val excluded = request.copy(confirmedRestrictions = setOf("FOOD:RICE"))
+        val evidence = facts.mapValues { (_, line) -> line.copy(allergens = emptyMap()) }
+        val review = store.previewRecipeDraftV1(json, excluded, evidence, states)
+        assertEquals(Gate.Status.BLOCKED, review.status)
+        assertTrue("REFERENCE_FOOD_FORBIDDEN" in review.blockers)
+        assertTrue("FOOD_FORBIDDEN" in requireNotNull(review.referenceReport).blockers)
+        assertNull(review.input)
+        assertNull(review.approvalBasisDigest)
+        assertEquals(before, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(0, db.foodDao().consumptionCount())
     }
 
     @Test fun forgedStaleCancelledAndProcessDeathProofsFailClosed() = runBlocking {
@@ -134,9 +149,40 @@ class RecipeActionProofRoomTest {
         rejected { consent("proof-crash", review, crashProof) }
 
         val legacyKey = "proof-legacy"
-        consent(legacyKey, review) // historical unsigned checkpoint
+        rejected { consent(legacyKey, review) }
         rejected { attestedSave(legacyKey, review) }
         assertEquals(0, db.foodDao().consumptionCount())
         assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+    }
+
+    @Test fun legacyUnsignedConsentCannotResumeOrSaveThroughTheDefaultFoodStoreEntry() = runBlocking {
+        val review = store.previewRecipeDraftV1(json, request, facts, states)
+        val digest = requireNotNull(review.approvalBasisDigest)
+        val key = "unsigned-legacy-checkpoint"
+        db.foodDao().insertOperation(OperationEntity("RECIPE_DRAFT_CONSENT_V1:$key",
+            "RECIPE_DRAFT_CONSENT_V1", WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest),
+            now, digest))
+        store = FoodStore(db, { now }, verifier)
+        val before = db.foodDao().operationCount()
+        assertNull(store.recordedRecipeDraftV1ConsentKey(digest))
+        rejected { store.saveReviewedRecipeDraftV1(key, json, request, facts, states, review, true) }
+        rejected { consent("unsigned-new", review) }
+        assertEquals(before, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
+    @Test fun actualSignedConsentIsReadAfterStoreRestartAndCanStillSaveExactlyOnce() = runBlocking {
+        val review = store.previewRecipeDraftV1(json, request, facts, states)
+        val digest = requireNotNull(review.approvalBasisDigest)
+        val key = "signed-resume"
+        val proof = sign(key, digest, store.beginRecipeDraftCredentialAction(key, digest))
+        consent(key, review, proof)
+        store = FoodStore(db, { now }, verifier)
+        assertEquals(key, store.recordedRecipeDraftV1ConsentKey(digest))
+        val version = store.saveReviewedRecipeDraftV1(key, json, request, facts, states, review, true)
+        assertEquals(version, store.saveReviewedRecipeDraftV1(key, json, request, facts, states, review, true))
+        assertEquals(1, db.foodDao().observeRecipes().first().size)
+        assertEquals(0, db.foodDao().consumptionCount())
     }
 }

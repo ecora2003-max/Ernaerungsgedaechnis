@@ -1,4 +1,63 @@
+## Codex – gemeinsamer Rezept-Abnahmebranch und Referenzanbindung (05.11.2026)
+
+- PR #246 führt die vorhandenen Funktionsbranches #247 (vollständiges gepinntes Offline-v1-Schema), #248 (echte Versions-Nährwertvorschau) und `abe79af` (offizieller Generator/Revalidator) ohne Force-Push zusammen. Letzte Main-Basis `75a8b82`: seit Einkaufsmerge `31a3945` ausschließlich drei eigene Sperrdateien verändert. Keine andere Entwicklerarbeit überschrieben. Separate PRs erst nach gemeinsamer Integration schließen.
+- Vier Kernquellen und vier Originaltests aus Rezept-HEAD `6581eabd` übernommen; 78 Originalassertionen in vier JUnit-Einstiegen zunächst erfolgreich. Exakte Host-Projektion ergänzt: sieben Nährwerte, aktuelle unabhängige Mengenbasis/RAW/COOKED, bekannte Nullwerte/Teilwerte, Allergenbelege niemals zu vollständig aufwerten, alle acht Kontextflags. Ganzzahl-v1 kann gebrochene milli-Mengen nicht darstellen: im Referenzport explizit unbekannt, keine Rundung und kein erfundener Bestand. Angebots-DTOs ohne Preis-/Gültigkeitsbelege bleiben unverfügbar. FoodStore prüft aktuelle Room-/Rechtebindungen weiterhin separat.
+- Lint deckte `BigInteger.longValueExact()` als erst ab API31 verfügbar auf. Einzige dokumentierte Android26-Anpassung in Originalquelle: `toLong()` **nach unveränderter Nichtnegativ-/63-Bit-Prüfung**. Acht Datei-/Originaltest-Hashes werden unter exakt dieser einen Normalisierung geprüft; zusätzliche Grenzen 0/1/Long.MAX_VALUE/negative Werte/Überlauf. Kein Mindest-SDK-, Vertrags- oder Datenbankwechsel. Ein Kotlin-Testtypfehler bei leerem generischem Kontext ebenfalls korrigiert.
+- Aktuelle volle lokale Prüfung und exakte PR-/Geräte-CI laufen nach Push; noch kein neuer positiver Gesamtrezept-Gerätenachweis und keine Modulfreigabe. Alle fünf Referenz-HEADs am 05.11. erneut gelesen, unverändert: Architektur `9871c9de`, Preise `5c52bf70`, Produkte `6a04f651`, Einkauf `a3e13b14`, Rezepte `6581eabd`.
+
+## Codex – Rezeptformular vollständig bedienbar geprüft (05.11.2026)
+
+- Positiver Review lokal reproduziert: verschachtelte horizontale Auswahlzeilen ließen Testaktionen außerhalb des sichtbaren Bereichs landen. Mengenbasis, Zustand und Allergenoptionen brechen jetzt um; Testaktionen sind an die konkrete Zutat gebunden und prüfen die Auswahl. Verständliche konkrete Fehlerhinweise ergänzt. **13/13 vollständige Formulartests PASS**, Android-Testkompilierung PASS.
+- Kauf-Neustarttest wiederholt exakt die ursprüngliche OCR-Positionsreihenfolge statt zufälliger persistierter Zeilen-IDs; der stabile FoodStore-Fingerabdruck bleibt unverändert. Neuer Gerätelauf noch offen.
+- Zwischenzeitliche Inaktivität: Wächter hat am 04.11. um 23:41 UTC alle drei Sperren regulär freigegeben. Am 05.11. waren alle drei FREE; neue vollständige Codex-Session mit frischen getrennten CAS-Tokens regulär erworben. Keine fremde Sperre überschrieben. Bestehende Branches/PRs unverändert fortgesetzt.
+
+## Codex – echter gepinnter Rezeptkern in Arbeit (04.11.2026)
+
+- Übernommene, unveränderte reine Kotlin-Quellen und Originaltests aus `EG-Rezept-KI@6581eabd5c9c38e387fb0b73f4c9747b75d323e3`: Engine, Kombinationsgenerator, Import und Revalidator. Herkunft/Hashes in `tools/recipe_reference_v1_manifest.json`. Generator nutzt jetzt die Originalgrammatik; unabhängiger Hostadapter revalidiert mit konkreten Katalogversionen, Mengenbasis/Zustand und niemals aufgewerteten Teil-Allergennachweisen vor FoodStore-Consent/Save.
+- Erste gezielte JVM-/Originaltestprüfung und Android-Testkompilierung PASS; weitere Host-/Room-Paritätsfälle, vollständige CI und Geräteprüfung noch offen. Keine Modulfreigabe.
+- Prioritärer Gerätebefund aus PR #246, Run `41928448642`: reguläre Entsperrung erfolgreich, **8/10 Tests bestanden**, Rezept-Review-Timeout und Kauf-Retry mit abweichender rekonstruierter Positionsreihenfolge zu bearbeiten.
+
+## Codex – vollständige lokale Prüfung der Rezept-Nährwertvorschau (04.11.2026)
+
+- Funktionscommit `9a1509a`, mit aktuellem sicherem Geräte-Testaufbau und v1-Schema auf `3c2959f` zusammengeführt. `lintDebug testDebugUnitTest compileDebugAndroidTestKotlin` erfolgreich; frische XML: **614/614 Tests, 0 Fehler/Skips, 7/7 Room-Migrationspfade**. Kein Room-Schemawechsel.
+- Neue Vorschau vor Gerätebestätigung: echte, exakt zugeordnete Artikelversionen, unterschiedliche Mengenbasen und g/ml, Teilwerte und unbekannte Nährwerte; keine Rezept-/Bestands-/Verzehrbuchung. Eigene neue Gerätetest-Assertions noch nicht ausgeführt; PR-CI und Android-Nachweis stehen aus.
+
+## Codex – reguläre Geräteentsperrung statt zustandsabhängiger Gesten (04.11.2026)
+
+- PR #246: App-CI `41925785592` auf `31a2cf810bb51792e21f0460356f5095a308b0ff` PASS. Geräte-CI `41925785595`: 10 Tests, 8 bereits in der gemeinsamen Vorbereitung gescheitert; SystemUI/Launcher bei aktivem Keyguard, kein PIN-Editor. Kein neuer Rezept-End-to-End-Nachweis.
+- Testvorbereitung fordert jetzt mit `wm dismiss-keyguard` Androids regulären sicheren Entsperrdialog an, wartet auf echten PIN-Editor oder tatsächlich aufgehobenen Keyguard und verwendet weiterhin die realen System-PIN-Tasten. Keine Entfernung der Gerätesperre, keine vorgetäuschten Credential-Ergebnisse. Neuer Geräteversuch steht aus.
+
 # Integration: aktueller Wiedereinstieg
+
+## Rezeptvorschau – echte Produktnährwerte vor Bestätigung (04.11.2026)
+
+- Branch `codex-recipe-preview-nutrition-20261104`: Die manuell geprüfte, noch ungespeicherte Rezeptvorschau berechnet pro Soll-Portion die echten Nährwerte ihrer konkreten Room-Produktversionen. Die Küchen-UI zeigt Grund- und weitere Nährstoffe vor der Gerätebestätigung; fehlende Werte bleiben null/Teilsumme, bekannte Null bleibt 0. Kein Rückgriff auf Modell-Nährwerte, keine Versionssubstitution, kein Rezept-/Lager-/Verzehrwrite.
+- Vorschau und berechnete Werte werden an dieselbe geprüfte Session gebunden, bei Bearbeitung verworfen und bei protokollierter Bestätigung ohne neue Buchung angezeigt. **20/20 gezielte Room-/ViewModel-Tests, 0 Fehler/Skips und Android-Testkompilierung PASS**; Gramm/ml, Portionsskalierung, Versionshistorie, unbekannt/0 und Schreibfreiheit geprüft. Die echte Android-Gesamtstrecke prüft zusätzlich die Anzeige vor Consent; noch nicht auf diesem Stand ausgeführt. Volle CI/Schema/Migration/Lint und Geräteprüfung offen.
+- Geräteblockade #246 nach zwei weiteren belegten Läufen neu eingegrenzt: PIN-Fokus und danach fehlende PIN-Oberfläche bei weiterhin aktivem Keyguard. Original-Screenshot/Fensterzustand zeigen eine unzuverlässige Menu-/Swipe-Vorbereitung. Nächster Schritt: Androids vorgesehenen Keyguard-Dismiss-Aufruf verwenden, tatsächlichen Zustand erneut prüfen, PIN weiterhin ausschließlich über echte Systemtasten eingeben; kein Geräte-PASS behaupten.
+
+## Rezepte v1 – tatsächliche Offline-Laufzeit-Vertragsprüfung (04.11.2026)
+
+- Branch `codex-recipe-v1-runtime-contract-20261104`: vollständiges unverändertes v1-Schema als lokale Java-Ressource eingebunden (Blob `bedde4677342817fe6b883962c8dfbbd60100072`); die Laufzeit prüft vor jeder Import-/FoodStore-Revalidierung sämtliche darin verwendeten Assertions einschließlich verschachtelter/optionaler Felder, lokaler Referenzen und Formate. Kein Netzresolver und kein beliebiger externer Schemadienst; ein falscher Blob oder nicht unterstützte Schema-Keywords scheitern geschlossen. Zusätzliche Host-Semantik, Herkunft und authentifizierter Save bleiben Pflicht.
+- Gemeinsame **70 Vektoren (27 gültig/43 ungültig)** einschließlich aller acht Kontextflags gegen Python Draft202012Validator/FormatChecker und Kotlin geprüft; **37/37 gezielte JVM-Tests, 0 Fehler/Skips**, Android-Testkompilierung PASS. Der erste Lauf reproduzierte sieben Generatorfehler: `OffsetDateTime.toString()` ließ bei glatten Minuten Sekunden weg. Generator/Context-Metadaten jetzt RFC3339-konform mit erhaltener Präzision, alle 27 Kombinationen bestehen den wirklichen Import.
+- Volle App-/Room-/Lint-/Schema-/Referenz-CI und echte Android-Ressourcen-/Offline-Prüfung auf finalem Head noch offen. Keine Vertragsversion, Migration, Buchung oder externe Übertragung geändert. Nächster funktionaler Anschluss: v1-Generator/Revalidator-Parität und unabhängig berechnete Nährwertvorschau vor dem Save vervollständigen.
+- #246 bleibt Draft: App-CI 41923828103 auf `23df4636` PASS; Geräte-CI 41923828169 scheiterte vor dem App-Ablauf an unfokussiertem System-PIN-Feld (Original-XML/Logcat/Screenshot geprüft). Eigene isolierte Korrektur `31a2cf81` bedient die tatsächlichen System-Ziffern-/Enter-Tasten statt wirkungsloser Texteingabe; im bestehenden Rezept-PR gesichert, neue exakte Geräte-CI erforderlich.
+
+## Einkaufsintegration gesichert, Rezept-Gesamtprüfung (04.11.2026)
+
+- **PR #244 integriert als `31a3945a`**, geprüfter Head `64e5e98d`: App-CI 41921993140 PASS (**606 JVM, 7 Room-Migrationen**, Lint, Schema, gepinnte Python-/v1-Gates), echte API35-Offline-Geräte-CI 41921993124 PASS; Original-XML **9/9 Tests, 0 Fehler/Skips** geprüft. Neue Einkaufskette von OCR über bestätigten Kauf, Preis/Lager und Budgetvorschau bis SQLite-Neuöffnung/Retry/Storno bestanden. System-Kamera-/Picker-Dialog und vollständige Modulparität weiter offen, keine Gesamtfreigabe oder Download-APK.
+- Rezeptkorrekturen auf Code-/Test-SHA `fc578141`: voller lokaler Pflichtlauf **609/609 JVM, 0 Fehler/Skips, 7/7 Room-Migrationen**, Lint, unverändertes Room-8-Schema und Android-Testkompilierung PASS (4m10s). Zuvor 608/1-Fehler wurde durch den reproduzierbar getesteten UI-Abschlussübergang korrigiert. Die neue echte Allergen-/Gerätecredential-/Save-/Herstellung-/separate-Verzehr-UI-Strecke ist kompiliert, noch nicht ausgeführt.
+- Main einschließlich #244 ohne Force-Push in den bestehenden Rezeptbranch übernommen. Nächster Schritt: exakte GitHub-App-/Referenz-CI und echte API35-Instrumentation des vollständigen Rezeptpfads, reproduzierte Fehler beheben; danach vollständige Laufzeit-v1-Schema-/Generator-/Revalidator-Parität. Keine ungeprüften Änderungen mergen.
+
+## Rezepte B1 – unmittelbare Bearbeitung nach Consent (04.11.2026)
+
+- Voller lokaler Lauf auf `b7a518f`: Lint, Schema und Android-Testkompilierung PASS; **608 JVM-Tests, 1 Fehler**. Fehlender Übergang im echten ViewModel reproduziert: veröffentlichter abgeschlossener Consent machte die UI bearbeitbar, während der noch aktive Coroutine-Job die sofortige Invalidierung abwies; ein nachfolgender Save konnte dadurch die alte Vorschau verwenden.
+- Schreibschutz wird jetzt nach abgeschlossenem Room-/Cleanup-Schritt **vor** Veröffentlichung des fertigen UI-Zustands freigegeben. Zusätzlicher inline reagierender StateFlow-Test erzwingt genau diese Reihenfolge und erwartet ausschließlich den Consent, keine Rezeptversion. Der vollständige korrigierte Lauf und echte Geräte-E2E müssen noch bestehen.
+
+## Rezepte B1 – attestierte Schreibgrenze und Wiederaufnahme (04.11.2026)
+
+- Neuer Funktionsbranch `codex-recipe-attestation-e2e-20261104`: FoodStore verlangt für neuen Consent und Rezeptsave zwingend verifizierte Geräteaktion; der bisherige Boolean-Downgrade ist entfernt. Alte unsignierte Ledger bleiben erhalten, können aber weder Wiederaufnahme noch Save autorisieren. Die DAO-Wiederaufnahme las bisher ausschließlich Legacy-Typen und übersah echte attestierte Consents; auf attestierte Einträge korrigiert, ohne Schemaänderung.
+- Vier bestehende Host-/ViewModel-/Room-Suites mit synthetischem JCA-Signer auf denselben Pflichtpfad umgestellt; **114/114 gezielte JVM-Tests, 0 Fehler/Skips PASS**. Bestehende Zeit-/Restart-/Rollback-/Parallelitätsregressionen erhalten; zwei explizite Regressionen für Legacy-Sperre und signierte Wiederaufnahme ergänzt. Android-Testkompilierung des damaligen Stands PASS; neue vollständige reale Credential-/Allergen-/Koch-/separate-Verzehr-UI-Strecke zusätzlich ergänzt, noch nicht ausgeführt. Vollständige App-CI/Referenz-/Schema-/Geräteprüfung offen.
+- Einkaufs-PR #244 auf `9fc4b12`: App-CI 41919858496 PASS. Device-CI 41919858488 FAIL: 9 Tests ausgeführt, 5 Compose-Timeouts einschließlich vormals bestandener UI-Tests; OCR/Room-Tests bestehen. Zuerst Emulator-/UI-Startursache anhand tatsächlicher Belege korrigieren, kein Merge bei fehlgeschlagenem Gerätetest. Danach neue B1-Strecke tatsächlich auf API35 ausführen.
 
 ## Einkauf A1 – Android-UI-Startfehler untersucht (04.11.2026)
 

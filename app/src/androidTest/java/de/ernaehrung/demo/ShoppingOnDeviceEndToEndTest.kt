@@ -162,8 +162,11 @@ class ShoppingOnDeviceEndToEndTest {
             assertEquals("Tofu manuell korrigiert", line.interpretedName)
             assertEquals(497L, receipt.totalCents)
             val purchaseInput = PurchaseInput(receipt.merchant, receipt.purchasedOn, receipt.totalCents,
-                lines.map { PurchaseLineInput(it.originalText, it.interpretedName, it.versionId,
-                    it.amount, it.unit, it.totalCents) }, purchase.reason)
+                // Replay the original submitted order. Persisted line IDs are
+                // random and the DAO's ID order is not the request's order.
+                review.parsed.lines.map { parsed -> lines.single { it.originalText == parsed.originalText } }
+                    .map { PurchaseLineInput(it.originalText, it.interpretedName, it.versionId,
+                        it.amount, it.unit, it.totalCents) }, purchase.reason, receipt.source)
             tap("Neuen Vorgang beginnen")
             tap("Kauf und private Preisprüfung öffnen ${review.draft.scan.operationId.take(8)}")
             field("Ausgaben ab JJJJ-MM-TT", receiptDay)
