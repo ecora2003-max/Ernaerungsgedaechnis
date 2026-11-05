@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-bdf921c84fb54658b740fe437ce8af26",
   "acquiredAtUtc": "2026-11-05T13:17:59.591Z",
-  "lastHeartbeatUtc": "2026-11-05T15:50:19.717Z",
+  "lastHeartbeatUtc": "2026-11-05T16:01:53.923Z",
   "leaseExpiresAtUtc": null,
   "task": "Gesamt-App fortsetzen: Rezept-Geräteabnahme und persistenter minimaler Health-Connect-Import gemäß Issue 253",
-  "workingBranch": "codex-health-connect-import-20261105",
+  "workingBranch": "codex-plan-execution-confirmation-20261105",
   "lastReleasedAtUtc": "2026-11-05T11:57:52.057Z",
   "lastReleasedCommit": "a1719bb0b020cf045a3d9e80383b4cea556d0d6e",
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
