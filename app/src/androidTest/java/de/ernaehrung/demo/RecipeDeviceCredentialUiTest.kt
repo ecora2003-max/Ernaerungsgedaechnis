@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
@@ -111,6 +112,40 @@ class RecipeDeviceCredentialUiTest {
         }
     }
 
+    private fun launchRealCredentialPrompt(callbacks: AtomicInteger) {
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        fun freshGesture() {
+            // Finish the preceding Activity/prompt transition before starting
+            // another independent user action. Never reuse a checked gesture.
+            device.waitForIdle(1_500L)
+            compose.onNodeWithTag("recipe_draft_consent_checkbox").assertIsOff().performClick()
+            compose.onNodeWithTag("recipe_draft_consent_checkbox").assertIsOn()
+            compose.onNodeWithTag("recipe_draft_consent_confirm").assertIsEnabled().performClick()
+        }
+        try {
+            freshGesture()
+            // AOSP can return CANCEL while the previous prompt is tearing down.
+            // Only that observed cancellation permits ONE fresh explicit retry;
+            // a timeout or unrelated window is never accepted as cancellation.
+            compose.waitUntil(15_000) {
+                credentialEditorVisible(device) || runCatching {
+                    compose.onAllNodesWithText("Gerätebestätigung abgebrochen", substring = true)
+                        .fetchSemanticsNodes().isNotEmpty()
+                }.getOrDefault(false)
+            }
+            if (!credentialEditorVisible(device)) {
+                assertEquals("An early OS cancellation must never produce signed consent", 0, callbacks.get())
+                compose.onNodeWithTag("recipe_draft_consent_checkbox").assertIsOff()
+                compose.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+                freshGesture()
+            }
+            awaitSystemCredentialActivity(device)
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("credential-flow")
+            throw failure
+        }
+    }
+
     private fun enterRealSystemPin() {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         awaitSystemCredentialActivity(device)
@@ -197,8 +232,7 @@ class RecipeDeviceCredentialUiTest {
             }
         }
         awaitComposeReview()
-        compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
-        compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        launchRealCredentialPrompt(callbacks)
         enterRealSystemPin()
         compose.waitUntil(20_000) { received.get() != null }
         val proof = requireNotNull(received.get())
@@ -238,26 +272,8 @@ class RecipeDeviceCredentialUiTest {
             }
         }
         awaitComposeReview()
-        compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
-        compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        launchRealCredentialPrompt(callbacks)
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        // AOSP's credential Activity can cancel during a previous prompt's
-        // teardown. Exercise the real app's fresh-gesture retry once, rather
-        // than treating that early cancellation as the user-cancel proof.
-        compose.waitUntil(15_000) {
-            credentialEditorVisible(device) || runCatching {
-                compose.onAllNodesWithText("Gerätebestätigung abgebrochen", substring = true)
-                    .fetchSemanticsNodes().isNotEmpty()
-            }.getOrDefault(false)
-        }
-        if (!credentialEditorVisible(device)) {
-            assertEquals("An OS cancellation must never sign an approval", 0, callbacks.get())
-            compose.onNodeWithTag("recipe_draft_consent_checkbox").assertIsOff()
-            compose.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
-            device.waitForIdle()
-            compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
-            compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
-        }
         cancelRealSystemCredential(device)
         // Wait for the external Activity to finish and Compose to resume. A direct
         // assertion races the ActivityResult callback and may see no app hierarchy.
