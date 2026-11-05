@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.ViewModel
@@ -284,15 +285,20 @@ class RecipeDeviceCredentialUiTest {
             }
             compose.onNodeWithText(label).performScrollTo().performClick()
         }
-        fun tag(label: String) {
-            finishEditing()
+        fun tag(label: String, endEditing: Boolean = true) {
+            if (endEditing) finishEditing()
+            compose.waitUntil(25_000) {
+                compose.onAllNodesWithTag(label).fetchSemanticsNodes().size == 1
+            }
             compose.onNodeWithTag(label).performScrollTo().performClick()
         }
         fun field(label: String, value: String) = compose.onNodeWithText(label)
             .performScrollTo().performTextReplacement(value)
         fun choose(label: String, id: String) {
             tag(label)
-            tag("choose_$id")
+            // Ending main-window focus after opening a popup can dismiss it.
+            // Keep that live popup focused until its actual option is selected.
+            tag("choose_$id", endEditing = false)
         }
         fun mount(store: FoodStore): LocalDataViewModel {
             val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
