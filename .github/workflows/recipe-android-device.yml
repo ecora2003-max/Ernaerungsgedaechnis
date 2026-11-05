@@ -48,6 +48,10 @@ jobs:
         run: |
           test -e /dev/kvm
           sudo chmod 666 /dev/kvm
+      - name: Compile instrumentation APKs before starting the emulator
+        # These are the same APKs connectedDebugAndroidTest installs. Keep the
+        # heavy compiler off the emulator's boot/launcher CPU time, no upload.
+        run: ./gradlew --no-daemon --max-workers=2 :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Execute shopping/recipe UI, Room restart and bundled OCR offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
@@ -64,7 +68,7 @@ jobs:
             # Ephemeral emulator only: exercise Android's real credential Activity
             # and auth-bound Keystore, never a synthetic RESULT_OK callback.
             adb shell locksettings set-pin 2468
-            # Keep the API 35 emulator awake while Gradle builds the test APKs.
+            # Keep the API 35 emulator awake throughout instrumentation.
             # After provisioning a PIN, explicitly dismiss any newly displayed
             # lock screen before instrumentation launches MainActivity. Otherwise
             # Compose has no visible hierarchy and credential UI tests time out.
@@ -72,6 +76,7 @@ jobs:
             adb shell svc power stayon true
             adb shell input keyevent KEYCODE_WAKEUP
             adb shell wm dismiss-keyguard
+            adb shell cmd connectivity airplane-mode enable
             adb shell svc wifi disable
             adb shell svc data disable
             bash tools/run_android_device_tests.sh
