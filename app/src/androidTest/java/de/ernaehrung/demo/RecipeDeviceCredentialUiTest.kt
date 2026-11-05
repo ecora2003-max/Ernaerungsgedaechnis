@@ -4,6 +4,8 @@ import android.app.KeyguardManager
 import androidx.activity.compose.setContent
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
@@ -12,6 +14,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -273,7 +276,7 @@ class RecipeDeviceCredentialUiTest {
             compose.runOnUiThread {
                 compose.activity.setContent {
                     DemoTheme {
-                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Column(Modifier.systemBarsPadding().imePadding().verticalScroll(rememberScrollState())) {
                             LocalDataContent(model, "Küche")
                         }
                     }
@@ -379,13 +382,16 @@ class RecipeDeviceCredentialUiTest {
             field("Tatsächlich hergestellte Portionen", "2")
             choose("Fertigportionen lagern in", location)
             tap("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft")
+            compose.onNodeWithText("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft").assertIsOn()
             val storage = "Saubere Behälter und Kühlplatz tatsächlich geprüft"
             field("Geprüfte Lagerbedingungen und Platz beschreiben", storage)
             tap("Fertigportionen für diesen Test ausdrücklich freigeben")
+            compose.onNodeWithText("Fertigportionen für diesen Test ausdrücklich freigeben").assertIsOn()
             tap("Herstellung buchen")
             saved(model, false)
             assertEquals(3, database.foodDao().planningBatches().size)
             tap("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen")
+            compose.onNodeWithText("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen").assertIsOn()
             tap("Herstellung buchen")
             saved(model)
             assertEquals(0, database.foodDao().consumptionCount())

@@ -115,7 +115,9 @@ private fun LocalMealEditor(state: LocalDataState, date: String, blocked: Boolea
             Text("Freigabe, Verbrauchsdatum und ausreichender Bestand werden vor der Entnahme geprüft.")
         } else {
             IdPicker("Verzehr-Artikelversion", state.versions.map { it.id to "${it.name} · v${it.revision} · ${it.baseUnit.label} · ${it.id.take(8)}" }, versionId) { versionId = it; confirmed = false }
-            Text("Zum Beispiel unterwegs gegessen: keine fiktive Lagerentnahme. Ohne bekannte Menge das Mengenfeld leer lassen.")
+            Text(if (mode == "Bestand nach FEFO")
+                "Die tatsächlich gegessene Menge wird auf passende freigegebene Chargen verteilt. Den Vorschlag vor der Buchung prüfen."
+                else "Zum Beispiel unterwegs gegessen: keine fiktive Lagerentnahme. Ohne bekannte Menge das Mengenfeld leer lassen.")
         }
         Field("Mahlzeit / Beschreibung", name, { name = it; confirmed = false })
         Field("Gegessene Menge in ${version?.baseUnit?.label ?: "Basiseinheit"}", amount, { amount = it; confirmed = false })
