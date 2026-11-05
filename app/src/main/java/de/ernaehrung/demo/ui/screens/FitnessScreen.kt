@@ -135,7 +135,8 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel()) {
                 Text(if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall: ${row.steps} Schritte"
                     else row.title?.takeIf { it.isNotBlank() } ?: "Training aus Samsung Health",
                     style = MaterialTheme.typography.titleSmall)
-                Text("${time(row.startAt)} bis ${time(row.endAt)} · ${FitnessPresentation.duration(row.endAt - row.startAt)}")
+                Text("${time(row.startAt)} bis ${time(row.endAt)} · ${FitnessPresentation.duration(row.endAt - row.startAt)}",
+                    Modifier.testTag("fitness_duration_${row.kind}_${row.externalId}"))
                 Text("Quelle: Samsung Health · ${row.manufacturer?.takeIf { it.isNotBlank() } ?: "Hersteller unbekannt"} · ${row.model?.takeIf { it.isNotBlank() } ?: "Gerätemodell unbekannt"}")
                 Text(when (row.recordingMethod) {
                     Metadata.RECORDING_METHOD_MANUAL_ENTRY -> "In der Quelle manuell erfasst"
