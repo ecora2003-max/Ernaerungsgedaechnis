@@ -6,7 +6,6 @@ import android.net.ConnectivityManager
 import android.os.Environment
 import android.os.SystemClock
 import android.provider.MediaStore
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -33,7 +32,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 @SdkSuppress(minSdkVersion = 29)
-@RequiresApi(29)
 class PhotoPickerOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Before fun unlockFixture() = prepareUnlockedTestDevice()
@@ -47,7 +45,12 @@ class PhotoPickerOnDeviceTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity(android.Manifest.permission.ACCESS_NETWORK_STATE)
         try {
             val connectivity = target.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            assertNull("Offline device acceptance requires no active default network", connectivity.activeNetwork)
+            val active = connectivity.activeNetwork
+            val capabilities = active?.let(connectivity::getNetworkCapabilities)
+            assertNull("Offline acceptance requires no active default network " +
+                "(wifi=${capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)}, " +
+                "cellular=${capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)}, " +
+                "ethernet=${capabilities?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)})", active)
         } finally {
             instrumentation.uiAutomation.dropShellPermissionIdentity()
         }

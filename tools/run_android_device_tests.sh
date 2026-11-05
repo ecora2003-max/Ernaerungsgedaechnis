@@ -12,6 +12,7 @@ device_test_result=$?
 if [[ "$device_test_result" -ne 0 ]]; then
   mkdir -p app/build/outputs/device-diagnostics
   adb shell dumpsys window > app/build/outputs/device-diagnostics/window.txt
+  adb shell dumpsys connectivity > app/build/outputs/device-diagnostics/connectivity.txt
   adb exec-out screencap -p > app/build/outputs/device-diagnostics/screen.png
   # Capture the picker at its own failure boundary; later tests can replace
   # that OS surface before the final workflow screenshot is taken.
