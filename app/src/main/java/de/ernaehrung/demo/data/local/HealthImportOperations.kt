@@ -92,11 +92,7 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) {
-            val code = when (failure) {
-                is FitnessPermissionMissing, is SecurityException -> "PERMISSION_MISSING"
-                is FitnessSourceChanged -> "SOURCE_CHANGED_RETRY"
-                else -> "IMPORT_FAILED"
-            }
+            val code = FitnessImportDiagnostics.code(failure)
             recordFailure(initial.authorizationRevision, initial.lastSuccessRunId, startedAt, code)
             throw failure
         }

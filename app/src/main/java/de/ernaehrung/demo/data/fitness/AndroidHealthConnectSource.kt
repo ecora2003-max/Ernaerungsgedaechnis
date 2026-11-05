@@ -38,12 +38,17 @@ internal class AndroidHealthConnectSource(context: Context,
     }
     override suspend fun grantedPermissions(): Set<String> =
         if (availability() != FitnessHealthSource.Availability.AVAILABLE) emptySet()
-        else client().permissionController.getGrantedPermissions()
+        else FitnessImportDiagnostics.read(FitnessReadStage.PERMISSIONS) {
+            client().permissionController.getGrantedPermissions()
+        }
 
     override suspend fun readSnapshot(): FitnessHealthSnapshot {
-        val client = client()
+        val client = FitnessImportDiagnostics.read(FitnessReadStage.PROVIDER) { client() }
         suspend fun permission() {
-            if (!client.permissionController.getGrantedPermissions().containsAll(requiredPermissions)) throw FitnessPermissionMissing()
+            val granted = FitnessImportDiagnostics.read(FitnessReadStage.PERMISSIONS) {
+                client.permissionController.getGrantedPermissions()
+            }
+            if (!granted.containsAll(requiredPermissions)) throw FitnessPermissionMissing()
         }
         permission()
         val end = Instant.ofEpochMilli(now())
@@ -51,39 +56,45 @@ internal class AndroidHealthConnectSource(context: Context,
         val origin = setOf(DataOrigin(SAMSUNG_PACKAGE))
         // Refuse a rescan whose pages/aggregate changed underneath us. A partial
         // or permission-denied response must never delete cached observations.
-        val barrier = client.getChangesToken(ChangesTokenRequest(
-            recordTypes = setOf(StepsRecord::class, ExerciseSessionRecord::class), dataOriginFilters = origin))
+        val barrier = FitnessImportDiagnostics.read(FitnessReadStage.CHANGE_TOKEN) {
+            client.getChangesToken(ChangesTokenRequest(
+                recordTypes = setOf(StepsRecord::class, ExerciseSessionRecord::class), dataOriginFilters = origin))
+        }
         val records = mutableListOf<FitnessSourceRecord>()
         var page: String? = null
         val stepPages = mutableSetOf<String>()
         do {
             permission()
-            val response = client.readRecords(ReadRecordsRequest(StepsRecord::class,
-                TimeRangeFilter.between(start, end), dataOriginFilter = origin, pageSize = 1000, pageToken = page))
-            records += response.records.map { r ->
+            val response = FitnessImportDiagnostics.read(FitnessReadStage.STEPS) {
+                client.readRecords(ReadRecordsRequest(StepsRecord::class,
+                    TimeRangeFilter.between(start, end), dataOriginFilter = origin, pageSize = 1000, pageToken = page))
+            }
+            records += FitnessImportDiagnostics.read(FitnessReadStage.STEP_MAPPING) { response.records.map { r ->
                 val m = r.metadata
                 FitnessSourceRecord(m.id, FitnessRecordKind.STEPS, m.dataOrigin.packageName,
                     r.startTime.toEpochMilli(), r.endTime.toEpochMilli(), r.startZoneOffset?.totalSeconds,
                     r.endZoneOffset?.totalSeconds, m.lastModifiedTime.toEpochMilli(), m.clientRecordId,
                     m.clientRecordVersion, m.device?.manufacturer, m.device?.model, m.device?.type,
                     m.recordingMethod, steps = r.count)
-            }
+            } }
             page = response.pageToken
             check(records.size <= FitnessHealthPolicy.MAX_RECORDS && (page == null || stepPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
         } while (page != null)
         val workoutPages = mutableSetOf<String>()
         do {
             permission()
-            val response = client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class,
-                TimeRangeFilter.between(start, end), dataOriginFilter = origin, pageSize = 1000, pageToken = page))
-            records += response.records.map { r ->
+            val response = FitnessImportDiagnostics.read(FitnessReadStage.WORKOUTS) {
+                client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class,
+                    TimeRangeFilter.between(start, end), dataOriginFilter = origin, pageSize = 1000, pageToken = page))
+            }
+            records += FitnessImportDiagnostics.read(FitnessReadStage.WORKOUT_MAPPING) { response.records.map { r ->
                 val m = r.metadata
                 FitnessSourceRecord(m.id, FitnessRecordKind.WORKOUT, m.dataOrigin.packageName,
                     r.startTime.toEpochMilli(), r.endTime.toEpochMilli(), r.startZoneOffset?.totalSeconds,
                     r.endZoneOffset?.totalSeconds, m.lastModifiedTime.toEpochMilli(), m.clientRecordId,
                     m.clientRecordVersion, m.device?.manufacturer, m.device?.model, m.device?.type,
                     m.recordingMethod, exerciseType = r.exerciseType, title = r.title, notes = r.notes)
-            }
+            } }
             page = response.pageToken
             check(records.size <= FitnessHealthPolicy.MAX_RECORDS && (page == null || workoutPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
         } while (page != null)
@@ -91,10 +102,12 @@ internal class AndroidHealthConnectSource(context: Context,
         val zone = ZoneId.systemDefault()
         val day = end.atZone(zone).toLocalDate()
         val dayStart = day.atStartOfDay(zone).toInstant()
-        val aggregate = client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL),
-            TimeRangeFilter.between(dayStart, end), dataOriginFilter = origin))
+        val aggregate = FitnessImportDiagnostics.read(FitnessReadStage.DAILY_STEPS) {
+            client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL),
+                TimeRangeFilter.between(dayStart, end), dataOriginFilter = origin))
+        }
         permission()
-        val changes = client.getChanges(barrier)
+        val changes = FitnessImportDiagnostics.read(FitnessReadStage.CHANGE_CHECK) { client.getChanges(barrier) }
         if (changes.changesTokenExpired || changes.changes.isNotEmpty() || changes.hasMore) throw FitnessSourceChanged()
         permission()
         return FitnessHealthSnapshot(SAMSUNG_PACKAGE, start.toEpochMilli(), end.toEpochMilli(), now(),
