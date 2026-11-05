@@ -46,11 +46,7 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
             try { block(at) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {
-                val text = when (failure) {
-                    is FitnessPermissionMissing, is SecurityException -> "Leserechte fehlen. Die gespeicherten Daten bleiben lokal lesbar."
-                    is FitnessSourceChanged -> "Quelldaten haben sich während der Übernahme geändert. Bitte erneut synchronisieren."
-                    else -> "Übernahme nicht möglich. Die zuletzt erfolgreich gespeicherten Daten bleiben erhalten."
-                }
+                val text = FitnessImportDiagnostics.explain(FitnessImportDiagnostics.code(failure))
                 update(at) { it.copy(message = text) }
             } finally { update(at) { it.copy(busy = false) } }
         }
@@ -144,5 +140,6 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
         }
     }
     fun closeHistory() { historyJob?.cancel(); mutable.update { it.copy(history = null) } }
+    fun providerInstallUnavailable() { mutable.update { it.copy(message = "Health Connect konnte nicht im Store geöffnet werden. Du kannst es selbst im Play Store suchen; die lokale App bleibt nutzbar.") } }
     fun settingsUnavailable() { mutable.update { it.copy(message = "Health-Connect-Einstellungen sind auf diesem Gerät nicht erreichbar.") } }
 }

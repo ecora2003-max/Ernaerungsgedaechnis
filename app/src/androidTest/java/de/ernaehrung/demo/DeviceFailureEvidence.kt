@@ -13,7 +13,10 @@ import java.util.concurrent.TimeUnit
  * shell-owned diagnostic directory. No app storage permission is added.
  */
 internal fun captureDeviceFailureEvidence(name: String): Boolean {
-    require(name in setOf("picker", "camera-cancel", "camera-capture", "recipe-flow", "credential-flow", "shopping-flow", "plan-flow", "fitness-flow", "diagnostic-self-check"))
+    // Refuse unknown paths without masking the failure being diagnosed.
+    if (name !in setOf("picker", "camera-cancel", "camera-capture", "recipe-flow", "credential-flow",
+        "shopping-flow", "plan-flow", "fitness-flow", "body-flow", "health-api-flow", "production-fefo-flow",
+        "diagnostic-self-check")) return false
     // Diagnostics must never hide the original failure by blocking the runner.
     val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "synthetic-device-failure-evidence").apply { isDaemon = true }

@@ -53,9 +53,11 @@ internal object FitnessImportKernel {
         require(snapshot.aggregatedSteps == null || snapshot.aggregatedSteps >= 0L) { "HEALTH_AGGREGATE_INVALID" }
         snapshot.records.forEach { r ->
             require(r.sourcePackage == snapshot.sourcePackage && r.externalId.isNotBlank()) { "HEALTH_SOURCE_SCOPE" }
-            require(r.startAt >= 0L && r.startAt < r.endAt && r.endAt <= snapshot.capturedAt &&
-                r.startAt < snapshot.windowEnd && r.endAt > snapshot.windowStart &&
-                r.sourceModifiedAt in 0L..snapshot.capturedAt && r.clientRecordVersion >= 0L) { "HEALTH_RECORD_TIME_INVALID" }
+            require(r.startAt >= 0L && r.startAt < r.endAt) { "HEALTH_RECORD_INTERVAL_INVALID" }
+            require(r.endAt <= snapshot.capturedAt) { "HEALTH_RECORD_AFTER_CAPTURE" }
+            require(r.startAt < snapshot.windowEnd && r.endAt > snapshot.windowStart) { "HEALTH_RECORD_OUTSIDE_WINDOW" }
+            require(r.sourceModifiedAt in 0L..snapshot.capturedAt) { "HEALTH_SOURCE_MODIFIED_TIME_INVALID" }
+            require(r.clientRecordVersion >= 0L) { "HEALTH_SOURCE_VERSION_INVALID" }
             require(listOf(r.startOffsetSeconds, r.endOffsetSeconds).all { it == null || it in -64_800..64_800 }) { "HEALTH_OFFSET_INVALID" }
             require(r.recordingMethod >= 0 && (r.deviceType == null || r.deviceType >= 0)) { "HEALTH_METADATA_INVALID" }
             when (r.kind) {

@@ -84,6 +84,10 @@ class FitnessImportOnDeviceTest {
             compose.onNodeWithTag("fitness_daily_steps").performScrollTo().assertTextContains("321", substring = true)
             compose.onNodeWithTag("fitness_record_counts").assertTextContains("Trainings: 1", substring = true)
             compose.onNodeWithTag("fitness_record_counts").assertTextContains("Schrittintervalle: 1", substring = true)
+            compose.onNodeWithTag("fitness_sport_$token-workout").performScrollTo()
+                .assertTextEquals("Trainingsart: Sonstiges Training")
+            compose.onNodeWithTag("fitness_duration_WORKOUT_$token-workout").performScrollTo()
+                .assertTextContains("29 min 59,999 s", substring = true)
             compose.onNodeWithTag("fitness_missing_records").performScrollTo().assertTextContains("1", substring = true)
             compose.onNodeWithTag("fitness_missing_$token-missing").performScrollTo().performClick()
             compose.waitUntil(15_000) {

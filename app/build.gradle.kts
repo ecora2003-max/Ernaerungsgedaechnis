@@ -13,11 +13,22 @@ android {
         targetSdk=35
         versionCode=9
         versionName="0.9.0-recognition"
+        manifestPlaceholders["appLabel"] = "Ernährung · Demo"
         testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget="17" }
     buildFeatures { compose=true }
+    buildTypes {
+        getByName("debug") {
+            // Explicit isolated hardware-test build; never replaces the user's
+            // installed sandbox or its signing identity/data. Default unchanged.
+            if (providers.gradleProperty("egWatchSpike").orNull == "true") {
+                applicationIdSuffix = ".watchspike"
+                manifestPlaceholders["appLabel"] = "EG · Watch-Test"
+            }
+        }
+    }
     testOptions { unitTests.isIncludeAndroidResources=true }
     packaging { resources.excludes+="/META-INF/{AL2.0,LGPL2.1}" }
     sourceSets["test"].resources.srcDir("schemas")
