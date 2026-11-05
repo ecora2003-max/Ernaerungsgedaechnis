@@ -19,8 +19,8 @@ if [[ "$device_test_result" -ne 0 ]]; then
   for diagnostic_name in picker camera-cancel camera-capture; do
     for diagnostic_format in xml png; do
       diagnostic_output="app/build/outputs/device-diagnostics/$diagnostic_name.$diagnostic_format"
-      if adb exec-out run-as de.ernaehrung.demo cat "files/$diagnostic_name-diagnostic.$diagnostic_format" \
-          > "$diagnostic_output.tmp" 2>/dev/null; then
+      if adb pull "/sdcard/Download/eg-synthetic-test-diagnostics/$diagnostic_name.$diagnostic_format" \
+          "$diagnostic_output.tmp" >/dev/null 2>&1; then
         mv "$diagnostic_output.tmp" "$diagnostic_output"
       else
         rm -f "$diagnostic_output.tmp"
