@@ -1,5 +1,6 @@
 package de.ernaehrung.demo
 
+import androidx.activity.compose.setContent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import de.ernaehrung.demo.data.DemoRepository
@@ -7,6 +8,8 @@ import de.ernaehrung.demo.navigation.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
+import de.ernaehrung.demo.ui.DemoTheme
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -17,6 +20,9 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class NavigationTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @Before fun openExplicitImmutableDesignTour() {
+        rule.runOnUiThread { rule.activity.setContent { DemoTheme { DemoApp() } } }
+    }
     private fun screen(id:String) { rule.onNodeWithTag("screen_$id").assertExists(); rule.onNodeWithTag("tab_${Screen.valueOf(id).tab.name}").assertIsSelected() }
     private fun tap(tag:String) { rule.onNodeWithTag(tag).performScrollTo().performClick() }
     private fun go(id:String) { tap("go_$id"); screen(id) }
