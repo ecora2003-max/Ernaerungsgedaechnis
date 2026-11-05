@@ -392,6 +392,59 @@ class LocalDataScreenTest {
         }
     }
 
+    @Test @Config(qualifiers = "w320dp-h640dp-mdpi")
+    fun executionApprovalMustBeRenewedAfterAnIndependentAssignmentChangesTheLiveRemainingNeed() {
+        val database = database(); db = database
+        val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
+        val store = FoodStore(database) { clock }
+        val entry = runBlocking {
+            val version = store.rememberProduct("consent-product", ProductInput("Testtofu", energyKcal = 125.0))
+            val plan = store.savePlan("consent-plan", PlanInput("Testtag", "2026-10-30", "2026-11-05",
+                listOf(PlanEntryInput("meal-plan", "2026-10-30", PlanKind.DIRECT_CONSUMPTION,
+                    version, amount = 200_000, unit = BaseUnit.GRAM)), "Tagesplan"))
+            for (key in listOf("meal-one", "meal-two")) store.consume(key,
+                ConsumptionInput(version, "2026-10-30", key, 50_000, emptyList()), true)
+            database.foodDao().allPlannedEntries().single { it.planId == plan }
+        }
+        val model = mount(database, now = clock)
+        tap("Planung")
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.planning.value.report != null }
+        field("Ansicht ab JJJJ-MM-TT", "2026-10-30"); tap("Planungszeitraum anzeigen")
+        tap("Ist-Ausführung zuordnen oder zurücknehmen")
+        choose("Planposition für Ist-Zuordnung", entry.id)
+        rule.waitUntil(15_000) { rule.waitForIdle(); model.execution.value.view?.entry?.id == entry.id }
+        choose("Bereits gebuchtes Ist-Ereignis", "meal-one")
+        field("Begründung der Ist-Zuordnung", "Diesen bereits gegessenen Teil zuordnen")
+        tap("Abweichenden Termin oder Menge bewusst zuordnen")
+        tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        rule.onNodeWithTag("Ist-Zuordnung speichern").assertIsEnabled()
+        runBlocking {
+            store.linkPlanExecution("independent-assignment", LinkPlanExecutionInput(entry.id, "meal-two",
+                store.planExecution(entry.id).status.snapshot, "Unabhängig den anderen Teil zugeordnet", true), true)
+        }
+        rule.waitUntil(15_000) {
+            rule.waitForIdle(); model.execution.value.view?.status?.remainingAmount == 150_000L
+        }
+        rule.onNodeWithTag("Ist-Zuordnung speichern").assertIsNotEnabled()
+        rule.onNodeWithText("Diese Ist-Buchung dieser Planposition zuordnen").assertIsOff()
+        rule.onNodeWithText("Abweichenden Termin oder Menge bewusst zuordnen").assertIsOff()
+        runBlocking {
+            assertEquals(listOf("independent-assignment"), database.foodDao().allPlanExecutions().map { it.operationId })
+            assertEquals(2, database.foodDao().consumptionCount())
+        }
+        tap("Abweichenden Termin oder Menge bewusst zuordnen")
+        tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        tap("Ist-Zuordnung speichern"); saved(model)
+        rule.waitUntil(15_000) {
+            rule.waitForIdle(); model.execution.value.view?.status?.remainingAmount == 100_000L
+        }
+        runBlocking {
+            assertEquals(2, database.foodDao().allPlanExecutions().size)
+            assertEquals(2, database.foodDao().consumptionCount())
+            assertTrue(database.foodDao().planningBatches().isEmpty())
+        }
+    }
+
     @Test fun executionUiLinksActualCookingThenItsPortionsAndNeverCreatesAnExtraMealOrBatch() {
         val database = database(); db = database
         val clock = java.time.Instant.parse("2026-10-30T12:00:00Z").toEpochMilli()
