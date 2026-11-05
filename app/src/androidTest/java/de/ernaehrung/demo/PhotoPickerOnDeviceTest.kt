@@ -94,9 +94,13 @@ class PhotoPickerOnDeviceTest {
                 compose.onAllNodesWithText("Erkannten Bontext ansehen").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText("Erkannten Bontext ansehen").performScrollTo().performClick()
-            val raw = compose.onNodeWithText("DEMO", substring = true, ignoreCase = true)
+            val raw = compose.onNodeWithText("TESTMARKT", substring = true)
                 .fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("\n") { it.text }
-            assertEquals(497L, ReceiptParser.parse(raw).totalCents)
+            val parsed = ReceiptParser.parse(raw)
+            assertEquals("TESTMARKT", parsed.merchant)
+            assertEquals("2026-10-30", parsed.purchasedOn)
+            assertEquals(497L, parsed.totalCents)
+            assertEquals(2, parsed.lines.size)
             compose.onNodeWithText("Erkannten Text als Bonentwurf speichern").assertExists()
             assertEquals(operations, db.foodDao().operationCount())
             assertEquals(purchases, db.foodDao().purchases().size)

@@ -1,3 +1,8 @@
+## Codex – Systemfotoauswahl erreicht OCR, synthetische Bonprüfung korrigiert (05.11.2026)
+
+- PR #250 auf `0262f60d964480059a7b479ca1d4735f60156197`: App-CI `41964265787` PASS. Geräte-Run `41964265782`, Versuch 1, scheitert vor Testausführung am Google-Systemimage-Download (ungültiges ZIP); ausschließlich fehlgeschlagenen Job erneut gestartet. Versuch 2: originale XML **12 Tests, 11 PASS, 1 Fehler, 0 Skips**. Die strikte Defaultnetz-Prüfung besteht, alle bisherigen elf Einkaufs-/Rezept-/Credential-/Neustartabläufe bestehen. System-Picker gibt das echte ausgewählte Bild regulär an OCR zurück.
+- Einziger Restfehler war die neue Prüfung selbst: erwarteter Text „DEMO“ kommt in der tatsächlich verwendeten synthetischen Vorlage nicht vor. Sie liest jetzt den wirklichen „TESTMARKT“-Bon und prüft Händler, Datum, zwei Positionen und 497 Cents. Kein Ersatz des OS-Pickers oder der OCR. Diagnosesammler liest private Testdateien direkt per run-as/cat; kein auf Android fehlendes test-Programm mehr. Neue exakte Geräte-Gesamtprüfung noch PENDING.
+
 ## Codex – echte Netzfreiheit und Launcher-Isolation für Geräteabnahme (05.11.2026)
 
 - PR #250, erster HEAD `27a81e1`: App-Lint beanstandet ausschließlich RequiresApi im Test statt SdkSuppress; **entfernt, lokaler vollständiger Lint und Android-Testkompilierung jetzt PASS**. Geräte-Run `41961385436`: **12 Tests, 4 Fehler, 0 Skips**. Neue Netzprüfung meldet aktives Standardnetz 101; Systempicker noch nicht erreicht. Drei Credential-Fehler stammen laut Original-Windowdump/Screenshot aus `Application Not Responding: com.google.android.apps.nexuslauncher`, das echte Credential-Activities überdeckte.
