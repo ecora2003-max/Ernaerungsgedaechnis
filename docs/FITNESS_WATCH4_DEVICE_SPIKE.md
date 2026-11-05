@@ -1,0 +1,26 @@
+# Physische Fitnessprüfung: Pixel 9 Pro XL und Galaxy Watch 4
+
+Verbindliche Grundlage: [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253), Gates in [ACCEPTANCE.md](ACCEPTANCE.md). Dieser Ablauf ist vorbereitet, **noch nicht auf physischer Hardware ausgeführt**. Die Test-APK und ihr exakter Code-/Test-Commit werden erst nach grüner Prüfung im STATUS verlinkt.
+
+Das Nutzer-Testziel ist **Pixel 9 Pro XL mit Android 17**, gekoppelt mit **Galaxy Watch 4** (Nutzerangabe vom 05.11.2026). Der API35-CI-Emulator ersetzt diesen Test nicht. Vor Ort zusätzlich Android-Build, Watch-/Wear-OS-, Samsung-Health- und Health-Connect-Version festhalten. Keine Kontonamen, Gesundheitsrohwerte, Gerätekennungen oder vollständigen Logcats ins Repository übernehmen.
+
+## Neue echte Schritte und ein echtes Workout
+
+1. Samsung Health auf dem Pixel öffnen und prüfen, dass die Watch 4 synchronisiert. Samsung Health in Health Connect die **Schreibfreigabe für Schritte und Trainings** erteilen. EG benötigt davon getrennt ausschließlich die beiden **Leserechte**. Eine Installation allein erteilt weder Rechte noch lokale Importfreigabe.
+2. Auf der Watch neue Schritte und eine kurze, ausdrücklich für diesen Test gestartete Trainingseinheit erzeugen. Start-/Endzeit und Trainingsart lokal notieren. Die neue Einheit zuerst in Samsung Health, danach in Health Connect prüfen; Synchronisation darf verzögert sein. Keine bereits vorhandenen persönlichen Einträge als Testdaten verändern.
+3. In EG über **Mehr → Fitness** die angezeigte lokale Importfreigabe ausdrücklich auswählen und **Leserechte prüfen und Daten übernehmen** betätigen. Im echten Systemdialog nur Schritte und Trainings freigeben. Ablehnung muss ohne lokale Übernahme bleiben; manuelle Körpermessungen und Ernährung bleiben unabhängig nutzbar.
+4. In EG den tatsächlich übernommenen aktuellen Tageswert und den neuen Workout-Eintrag mit Trainingsart, Zeit, Dauer, Quelle und gelieferten Geräteangaben prüfen. Die Herkunft zusätzlich mit Watch/Samsung Health/Health Connect abgleichen: Das Samsung-Quellpaket oder der Gerätetyp allein beweisen kein Watch-4-Modell. Fehlende Metadaten bleiben unbekannt.
+5. Fitness verlassen und erneut öffnen: Nach aktivierter Freigabe muss eine neue automatische Vordergrundübernahme erfolgen. Anschließend **Jetzt erneut synchronisieren** prüfen. Unveränderte Quellen dürfen keine zusätzlichen Datensatzversionen erzeugen; überlappende Roh-Schrittintervalle werden nicht blind summiert. Der Tageswert ist der getrennte Health-Connect-Aggregatwert, nicht die Summe der angezeigten Intervalle.
+
+## Neustart, Änderungen, Widerruf und lokale Löschung
+
+- App beenden/erneut öffnen: lokale Kopie und Herkunft bleiben vorhanden; erfolgreiche neue Übernahmen aktualisieren den sichtbaren Zeitpunkt. Die Freigabe darf nicht allein durch einen wiederhergestellten Activity-Result-Callback entstehen.
+- Falls Samsung Health/Health Connect die Änderung oder Löschung **der eigens angelegten Testeinheit** unterstützt, diese dort ausdrücklich durchführen und erneut synchronisieren. Innerhalb des vollständig gelesenen 28-Tage-Fensters muss die App die Änderung versionieren bzw. den nicht mehr sichtbaren Datensatz kennzeichnen und dessen lokale Historie erhalten. Außerhalb des Fensters wird kein Löschen behauptet. Nicht durchführbare Quellaktionen bleiben ein offener Teilnachweis.
+- EG-Leserechte in Health Connect entziehen und Fitness erneut öffnen: weitere Übernahme stoppt, die letzte lokale Kopie bleibt lesbar. Erneute Freigabe verlangt eine neue ausdrückliche lokale Aktion und echte OS-Rechte. **Übernahme ausschalten** allein löscht keine Quelle und keine lokale Historie.
+- Lokale Samsung-Health-Kopie über die separate Löschbestätigung löschen: importierte Werte/Historie verschwinden, automatische Übernahme bleibt aus. Samsung Health, manuelle Körpermessungen, Ernährung und Vorräte bleiben erhalten. Minimale zufällige Retry-Kennungen ohne Gesundheitswerte verhindern verspätete alte Schreib-/Löschaufrufe.
+
+## Offline- und Privacy-Nachweis getrennt führen
+
+Lokale Werte müssen ohne Provider/Netz lesbar bleiben; kein Körperwert, Schritt oder Workout darf Mahlzeiten, Lager oder Kalorienziele buchen. Ein Flugmodus-Screenshot allein ist **kein vollständiger Nachweis tatsächlicher Netzfreiheit**. Auf der physischen Testumgebung müssen fehlendes aktives Standardnetz und gegebenenfalls tatsächlicher App-Netzverkehr gesondert gemessen werden; bis dahin den physischen Offline-/Privacy-Teil offen lassen. Die vorhandenen Emulatorprüfungen mit `ConnectivityManager.activeNetwork == null` und die getrennte validierte Online-OCR-UID-Prüfung sind begrenzte, separat dokumentierte Belege.
+
+Als Ergebnis nur exakten APK-/Commitbezug, verwendete Plattform-/Appversionen, durchgeführte Schritte und Pass/Fail/Skip ohne persönliche Werte im STATUS dokumentieren. Private Screenshots/Protokolle bleiben lokal. Erst ein tatsächlicher programmgesteuerter Import **neuer Watch-Schritte und mindestens eines echten Watch-Workouts** mit den übrigen Gate-B-Prüfungen schließt den physischen Nachweis; dieser vorbereitete Ablauf schließt kein Gate.

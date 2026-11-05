@@ -26,7 +26,7 @@ class FitnessImportRoomTest {
     private var clock = HEALTH_AT + 5_000L
     private val sourceId = FitnessHealthPolicy.SAMSUNG_PACKAGE
     private fun open() = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-        .addMigrations(FoodMigrations.MIGRATION_8_9).build()
+        .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10).build()
     @Before fun setup() = runBlocking {
         context = ApplicationProvider.getApplicationContext()
         name = "synthetic-health-${UUID.randomUUID()}.db"

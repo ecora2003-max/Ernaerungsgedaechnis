@@ -4,6 +4,28 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Exact scalar body observations. Old body, health and food history is untouched. */
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `body_measurement_runs` (`id` TEXT NOT NULL,
+                `kind` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `resultId` TEXT,
+                `recordedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `body_measurement_versions` (`id` TEXT NOT NULL,
+                `seriesId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `previousId` TEXT,
+                `runId` TEXT NOT NULL, `metric` TEXT NOT NULL, `rawValue` TEXT, `decimalValue` TEXT,
+                `unit` TEXT NOT NULL, `name` TEXT, `localDate` TEXT NOT NULL, `localTime` TEXT,
+                `zoneId` TEXT, `explicitOffset` TEXT, `utc` TEXT, `offsetSeconds` INTEGER,
+                `timePrecision` TEXT NOT NULL, `source` TEXT NOT NULL, `device` TEXT, `model` TEXT,
+                `method` TEXT NOT NULL, `methodDetail` TEXT, `conditions` TEXT, `quality` TEXT NOT NULL,
+                `excludedFromTrend` INTEGER NOT NULL, `correctionReason` TEXT, PRIMARY KEY(`id`),
+                FOREIGN KEY(`runId`) REFERENCES `body_measurement_runs`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`previousId`) REFERENCES `body_measurement_versions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_body_measurement_versions_runId` ON `body_measurement_versions` (`runId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_body_measurement_versions_previousId` ON `body_measurement_versions` (`previousId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_body_measurement_versions_seriesId_revision` ON `body_measurement_versions` (`seriesId`, `revision`)")
+        }
+    }
+
     /** Additive local health cache only. Every pre-existing food/history row stays unchanged. */
     val MIGRATION_8_9 = object : Migration(8, 9) {
         override fun migrate(db: SupportSQLiteDatabase) {

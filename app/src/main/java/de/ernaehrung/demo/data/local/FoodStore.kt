@@ -60,6 +60,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val expenseReader = ExpenseReader(db, now)
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
+    private val body = BodyMeasurementOperations(db, now)
+    internal fun bodyMeasurementHistory() = body.observe()
+    internal suspend fun bodyMeasurementRun(key: String) = body.run(key)
+    internal suspend fun saveBodyMeasurement(key: String, input: de.ernaehrung.demo.data.fitness.BodyMeasurementInput,
+        expectedPreviousId: String?, confirmed: Boolean) = body.save(key, input, expectedPreviousId, confirmed)
+    internal suspend fun purgeBodyMeasurements(key: String, confirmed: Boolean) = body.purge(key, confirmed)
     private val health = HealthImportOperations(db, now)
     internal fun fitnessCache() = health.observe()
     internal suspend fun enableFitnessImport(key: String, enabled: Boolean, confirmed: Boolean) = health.enable(key, enabled, confirmed)

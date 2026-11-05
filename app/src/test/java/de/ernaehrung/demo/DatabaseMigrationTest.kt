@@ -29,6 +29,8 @@ class DatabaseMigrationTest {
 
     @Test fun upgradeFromPublishedV8Preserves36TablesIncludingPrivatePaidPricesAndIntroducesOnlyEmptyHealthTables() = upgradeFromPublishedVersion(8)
 
+    @Test fun upgradeFromPublishedV9PreservesAll39TablesAndExactHealthHistoryWithoutInventingBodyMetadata() = upgradeFromPublishedVersion(9)
+
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-${UUID.randomUUID()}.db"
@@ -67,20 +69,27 @@ class DatabaseMigrationTest {
                 if (fromVersion >= 6) seedV6(old)
                 if (fromVersion >= 7) seedV7(old)
                 if (fromVersion >= 8) seedV8(old)
+                if (fromVersion >= 9) seedV9(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; else -> 36 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; else -> 39 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v9.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v10.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(9, sql.version)
+            assertEquals(10, sql.version)
             assertEquals("No new paid price is inferred during migration", if (fromVersion < 8) 0 else 1, upgraded.foodDao().allPaidPrices().size)
-            assertTrue(upgraded.healthDao().history("com.sec.android.app.shealth").isEmpty())
-            assertNull(upgraded.healthDao().state("com.sec.android.app.shealth"))
+            assertEquals(if (fromVersion >= 9) 1 else 0, upgraded.healthDao().history("com.sec.android.app.shealth").size)
+            if (fromVersion < 9) assertNull(upgraded.healthDao().state("com.sec.android.app.shealth"))
+            else {
+                assertEquals(0L, upgraded.healthDao().history("com.sec.android.app.shealth").single().steps)
+                assertNull(upgraded.healthDao().history("com.sec.android.app.shealth").single().startOffsetSeconds)
+                assertEquals("health-migration-sync", upgraded.healthDao().state("com.sec.android.app.shealth")!!.lastSuccessRunId)
+            }
+            assertTrue(upgraded.bodyDao().versions().isEmpty())
             val dao = upgraded.foodDao()
             assertEquals(if (fromVersion < 6) 0 else 1, dao.purchases().size)
             assertEquals(if (fromVersion >= 7) 1 else 0, dao.receiptScans().size)
@@ -139,7 +148,7 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
             assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
@@ -159,6 +168,19 @@ class DatabaseMigrationTest {
             assertNull(purchaseStore.expenseReport(ExpenseScope("2026-10-01", "2026-10-30")).totalCents)
             upgraded.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
         } finally { upgraded?.close(); context.deleteDatabase(name) }
+    }
+
+    private fun seedV9(db: SQLiteDatabase) {
+        db.execSQL("""INSERT INTO health_import_runs(id,sourcePackage,kind,fingerprint,recordedAt,authorizationRevision,
+            capturedAt,windowStart,windowEnd,day,dayZone,dayStart,dayEnd,aggregatedSteps,changedRecords,hiddenRecords)
+            VALUES('health-migration-sync','com.sec.android.app.shealth','SYNC','synthetic-health-migration',4000,1,
+            3000,0,3000,'1970-01-01','UTC',0,3000,0,1,0)""")
+        db.execSQL("""INSERT INTO health_import_state(sourcePackage,enabled,authorizationRevision,lastSuccessRunId,
+            lastAttemptAt,lastErrorCode) VALUES('com.sec.android.app.shealth',0,2,'health-migration-sync',4000,NULL)""")
+        db.execSQL("""INSERT INTO health_source_record_versions(sourcePackage,kind,externalId,revision,runId,visible,
+            visibilityReason,fingerprint,startAt,endAt,sourceModifiedAt,clientRecordVersion,recordingMethod,steps)
+            VALUES('com.sec.android.app.shealth','STEPS','synthetic-health-record',1,'health-migration-sync',1,
+            'READ_FROM_SOURCE','synthetic-health-value',1000,2000,3000,0,0,0)""")
     }
 
     private fun seedV7(db: SQLiteDatabase) {
