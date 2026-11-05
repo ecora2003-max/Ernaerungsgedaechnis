@@ -65,7 +65,15 @@ class ShoppingOnDeviceEndToEndTest {
     }
 
     private fun choose(label: String, id: String) {
+        compose.waitUntil(25_000) {
+            compose.onAllNodesWithTag(label).fetchSemanticsNodes().size == 1
+        }
         compose.onNodeWithTag(label).performScrollTo().performClick()
+        // Opening a native popup is asynchronous. Select its actual composed
+        // option rather than racing the frame that creates it.
+        compose.waitUntil(25_000) {
+            compose.onAllNodesWithTag("choose_$id").fetchSemanticsNodes().size == 1
+        }
         compose.onNodeWithTag("choose_$id").performScrollTo().performClick()
     }
 

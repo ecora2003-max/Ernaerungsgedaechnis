@@ -1,3 +1,10 @@
+## Codex – Planungs-Gerätenachweis übernommen; Einkaufs-Auswahl wartet auf tatsächliche Option (05.11.2026)
+
+- Health-PR #256 ist als `18dc3988c1d822c12c03cb4d1b787cd696c3a76c` in main; bestehender Planungsbranch enthält diese Basis. #258 wird auf main umgestellt, keine doppelte PR/Branchanlage und keine entfernten Steuerungsdateien wiederhergestellt.
+- Originale Android-XML `42065744222` auf `b99990e7165f7dbeef946189cd471748ac117de6`: **20 Tests, 19 PASS, 1 Fehler, 0 Skips**. Neuer tatsächlicher Planungsfall PASS (12,543 s): Default-UI-Plananlage, keine Ist-Buchung durch Entwurf/Plan, sichtbarer Bedarf, erneute Bestätigung bei unabhängig geänderter Zuordnung und Activity-Neustart, SQLite-Reopen/Retry ohne Zusatzverzehr oder Bestandsänderung. Diesen Beleg erhalten; kein gesamtes 20/20 behauptet.
+- Einziger Fehler im alten Einkaufstest an der ersten Artikelauswahl: direkt nach Öffnen fehlt noch der Optionsknoten. Die Auswahlhilfe wartet jetzt begrenzt auf den tatsächlich komponierten Picker und seine konkrete Option, entsprechend der bereits funktionierenden Planungsbedienung. Keine Intent-Interception, automatisches Auswählen, neuen Buchungen/Replay-Schlüssel oder gelockerten FoodStore-Assertions.
+- App-/JVM-/Schema-/Buildquellen gegenüber dem mit **670/670 JVM, acht Migrationen, Lint/Referenzen** geprüften Planungsstand unverändert; nur tatsächlicher Android-Testanschluss geändert. Lokaler Lint und Android-Testkompilierung PASS; neuer exakter vollständiger CI-Lauf noch PENDING. Vor Merge frische Main-/PR-Heads und erfolgreiche vollständige CI prüfen. Fitness-Issue #253 mit echtem Watch-4-Schritt-/Workoutnachweis bleibt offen.
+
 ## Codex – Planungsbranch auf neuem Main-Betriebsmodus (05.11.2026)
 
 - Bestehenden Planungsbranch aus `a353d5208557bb25da6ce7dd8b747c433fd0ba9b` mit dem auf main `0144bb16` aktualisierten Health-Stand `9c9a6baacb0928c1f7584f1f1ff25f011f127af0` zusammengeführt. Statuskonflikt erhält beide belegten Verläufe; alle entfernten Steuerungsdateien bleiben gelöscht. Keine Lock-Befehle, keine Recovery und keine zweite integrierende Sitzung.
