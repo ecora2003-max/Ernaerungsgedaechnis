@@ -3,10 +3,14 @@ package de.ernaehrung.demo
 import android.content.Context
 import android.net.ConnectivityManager
 import android.os.Build
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import de.ernaehrung.demo.data.local.*
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -24,7 +28,21 @@ class PlanExecutionOnDeviceTest {
     private fun waitTag(tag: String) = compose.waitUntil(25_000) {
         compose.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1
     }
+    private fun finishEditing() {
+        compose.runOnUiThread {
+            (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(compose.activity.window.decorView.windowToken, 0)
+        }
+        compose.waitUntil(5_000) {
+            Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets
+                ?.isVisible(WindowInsets.Type.ime()) != true
+        }
+        compose.waitForIdle()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(1_500L)
+    }
     private fun tap(text: String) {
+        finishEditing()
+
         compose.waitUntil(25_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().size == 1 }
         compose.onNodeWithText(text).performScrollTo().performClick()
     }
@@ -33,6 +51,7 @@ class PlanExecutionOnDeviceTest {
         compose.onNodeWithText(label).performScrollTo().performTextReplacement(value)
     }
     private fun choose(label: String, id: String) {
+        finishEditing()
         waitTag(label)
         compose.onNodeWithTag(label).performScrollTo().performClick()
         waitTag("choose_$id")
@@ -41,6 +60,7 @@ class PlanExecutionOnDeviceTest {
     private fun approve() {
         tap("Abweichenden Termin oder Menge bewusst zuordnen")
         tap("Diese Ist-Buchung dieser Planposition zuordnen")
+        compose.onNodeWithText("Diese Ist-Buchung dieser Planposition zuordnen").assertIsOn()
     }
 
     @Test fun actualPlanCreationLiveAssignmentRecreationAndRetryNeverCreateAnotherMeal(): Unit = runBlocking {

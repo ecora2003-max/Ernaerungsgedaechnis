@@ -127,8 +127,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
             Text("Der Tageswert stammt aus Health Connect. Einzelne Telefon-/Uhrintervalle werden hier nicht zusammengezählt. Samsung Health als Quelle allein belegt kein bestimmtes Uhrenmodell.")
         }
         cache?.state?.lastErrorCode?.let {
-            Text(if (it == "PERMISSION_MISSING") "Leserechte fehlen; die letzte lokale Kopie bleibt sichtbar."
-                else "Die letzte Übernahme war nicht erfolgreich; angezeigt wird der letzte gespeicherte Stand.")
+            Text(FitnessImportDiagnostics.explain(it), Modifier.testTag("fitness_import_error_code"))
         }
         val visible = cache?.records.orEmpty().filter { it.visible }
         Text("Gespeicherte Trainings: ${visible.count { it.kind == FitnessRecordKind.WORKOUT.name }} · Schrittintervalle: ${visible.count { it.kind == FitnessRecordKind.STEPS.name }}",
