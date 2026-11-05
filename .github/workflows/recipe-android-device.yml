@@ -1,4 +1,4 @@
-name: Android device E2E (offline)
+name: Android device E2E (offline + privacy)
 on:
   workflow_dispatch:
     inputs:
