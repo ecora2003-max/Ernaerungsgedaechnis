@@ -15,8 +15,6 @@ internal fun PlanExecutionEditor(data: LocalDataState, report: State<PlanningRep
     val selectedEntry = model.selectedExecutionEntry.collectAsStateWithLifecycle()
     var actualId by rememberSaveable { mutableStateOf("") }
     var reason by rememberSaveable { mutableStateOf("") }
-    var deviation by rememberSaveable { mutableStateOf(false) }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
     Fold("Ist-Ausführung zuordnen oder zurücknehmen") {
         val currentReport = report.value
         val entries = currentReport.plans.flatMap { it.entries } + currentReport.detachedExecutionEntries
@@ -26,7 +24,7 @@ internal fun PlanExecutionEditor(data: LocalDataState, report: State<PlanningRep
                 data.recipes.find { it.id == entry.recipeVersionId }?.name ?: "Fertigportionen"
             entry.id to "$title · ${entry.date} · $name · ${entry.id.take(8)}"
         }, selectedEntry.value) { id ->
-            model.showExecution(id); actualId = ""; reason = ""; confirmed = false; deviation = false
+            model.showExecution(id); actualId = ""; reason = ""
         }
         ui.value.error?.let { Hint(it) }
         val view = ui.value.view
@@ -41,20 +39,27 @@ internal fun PlanExecutionEditor(data: LocalDataState, report: State<PlanningRep
             if (view.current) {
                 IdPicker("Bereits gebuchtes Ist-Ereignis", view.candidates.map {
                     it.operationId to "${it.date} · ${it.label} · ${it.amount?.let(Amounts::format) ?: "Menge ungeklärt"} ${it.unit.label} · ${it.operationId.take(8)}"
-                }, actualId) { id -> actualId = id; confirmed = false; deviation = false }
+                }, actualId) { id -> actualId = id }
                 val actual = view.candidates.find { it.operationId == actualId }
-                val differs = actual != null && (actual.date != view.entry.date || actual.amount == null || actual.amount != view.status.remainingAmount)
-                if (actual != null) {
-                    Text("Ist: ${actual.date} · ${actual.amount?.let(Amounts::format) ?: "Ungeklärt"} ${actual.unit.label}. Diese Buchung bleibt unverändert.")
-                    if (differs) Hint("Termin oder Menge weicht ab. Teilmengen lassen einen Rest offen; unbekannte Mengen bestätigen keine vollständige Ausführung.")
-                }
-                Field("Begründung der Ist-Zuordnung", reason, { reason = it; confirmed = false })
-                if (differs) Check("Abweichenden Termin oder Menge bewusst zuordnen", deviation) { deviation = it; confirmed = false }
-                Check("Diese Ist-Buchung dieser Planposition zuordnen", confirmed) { confirmed = it }
-                SaveButton("Ist-Zuordnung speichern", blocked.value || !confirmed || actual == null || reason.isBlank() || differs && !deviation) {
-                    val key = operation.value
-                    val input = LinkPlanExecutionInput(view.entry.id, actualId, view.status.snapshot, reason, deviation)
-                    model.save(key) { linkPlanExecution(key, input, true) }
+                // Consent belongs to this exact live view and actual event.
+                // Never restore it after Activity/process recreation or silently
+                // bind an old gesture to a newly recalculated ledger snapshot.
+                key(view.entry.id, view.status.snapshot, actualId, actual) {
+                    var deviation by remember { mutableStateOf(false) }
+                    var confirmed by remember { mutableStateOf(false) }
+                    val differs = actual != null && (actual.date != view.entry.date || actual.amount == null || actual.amount != view.status.remainingAmount)
+                    if (actual != null) {
+                        Text("Ist: ${actual.date} · ${actual.amount?.let(Amounts::format) ?: "Ungeklärt"} ${actual.unit.label}. Diese Buchung bleibt unverändert.")
+                        if (differs) Hint("Termin oder Menge weicht ab. Teilmengen lassen einen Rest offen; unbekannte Mengen bestätigen keine vollständige Ausführung.")
+                    }
+                    Field("Begründung der Ist-Zuordnung", reason, { reason = it; confirmed = false })
+                    if (differs) Check("Abweichenden Termin oder Menge bewusst zuordnen", deviation) { deviation = it; confirmed = false }
+                    Check("Diese Ist-Buchung dieser Planposition zuordnen", confirmed) { confirmed = it }
+                    SaveButton("Ist-Zuordnung speichern", blocked.value || !confirmed || actual == null || reason.isBlank() || differs && !deviation) {
+                        val key = operation.value
+                        val input = LinkPlanExecutionInput(view.entry.id, actualId, view.status.snapshot, reason, deviation)
+                        model.save(key) { linkPlanExecution(key, input, true) }
+                    }
                 }
                 if (view.candidates.isEmpty()) Text("Keine passende unzugeordnete Ist-Buchung. Verzehr zuerst unter Ernährung oder Herstellung unter Küche tatsächlich erfassen. Artikel-/Rezeptversion und bei verknüpften Portionen der zugeordnete Kochansatz müssen passen.")
             }
@@ -71,7 +76,7 @@ internal fun PlanExecutionEditor(data: LocalDataState, report: State<PlanningRep
 @Composable
 private fun ExecutionHistoryRow(fact: PlanExecutionFact, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
     var reason by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
+    var confirmed by remember(fact.link, fact.actual) { mutableStateOf(false) }
     Panel {
         Text("${fact.actual?.label ?: "Ist-Bezug ungeklärt"} · ${fact.actual?.date ?: "Datum ungeklärt"}")
         Text(when { !fact.link.assigned -> "Zuordnung zurückgenommen"; fact.actual?.reversed == true -> "Ist-Buchung storniert · zählt nicht als ausgeführt"; else -> "Ausdrücklich zugeordnet" })
