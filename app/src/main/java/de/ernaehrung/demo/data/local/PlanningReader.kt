@@ -29,42 +29,12 @@ internal class PlanningReader(private val db: FoodDatabase, private val now: () 
             PlanRecord(latest, entriesByPlan[latest.id].orEmpty())
         }.sortedWith(compareBy({ it.version.startsOn }, { it.version.id }))
         val stocks = dao.planningBatches()
-        val remaining = stocks.associate { it.batch.id to it.stockAmount.coerceAtLeast(0) }.toMutableMap()
         val locations = stocks.map { it.batch.locationId }.distinct().associateWith { dao.location(it) }
+        val allocator = FefoAllocator(stocks, locations.filterValues { it?.confirmed == true }.keys, asOf)
         val products = mutableMapOf<String, ProductVersionEntity?>()
         suspend fun product(id: String): ProductVersionEntity? {
             if (!products.containsKey(id)) products[id] = dao.version(id)
             return products[id]
-        }
-        fun exclusion(row: BatchRow, date: String): StockExclusionReason? = when {
-            row.originReversed -> StockExclusionReason.ORIGIN_REVERSED
-            row.batch.release != ReleaseStatus.RELEASED -> StockExclusionReason.NOT_RELEASED
-            locations[row.batch.locationId]?.confirmed != true -> StockExclusionReason.LOCATION_UNCONFIRMED
-            row.batch.acquiredOn != null && row.batch.acquiredOn > date -> StockExclusionReason.NOT_YET_ACQUIRED
-            row.batch.useBy != null && row.batch.useBy < date -> StockExclusionReason.USE_BY_EXPIRED
-            row.batch.bestBefore != null && row.batch.bestBefore < date -> StockExclusionReason.BEST_BEFORE_REVIEW
-            date > asOf && row.batch.useBy == null && row.batch.bestBefore == null -> StockExclusionReason.FUTURE_SHELF_LIFE_UNKNOWN
-            else -> null
-        }
-        fun allocate(versionIds: Set<String>, required: Long?, date: String): Pair<List<PlannedAllocation>, List<ExcludedStock>> {
-            val candidates = stocks.filter { it.batch.versionId in versionIds }.sortedWith(compareBy(
-                { listOfNotNull(it.batch.useBy, it.batch.bestBefore).minOrNull() ?: "9999-12-31" }, { it.batch.id }))
-            val excluded = candidates.mapNotNull { row -> exclusion(row, date)?.let {
-                ExcludedStock(row.batch.id, row.stockAmount, it).takeIf { it.amount > 0 }
-            } }
-            var needed = required ?: 0L
-            val allocations = mutableListOf<PlannedAllocation>()
-            if (required != null) candidates.forEach { row ->
-                if (exclusion(row, date) == null) {
-                    val take = minOf(remaining.getValue(row.batch.id), needed)
-                    if (take > 0) {
-                        allocations += PlannedAllocation(row.batch.id, take)
-                        remaining[row.batch.id] = remaining.getValue(row.batch.id) - take
-                        needed -= take
-                    }
-                }
-            }
-            return allocations to excluded
         }
         suspend fun demand(versionId: String, amount: Long?, unit: BaseUnit, date: String,
             initialIssues: Set<PlanningIssue> = emptySet()): DemandLine {
@@ -74,7 +44,7 @@ internal class PlanningReader(private val db: FoodDatabase, private val now: () 
             if (amount == null) issues += PlanningIssue.UNKNOWN_AMOUNT
             if (amount != null && amount !in 1..Amounts.MAX) issues += PlanningIssue.QUANTITY_RANGE
             val required = amount?.takeIf { it in 1..Amounts.MAX && version?.baseUnit == unit }
-            val (allocations, excluded) = allocate(setOf(versionId), required, date)
+            val (allocations, excluded) = allocator.allocate(setOf(versionId), required, date)
             val covered = allocations.sumOf { it.amount }
             return DemandLine(versionId, version?.name ?: "Ungeklärte Artikelversion", unit, required,
                 covered, required?.let { it - covered }, allocations, excluded, issues)
@@ -118,7 +88,7 @@ internal class PlanningReader(private val db: FoodDatabase, private val now: () 
                             entry.unit == BaseUnit.PORTION && entry.productVersionId == null && entry.recipeVersionId == null
                         if (!valid) issues += PlanningIssue.INVALID_REFERENCE
                         val (allocations, excluded) = if (valid && entry.date >= asOf && open != 0L)
-                            allocate(executions.outputVersions(prep?.positionId), open, entry.date) else emptyList<PlannedAllocation>() to emptyList()
+                            allocator.allocate(executions.outputVersions(prep?.positionId), open, entry.date) else emptyList<PlannedAllocation>() to emptyList()
                         val covered = allocations.sumOf { it.amount }
                         val needed = open?.let { it - covered }
                         val available = if (valid) projected[entry.preparationEntryId] else null

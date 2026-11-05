@@ -24,6 +24,10 @@ class LocalWorkspaceOnDeviceTest {
         val store = FoodStore(db)
         val key = "workspace-device-" + UUID.randomUUID()
         val before = db.foodDao().activeConsumptionCount()
+        val day = AppCalendar.today().toString()
+        val dayBefore = store.dayNutrition(day).meals.size
+        val stocksBefore = db.foodDao().planningBatches().size
+        val purchasesBefore = db.foodDao().purchases().size
         val version = store.rememberProduct(key, ProductInput("Gerätetest Navigation Reis",
             source = Source.USER, quality = Quality.CONFIRMED, energyKcal = 100.0))
         compose.waitUntil(25_000) {
@@ -46,17 +50,17 @@ class LocalWorkspaceOnDeviceTest {
         tap("Verzehr lokal buchen")
         compose.waitUntil(25_000) {
             runCatching { compose.onNodeWithTag("active_meal_count")
-                .assertTextContains("${before + 1} aktive", substring = true); true }.getOrDefault(false)
+                .assertTextContains("${dayBefore + 1} aktive", substring = true); true }.getOrDefault(false)
         }
         assertEquals(before + 1, db.foodDao().activeConsumptionCount())
-        assertTrue(db.foodDao().planningBatches().isEmpty())
-        assertTrue(db.foodDao().purchases().isEmpty())
-        val totals = store.dayNutrition(AppCalendar.today().toString()).totals
-        assertEquals(100.0, requireNotNull(totals[Nutrient.ENERGY].knownAmount).toDouble(), 0.0001)
-        assertNull(totals[Nutrient.PROTEIN].knownAmount)
+        assertEquals(stocksBefore, db.foodDao().planningBatches().size)
+        assertEquals(purchasesBefore, db.foodDao().purchases().size)
+        val nutrition = store.dayNutrition(day).meals.single { it.event.productVersionId == version }.nutrition
+        assertEquals(100.0, requireNotNull(nutrition[Nutrient.ENERGY].knownAmount).toDouble(), 0.0001)
+        assertNull(nutrition[Nutrient.PROTEIN].knownAmount)
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("workspace_page_NUTRITION").assertExists()
-        compose.onNodeWithTag("active_meal_count").assertTextContains("1 aktive", substring = true)
+        compose.onNodeWithTag("active_meal_count").assertTextContains("${dayBefore + 1} aktive", substring = true)
         assertEquals(before + 1, db.foodDao().activeConsumptionCount())
     }
 }

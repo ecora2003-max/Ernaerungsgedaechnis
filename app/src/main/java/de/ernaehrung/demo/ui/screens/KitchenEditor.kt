@@ -149,6 +149,7 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
 @Composable
 private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
     preselected: ProductionPrefillUiState?) {
+    var allocationMode by rememberSaveable { mutableStateOf("Chargen selbst eintragen") }
     var selected by rememberSaveable { mutableStateOf("") }
     var batches by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
@@ -181,20 +182,54 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
             batches = ArrayList(List(count) { "" }); quantities = ArrayList(List(count) { "" })
         }
         recipe?.let { Text("Rezeptbezug: ${Amounts.format(it.yieldPortions)} Soll-Portionen. Tatsächliche Mengen und Ausbeute separat eintragen.") }
-        val available = state.batches.filter { !it.originReversed && it.stockAmount > 0 && it.batch.versionId in versions }
-        batches.indices.forEach { position ->
-            val batch = state.batches.find { it.batch.id == batches[position] }
-            IdPicker("Zutatencharge ${position + 1}", available.map { it.batch.id to "${it.productName} · ${it.locationName} · ${Amounts.format(it.stockAmount)} ${it.unit.label} · ${it.batch.id.take(8)}" }, batches[position]) { chosen ->
-                batches = ArrayList(batches).apply { this[position] = chosen }; confirmed = false
-            }
-            Field("Tatsächliche Zutatmenge ${position + 1} in ${batch?.unit?.label ?: "Basiseinheit"}", quantities[position], { text -> quantities = ArrayList(quantities).apply { this[position] = text }; confirmed = false })
-            if (batches.size > 1) Action("Chargenzeile ${position + 1} entfernen", true) {
-                batches = ArrayList(batches).apply { removeAt(position) }; quantities = ArrayList(quantities).apply { removeAt(position) }; confirmed = false
-            }
-        }
-        Action("Weitere Zutatencharge", true) { batches = ArrayList(batches).apply { add("") }; quantities = ArrayList(quantities).apply { add("") }; confirmed = false }
         Field("Tatsächlich hergestellte Portionen", portions, { portions = it; confirmed = false })
         Field("Herstellungsdatum JJJJ-MM-TT", date, { date = it; confirmed = false })
+        WrappingChoices(listOf("Chargen selbst eintragen", "Chargen nach FEFO vorschlagen"), allocationMode, "production_source_") {
+            allocationMode = it; confirmed = false
+        }
+        val asOf = AppCalendar.today().toString()
+        val proposal = if (allocationMode == "Chargen nach FEFO vorschlagen") remember(
+            recipe, ingredients, portions, state.versions, state.batches, state.locations, date, asOf
+        ) {
+            ProductionStockPreviews.build(recipe, ingredients.map { it.ingredient },
+                portions.takeIf(String::isNotBlank)?.let { runCatching { Amounts.parse(it) }.getOrNull() },
+                state.versions, state.batches, state.locations, date, asOf)
+        } else null
+        if (proposal != null) {
+            Panel {
+                Section("Chargenvorschlag für diese Herstellung", "Rezeptmengen exakt auf tatsächliche Portionen skaliert · noch keine Buchung")
+                proposal.issue?.let { Text(it) }
+                proposal.ingredients.forEach { ingredient ->
+                    val name = state.versions.single { it.id == ingredient.versionId }.name
+                    Text("$name: benötigt ${Amounts.format(ingredient.amount)} ${ingredient.unit.label}")
+                    ingredient.stock.issue?.let { Text(it) }
+                    ingredient.stock.allocations.forEach { allocation ->
+                        val row = state.batches.single { it.batch.id == allocation.batchId }
+                        Text("${Amounts.format(allocation.amount)} ${row.unit.label} · ${row.locationName} · ${row.batch.id}",
+                            Modifier.testTag("production_fefo_${row.batch.id}"))
+                    }
+                    ingredient.stock.missing?.let {
+                        Text("$name: nicht gedeckt ${Amounts.format(it)} ${ingredient.unit.label}",
+                            Modifier.testTag("production_fefo_missing_${ingredient.versionId}"))
+                    }
+                    ingredient.stock.excluded.forEach { Text("${it.batchId}: ${it.reason.label}") }
+                }
+                Text("Nur übernehmen, wenn diese Mengen und Chargen tatsächlich verwendet wurden. Für abweichende Mengen die Chargen selbst eintragen. Änderungen erfordern eine neue Bestätigung.")
+            }
+        } else {
+            val available = state.batches.filter { !it.originReversed && it.stockAmount > 0 && it.batch.versionId in versions }
+            batches.indices.forEach { position ->
+                val batch = state.batches.find { it.batch.id == batches[position] }
+                IdPicker("Zutatencharge ${position + 1}", available.map { it.batch.id to "${it.productName} · ${it.locationName} · ${Amounts.format(it.stockAmount)} ${it.unit.label} · ${it.batch.id.take(8)}" }, batches[position]) { chosen ->
+                    batches = ArrayList(batches).apply { this[position] = chosen }; confirmed = false
+                }
+                Field("Tatsächliche Zutatmenge ${position + 1} in ${batch?.unit?.label ?: "Basiseinheit"}", quantities[position], { text -> quantities = ArrayList(quantities).apply { this[position] = text }; confirmed = false })
+                if (batches.size > 1) Action("Chargenzeile ${position + 1} entfernen", true) {
+                    batches = ArrayList(batches).apply { removeAt(position) }; quantities = ArrayList(quantities).apply { removeAt(position) }; confirmed = false
+                }
+            }
+            Action("Weitere Zutatencharge", true) { batches = ArrayList(batches).apply { add("") }; quantities = ArrayList(quantities).apply { add("") }; confirmed = false }
+        }
         IdPicker("Fertigportionen lagern in", state.locations.filter { it.confirmed }.map { it.id to it.name }, location) { location = it; confirmed = false; checked = false }
         Check("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft", checked) { checked = it; confirmed = false }
         Field("Geprüfte Lagerbedingungen und Platz beschreiben", storageNote, { storageNote = it; confirmed = false })
@@ -202,14 +237,29 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
         Field("Verbrauchsdatum der Portionen · optional", useBy, { useBy = it; confirmed = false })
         Check("Fertigportionen für diesen Test ausdrücklich freigeben", released) { released = it; confirmed = false }
         Hint("Unbekannte Haltbarkeit wird nicht berechnet. Keine automatische Sicherheitsfreigabe. Nährwerte entstehen aus den tatsächlich verwendeten Chargen; fehlende Werte bleiben offen.")
-        Check("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen", confirmed) { confirmed = it }
-        SaveButton("Herstellung buchen", blocked || selected.isEmpty()) {
+        var proposalApproved by remember(proposal?.digest, allocationMode, selected, portions, date,
+            location, checked, storageNote, deviation, useBy, released, key) { mutableStateOf(false) }
+        val acceptedProposal = if (proposal == null) confirmed else proposal.complete && proposalApproved
+        if (proposal == null || proposal.complete) {
+            Check("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen", acceptedProposal) {
+                if (proposal == null) confirmed = it else proposalApproved = it
+            }
+        }
+        SaveButton("Herstellung buchen", blocked || selected.isEmpty() || proposal != null && !proposal.complete) {
             val recipeVersion = selected; val yield = portions; val day = date; val target = location
             val inputs = batches.zip(quantities).toList(); val storage = storageNote; val deviations = deviation.takeIf { it.isNotBlank() }
-            val conditions = checked; val accepted = confirmed; val release = if (released) ReleaseStatus.RELEASED else ReleaseStatus.UNCHECKED
+            val conditions = checked; val accepted = acceptedProposal; val release = if (released) ReleaseStatus.RELEASED else ReleaseStatus.UNCHECKED
             val expiry = useBy.takeIf { it.isNotBlank() }
-            model.save(key) { produce(key, ProductionInput(recipeVersion, Amounts.parse(yield),
-                inputs.map { (id, amount) -> Allocation(id, Amounts.parse(amount)) }, target, day, conditions, storage, release, deviations, useBy = expiry), accepted) }
+            val stockProposal = proposal
+            model.save(key) {
+                val allocations = if (stockProposal == null) inputs.map { (id, amount) -> Allocation(id, Amounts.parse(amount)) }
+                    else {
+                        require(stockProposal.complete) { "Chargenvorschlag unvollständig. Tatsächliche Zutaten prüfen." }
+                        stockProposal.allocations.map { Allocation(it.batchId, it.amount) }
+                    }
+                produce(key, ProductionInput(recipeVersion, Amounts.parse(yield), allocations,
+                    target, day, conditions, storage, release, deviations, useBy = expiry), accepted)
+            }
         }
     }
 }
