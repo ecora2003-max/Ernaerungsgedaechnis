@@ -69,8 +69,8 @@ fun LocalWorkspaceApp() {
             tabs.forEachIndexed { index, page ->
                 NavigationBarItem(selected = current.tab == page, onClick = {
                     nav.navigate(page.name) {
-                        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true; restoreState = true
+                        popUpTo(nav.graph.findStartDestination().id)
+                        launchSingleTop = true
                     }
                 }, icon = { Icon(icons[index], null) }, label = { Text(page.title) },
                     modifier = Modifier.testTag("workspace_tab_${page.name}"))

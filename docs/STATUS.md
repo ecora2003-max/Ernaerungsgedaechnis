@@ -1,3 +1,7 @@
+## Codex – echte Hauptnavigation bis Verzehr/Neustart geprüft, Tab-Rücksprung korrigiert (05.11.2026)
+
+- Neuer Default-Activity-Test erreicht tatsächlichen Katalog, ausdrücklich bestätigten FoodStore-Verzehr, korrekte Nährwerte ohne erfundene Lager-/Kaufbuchung und Activity-Neustart. Erst anschließender erneuter Mehr-Tab schlug fehl: generisches `restoreState` stellte eine frühere Unteransicht her. Haupttabs navigieren jetzt ausdrücklich auf ihre Hauptseite; unverändert persistierte Ist-Daten bleiben die gemeinsame Wahrheit. Aktualisierte lokale/CI-/Geräteprüfung PENDING.
+
 ## Codex – verifizierter Rezept-/Einkaufsstand integriert, reale Hauptnavigation angeschlossen (05.11.2026)
 
 - **PR #246 auf exakt `15aa656319d607808651eb5101d22580bba573c8` geprüft und als `33470c9322f1781495dadbae7fd69fc721270a51` nach main integriert.** App-CI `41957644920`: **625/625 JVM, 0 Fehler/Skips, 7/7 Room-Migrationspfade, Lint/Schema/Referenzgates PASS**. Download der originalen Geräte-XML aus API35-Offline-Run `41957644933`: **10/10 reale Tests, 0 Fehler/Skips PASS**, einschließlich vollständiger manueller Allergenvorschau, echter OS-PIN-/Abbruchprüfung, FoodStore-Save, Herstellung, separatem Verzehr, SQLite-Restart/Retry und OCR→Kauf→Privatpreis→Bestand→Budget→Storno. #247 über gemeinsamen Featurebranch aufgenommen, #248 als bereits enthalten geschlossen. Kein Modulabschluss: System-Kamera/Picker, externe kanonische Filial-/Rechteeinbindung und weitere Gesamt-App-Gates offen.
