@@ -6,7 +6,7 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-0d0d788cb0d148939ec74037f3206b8e",
   "acquiredAtUtc": "2026-11-05T08:12:42.745Z",
-  "lastHeartbeatUtc": "2026-11-05T08:23:08.466Z",
+  "lastHeartbeatUtc": "2026-11-05T08:40:21.107Z",
   "leaseExpiresAtUtc": null,
   "task": "Bestehende FEFO-Integration PR251 abschließen und reale System-Kamera-/Offline-/Neustartprüfung fortsetzen",
   "workingBranch": "codex-recipe-request-preferences-20261105",
