@@ -1,6 +1,10 @@
 package de.ernaehrung.demo
 
+import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.os.Build
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
@@ -9,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModel
@@ -18,6 +24,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.recognition.AndroidPhotoRecognition
 import de.ernaehrung.demo.data.recognition.CaptureFiles
@@ -47,8 +54,28 @@ class ShoppingOnDeviceEndToEndTest {
     @Before fun unlockFixtureDevice() = prepareUnlockedTestDevice()
     private var models = ViewModelStore()
     private var mounted: LocalDataViewModel? = null
+    private var appFocus: FocusManager? = null
+
+    private fun finishEditing() {
+        // A native keyboard resize can outlive Compose idleness and move the
+        // checkbox between scroll and tap. Finish editing before the gesture;
+        // never retry a consent or bypass the actual confirmation requirement.
+        compose.runOnUiThread {
+            appFocus?.clearFocus(force = true)
+            val window = compose.activity.window
+            (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+        }
+        compose.waitUntil(5_000) {
+            Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets
+                ?.isVisible(WindowInsets.Type.ime()) != true
+        }
+        compose.waitForIdle()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(1_500L)
+    }
 
     private fun tap(text: String) {
+        finishEditing()
         compose.waitUntil(25_000) {
             compose.onAllNodesWithText(text, substring = false).fetchSemanticsNodes().isNotEmpty()
         }
@@ -65,6 +92,7 @@ class ShoppingOnDeviceEndToEndTest {
     }
 
     private fun choose(label: String, id: String) {
+        finishEditing()
         compose.waitUntil(25_000) {
             compose.onAllNodesWithTag(label).fetchSemanticsNodes().size == 1
         }
@@ -106,6 +134,7 @@ class ShoppingOnDeviceEndToEndTest {
             compose.activity.setContent {
                 DemoTheme {
                     key(generation) {
+                        appFocus = LocalFocusManager.current
                         Column(Modifier.systemBarsPadding().imePadding().verticalScroll(rememberScrollState())) {
                             LocalDataContent(model, section, "Bon & OCR")
                         }
@@ -241,6 +270,7 @@ class ShoppingOnDeviceEndToEndTest {
             tap("Alle Ausgaben im angezeigten Zeitraum vollständig erfasst und geprüft")
             field("Grund des Ausgabenabgleichs", "Alle Testzahlungen vollständig geprüft")
             tap("Diesen Erfassungsstatus ausdrücklich bestätigen")
+            compose.onNodeWithText("Diesen Erfassungsstatus ausdrücklich bestätigen").assertIsOn()
             tap("Ausgabenstatus speichern")
             saved(model)
             tap("Neuen Vorgang beginnen")
