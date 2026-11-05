@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.performClick
@@ -461,7 +462,7 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals(0, reviews) }
     }
 
-    @Test fun allergenProposalRequiresASeparateFullManualReviewBeforeHostPreview() {
+    @Test fun allergenAndDietReviewBelongsToTheExactSelectedProductVersion() {
         fun version(id: String, name: String) = ProductVersionEntity(
             id = id, productId = id.substringBefore("-v"), revision = 1,
             name = name, brand = null, category = null, barcode = null,
@@ -484,14 +485,19 @@ class RecipeDraftImportPanelTest {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         RecipeDraftImportPanel(catalog, onInvalidate = {},
                             onDiscardPending = {},
-                            onReview = { _, _, _, _ -> reviews++ })
+                            onReview = { _, req, confirmations, _ ->
+                                reviews++
+                                assertEquals(setOf("ALLERGEN:SOY", "DIET:vegan"), req.confirmedRestrictions)
+                                assertEquals(3, confirmations.size)
+                                confirmations.values.forEach { assertEquals(mapOf("VEGAN" to true), it.diets) }
+                            })
                     }
                 }
             }
         }
         rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
-            .performTextReplacement("ALLERGEN:SOY")
+            .performTextReplacement("ALLERGEN:SOY, DIET:vegan")
         rule.onNodeWithText("Allergennachweise für Offline-Vorschläge")
             .performScrollTo().performClick()
         val choices = listOf(
@@ -527,10 +533,24 @@ class RecipeDraftImportPanelTest {
                 .performScrollTo().performClick().assertIsSelected()
             field("Nachweislich nicht enthalten")
                 .performScrollTo().performClick()
+            field("Nachweislich geeignet").performScrollTo().performClick().assertIsSelected()
         }
         rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertDoesNotExist()
+        rule.runOnIdle { assertEquals(1, reviews) }
+
+        // Choosing a different immutable product version cannot carry the old
+        // product's unit/basis/state/allergen/diet answers into a new review.
+        rule.onNode(hasText("Unabhängig geprüfte Katalogversion") and
+            hasAnyAncestor(hasTestTag("recipe_draft_line_dry-rice")))
+            .performScrollTo().performClick()
+        rule.onNode(hasText("Tomaten geprüft · v1 · tomato-v1") and hasAnyAncestor(isPopup())).performClick()
+        listOf("recipe_draft_basis_dry-rice_Ungeprüft", "recipe_draft_state_dry-rice_Ungeprüft",
+            "recipe_draft_allergen_dry-rice_SOY_Unbekannt", "recipe_draft_diet_dry-rice_VEGAN_Unbekannt")
+            .forEach { rule.onNodeWithTag(it).performScrollTo().assertIsSelected() }
+        rule.onNodeWithTag("recipe_draft_diet_dry-rice_VEGAN_Nachweislich geeignet").assertIsNotSelected()
+        rule.onNodeWithTag("recipe_draft_manual_review").assertIsNotEnabled()
         rule.runOnIdle { assertEquals(1, reviews) }
 
         // Changing the allergen clears every prior product-bound absence.

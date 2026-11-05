@@ -351,7 +351,7 @@ class RecipeDeviceCredentialUiTest {
             tap("Eigene Nährwertbereiche je Portion")
             tap("Vorgaben für den Rezeptvorschlag")
             compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
-                .performTextReplacement("ALLERGEN:SOY")
+                .performTextReplacement("ALLERGEN:SOY, DIET:VEGAN")
             tag("recipe_offline_generate")
             compose.onNodeWithTag("recipe_draft_import_error").assertExists()
             assertEquals(baseline, database.foodDao().operationCount())
@@ -378,6 +378,7 @@ class RecipeDeviceCredentialUiTest {
                 lineField(state).performScrollTo().performClick().assertIsSelected()
                 lineField("Nachweislich nicht enthalten")
                     .performScrollTo().performClick()
+                lineField("Nachweislich geeignet").performScrollTo().performClick().assertIsSelected()
             }
             tag("recipe_draft_manual_review_checkbox")
             tag("recipe_draft_manual_review")
@@ -407,6 +408,7 @@ class RecipeDeviceCredentialUiTest {
                 model.recipeDraftConsentState.value.recordedDigest != null
             }
             val reference = requireNotNull(model.recipeDraftConsentState.value.review?.referenceReport)
+            assertFalse("DIET_UNKNOWN" in reference.findings)
             assertEquals(35, reference.preferences.maxMinutes)
             assertEquals(0L, reference.preferences.budgetCents)
             assertEquals(setOf("HOB", "POT"), reference.preferences.equipment)

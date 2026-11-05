@@ -263,10 +263,25 @@ class RecipeDraftHostGateTest {
         assertEquals(Gate.Status.BLOCKED, forged.status)
         assertEquals(Gate.Status.BLOCKED, Gate.review(draft().copy(contractVersion = "1.1.0-draft"),
             request(), mapOf("rice" to fact())).status)
-        assertEquals(Gate.Status.BLOCKED, Gate.review(draft(), request(restrictions = setOf("DIET:VEGAN")),
+        assertEquals(Gate.Status.BLOCKED, Gate.review(draft(), request(restrictions = setOf("HEALTH:VEGAN")),
             mapOf("rice" to fact())).status)
         assertEquals(Gate.Status.BLOCKED, Gate.review(draft(), request(restrictions = setOf("FOOD:rice")),
             mapOf("rice" to fact())).status)
+    }
+
+    @Test fun dietaryCompatibilityRequiresAnIndependentAnswerForTheSelectedVersion() {
+        val req = request(restrictions = setOf("DIET:vegan", "DIET:VEGETARIAN"))
+        for ((answer, status) in listOf(null to Gate.Status.REVIEW_REQUIRED,
+            false to Gate.Status.BLOCKED, true to Gate.Status.READY_FOR_EXPLICIT_SAVE)) {
+            val review = Gate.review(draft(), req, mapOf("rice" to fact().copy(
+                diets = mapOf("VEGAN" to answer, "VEGETARIAN" to true))))
+            assertEquals(status, review.status)
+            assertEquals(answer == true, review.input != null)
+        }
+        val foreign = Gate.review(draft(), req, mapOf("rice" to fact().copy(
+            diets = mapOf("VEGAN" to true, "VEGETARIAN" to true, "OTHER" to true))))
+        assertTrue("FOREIGN_DIET_EVIDENCE" in foreign.blockers)
+        assertNull(foreign.input)
     }
 
 

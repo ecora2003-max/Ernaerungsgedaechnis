@@ -46,7 +46,12 @@ internal fun RecipeDraftConsentReview(
         Text("Rezeptentwurf prüfen · keine Herstellung oder Verzehrbuchung")
         if (!ready) {
             Text("Nicht freigegeben: aktuelle geprüfte Rezeptvorschau erforderlich.")
-            (review.blockers + review.gaps).sorted().forEach { Text(it) }
+            (review.blockers + review.gaps).sorted().forEach { issue -> Text(when (issue) {
+                "DIET_STATUS_UNKNOWN" -> "Ernährungsform noch unbekannt: jede gewählte Produktversion unabhängig prüfen."
+                "CONFIRMED_DIET_CONFLICT", "REFERENCE_DIET_CONFLICT" -> "Mindestens eine Zutat ist für die bestätigte Ernährungsform ungeeignet."
+                "FOREIGN_DIET_EVIDENCE" -> "Die Ernährungsform-Prüfung gehört nicht zu den aktuellen Vorgaben. Erneut prüfen."
+                else -> issue
+            }) }
             return@Column
         }
         val recipe = requireNotNull(input)
