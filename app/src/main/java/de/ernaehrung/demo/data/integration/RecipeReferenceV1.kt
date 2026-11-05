@@ -21,7 +21,8 @@ internal object RecipeReferenceV1 {
         val perPortion: Map<String, BigDecimal?>,
         val partial: Map<String, BigDecimal?>,
         val nutritionGaps: Map<String, List<String>>,
-        val contextNotes: List<String>
+        val contextNotes: List<String>,
+        val ingredientContexts: List<Map<String, Any?>>
     )
 
     fun revalidate(
@@ -122,6 +123,9 @@ internal object RecipeReferenceV1 {
         }.orEmpty()
         val notes = (payload?.get("warnings") as? List<*>)?.filterIsInstance<String>()
             ?.filter { it.startsWith("STOCK_") || it.startsWith("SHOPPING_") || it.startsWith("OFFERS_") }.orEmpty()
-        return Report(blockers, findings, amounts("total"), amounts("perPortion"), amounts("knownPartial"), gaps, notes)
+        val ingredients = (extension?.get("ingredientsContext") as? List<*>)?.map { item ->
+            (item as Map<*, *>).entries.associate { (key, value) -> (key as String) to value }
+        }.orEmpty()
+        return Report(blockers, findings, amounts("total"), amounts("perPortion"), amounts("knownPartial"), gaps, notes, ingredients)
     }
 }

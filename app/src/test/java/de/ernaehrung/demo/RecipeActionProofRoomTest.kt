@@ -110,6 +110,21 @@ class RecipeActionProofRoomTest {
         rejected { consent("proof-ok", review, proof) } // nonce already consumed
     }
 
+    @Test fun referenceRevalidatorBlocksCaseVariantFoodExclusionAtTheActualFoodStoreBoundary() = runBlocking {
+        val before = db.foodDao().operationCount()
+        val excluded = request.copy(confirmedRestrictions = setOf("FOOD:RICE"))
+        val evidence = facts.mapValues { (_, line) -> line.copy(allergens = emptyMap()) }
+        val review = store.previewRecipeDraftV1(json, excluded, evidence, states)
+        assertEquals(Gate.Status.BLOCKED, review.status)
+        assertTrue("REFERENCE_FOOD_FORBIDDEN" in review.blockers)
+        assertTrue("FOOD_FORBIDDEN" in requireNotNull(review.referenceReport).blockers)
+        assertNull(review.input)
+        assertNull(review.approvalBasisDigest)
+        assertEquals(before, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        assertEquals(0, db.foodDao().consumptionCount())
+    }
+
     @Test fun forgedStaleCancelledAndProcessDeathProofsFailClosed() = runBlocking {
         val review = store.previewRecipeDraftV1(json, request, facts, states)
         val digest = requireNotNull(review.approvalBasisDigest)

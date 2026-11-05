@@ -40,7 +40,7 @@ object RecipeDraftImport {
         is Long -> v.takeIf { it >= 0 } ?: throw IllegalArgumentException("negative amount")
         is java.math.BigInteger -> {
             require(v.signum() >= 0 && v.bitLength() <= 63) { "amount outside supported 64-bit integer range" }
-            v.longValueExact()
+            v.toLong() // Android 26: exact after the unchanged sign/bit-length guard above.
         }
         else -> throw IllegalArgumentException("amount must be a JSON integer or null")
     }
