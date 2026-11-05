@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-89c9bfefaaf0417892956a0517774b3c",
   "acquiredAtUtc": "2026-11-05T02:33:05.568Z",
-  "lastHeartbeatUtc": "2026-11-05T04:14:39.897Z",
+  "lastHeartbeatUtc": "2026-11-05T04:17:48.154Z",
   "leaseExpiresAtUtc": null,
   "task": "B1 positive Android recipe review, verified save, production and separate eating; finish existing PRs 246-248",
-  "workingBranch": "codex-system-photo-picker-20261105",
+  "workingBranch": "codex-fefo-meal-allocation-20261105",
   "lastReleasedAtUtc": "2026-11-04T23:41:47.172Z",
   "lastReleasedCommit": "02e0c8763ec93e540dd8590794738edc9bfefec3",
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
