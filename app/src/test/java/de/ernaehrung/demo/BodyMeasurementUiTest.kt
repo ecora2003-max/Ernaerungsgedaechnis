@@ -86,6 +86,16 @@ class BodyMeasurementUiTest {
         tag("body_version_${first.id}").performScrollTo().assertTextContains("73,14", substring = true)
         assertEquals(first.id, store.saveBodyMeasurement(first.runId, first.input(), null, true))
         assertEquals(2, db.bodyDao().versions().size); assertEquals(before, db.foodDao().operationCount())
+        val healthBefore = db.healthDao().history("com.sec.android.app.shealth")
+        val authBefore = db.healthDao().state("com.sec.android.app.shealth")
+        tap("workspace_tab_MORE"); tap("workspace_go_FITNESS")
+        waitTag("fitness_body_value_${current.id}")
+        tag("fitness_body_value_${current.id}").performScrollTo().assertTextEquals("Gewicht: 73,24 kg")
+        tag("fitness_body_value_${first.id}").assertDoesNotExist()
+        assertEquals(healthBefore, db.healthDao().history("com.sec.android.app.shealth"))
+        assertEquals(authBefore, db.healthDao().state("com.sec.android.app.shealth"))
+        assertEquals(before, db.foodDao().operationCount())
+        tap("fitness_open_body")
         tap("body_new"); field("body_input_value", "123")
         tag("body_delete").performScrollTo().assertIsNotEnabled()
         tap("body_delete_confirm"); tap("body_delete")
@@ -94,6 +104,10 @@ class BodyMeasurementUiTest {
         tag("body_input_value").performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         assertEquals("REDACTED", db.bodyDao().run(first.runId)!!.kind)
         assertEquals(before, db.foodDao().operationCount())
+        tap("workspace_tab_MORE"); tap("workspace_go_FITNESS")
+        waitTag("fitness_body_empty")
+        tag("fitness_body_value_${current.id}").assertDoesNotExist()
+        assertEquals(authBefore, db.healthDao().state("com.sec.android.app.shealth"))
     }
 }
 

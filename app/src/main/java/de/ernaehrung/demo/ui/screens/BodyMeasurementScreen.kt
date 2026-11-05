@@ -28,6 +28,42 @@ private fun rememberBodyMeasurementModel(): BodyMeasurementViewModel {
     return viewModel(key = "local-body-measurements", factory = factory)
 }
 
+/** Read-only entry point. Merely showing local body values never creates an
+ * operation key, import consent, provider read or nutrition/stock write.
+ */
+@Composable
+internal fun BodyMeasurementSummary(onOpen: () -> Unit,
+    model: BodyMeasurementViewModel = rememberBodyMeasurementModel()) {
+    val state by model.state.collectAsStateWithLifecycle()
+    val history = state.history
+    OutlinedCard(Modifier.fillMaxWidth().testTag("fitness_body_summary")) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Manuelle Körperwerte", style = MaterialTheme.typography.titleMedium)
+            when {
+                state.readError -> Text("Die lokale Körpermesshistorie ist gerade nicht lesbar.")
+                history == null -> Text("Lokale Körpermessungen werden gelesen …")
+                history.latest.isEmpty() && history.legacy.isEmpty() ->
+                    Text("Noch keine eigenen Körpermessungen.", Modifier.testTag("fitness_body_empty"))
+                history.latest.isEmpty() -> Text("Früher erfasste Körperwerte sind in deiner Messhistorie verfügbar.")
+                else -> {
+                    Text("Aus deiner Messhistorie · jeweils aktueller Korrekturstand")
+                    history.latest.take(3).forEach { row ->
+                        Text("${row.name ?: BodyMetric.valueOf(row.metric).label}: ${row.rawValue ?: "Unbekannt"} ${row.unit}",
+                            Modifier.testTag("fitness_body_value_${row.id}"))
+                        Text("Originales Messdatum: ${row.localDate} · ${row.localTime ?: "Uhrzeit unbekannt"} · ${row.zoneId ?: "Zeitzone unbekannt"}")
+                        Text("Manuell · ${row.device ?: "Gerät unbekannt"} · ${BodyMethod.valueOf(row.method).label} · ${BodyQuality.valueOf(row.quality).label}")
+                        row.methodDetail?.let { Text("Definition / Methode: $it") }
+                        Text("Messbedingungen: ${row.conditions ?: "Unbekannt"}")
+                        if (row.excludedFromTrend) Text("Für spätere Trends ausgeschlossen")
+                    }
+                }
+            }
+            Text("Diese Werte bleiben lokal und benötigen keine Health-Connect-Rechte. Es werden keine Ernährungsziele berechnet oder geändert.")
+            OutlinedButton(onOpen, Modifier.testTag("fitness_open_body")) { Text("Körpermessungen erfassen und Verlauf öffnen") }
+        }
+    }
+}
+
 @Composable
 internal fun BodyMeasurementScreen(model: BodyMeasurementViewModel = rememberBodyMeasurementModel()) {
     val state by model.state.collectAsStateWithLifecycle()

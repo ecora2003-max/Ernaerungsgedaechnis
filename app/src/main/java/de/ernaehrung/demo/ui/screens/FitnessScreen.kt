@@ -68,7 +68,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
     Column(Modifier.fillMaxWidth().testTag("fitness_screen"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Fitness · Samsung Health", style = MaterialTheme.typography.headlineSmall)
         onOpenBody?.let { open ->
-            OutlinedButton(open, Modifier.testTag("fitness_open_body")) { Text("Körpermessungen manuell erfassen") }
+            BodyMeasurementSummary(open)
         }
         Text("Galaxy Watch 4 synchronisiert zunächst mit Samsung Health auf dem Smartphone. Dort müssen Schritte und Training für Health Connect freigegeben sein. Die Übernahme kann verzögert sein.")
         Text(when (state.availability) {

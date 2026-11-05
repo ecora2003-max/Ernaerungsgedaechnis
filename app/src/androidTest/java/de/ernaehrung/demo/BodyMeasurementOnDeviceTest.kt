@@ -118,6 +118,14 @@ class BodyMeasurementOnDeviceTest {
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
             } finally { reopened.close() }
             compose.activityRule.scenario.recreate(); waitTag("body_saved")
+            val authBeforeOverview = db.healthDao().state("com.sec.android.app.shealth")
+            tap("workspace_tab_MORE"); tap("workspace_go_FITNESS")
+            waitTag("fitness_body_value_${current.id}")
+            compose.onNodeWithTag("fitness_body_value_${current.id}").performScrollTo().assertTextEquals("Gewicht: 73,24 kg")
+            compose.onNodeWithTag("fitness_body_value_${first.id}").assertDoesNotExist()
+            assertEquals(authBeforeOverview, db.healthDao().state("com.sec.android.app.shealth"))
+            assertEquals(foodBefore, store.operations().first())
+            tap("fitness_open_body")
             compose.onNodeWithTag("body_delete").performScrollTo().assertIsNotEnabled()
             tap("body_delete_confirm"); tap("body_delete"); waitTag("body_empty")
             assertTrue(db.bodyDao().versions().isEmpty())
@@ -129,6 +137,9 @@ class BodyMeasurementOnDeviceTest {
             assertEquals(foodBefore, store.operations().first()); assertEquals(batchesBefore, db.foodDao().planningBatches())
             assertEquals(mealsBefore, db.foodDao().activeConsumptionCount())
             assertEquals(healthBefore, db.healthDao().history("com.sec.android.app.shealth"))
+            tap("workspace_tab_MORE"); tap("workspace_go_FITNESS"); waitTag("fitness_body_empty")
+            compose.onNodeWithTag("fitness_body_value_${current.id}").assertDoesNotExist()
+            assertEquals(authBeforeOverview, db.healthDao().state("com.sec.android.app.shealth"))
             assertNull(connectivity.activeNetwork)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("body-flow")
