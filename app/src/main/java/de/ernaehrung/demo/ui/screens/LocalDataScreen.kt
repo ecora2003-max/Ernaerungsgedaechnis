@@ -21,6 +21,13 @@ import java.util.UUID
 
 @Composable
 fun LocalDataScreen(initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt") {
+    val model = rememberLocalDataViewModel()
+    LocalDataContent(model, initialSection, initialRecognitionMode)
+}
+
+/** One Activity-owned instance can connect the actual primary navigation. */
+@Composable
+internal fun rememberLocalDataViewModel(): LocalDataViewModel {
     val context = LocalContext.current.applicationContext
     val factory = remember(context) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -30,12 +37,13 @@ fun LocalDataScreen(initialSection: String = "Katalog", initialRecognitionMode: 
         ) as T
     } }
     val model: LocalDataViewModel = viewModel(factory = factory)
-    LocalDataContent(model, initialSection, initialRecognitionMode)
+    return model
 }
 
-/** Lives inside the existing scroll container on M03, without adding a main navigation tab. */
+/** Shared actual editors for the primary workspace and the explicit design tour. */
 @Composable
-fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt") {
+fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
+    showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -43,8 +51,10 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
     var operationId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     val blocked = save.busy || save.succeeded
 
-    Heading("Lokaler Testbereich", "Produkte und tatsächliche Ereignisse lokal speichern")
-    Hint("Nur Testdaten eingeben. Diese Daten bleiben auf diesem Gerät und nach App-Neustart erhalten. Die übrigen Ansichten zeigen weiterhin feste Demodaten. Keine Verbindung zu Sheets oder persönlichen Daten.", Sage)
+    Heading(if (showSectionNavigation) "Lokaler Testbereich" else mode, "Produkte und tatsächliche Ereignisse lokal speichern")
+    Hint(if (showSectionNavigation)
+        "Nur Testdaten eingeben. Diese Daten bleiben auf diesem Gerät und nach App-Neustart erhalten. Die übrigen Ansichten des Rundgangs zeigen feste Demodaten. Keine Verbindung zu Sheets oder persönlichen Daten."
+        else "Entwicklungsversion: nur Testdaten eingeben. Sie bleiben auf diesem Gerät und nach App-Neustart erhalten. Keine Verbindung zu Sheets oder persönlichen Daten.", Sage)
     state.error?.let { Hint(it); return }
     if (state.loading) { CircularProgressIndicator(); return }
     save.message?.let { Hint(it, if (save.succeeded) Sage else Amber) }
@@ -52,7 +62,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
         operationId = UUID.randomUUID().toString()
         model.newOperation()
     }
-    LocalSections(mode) { mode = it }
+    if (showSectionNavigation) LocalSections(mode) { mode = it }
 
     when (mode) {
         "Katalog" -> {
@@ -107,7 +117,9 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
         "Planung" -> LocalPlanningScreen(state, blocked, operationId, model)
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
-        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) { mode = "Käufe" }
+        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) {
+            if (onOpenPurchases != null) onOpenPurchases() else mode = "Käufe"
+        }
         "Küche" -> KitchenEditor(state, blocked, operationId, model)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
