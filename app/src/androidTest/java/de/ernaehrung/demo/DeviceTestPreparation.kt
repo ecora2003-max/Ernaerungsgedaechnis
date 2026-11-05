@@ -20,6 +20,20 @@ internal fun prepareUnlockedTestDevice() {
     val target = instrumentation.targetContext
     val keyguard = target.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
     val device = UiDevice.getInstance(instrumentation)
+    // A boot-time Pixel Launcher ANR can cover otherwise healthy app/credential
+    // Activities on a busy software emulator. Close only that identified CI
+    // launcher dialog; an ANR of our app must still fail the device tests.
+    if (device.findObject(By.pkg("android").text("Pixel Launcher isn't responding")) != null) {
+        val close = device.findObject(By.res("android", "aerr_close"))
+            ?: device.findObject(By.pkg("android").text("Close app"))
+        assertNotNull("CI Pixel Launcher ANR could not be closed", close)
+        requireNotNull(close).click()
+        device.waitForIdle()
+        Log.w("EG_DEVICE_TEST", "Closed the CI Pixel Launcher ANR before the app test")
+    }
+    device.executeShellCommand("cmd connectivity airplane-mode enable")
+    device.executeShellCommand("svc wifi disable")
+    device.executeShellCommand("svc data disable")
     Log.i("EG_DEVICE_TEST", "before: keyguard=${keyguard.isKeyguardLocked}, foreground=${device.currentPackageName}")
     if (!device.isScreenOn) device.wakeUp()
     if (keyguard.isKeyguardLocked) {
