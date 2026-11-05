@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "state": "ACTIVE",
   "ownerAutomationId": "codex-exclusive-ernaehrung-20261104",
-  "ownerChatId": "codex-session-1793827977234-g7dklubc71k",
+  "ownerChatId": "codex-320929e9076f4edfb1bd78c3293f1fa3",
   "ownerRunId": null,
-  "ownerRunToken": "codex-exclusive-ernaehrung-20261104-codex-session-1793827977234-g7dklubc71k-integration-lock-A.json",
-  "acquiredAtUtc": "2026-11-04T21:33:07.182Z",
-  "lastHeartbeatUtc": "2026-11-04T22:05:01.033Z",
+  "ownerRunToken": "codex-exclusive-ernaehrung-20261104-89c9bfefaaf0417892956a0517774b3c",
+  "acquiredAtUtc": "2026-11-05T02:33:05.568Z",
+  "lastHeartbeatUtc": null,
   "leaseExpiresAtUtc": null,
-  "task": "User-authorized Codex exclusive takeover; bootstrap tested owner policy, then complete A1/B1 E2E",
+  "task": "B1 positive Android recipe review, verified save, production and separate eating; finish existing PRs 246-248",
   "workingBranch": "codex-recipe-attestation-e2e-20261104",
-  "lastReleasedAtUtc": "2026-11-04T20:45:23.641Z",
-  "lastReleasedCommit": "838f00ce0c23367c6214d6f84259eb2c86d5010c",
-  "nextStep": "A1 PR #244 head 838f00ce: Room/Compose candidate budget preview + two tests; CI 41909547708 pending. Check exact-head CI/JUnit, fix on existing branch if FAIL, then merge only under newly acquired merge lock after main/overlap verification. Device/OCR/offline/privacy E2E open."
+  "lastReleasedAtUtc": "2026-11-04T23:41:47.172Z",
+  "lastReleasedCommit": "02e0c8763ec93e540dd8590794738edc9bfefec3",
+  "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
 }
