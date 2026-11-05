@@ -56,6 +56,13 @@ internal fun RecipeDraftConsentReview(
             Text("Artikelversion ${ingredient.versionId} · Menge in bestätigter Basiseinheit: ${ingredient.amount?.let(Amounts::format) ?: "unbekannt"}")
         }
         Text(recipe.steps)
+        review.referenceReport?.let { report ->
+            if ("ALLERGEN_DATA_GAP" in report.findings) {
+                Text("Die vollständige Allergenkennzeichnung ist nicht belegt. Geprüft sind nur die einzeln bestätigten Ausschlüsse; daraus folgt keine Allergenfreiheit.")
+            }
+            if ("TIME_UNKNOWN" in report.findings) Text("Die tatsächliche Zubereitungsdauer ist unbekannt.")
+            if (report.contextNotes.isNotEmpty()) Text("Der berücksichtigte Vorrats-, Einkaufs- oder Angebotskontext enthält noch unbekannte Mengen oder fehlende Belege.")
+        }
         Row {
             Checkbox(
                 checked = checked,

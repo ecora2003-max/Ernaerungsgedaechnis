@@ -57,7 +57,8 @@ class RecipeDraftConsentViewModelTest {
         val store = signedRecipeStore(db) { at }
         runBlocking {
             val id = store.rememberProduct("ui-product", ProductInput("Reis",
-                source = Source.USER, quality = Quality.CONFIRMED))
+                source = Source.USER, quality = Quality.CONFIRMED,
+                energyKcal = 350.0, fatGrams = 0.0))
             val v = requireNotNull(db.foodDao().version(id))
             facts = mapOf("rice" to Catalog.ConfirmedLine("rice", v.id, v.revision,
                 v.recordedAt, at, BaseUnit.GRAM, Gate.Basis.NET, Gate.State.RAW,
@@ -73,6 +74,22 @@ class RecipeDraftConsentViewModelTest {
 
     private suspend fun ready() = withTimeout(10_000) {
         vm.recipeDraftConsentState.first { !it.busy && it.review != null }
+    }
+
+    @Test fun reviewedVersionNutritionAppearsBeforeConsentAndIsRemovedWhenThePreviewChanges() = runBlocking {
+        vm.prepareRecipeDraftConsent(json, request, facts, states)
+        val preview = ready()
+        val nutrition = requireNotNull(preview.previewNutrition)
+        assertEquals(350.0, requireNotNull(nutrition[Nutrient.ENERGY].knownAmount).toDouble(), 0.0001)
+        assertEquals(0, requireNotNull(nutrition[Nutrient.FAT].knownAmount).signum())
+        assertNull(nutrition[Nutrient.PROTEIN].knownAmount)
+        assertNull(preview.recordedDigest)
+        assertEquals(1, db.foodDao().operationCount())
+        assertTrue(db.foodDao().observeRecipes().first().isEmpty())
+        vm.clearRecipeDraftConsent()
+        assertNull(vm.recipeDraftConsentState.value.previewNutrition)
+        assertEquals(1, db.foodDao().operationCount())
+        assertEquals(0, db.foodDao().consumptionCount())
     }
 
     @Test fun digestMismatchCannotRecordAndExplicitCallbackRecordsExactlyOneConsent() = runBlocking {

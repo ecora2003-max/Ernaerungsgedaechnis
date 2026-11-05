@@ -56,7 +56,8 @@ internal data class RecipeDraftConsentUiState(
     val operationKey: String? = null,
     val attemptVersion: Int = 0,
     val savedRecipeVersionId: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val previewNutrition: NutritionResult? = null
 )
 
 internal data class ProductionPrefillUiState(val recipeVersionId: String, val requestSequence: Int)
@@ -268,7 +269,8 @@ class LocalDataViewModel internal constructor(
         val reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
         val review: de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Review,
         val context: RecipeTypedContext?,
-        val trustedContextSnapshotAt: OffsetDateTime?
+        val trustedContextSnapshotAt: OffsetDateTime?,
+        val previewNutrition: NutritionResult?
     )
     private val recipeContext = MutableStateFlow(RecipeDraftContextUiState())
     internal val recipeContextState = recipeContext.asStateFlow()
@@ -387,6 +389,9 @@ class LocalDataViewModel internal constructor(
                 val ready = review.status ==
                     de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
                     review.input != null && review.approvalBasisDigest != null
+                val previewNutrition = if (ready)
+                    store.previewRecipeNutrition(requireNotNull(review.input)) else null
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 // A fresh host revalidation may discover a durable consent from
                 // before process death. Never silently record a second checkpoint.
                 val recordedKey = if (ready)
@@ -413,13 +418,13 @@ class LocalDataViewModel internal constructor(
                     pendingRecipeDraft = PendingRecipeDraft(
                         key, java.util.UUID.randomUUID().toString(), json, immutableRequest,
                         immutableFacts, reviewedStates.toMap(), review,
-                        selectedContext, selectedAt)
+                        selectedContext, selectedAt, previewNutrition)
                 } else if (recordedKey != null) {
                     // Recovered Room consent permits a separate save gesture,
                     // never replay of a previous device-authentication result.
                     pendingReviewedSave = PendingRecipeDraft(
                         recordedKey, "", json, immutableRequest, immutableFacts,
-                        reviewedStates.toMap(), review, selectedContext, selectedAt)
+                        reviewedStates.toMap(), review, selectedContext, selectedAt, previewNutrition)
                     // A durable Room checkpoint wins over a stale pending-key file.
                     runCatching {
                         pendingKeyStore.finish(requireNotNull(review.approvalBasisDigest), recordedKey)
@@ -428,7 +433,8 @@ class LocalDataViewModel internal constructor(
                 recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
                     recordedDigest = if (recordedKey != null) review.approvalBasisDigest else null,
                     sessionId = pendingRecipeDraft?.sessionId,
-                    operationKey = pendingRecipeDraft?.operationKey)
+                    operationKey = pendingRecipeDraft?.operationKey,
+                    previewNutrition = previewNutrition)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -482,7 +488,8 @@ class LocalDataViewModel internal constructor(
                     // immediately invalidate this preview from inside the emit.
                     recipeConsentJob = null
                     recipeDraftConsent.value = RecipeDraftConsentUiState(
-                        review = session.review, recordedDigest = recorded)
+                        review = session.review, recordedDigest = recorded,
+                        previewNutrition = session.previewNutrition)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -494,6 +501,7 @@ class LocalDataViewModel internal constructor(
                         review = session.review, sessionId = session.sessionId,
                         operationKey = session.operationKey,
                         attemptVersion = recipeDraftConsent.value.attemptVersion + 1,
+                        previewNutrition = session.previewNutrition,
                         error = "Bestätigung nicht gespeichert: ${e.message}")
                 }
             }

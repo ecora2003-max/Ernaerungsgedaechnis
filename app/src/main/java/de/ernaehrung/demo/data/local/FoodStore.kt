@@ -404,11 +404,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // Independently enforce review chronology at the FoodStore boundary:
         // even a caller bypassing the manual-review UI cannot reuse a catalog
         // confirmation issued before the draft being approved existed.
+        val catalog = dao.allVersions()
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
-            lines, dao.allVersions(), confirmations, trustedNow,
+            lines, catalog, confirmations, trustedNow,
             draftCreatedAtMillis = imported?.createdAt?.toInstant()?.toEpochMilli())
         val review = de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
-            json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt)
+            json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt, catalog)
         // Producer clock skew is tolerated for read-only preview only. A host
         // confirmation or recipe write must never predate the draft it approves.
         if (requireNonFutureDraft &&
@@ -661,6 +662,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     fun watchRecipeNutrition(id: String) = nutrition.watchRecipe(id)
     suspend fun dayNutrition(date: String) = nutrition.day(date)
     suspend fun recipeNutrition(id: String) = nutrition.recipe(id)
+    internal suspend fun previewRecipeNutrition(input: RecipeInput) = nutrition.preview(input)
     suspend fun setDayStatus(key: String, date: String, status: DayStatus, expectedSnapshot: String, confirmed: Boolean): String = db.withTransaction {
         require(confirmed) { "Erfassungsstatus ausdrücklich bestätigen." }
         WriteRules.date(date)

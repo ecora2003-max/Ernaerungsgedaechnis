@@ -40,6 +40,20 @@ internal class NutritionReader(private val db: FoodDatabase) {
         NutritionResult.sum(items.map { resolver.version(it.productVersionId, it.amount, it.unit) }).scale(1000, recipe.yieldPortions)
     }
 
+    /** Unsaved reviewed recipe, calculated from its exact version IDs. No draft
+     * nutrition claims, latest-version substitution or database writes are used.
+     */
+    suspend fun preview(input: RecipeInput): NutritionResult = db.withTransaction {
+        Amounts.positive(input.yieldPortions)
+        if (input.ingredients.isEmpty()) return@withTransaction NutritionResult.unknown(NutritionGap.MISSING_VALUE)
+        val resolver = Resolver()
+        NutritionResult.sum(input.ingredients.map { line ->
+            val version = dao.version(line.versionId)
+            if (version == null) NutritionResult.unknown(NutritionGap.MISSING_VERSION)
+            else resolver.version(version.id, line.amount, version.baseUnit)
+        }).scale(1000, input.yieldPortions)
+    }
+
     /** Cache only inside this transaction. A path detects invalid recursive production references. */
     private inner class Resolver {
         private val bases = mutableMapOf<String, NutritionResult>()
