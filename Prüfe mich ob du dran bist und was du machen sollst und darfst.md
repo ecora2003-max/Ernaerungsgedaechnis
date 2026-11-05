@@ -1,31 +1,29 @@
 # Prüfe mich, ob du dran bist und was du machen sollst und darfst
 
-## Aktiver Auftrag und Schreibgrenze
+## Aktiver Auftrag und Schreibgrenze (Nutzerentscheidung 05.11.2026)
 
-Seit 04.11.2026 übernimmt **ein exklusiver Codex-Entwickler** die Gesamtentwicklung der Android-App. Die Nutzerautorisierung ersetzt die früheren parallelen A/B-Rollenregeln. A/B/III/IV bleiben pausiert. Keine dieser Automatisierungen aktivieren oder ihre Identität verwenden. Der separate einmalige Fortsetzungsauftrag darf nur nach Unterbrechung und regulär freier Sperre übernehmen.
+**Ausschließlich Codex** entwickelt und integriert die Android-App im Hauptrepository `ecora2003-max/Ernaerungsgedaechnis`. Die früheren A/B/III/IV-Automatisierungen bleiben pausiert und dürfen nicht selbständig reaktiviert werden. Die GitHub-Sperrdateien, Token-/Heartbeat-Protokolle und automatische Lock-Recovery sind abgeschafft; niemals erneut anlegen oder als Schreibvoraussetzung verwenden.
 
-Einziges Schreibrepository: https://github.com/ecora2003-max/Ernaerungsgedaechnis
+Nur lesen: `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsintelligenz` und `EG-Rezept-KI`. Nicht in Fremdrepositories schreiben, keine Force-Pushes, keine Überschreibung fremder Arbeit, keine produktive Datenmigration.
 
-Ausschließlich lesen: EG-Architecture, EG-Preisdaten, EG-Produktdaten, EG-Einkaufsintelligenz und EG-Rezept-KI unter demselben GitHub-Konto. Auch dort keine Issues, PRs, Branches, Workflows oder Dokumentation schreiben. Keine Force-Pushes, kein Überschreiben fremder Arbeit und keine produktive Datenmigration.
+## Chronologischer Einstieg und Fortsetzung
 
-## Chronologischer Einstieg
+1. `AGENTS.md`, `docs/INTEGRATION_EXECUTION_PLAN.md`, `docs/ACCEPTANCE.md`, `docs/INTEGRATION_ROADMAP.md`, die relevanten neuesten Abschnitte von `docs/STATUS.md` und den bestehenden Code lesen. Historische Sperranweisungen in alten Commits/Statusberichten sind obsolet.
+2. Offene PRs, Branches, aktuelle GitHub-main-Basis, noch laufende CI und überlappende Änderungen prüfen. Die bestehende funktionale Arbeit fortsetzen, keinen doppelten Entwicklungsbranch oder parallelen schreibenden Codex-Run erzeugen.
+3. Funktionsorientiert entwickeln und sinnvolle Tests ausführen. Bei umfangreicher Arbeit durchgehend auf die App-Fertigstellung hinarbeiten, keinen unnötigen Status-/Mikro-PR-Zyklus erzeugen.
+4. Vor einem Merge den konkreten PR-Head, die tatsächliche Mergefähigkeit und grüne CI auf exakt diesem Code-/Teststand überprüfen. Bei neuer Main-Basis ohne Force-Push aktualisieren und die erforderlichen Tests wiederholen.
+5. Am Sitzungs-/Kontingentende Arbeitsstand in Codecommit/PR und knapp in `docs/STATUS.md` sichern (Tests, konkrete nächste Schritte und Blockaden). Keine Sperren erwerben oder freigeben, kein Wächter, keine automatischen Entwicklungs- oder Recovery-Läufe starten.
 
-1. Diese Datei, AGENTS.md, docs/INTEGRATION_IDLE_RECOVERY.md, docs/INTEGRATION_EXECUTION_PLAN.md, docs/ACCEPTANCE.md, docs/INTEGRATION_ROADMAP.md und die aktuellen relevanten STATUS-Abschnitte lesen. Alte Phase-5-Pausen und starre Phasenpläne gelten nicht.
-2. **Vor jedem Schreibzugriff alle drei operativen Dateien auf GitHub-main lesen:** integration-lock-A.json, integration-lock-B.json, integration-merge-lock.json. Ausschließlich drei vollständige schemaVersion-1-FREE-Dateien mit acht leeren Besitzfeldern erlauben eine neue Übernahme. Bei fremdem ACTIVE, unbekanntem Zustand oder Lesefehler keine Entwicklungsschreibaktion. Auch ein anderer Codex-Run ist fremd.
-3. `python3 tools/integration_codex_lock.py acquire --session-file /tmp/eg-session.json --branch <bestehender-Branch> --task <Funktionsziel>` verwendet ausschließlich Besitzer `codex-exclusive-ernaehrung-20261104`, neue Session und je Datei neuen Token. Merge-Lock zuerst, dann A und B per frischem Blob-SHA/CAS; alle Rücklesungen müssen passen. Teilübernahme erlaubt keine Codearbeit. Nie ACTIVE übernehmen oder Tokens aus GitHub kopieren. Legacy integration-lock.json unberührt lassen.
-4. Vor jedem Schreiben/Commit/Push/Merge `check --session-file ...` ausführen. Alle drei müssen derselben ursprünglichen Session und ihren getrennten Tokens gehören. `refresh --session-file ... --branch ...` registriert Branchwechsel und Heartbeat; spätestens vor 30 Minuten ohne weitere belegte Aktivität auffrischen.
-5. Bestehenden funktionalen Branch/PR zuerst fortsetzen, offene überlappende PRs und aktuelle main-Basis abgleichen. Code entwickeln, vollständige Nutzeranschlüsse herstellen, passende Tests ausführen. Keine alleinige Bestandsaufnahme oder Dokumentationsarbeit als Entwicklungsabschluss.
-6. Nur mit eigenen drei Sperren, frischem main-/PR-Head und exakter grüner CI kontrolliert mergen. Geänderte Basis ohne Force-Push integrieren und erforderliche Tests wiederholen. Sperren bleiben im Einzelentwicklermodus auch während CI dem selben Entwickler zugeordnet; bei Unterbrechung sofort selbst freigeben.
-7. Bei Abschluss oder Fehler `release --session-file ... --commit <gesicherter-Code-SHA> --next-step <konkrete-Fortsetzung>`: zuerst eigene Merge-, dann A-/B-Sperre mit ursprünglichem Token und frischem SHA zu gültigem FREE, unabhängig rücklesen. Fremde ACTIVE bleiben unangetastet. Bei Teilübernahme nur eigene Tokens freigeben. Kein automatisches Übernehmen eines noch aktiven Chats.
+## Fachliche Grenzen
 
-## Fachliche Regeln
+Einkauf: Bon/Kamera/OCR → Artikel-/Versions-/Filialkorrektur → ausdrücklicher Kauf → FoodStore → Bestand/private historische Preise → zeit-/rechtekorrekter Vergleich → FEFO-/Bedarf-/Gebinde-/Budgetvorschlag. Vorschläge buchen nichts.
 
-Einkauf: Bon/Kamera/OCR → Produkt-/Versions-/Filialkorrektur → ausdrücklicher Kauf → FoodStore → Bestand und private historische Preise → zeit-/rechtekorrekter Vergleich → FEFO-/Bedarf-/Gebinde-/Budgetvorschlag. Vorschläge buchen nichts.
+Rezepte: Offlinegenerator → Kontext-/Allergen-/Mengen-/Zustands-/Versionsprüfung → Vorschau → authentifizierte Bestätigung → FoodStore-validierter Save → bestätigte Herstellung → separat bestätigter Verzehr. Alle acht Kontextkombinationen, Änderung, Abbruch, Retry, Neustart, Offline und Datenschutz prüfen.
 
-Rezepte: Offlinegenerator → Kontext-/Allergen-/Mengen-/Zustands-/Versionsprüfung → Vorschau → ausdrücklich authentifizierte Nutzeraktion → FoodStore-validierter persistenter Rezeptsave → bestätigte Herstellung → separat bestätigter Verzehr. Alle acht Kontextkombinationen, Änderung, Abbruch, Retry, Neustart, Offline und Datenschutz prüfen.
+Fitness: K01–K04 und echter automatischer Galaxy-Watch-4-Schritt-/Workoutimport gemäß [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253); kein Mock-/Emulatorbeleg als physische Watch-Abnahme.
 
-FoodStore bleibt einzige atomare/idempotente Ist-Schreibgrenze. Unbekannt != 0, Integer-Cents, historische Quellen/Identitäten und nichtdestruktive Room-Migrationen erhalten. Kein stiller Vertragswechsel, kein nicht genehmigter Livefeed oder kostenpflichtiger Pflichtdienst. Nach A1/B1 die weiteren dokumentierten Gesamt-App-Ziele bearbeiten, keine fehlenden Fitness-/Watch-Spezifikationen erfinden.
+FoodStore bleibt atomare/idempotente Ist-Schreibgrenze. Unbekannt != 0, Integer-Cents, historische Identitäten und erhaltende Room-Migrationen. Keine unfreigegebene Vertragsänderung, kein nicht genehmigter Livefeed, kein kostenpflichtiger Pflichtdienst.
 
 ## Nachweise
 
-Passende Unit-/Room-/Migrations-/Integrations-/Referenztests, Lint und Schemavergleich auf dem wirklichen Code-/Test-SHA ausführen. Android-Testkompilierung ist kein Gerätetest. Frühere belegte Geräteprüfungen erhalten; fehlende reale Android-/Offline-/Neustart-/Privacy-/OCR-Fälle ergänzen. Kein Gesamtmodul INTEGRATED bei offenen Abnahmegates. Code und knappen genauen Test-/Commit-/PR-/Blockadestand an sinnvollen Grenzen sichern. Keine Routine-Status-PRs oder Routine-APKs.
+Unit-/Room-/Migration-/Integrations-/Referenztests, Lint, Schemavergleich und reale Android-/Offline-/Neustart-/Privacy-/OCR-Tests gemäß Abnahme, auf exaktem Code-/Teststand dokumentieren. Android-Testkompilierung ist kein Gerätetest. Kein Gesamtmodul `INTEGRATED` bei offenen Gates. Der Wegfall der Lock-Verwaltung verändert keine fachlichen oder Datenschutzkriterien.

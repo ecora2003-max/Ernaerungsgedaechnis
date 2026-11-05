@@ -1,6 +1,6 @@
 # Funktionsorientierter Ausführungsplan für die Gesamt-App
 
-Stand: 04.11.2026. **Exklusiver Codex-Einzelentwickler**, vom Nutzer ausdrücklich autorisiert. Die früheren A/B-Zeitfenster und getrennten Entwicklungszuständigkeiten sind außer Kraft; A/B/III/IV bleiben pausiert. Eigene Besitzerkennung und drei Sperren gemäß [Sperrprotokoll](INTEGRATION_IDLE_RECOVERY.md). Keine alte Automatisierung reaktivieren und keine A/B-Identität verwenden.
+Stand: 05.11.2026. **Ausschließlich Codex als Einzelentwickler, ohne Sperrdateien oder automatische Lock-Recovery**, vom Nutzer ausdrücklich autorisiert. Die früheren A/B-Zeitfenster und getrennten Zuständigkeiten sind außer Kraft; A/B/III/IV bleiben pausiert. [Umstellung des Betriebsmodus](INTEGRATION_IDLE_RECOVERY.md). Keine Automatisierung reaktivieren und keine A/B-Identität verwenden. Auch ohne Locks keine parallelen schreibenden Codex-Sitzungen.
 
 ## Fortlaufende funktionale Priorität
 
@@ -15,13 +15,13 @@ Diese Liste ist funktionsorientiert, keine starre Acht-Phasen-Roadmap. Bei echte
 
 Einziges Schreibrepository ist die Haupt-App; fünf Referenzrepos ausschließlich lesen. FoodStore bleibt einzige explizit bestätigte, atomare/idempotente Ist-Grenze. null != 0, Integer-Cents, historische Identitäten/Versionen/Filialen/Quellen erhalten. Keine destruktive Room-Migration, kein stiller Wechsel von `1.0.0-draft` / Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` zu nicht freigegebenem v1.1, keine unautorisierte externe Datenübertragung oder kostenpflichtige Cloudpflicht.
 
-Vor jedem Schreiben alle drei ursprünglichen Codex-Tokens prüfen. Bestehendes Checkout verwenden, Nutzerarbeit schützen, gemeinsame Dateien und alle Main-Merges exklusiv bearbeiten. Main-/PR-Head und überlappende offene PRs prüfen, Basis ohne Force-Push integrieren, nur unveränderten grünen Head mergen. Bei Abschluss/Fehler eigene Merge-, dann A-/B-Sperre sicher freigeben/rücklesen.
+Keine Token-/Sperrprüfung mehr. Bestehendes Checkout verwenden, Nutzerarbeit schützen und keine zweite schreibende Codex-Sitzung parallel betreiben. Main-/PR-Head, offene überlappende PRs, Mergefähigkeit und genaue CI prüfen; Basis ohne Force-Push integrieren und nur unveränderten grünen Head mergen. GitHub-Sperren und Recovery nicht erneut einführen.
 
 ## Abnahme und Arbeitsende
 
 Passende Unit-/Room-/Migrations-/Integrations-/Referenztests, Lint und Schemavergleich auf exaktem Code-/Test-SHA. Reale Android-/Offline-/Neustart-/Privacy-/Kamera-/OCR-Nutzerabläufe getrennt prüfen; Testkompilierung zählt nicht als Gerätetest. [ACCEPTANCE](ACCEPTANCE.md), [Zielmatrix](INTEGRATION_ROADMAP.md) und tatsächliche Nachweise sind maßgeblich. Kein INTEGRATED bei offenen Gates und keine Routine-APK.
 
-Nach jedem Teilziel unmittelbar nächste offene Funktion bearbeiten. Zusammenhängenden Fortschritt in GitHub sichern, Status knapp im zugehörigen Code-PR. Erst bei technischer Sitzungs-/Werkzeug-/Kontingentgrenze Code, Commit, Tests, offene PRs, Blockaden und konkreten nächsten Schritt sichern und eigene Sperren freigeben. Keine künstlichen Fortsetzungspausen.
+Nach jedem Teilziel unmittelbar nächste offene Funktion bearbeiten. Zusammenhängenden Fortschritt in GitHub sichern, Status knapp im zugehörigen Code-PR. Erst bei technischer Sitzungs-/Werkzeug-/Kontingentgrenze Code, Commit, Tests, offene PRs, Blockaden und konkreten nächsten Schritt sichern; keine Locks erwerben oder freigeben. Keine künstlichen Fortsetzungspausen.
 
 ## Fitness nach A1/B1 – konkreter Anschluss aus Nutzerauftrag #253
 
