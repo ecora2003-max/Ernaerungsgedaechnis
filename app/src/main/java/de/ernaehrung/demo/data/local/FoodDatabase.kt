@@ -213,10 +213,12 @@ internal interface FoodDao {
     RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
     PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class, PurchaseEventEntity::class,
     ReceiptStockBookingEntity::class, ExpenseStatusEntity::class, AliasDecisionEntity::class,
-    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class], version = 8, exportSchema = true)
+    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class,
+    HealthImportStateEntity::class, HealthImportRunEntity::class, HealthRecordVersionEntity::class], version = 9, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
+    internal abstract fun healthDao(): HealthImportDao
 
     companion object {
         // Separate from future production storage and from immutable UI fixtures. Never seed personal data.

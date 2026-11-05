@@ -1,3 +1,9 @@
+## Codex – versionierter lokaler Health-Importkern als Zwischenstand (05.11.2026)
+
+- Reiner validierender Fenster-/Änderungskern, drei additive Room-9-Entitäten und FoodStore-eigene Importtransaktionen implementiert. Explizite lokale Freigabe, Berechtigungsprüfung vor Lesen und Commit, Autorisierungsrevision/CAS, Retry, Änderungshistorie, auf das vollständige Fenster begrenzte Sichtbarkeits-Tombstones und getrennte lokale Löschung; keine Ernährungs-/Bestands-/Preis-/Zielbuchung. Tagesschritte bleiben Provideraggregat oder unbekannt, keine Rohdatensumme. Tatsächliche Geräte-/Quellmetadaten bleiben ohne Watch-4-Zuschreibung erhalten.
+- **Room-KSP/Schemaexport PASS**, Kotlin-Gesamtkompilierung, explizite 8→9-Migration/Registrierung, neue Tests und UI noch PENDING. Dieser Zwischenstand ist keine Integration oder Fitness-/Watch-Abnahme. Änderungen werden auf bestehendem Health-Branch gesichert, während vorrangiger Rezept-PR #255 weitergeführt wird.
+- #255, Head `69a6722108d92265f473ccfa6dff9b7b922fc5a4`: App-CI `42008695352` PASS; Original-Geräte-XML `42008695418`: **16 Tests, 15 PASS, 1 Fehler, 0 Skips**. Neue reale DIET-/OS-Consent-/Herstellungs-/Essensstrecke PASS. Einziger Fehler im bestehenden Einkaufstest beim ersten Formularfeld nach SQLite-/Model-Neustart: Semantikknoten noch nicht vorhanden. Bounded UI readiness im Test korrigieren, keine Abschwächung fachlicher Assertions.
+
 ## Codex – Health-Quelladapter kompiliert; persistenter Anschluss in Arbeit (05.11.2026)
 
 - PR #254 kontrolliert integriert als `8fdee74e6876bb1b4fb0e45b581005916b609058`, geprüfter Head `0af59c777be32847b4d493cf2dda193d8ce50691`: Original-App-XML **646/646 JVM, 7 Migrationen**, Original-Geräte-XML **16/16 echte API35-Tests, 0 Fehler/Skips PASS**. Runs `42004954852` / `42004954841`. Planung aus Issue #253 jetzt tatsächlich auf main. Kein physischer Watch-Nachweis.

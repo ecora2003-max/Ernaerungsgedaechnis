@@ -22,8 +22,7 @@ internal class AndroidHealthConnectSource(context: Context,
     private val now: () -> Long = System::currentTimeMillis) : FitnessHealthSource {
     private val application = context.applicationContext
     companion object {
-        const val SAMSUNG_PACKAGE = "com.sec.android.app.shealth"
-        private const val MAX_RECORDS = 20_000
+        const val SAMSUNG_PACKAGE = FitnessHealthPolicy.SAMSUNG_PACKAGE
     }
     override val requiredPermissions = setOf(HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(ExerciseSessionRecord::class))
@@ -70,7 +69,7 @@ internal class AndroidHealthConnectSource(context: Context,
                     m.recordingMethod, steps = r.count)
             }
             page = response.pageToken
-            check(records.size <= MAX_RECORDS && (page == null || stepPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
+            check(records.size <= FitnessHealthPolicy.MAX_RECORDS && (page == null || stepPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
         } while (page != null)
         val workoutPages = mutableSetOf<String>()
         do {
@@ -86,10 +85,10 @@ internal class AndroidHealthConnectSource(context: Context,
                     m.recordingMethod, exerciseType = r.exerciseType, title = r.title, notes = r.notes)
             }
             page = response.pageToken
-            check(records.size <= MAX_RECORDS && (page == null || workoutPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
+            check(records.size <= FitnessHealthPolicy.MAX_RECORDS && (page == null || workoutPages.add(page!!))) { "HEALTH_IMPORT_LIMIT" }
         } while (page != null)
         permission()
-        val zone = ZoneId.of("Europe/Berlin")
+        val zone = ZoneId.systemDefault()
         val day = end.atZone(zone).toLocalDate()
         val dayStart = day.atStartOfDay(zone).toInstant()
         val aggregate = client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL),
