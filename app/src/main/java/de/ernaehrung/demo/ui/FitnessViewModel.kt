@@ -144,5 +144,6 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
         }
     }
     fun closeHistory() { historyJob?.cancel(); mutable.update { it.copy(history = null) } }
+    fun providerInstallUnavailable() { mutable.update { it.copy(message = "Health Connect konnte nicht im Store geöffnet werden. Du kannst es selbst im Play Store suchen; die lokale App bleibt nutzbar.") } }
     fun settingsUnavailable() { mutable.update { it.copy(message = "Health-Connect-Einstellungen sind auf diesem Gerät nicht erreichbar.") } }
 }

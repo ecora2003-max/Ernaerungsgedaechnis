@@ -1,6 +1,9 @@
 package de.ernaehrung.demo.ui.screens
 
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -20,7 +23,7 @@ import de.ernaehrung.demo.FitnessPrivacyActivity
 import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.FitnessViewModel
-import java.time.Duration
+import de.ernaehrung.demo.ui.FitnessPresentation
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -71,6 +74,23 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel()) {
             FitnessHealthSource.Availability.UNSUPPORTED -> "Health Connect ist auf diesem Gerät nicht verfügbar."
             null -> "Gesundheitsverbindung wird geprüft …"
         }, Modifier.testTag("fitness_source_status"))
+        if (state.availability == FitnessHealthSource.Availability.INSTALL_OR_UPDATE_REQUIRED &&
+            Build.VERSION.SDK_INT < 34) {
+            OutlinedButton({
+                // Only this explicit public-store action may leave the app.
+                // Installing the provider never grants local import consent.
+                val provider = "com.google.android.apps.healthdata" // Same provider as the manifest query.
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW,
+                        Uri.parse("market://details?id=$provider&url=healthconnect%3A%2F%2Fonboarding"))
+                        .setPackage("com.android.vending").putExtra("callerId", context.packageName))
+                } catch (_: ActivityNotFoundException) {
+                    try { context.startActivity(Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://play.google.com/store/apps/details?id=$provider"))) }
+                    catch (_: RuntimeException) { model.providerInstallUnavailable() }
+                } catch (_: SecurityException) { model.providerInstallUnavailable() }
+            }, Modifier.testTag("fitness_install_provider")) { Text("Health Connect im Play Store installieren oder aktualisieren") }
+        }
         state.message?.let { Text(it, Modifier.testTag("fitness_message")) }
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         val cache = state.cache
@@ -115,7 +135,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel()) {
                 Text(if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall: ${row.steps} Schritte"
                     else row.title?.takeIf { it.isNotBlank() } ?: "Training aus Samsung Health",
                     style = MaterialTheme.typography.titleSmall)
-                Text("${time(row.startAt)} bis ${time(row.endAt)} · ${Duration.ofMillis(row.endAt - row.startAt).toMinutes()} min")
+                Text("${time(row.startAt)} bis ${time(row.endAt)} · ${FitnessPresentation.duration(row.endAt - row.startAt)}")
                 Text("Quelle: Samsung Health · ${row.manufacturer?.takeIf { it.isNotBlank() } ?: "Hersteller unbekannt"} · ${row.model?.takeIf { it.isNotBlank() } ?: "Gerätemodell unbekannt"}")
                 Text(when (row.recordingMethod) {
                     Metadata.RECORDING_METHOD_MANUAL_ENTRY -> "In der Quelle manuell erfasst"
@@ -123,7 +143,12 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel()) {
                     Metadata.RECORDING_METHOD_AUTOMATICALLY_RECORDED -> "In der Quelle automatisch aufgezeichnet"
                     else -> "Aufzeichnungsmethode unbekannt"
                 })
-                if (row.kind == FitnessRecordKind.WORKOUT.name) Text("Trainingsenergie und Herzfrequenz: unbekannt")
+                Text("Erfasster Gerätetyp: ${FitnessPresentation.device(row.deviceType)}")
+                if (row.kind == FitnessRecordKind.WORKOUT.name) {
+                    Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}",
+                        Modifier.testTag("fitness_sport_${row.externalId}"))
+                    Text("Trainingsenergie und Herzfrequenz: unbekannt")
+                }
                 Text("Quelländerung: ${time(row.sourceModifiedAt)} · lokale Version ${row.revision}")
                 Text("Zeitzonenversatz der Quelle: ${offset(row.startOffsetSeconds)} / ${offset(row.endOffsetSeconds)}")
                 TextButton({ model.showHistory(row) }) { Text("Änderungen dieses Eintrags") }
