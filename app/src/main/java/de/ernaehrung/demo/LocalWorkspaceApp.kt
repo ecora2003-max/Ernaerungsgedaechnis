@@ -20,12 +20,13 @@ import androidx.navigation.compose.*
 import de.ernaehrung.demo.ui.*
 import de.ernaehrung.demo.ui.screens.LocalDataContent
 import de.ernaehrung.demo.ui.screens.rememberLocalDataViewModel
+import de.ernaehrung.demo.ui.screens.FitnessScreen
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG -> STOCK
@@ -85,10 +86,12 @@ fun LocalWorkspaceApp() {
                     if (page.section != null) {
                         LocalDataContent(model, page.section, showSectionNavigation = false,
                             onOpenPurchases = { go(WorkspacePage.PURCHASES) })
+                    } else if (page == WorkspacePage.FITNESS) {
+                        FitnessScreen()
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }
@@ -105,7 +108,7 @@ fun LocalWorkspaceApp() {
                             KV("Verzehre am ${daily.date}", daily.report?.meals?.size?.toString()
                                 ?: if (daily.error != null) "Unbekannt" else "Wird geladen")
                         }
-                        listOf(WorkspacePage.NUTRITION, WorkspacePage.STOCK, WorkspacePage.SCAN,
+                        listOf(WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.STOCK, WorkspacePage.SCAN,
                             WorkspacePage.KITCHEN, WorkspacePage.PLAN, WorkspacePage.SHOPPING,
                             WorkspacePage.PURCHASES, WorkspacePage.CATALOG).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }

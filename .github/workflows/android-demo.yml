@@ -41,7 +41,7 @@ jobs:
       - name: Set up Android SDK and required packages
         uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
       - name: Run lint and unit tests
         run: |
           chmod +x gradlew
@@ -172,6 +172,6 @@ jobs:
             app/build/reports/tests/
             app/build/reports/lint-results-debug.*
             app/build/test-results/testDebugUnitTest/*.xml
-            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/8.json
+            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/9.json
           if-no-files-found: ignore
           retention-days: 7

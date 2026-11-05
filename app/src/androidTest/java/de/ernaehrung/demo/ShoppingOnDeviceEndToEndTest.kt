@@ -13,6 +13,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.ViewModelStore
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,6 +28,8 @@ import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Before
@@ -43,6 +46,7 @@ class ShoppingOnDeviceEndToEndTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Before fun unlockFixtureDevice() = prepareUnlockedTestDevice()
     private var models = ViewModelStore()
+    private var mounted: LocalDataViewModel? = null
 
     private fun tap(text: String) {
         compose.waitUntil(25_000) {
@@ -72,11 +76,23 @@ class ShoppingOnDeviceEndToEndTest {
         assertEquals(model.saveState.value.message, expected, model.saveState.value.succeeded)
     }
 
+    private suspend fun unmount() {
+        val scope = mounted?.viewModelScope?.coroutineContext?.get(Job)
+        compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+        compose.waitForIdle()
+        // ViewModelStore.clear cancels asynchronously. Await every old read
+        // before closing/reopening SQLite; a live connection can otherwise
+        // leave the new Room instance permanently in SQLITE_BUSY error state.
+        withTimeout(10_000L) { scope?.join() }
+        mounted = null
+    }
+
     private fun mount(store: FoodStore, section: String): LocalDataViewModel {
         val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(store) as T
         })[LocalDataViewModel::class.java]
+        mounted = model
         val generation = UUID.randomUUID().toString()
         compose.runOnUiThread {
             compose.activity.setContent {
@@ -91,6 +107,7 @@ class ShoppingOnDeviceEndToEndTest {
         }
         compose.waitUntil(25_000) { !model.state.value.loading }
         compose.waitForIdle()
+        assertNull("The mounted database must load without errors", model.state.value.error)
         return model
     }
 
@@ -106,7 +123,7 @@ class ShoppingOnDeviceEndToEndTest {
             .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3,
                 FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5,
                 FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7,
-                FoodMigrations.MIGRATION_7_8).build()
+                FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
         var db = open()
         val files = CaptureFiles(target)
         val capture = files.create()
@@ -242,7 +259,7 @@ class ShoppingOnDeviceEndToEndTest {
             assertEquals(0, db.foodDao().consumptionCount())
 
             // Destroy UI/ViewModel ownership and reopen real device SQLite, not an in-memory DB.
-            compose.runOnUiThread { compose.activity.setContent {} ; models.clear() }
+            unmount()
             db.close()
             db = open()
             store = FoodStore(db)
@@ -277,7 +294,7 @@ class ShoppingOnDeviceEndToEndTest {
             captureDeviceFailureEvidence("shopping-flow")
             throw failure
         } finally {
-            compose.runOnUiThread { compose.activity.setContent {} ; models.clear() }
+            unmount()
             files.remove(capture)
             db.close()
             target.deleteDatabase(name)

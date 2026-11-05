@@ -19,6 +19,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
@@ -90,15 +91,24 @@ class RecipeDeviceCredentialUiTest {
             keyguard.isDeviceSecure)
     }
 
+    private fun credentialEditorVisible(device: UiDevice): Boolean {
+        val foreground = device.currentPackageName
+        if (foreground != "com.android.settings" && foreground != "com.android.systemui") return false
+        return device.hasObject(By.res("com.android.systemui", "lockPassword")) ||
+            device.hasObject(By.res("com.android.settings", "password_entry")) ||
+            device.hasObject(By.clazz("android.widget.EditText"))
+    }
+
     private fun awaitSystemCredentialActivity(device: UiDevice) {
-        val appPackage = InstrumentationRegistry.getInstrumentation().targetContext.packageName
-        // The external credential Activity starts asynchronously. Pressing Back before
-        // it is foregrounded can close our own Activity and leave no Compose hierarchy.
-        compose.waitUntil(15_000) {
-            val foreground = device.currentPackageName
-            foreground != null && foreground != appPackage
+        // Require the actual OS credential editor, not just a translucent
+        // Settings Activity or a different foreground package during launch.
+        try {
+            compose.waitUntil(15_000) { credentialEditorVisible(device) }
+            device.waitForIdle()
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("credential-flow")
+            throw failure
         }
-        device.waitForIdle()
     }
 
     private fun enterRealSystemPin() {
@@ -231,6 +241,23 @@ class RecipeDeviceCredentialUiTest {
         compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
         compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        // AOSP's credential Activity can cancel during a previous prompt's
+        // teardown. Exercise the real app's fresh-gesture retry once, rather
+        // than treating that early cancellation as the user-cancel proof.
+        compose.waitUntil(15_000) {
+            credentialEditorVisible(device) || runCatching {
+                compose.onAllNodesWithText("Gerätebestätigung abgebrochen", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
+        }
+        if (!credentialEditorVisible(device)) {
+            assertEquals("An OS cancellation must never sign an approval", 0, callbacks.get())
+            compose.onNodeWithTag("recipe_draft_consent_checkbox").assertIsOff()
+            compose.onNodeWithTag("recipe_draft_consent_confirm").assertIsNotEnabled()
+            device.waitForIdle()
+            compose.onNodeWithTag("recipe_draft_consent_checkbox").performClick()
+            compose.onNodeWithTag("recipe_draft_consent_confirm").performClick()
+        }
         cancelRealSystemCredential(device)
         // Wait for the external Activity to finish and Compose to resume. A direct
         // assertion races the ActivityResult callback and may see no app hierarchy.
@@ -258,7 +285,7 @@ class RecipeDeviceCredentialUiTest {
             .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3,
                 FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5,
                 FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7,
-                FoodMigrations.MIGRATION_7_8).build()
+                FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
         var database = open()
         var models = ViewModelStore()
         var appFocus: FocusManager? = null
@@ -277,6 +304,10 @@ class RecipeDeviceCredentialUiTest {
                     ?.isVisible(WindowInsets.Type.ime()) != true
             }
             compose.waitForIdle()
+            // Native IME/window work can outlive Compose idleness and dismiss a
+            // popup opened during the old editor's hide animation.
+            val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            device.waitForIdle(1_500L)
         }
         fun tap(label: String) {
             finishEditing()
@@ -298,6 +329,18 @@ class RecipeDeviceCredentialUiTest {
             tag(label)
             // Ending main-window focus after opening a popup can dismiss it.
             // Keep that live popup focused until its actual option is selected.
+            // Select only an actually visible popup option. If the native IME
+            // transition dismissed the menu, reopen this non-booking selector
+            // once after native window idle; never retry a save/consent action.
+            val visible = try {
+                compose.waitUntil(3_000) { compose.onAllNodesWithTag("choose_$id").fetchSemanticsNodes().size == 1 }
+                true
+            } catch (_: androidx.compose.ui.test.ComposeTimeoutException) { false }
+            if (!visible) {
+                compose.onNodeWithTag(label).assertExists()
+                UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(1_500L)
+                tag(label)
+            }
             tag("choose_$id", endEditing = false)
         }
         fun mount(store: FoodStore): LocalDataViewModel {

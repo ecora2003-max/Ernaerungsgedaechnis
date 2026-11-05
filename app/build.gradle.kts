@@ -6,7 +6,7 @@ plugins {
 }
 android {
     namespace="de.ernaehrung.demo"
-    compileSdk=35
+    compileSdk=36
     defaultConfig {
         applicationId="de.ernaehrung.demo"
         minSdk=26
@@ -24,6 +24,7 @@ android {
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
+    implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")

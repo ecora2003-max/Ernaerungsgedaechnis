@@ -51,7 +51,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: Install Android SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;34.0.0' 'platform-tools'
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'platform-tools'
       - name: Assemble Android debug APK
         run: ./gradlew --no-daemon --max-workers=2 :app:assembleDebug
       - name: Upload installable APK

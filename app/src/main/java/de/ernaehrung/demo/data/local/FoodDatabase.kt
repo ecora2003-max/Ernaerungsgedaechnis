@@ -213,10 +213,12 @@ internal interface FoodDao {
     RecipeOutputProductEntity::class, ProductionEntity::class, PlanSeriesEntity::class,
     PlanPositionEntity::class, PlanExecutionEntity::class, ShoppingMarkEntity::class, PurchaseEventEntity::class,
     ReceiptStockBookingEntity::class, ExpenseStatusEntity::class, AliasDecisionEntity::class,
-    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class], version = 8, exportSchema = true)
+    ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class,
+    HealthImportStateEntity::class, HealthImportRunEntity::class, HealthRecordVersionEntity::class], version = 9, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
+    internal abstract fun healthDao(): HealthImportDao
 
     companion object {
         // Separate from future production storage and from immutable UI fixtures. Never seed personal data.
@@ -224,7 +226,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }
