@@ -141,7 +141,8 @@ private fun BodyMeasurementEditor(previous: BodyMeasurementVersionEntity?, block
     fun optional(text: String) = text.takeIf(String::isNotBlank)
     val input = BodyMeasurementInput(metric, if (unknown) null else raw, date, optional(time), optional(zone), optional(offset),
         if (metric == BodyMetric.OTHER) optional(name) else null, if (metric == BodyMetric.OTHER) optional(unit) else null,
-        optional(device), optional(model), method, optional(methodDetail), optional(conditions), quality, excluded,
+        optional(device), optional(model), method, optional(methodDetail), optional(conditions),
+        if (method == BodyMethod.BIA) BodyQuality.DEVICE_ESTIMATE else quality, excluded,
         optional(reason).takeIf { previous != null })
     Text(if (previous == null) "Neue manuelle Messung" else "Korrektur zu Version ${previous.revision}",
         Modifier.testTag("body_editor_title"), style = MaterialTheme.typography.titleMedium)

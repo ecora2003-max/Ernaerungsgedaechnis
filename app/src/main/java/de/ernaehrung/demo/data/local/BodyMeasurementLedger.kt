@@ -70,7 +70,7 @@ internal class BodyMeasurementOperations(private val db: FoodDatabase, private v
         val n = BodyMeasurementRules.normalize(input, Instant.ofEpochMilli(at))
         val hash = WriteRules.fingerprint("BODY_MANUAL_V1", input.metric, input.rawValue, input.localDate,
             input.localTime, input.zoneId, input.explicitOffset, input.name, input.customUnit, input.device, input.model,
-            input.method, input.methodDetail, input.conditions, input.quality, input.excludedFromTrend,
+            input.method, input.methodDetail, input.conditions, n.quality, input.excludedFromTrend,
             input.correctionReason, expectedPreviousId)
         dao.run(key)?.let {
             require(it.kind == "SAVE" && it.fingerprint == hash) { "Dieser Vorgang ist bereits abgeschlossen oder aus Datenschutzgründen gesperrt. Neuen Vorgang beginnen." }

@@ -87,6 +87,18 @@ class BodyMeasurementRoomTest {
         assertEquals(2, db.bodyDao().versions().size)
         assertEquals(2L, store.bodyMeasurementHistory().first().latest.single().revision)
     }
+    @Test fun biaDeviceEstimateCanReplayFromItsPersistedOriginalAfterRestart() = runBlocking {
+        val bia = input("31,200").copy(metric = BodyMetric.MUSCLE_MASS,
+            method = BodyMethod.BIA, methodDetail = "Skelettmuskelmasse laut synthetischem Gerät",
+            quality = BodyQuality.MEASURED)
+        val id = store.saveBodyMeasurement("bia-original", bia, null, true)
+        db.close(); db = open(); store = FoodStore(db) { at }
+        val persisted = db.bodyDao().version(id)!!
+        assertEquals("31,200", persisted.rawValue)
+        assertEquals(BodyQuality.DEVICE_ESTIMATE.name, persisted.quality)
+        assertEquals(id, store.saveBodyMeasurement("bia-original", persisted.input(), null, true))
+        assertEquals(1, db.bodyDao().versions().size)
+    }
     @Test fun privacyDeletionRetiresOldKeysAcrossMultiplePurgeCyclesAndProtectsLaterData() = runBlocking {
         val first = store.saveBodyMeasurement("private-first", input(), null, true)
         store.saveBodyMeasurement("private-correction", input("70").copy(correctionReason = "Privater Testgrund"), first, true)
