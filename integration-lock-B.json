@@ -6,7 +6,7 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-bdf921c84fb54658b740fe437ce8af26",
   "acquiredAtUtc": "2026-11-05T13:17:59.591Z",
-  "lastHeartbeatUtc": "2026-11-05T14:28:14.298Z",
+  "lastHeartbeatUtc": "2026-11-05T14:49:17.936Z",
   "leaseExpiresAtUtc": null,
   "task": "Gesamt-App fortsetzen: Rezept-Geräteabnahme und persistenter minimaler Health-Connect-Import gemäß Issue 253",
   "workingBranch": "codex-health-connect-import-20261105",
