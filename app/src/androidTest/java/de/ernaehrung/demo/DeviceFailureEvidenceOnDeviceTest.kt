@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import org.junit.*
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.runner.RunWith
 
 /** Reproduces the actual shell-stdin/EOF regression, on a disposable CI emulator. */
@@ -19,6 +20,8 @@ class DeviceFailureEvidenceOnDeviceTest {
         prepareUnlockedTestDevice()
     }
     @Test fun actualWindowCaptureClosesShellStdinWritesNewEvidenceAndReturns() {
+        assertFalse("Unknown names must neither write a path nor mask an original failure",
+            captureDeviceFailureEvidence("../not-a-diagnostic"))
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         val path = "/sdcard/Download/eg-synthetic-test-diagnostics/diagnostic-self-check"
         device.executeShellCommand("rm -f $path.png $path.xml")
