@@ -143,38 +143,38 @@ private fun BodyMeasurementEditor(previous: BodyMeasurementVersionEntity?, block
         if (metric == BodyMetric.OTHER) optional(name) else null, if (metric == BodyMetric.OTHER) optional(unit) else null,
         optional(device), optional(model), method, optional(methodDetail), optional(conditions), quality, excluded,
         optional(reason).takeIf { previous != null })
-        Text(if (previous == null) "Neue manuelle Messung" else "Korrektur zu Version ${previous.revision}",
-            Modifier.testTag("body_editor_title"), style = MaterialTheme.typography.titleMedium)
-        if (previous == null) BodyMetric.entries.forEach { candidate ->
-            FilterChip(metric == candidate, { metric = candidate }, label = { Text(candidate.label) },
-                modifier = Modifier.testTag("body_metric_${candidate.name}"))
-        } else Text("${previous.name ?: metric.label} · ${previous.unit} · Originalversion bleibt erhalten")
-        fun Modifier.field(tag: String) = fillMaxWidth().testTag(tag)
-        OutlinedTextField(raw, { raw = it }, enabled = !unknown, label = { Text("Originalwert in ${if (metric == BodyMetric.OTHER) unit else metric.unit}") },
-            modifier = Modifier.field("body_input_value"), singleLine = true)
-        Row { Checkbox(unknown, { unknown = it }, Modifier.testTag("body_value_unknown")); Text("Wert ausdrücklich unbekannt") }
-        if (metric == BodyMetric.OTHER && previous == null) {
-            OutlinedTextField(name, { name = it }, label = { Text("Körpermaß eindeutig benennen") }, modifier = Modifier.field("body_input_name"))
-            OutlinedTextField(unit, { unit = it }, label = { Text("Originaleinheit") }, modifier = Modifier.field("body_input_unit"))
-        }
-        OutlinedTextField(date, { date = it }, label = { Text("Messdatum JJJJ-MM-TT") }, modifier = Modifier.field("body_input_date"), singleLine = true)
-        OutlinedTextField(time, { time = it }, label = { Text("Uhrzeit HH:MM[:SS] · leer = unbekannt") }, modifier = Modifier.field("body_input_time"), singleLine = true)
-        OutlinedTextField(zone, { zone = it }, label = { Text("Zeitzone · leer = unbekannt") }, modifier = Modifier.field("body_input_zone"), singleLine = true)
-        OutlinedTextField(offset, { offset = it }, label = { Text("UTC-Versatz bei doppelter Uhrzeit, z.B. +01:00") }, modifier = Modifier.field("body_input_offset"), singleLine = true)
-        Text("Ohne bekannte Uhrzeit und Zeitzone oder Versatz wird kein UTC-Zeitpunkt erfunden. Bei der herbstlichen Zeitumstellung wähle den tatsächlich geltenden Versatz.")
-        OutlinedTextField(device, { device = it }, label = { Text("Messgerät / Hersteller · optional") }, modifier = Modifier.field("body_input_device"))
-        OutlinedTextField(model, { model = it }, label = { Text("Gerätemodell · optional") }, modifier = Modifier.field("body_input_model"))
-        Text("Messprinzip")
-        BodyMethod.entries.forEach { candidate -> FilterChip(method == candidate, { method = candidate },
-            label = { Text(candidate.label) }, modifier = Modifier.testTag("body_method_${candidate.name}")) }
-        OutlinedTextField(methodDetail, { methodDetail = it }, label = { Text("Messmethode / genaue Muskeldefinition") }, modifier = Modifier.field("body_input_method_detail"))
-        OutlinedTextField(conditions, { conditions = it }, label = { Text("Messbedingungen, z.B. morgens vor Frühstück") }, modifier = Modifier.field("body_input_conditions"))
-        Text("Qualität")
-        BodyQuality.entries.forEach { candidate -> FilterChip(quality == candidate, { quality = candidate },
-            label = { Text(candidate.label) }, modifier = Modifier.testTag("body_quality_${candidate.name}")) }
-        if (method == BodyMethod.BIA) Text("BIA wird unabhängig von dieser Auswahl als Geräteschätzung gespeichert.")
-        Row { Checkbox(excluded, { excluded = it }, Modifier.testTag("body_exclude_trend")); Text("Für spätere Trends ausschließen") }
-        if (previous != null) OutlinedTextField(reason, { reason = it }, label = { Text("Grund der Korrektur") }, modifier = Modifier.field("body_input_reason"))
+    Text(if (previous == null) "Neue manuelle Messung" else "Korrektur zu Version ${previous.revision}",
+        Modifier.testTag("body_editor_title"), style = MaterialTheme.typography.titleMedium)
+    if (previous == null) BodyMetric.entries.forEach { candidate ->
+        FilterChip(metric == candidate, { metric = candidate }, label = { Text(candidate.label) },
+            modifier = Modifier.testTag("body_metric_${candidate.name}"))
+    } else Text("${previous.name ?: metric.label} · ${previous.unit} · Originalversion bleibt erhalten")
+    fun Modifier.field(tag: String) = fillMaxWidth().testTag(tag)
+    OutlinedTextField(raw, { raw = it }, enabled = !unknown, label = { Text("Originalwert in ${if (metric == BodyMetric.OTHER) unit else metric.unit}") },
+        modifier = Modifier.field("body_input_value"), singleLine = true)
+    Row { Checkbox(unknown, { unknown = it }, Modifier.testTag("body_value_unknown")); Text("Wert ausdrücklich unbekannt") }
+    if (metric == BodyMetric.OTHER && previous == null) {
+        OutlinedTextField(name, { name = it }, label = { Text("Körpermaß eindeutig benennen") }, modifier = Modifier.field("body_input_name"))
+        OutlinedTextField(unit, { unit = it }, label = { Text("Originaleinheit") }, modifier = Modifier.field("body_input_unit"))
+    }
+    OutlinedTextField(date, { date = it }, label = { Text("Messdatum JJJJ-MM-TT") }, modifier = Modifier.field("body_input_date"), singleLine = true)
+    OutlinedTextField(time, { time = it }, label = { Text("Uhrzeit HH:MM[:SS] · leer = unbekannt") }, modifier = Modifier.field("body_input_time"), singleLine = true)
+    OutlinedTextField(zone, { zone = it }, label = { Text("Zeitzone · leer = unbekannt") }, modifier = Modifier.field("body_input_zone"), singleLine = true)
+    OutlinedTextField(offset, { offset = it }, label = { Text("UTC-Versatz bei doppelter Uhrzeit, z.B. +01:00") }, modifier = Modifier.field("body_input_offset"), singleLine = true)
+    Text("Ohne bekannte Uhrzeit und Zeitzone oder Versatz wird kein UTC-Zeitpunkt erfunden. Bei der herbstlichen Zeitumstellung wähle den tatsächlich geltenden Versatz.")
+    OutlinedTextField(device, { device = it }, label = { Text("Messgerät / Hersteller · optional") }, modifier = Modifier.field("body_input_device"))
+    OutlinedTextField(model, { model = it }, label = { Text("Gerätemodell · optional") }, modifier = Modifier.field("body_input_model"))
+    Text("Messprinzip")
+    BodyMethod.entries.forEach { candidate -> FilterChip(method == candidate, { method = candidate },
+        label = { Text(candidate.label) }, modifier = Modifier.testTag("body_method_${candidate.name}")) }
+    OutlinedTextField(methodDetail, { methodDetail = it }, label = { Text("Messmethode / genaue Muskeldefinition") }, modifier = Modifier.field("body_input_method_detail"))
+    OutlinedTextField(conditions, { conditions = it }, label = { Text("Messbedingungen, z.B. morgens vor Frühstück") }, modifier = Modifier.field("body_input_conditions"))
+    Text("Qualität")
+    BodyQuality.entries.forEach { candidate -> FilterChip(quality == candidate, { quality = candidate },
+        label = { Text(candidate.label) }, modifier = Modifier.testTag("body_quality_${candidate.name}")) }
+    if (method == BodyMethod.BIA) Text("BIA wird unabhängig von dieser Auswahl als Geräteschätzung gespeichert.")
+    Row { Checkbox(excluded, { excluded = it }, Modifier.testTag("body_exclude_trend")); Text("Für spätere Trends ausschließen") }
+    if (previous != null) OutlinedTextField(reason, { reason = it }, label = { Text("Grund der Korrektur") }, modifier = Modifier.field("body_input_reason"))
     // Keep fields stable while editing; only the approval subtree changes key.
     // Every input change and immutable predecessor requires a fresh gesture.
     key(input, previous?.id) {
