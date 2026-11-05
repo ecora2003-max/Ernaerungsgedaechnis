@@ -187,7 +187,7 @@ class RecipeOnDeviceEndToEndTest {
             assertEquals(0, db.foodDao().consumptionCount())
             val allocations = ingredients.map { line ->
                 Allocation(batches.getValue(line.foodTypeId),
-                    line.gramsPerPortion * 2_000L)
+                    line.amountPerPortion * 2_000L)
             }
             val production = ProductionInput(
                 recipe, 2_000L, allocations, location, day, true,

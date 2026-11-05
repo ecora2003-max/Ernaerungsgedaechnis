@@ -55,10 +55,11 @@ class RecipeOfflineContextRankingTest {
             "beans-v1" to 260_000L, "tomato-v1" to 240_000L))
         val ranked = RecipeOfflineContextRanking.rank(2, stockFlags, context,
             catalog, mapping, true)
-        assertEquals(listOf(9, 0), ranked.map { it.variant })
+        assertEquals(listOf(9, 0, 29), ranked.map { it.variant })
         assertEquals(640_000L, ranked.first().stockCoveredMilliGrams)
         assertEquals(0L, ranked.first().shoppingNeedMilliGrams)
-        assertEquals(500_000L, ranked.last().stockCoveredMilliGrams)
+        assertEquals(500_000L, ranked.single { it.variant == 0 }.stockCoveredMilliGrams)
+        assertEquals(460_000L, ranked.last().stockCoveredMilliGrams) // Official template uses 100 g tomato/portion.
     }
 
     @Test fun shoppingNeedRanksMappedCandidatesWithoutCallingItStock() {
@@ -67,7 +68,7 @@ class RecipeOfflineContextRankingTest {
             "beans-v1" to 0L, "tomato-v1" to 0L))
         val ranked = RecipeOfflineContextRanking.rank(2, shoppingFlags, context,
             catalog, mapping, true)
-        assertEquals(listOf(9, 0), ranked.map { it.variant })
+        assertEquals(listOf(9, 0, 29), ranked.map { it.variant })
         assertEquals(0L, ranked.first().stockCoveredMilliGrams)
         assertEquals(0L, ranked.first().shoppingNeedMilliGrams)
         assertEquals(150_000L, ranked.last().shoppingNeedMilliGrams)
@@ -128,7 +129,7 @@ class RecipeOfflineContextRankingTest {
             "cooked-beans" to mapOf("SOY" to false),
             "tomato" to mapOf("SOY" to false)
         )
-        assertEquals(2, RecipeOfflineContextRanking.rank(2, stockFlags, context,
+        assertEquals(3, RecipeOfflineContextRanking.rank(2, stockFlags, context,
             catalog, mapping, true, excluded, knownAbsent).size)
         assertTrue(RecipeOfflineContextRanking.rank(2, stockFlags, context,
             catalog, mapping, true, excluded,

@@ -1,14 +1,19 @@
 package de.ernaehrung.demo
 
 import android.app.KeyguardManager
+import android.os.Build
 import androidx.activity.compose.setContent
 import android.content.Context
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
@@ -255,13 +260,34 @@ class RecipeDeviceCredentialUiTest {
                 FoodMigrations.MIGRATION_7_8).build()
         var database = open()
         var models = ViewModelStore()
+        var appFocus: FocusManager? = null
+        fun finishEditing() {
+            // The IME is an external window: Compose idleness alone does not
+            // mean that its resize animation has finished. End the text edit
+            // before scrolling and tapping a review choice on the real screen.
+            compose.runOnUiThread {
+                appFocus?.clearFocus(force = true)
+                val window = compose.activity.window
+                (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+            }
+            compose.waitUntil(5_000) {
+                Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets
+                    ?.isVisible(WindowInsets.Type.ime()) != true
+            }
+            compose.waitForIdle()
+        }
         fun tap(label: String) {
+            finishEditing()
             compose.waitUntil(25_000) {
                 compose.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText(label).performScrollTo().performClick()
         }
-        fun tag(label: String) = compose.onNodeWithTag(label).performScrollTo().performClick()
+        fun tag(label: String) {
+            finishEditing()
+            compose.onNodeWithTag(label).performScrollTo().performClick()
+        }
         fun field(label: String, value: String) = compose.onNodeWithText(label)
             .performScrollTo().performTextReplacement(value)
         fun choose(label: String, id: String) {
@@ -275,6 +301,7 @@ class RecipeDeviceCredentialUiTest {
             })[LocalDataViewModel::class.java]
             compose.runOnUiThread {
                 compose.activity.setContent {
+                    appFocus = LocalFocusManager.current
                     DemoTheme {
                         Column(Modifier.systemBarsPadding().imePadding().verticalScroll(rememberScrollState())) {
                             LocalDataContent(model, "Küche")
@@ -309,6 +336,20 @@ class RecipeDeviceCredentialUiTest {
             var model = mount(store)
             val baseline = database.foodDao().operationCount()
             tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+            tap("Vorgaben für den Rezeptvorschlag")
+            tag("recipe_pref_meal_Hauptmahlzeit")
+            compose.onNodeWithTag("recipe_pref_minutes").performScrollTo().performTextReplacement("35")
+            tap("Verfügbare Küchengeräte ausdrücklich angeben")
+            tap("Kochstelle verfügbar"); tap("Kochtopf verfügbar")
+            compose.onNodeWithTag("recipe_pref_budget").performScrollTo().performTextReplacement("0")
+            compose.onNodeWithTag("recipe_pref_freeze").performScrollTo().performTextReplacement("1")
+            compose.onNodeWithTag("recipe_pref_capacity").performScrollTo().performTextReplacement("2")
+            tap("Eigene Nährwertbereiche je Portion")
+            compose.onNodeWithTag("recipe_pref_min_energyKcal").performScrollTo().performTextReplacement("400")
+            compose.onNodeWithTag("recipe_pref_max_energyKcal").performScrollTo().performTextReplacement("450")
+            compose.onNodeWithTag("recipe_pref_min_proteinG").performScrollTo().performTextReplacement("0")
+            tap("Eigene Nährwertbereiche je Portion")
+            tap("Vorgaben für den Rezeptvorschlag")
             compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
                 .performTextReplacement("ALLERGEN:SOY")
             tag("recipe_offline_generate")
@@ -331,6 +372,7 @@ class RecipeDeviceCredentialUiTest {
                 lineField("Unabhängig geprüfte Katalogversion")
                     .performScrollTo().performClick()
                 compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
+                finishEditing()
                 lineField(ingredient.basis).performScrollTo().performClick().assertIsSelected()
                 val state = if (ingredient.foodTypeId.startsWith("cooked-")) "COOKED" else "RAW"
                 lineField(state).performScrollTo().performClick().assertIsSelected()
@@ -364,6 +406,12 @@ class RecipeDeviceCredentialUiTest {
             compose.waitUntil(25_000) {
                 model.recipeDraftConsentState.value.recordedDigest != null
             }
+            val reference = requireNotNull(model.recipeDraftConsentState.value.review?.referenceReport)
+            assertEquals(35, reference.preferences.maxMinutes)
+            assertEquals(0L, reference.preferences.budgetCents)
+            assertEquals(setOf("HOB", "POT"), reference.preferences.equipment)
+            assertEquals("IN_RANGE", reference.targets.single { it["nutrient"] == "energyKcal" }["status"])
+            assertEquals("UNKNOWN", reference.targets.single { it["nutrient"] == "proteinG" }["status"])
             val digest = requireNotNull(model.recipeDraftConsentState.value.recordedDigest)
             val consentKey = requireNotNull(store.recordedRecipeDraftV1ConsentKey(digest))
             assertEquals("RECIPE_DRAFT_ATTESTED_CONSENT_V1",
@@ -377,7 +425,7 @@ class RecipeDeviceCredentialUiTest {
             tag("recipe_production_prepare")
             ingredients.forEachIndexed { index, ingredient ->
                 choose("Zutatencharge ${index + 1}", batches[index])
-                field("Tatsächliche Zutatmenge ${index + 1} in g", (ingredient.gramsPerPortion * 2).toString())
+                field("Tatsächliche Zutatmenge ${index + 1} in g", (ingredient.amountPerPortion * 2).toString())
             }
             field("Tatsächlich hergestellte Portionen", "2")
             choose("Fertigportionen lagern in", location)
@@ -398,7 +446,7 @@ class RecipeDeviceCredentialUiTest {
             val output = database.foodDao().planningBatches().single { it.batch.id !in batches }.batch
             assertEquals(2_000L, database.foodDao().balance(output.id))
             val production = ProductionInput(recipe, 2_000L,
-                ingredients.mapIndexed { index, ingredient -> Allocation(batches[index], ingredient.gramsPerPortion * 2_000L) },
+                ingredients.mapIndexed { index, ingredient -> Allocation(batches[index], ingredient.amountPerPortion * 2_000L) },
                 location, day, true, storage, release = ReleaseStatus.RELEASED)
             tap("Neuen Vorgang beginnen")
             tap("Fertigportionen separat verzehren")
@@ -436,6 +484,9 @@ class RecipeDeviceCredentialUiTest {
             assertEquals(1, database.foodDao().observeRecipes().first().size)
             assertEquals(1, database.foodDao().activeConsumptionCount())
             assertEquals(1_000L, database.foodDao().balance(output.id))
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("recipe-flow")
+            throw failure
         } finally {
             compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
             database.close()

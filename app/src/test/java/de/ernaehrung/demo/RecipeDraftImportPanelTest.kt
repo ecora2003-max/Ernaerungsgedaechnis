@@ -542,4 +542,53 @@ class RecipeDraftImportPanelTest {
         rule.runOnIdle { assertEquals(1, reviews) }
     }
 
+    @Test fun ownPreferencesSelectRealBreakfastAndEveryChangeRevokesDraftCheckpointAndReview() {
+        val checkpoint = object : RecipeDraftEncryptedImportCheckpoint {
+            var saved: String? = null
+            override fun save(json: String) { saved = json }
+            override fun load(): String? = saved
+            override fun discard() { saved = null }
+        }
+        var reviews = 0
+        var invalidations = 0
+        rule.runOnUiThread { rule.activity.setContent { DemoTheme {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                RecipeDraftImportPanel(emptyList(), checkpointStore = checkpoint,
+                    onInvalidate = { invalidations++ }, onDiscardPending = {}, onReview = { _, _, _, _ -> reviews++ })
+            }
+        } } }
+        fun tap(text: String) = rule.onNodeWithText(text).performScrollTo().performClick()
+        fun field(tag: String, text: String) = rule.onNodeWithTag(tag).performScrollTo().performTextReplacement(text)
+        tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+        tap("Vorgaben für den Rezeptvorschlag")
+        rule.onNodeWithTag("recipe_pref_meal_Frühstück").performScrollTo().performClick()
+        field("recipe_pref_minutes", "10")
+        tap("Verfügbare Küchengeräte ausdrücklich angeben") // Explicitly none: the oat bowl requires none.
+        field("recipe_pref_budget", "0")
+        field("recipe_pref_freeze", "1")
+        field("recipe_pref_capacity", "0")
+        tap("Offline-Rezeptvorschlag erzeugen")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        field("recipe_pref_capacity", "1")
+        tap("Offline-Rezeptvorschlag erzeugen")
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("Haferflocken-Bowl", substring = true)
+        rule.onNodeWithTag("recipe_draft_json").assertTextContains("\"unit\":\"ml\"", substring = true)
+        tap("JSON verschlüsselt merken")
+        val before = invalidations
+        field("recipe_pref_minutes", "9")
+        rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
+        rule.onNodeWithTag("recipe_draft_json").assert(SemanticsMatcher.expectValue(
+            SemanticsProperties.EditableText, AnnotatedString("")))
+        rule.runOnIdle {
+            assertEquals(before + 1, invalidations)
+            assertEquals(null, checkpoint.saved)
+            assertEquals(0, reviews)
+        }
+        tap("Offline-Rezeptvorschlag erzeugen")
+        rule.onNodeWithTag("recipe_draft_import_error").assertExists()
+        field("recipe_pref_minutes", "invalid")
+        rule.onNodeWithTag("recipe_preferences_error").assertExists()
+        rule.onNodeWithTag("recipe_offline_generate").assertIsNotEnabled()
+    }
+
 }

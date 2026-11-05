@@ -956,4 +956,41 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
         assertTrue(dao.allPaidPrices().isEmpty())
     }
+    @Test fun changedRequestPreferencesCannotReuseSignedConsentEvenWhenRecipeIngredientsStayIdentical() = runBlocking {
+        val facts = confirmed()
+        val original = store.previewRecipeDraftV1(json, request, facts, states)
+        val preferences = de.ernaehrung.demo.data.integration.RecipeRequestPreferences(
+            maxMinutes = 35, equipment = setOf("HOB", "POT"), budgetCents = 0L,
+            budgetConfirmed = true, freezePortions = 1, freezerCapacityPortions = 2)
+        val changed = request.copy(preferences = preferences)
+        val revised = store.previewRecipeDraftV1(json, changed, facts, states)
+        assertEquals(original.input, revised.input)
+        assertNotEquals(original.approvalBasisDigest, revised.approvalBasisDigest)
+        val before = dao.operationCount()
+        rejected { consent("prefs-stale", original, facts = facts, req = changed) }
+        assertEquals(before, dao.operationCount())
+        consent("prefs-current", revised, facts = facts, req = changed)
+        rejected { save("prefs-current", revised, facts = facts, req = request) }
+        assertTrue(dao.observeRecipes().first().isEmpty())
+        val recipe = save("prefs-current", revised, facts = facts, req = changed)
+        assertEquals(recipe, save("prefs-current", revised, facts = facts, req = changed))
+        assertEquals(1, dao.observeRecipes().first().size)
+        assertEquals(0, dao.activeConsumptionCount())
+        assertTrue(dao.planningBatches().isEmpty())
+        assertTrue(dao.purchases().isEmpty())
+    }
+
+    @Test fun invalidRequestPreferencesAreBlockedAtTheIndependentFoodStoreBoundaryWithoutWrites() = runBlocking {
+        val invalid = request.copy(preferences = de.ernaehrung.demo.data.integration.RecipeRequestPreferences(
+            freezePortions = 3, freezerCapacityPortions = 0))
+        val before = dao.operationCount()
+        val blocked = store.previewRecipeDraftV1(json, invalid, confirmed(), states)
+        assertEquals(Gate.Status.BLOCKED, blocked.status)
+        assertNull(blocked.input)
+        rejected { consent("invalid-prefs", blocked, req = invalid) }
+        rejected { save("invalid-prefs", blocked, req = invalid) }
+        assertEquals(before, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+    }
+
 }

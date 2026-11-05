@@ -30,7 +30,8 @@ internal object RecipeOfflineContextRanking {
         independentlySelectedVersions: Map<String, String>,
         explicitlyReviewed: Boolean,
         confirmedRestrictions: Set<String> = emptySet(),
-        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap(),
+        preferences: RecipeRequestPreferences = RecipeRequestPreferences()
     ): List<Ranked> {
         require(portions in 1..1000)
         require(explicitlyReviewed) { "product mapping needs an explicit review" }
@@ -95,17 +96,11 @@ internal object RecipeOfflineContextRanking {
             }
         }
 
-        val bannedFoods = confirmedRestrictions.filter { it.startsWith("FOOD:") }
-            .map { it.removePrefix("FOOD:") }.toSet()
-        val excludedAllergens = confirmedRestrictions.filter {
-            it.startsWith("ALLERGEN:")
-        }.map { it.removePrefix("ALLERGEN:") }.toSet()
         return (0 until RecipeOfflineDraftGenerator.VARIANT_COUNT).mapNotNull { variant ->
             val ingredients = RecipeOfflineDraftGenerator.ingredientsFor(variant)
-            if (ingredients.any { it.foodTypeId !in mapped || it.foodTypeId in bannedFoods ||
-                    excludedAllergens.any { allergen ->
-                        independentlyConfirmedAllergens[it.foodTypeId]?.get(allergen) != false
-                    } }) return@mapNotNull null
+            if (ingredients.any { it.foodTypeId !in mapped || it.unit != "g" } ||
+                !RecipeOfflineDraftGenerator.allowsSuggestion(variant, confirmedRestrictions,
+                    independentlyConfirmedAllergens, preferences, portions)) return@mapNotNull null
             var stockCovered = 0L
             var shoppingNeed = 0L
             for (ingredient in ingredients) {
@@ -114,7 +109,7 @@ internal object RecipeOfflineContextRanking {
                     return@mapNotNull null
                 val versionId = mapped.getValue(ingredient.foodTypeId).id
                 val required = Math.multiplyExact(
-                    Math.multiplyExact(ingredient.gramsPerPortion, portions.toLong()), 1000L
+                    Math.multiplyExact(ingredient.amountPerPortion, portions.toLong()), 1000L
                 )
                 if (flags.considerStock) {
                     stockCovered = Math.addExact(stockCovered,

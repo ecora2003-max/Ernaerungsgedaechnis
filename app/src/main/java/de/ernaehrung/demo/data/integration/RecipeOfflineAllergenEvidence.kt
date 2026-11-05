@@ -25,19 +25,25 @@ internal object RecipeOfflineAllergenEvidence {
         val excludedAllergens = restrictions.filter { it.startsWith("ALLERGEN:") }
             .map { it.removePrefix("ALLERGEN:") }.toSet()
         val knownFoods = RecipeOfflineDraftGenerator.ingredientTypes
-            .map { it.foodTypeId }.toSet()
+            .associateBy { it.foodTypeId }
         require(declaredAbsent.all {
             it.first in knownFoods && it.second in excludedAllergens
         }) { "allergen evidence outside the current proposal scope" }
         val foodsWithEvidence = declaredAbsent.map { it.first }.toSet()
-        val selectedVersions = foodsWithEvidence.map { food ->
+        val selectedVersions = foodsWithEvidence.associateWith { food ->
             independentlyMappedVersions[food]?.takeIf { it.isNotBlank() }
                 ?: throw IllegalArgumentException("missing independently selected product version")
         }
-        require(selectedVersions.size == selectedVersions.toSet().size) {
+        require(selectedVersions.size == selectedVersions.values.toSet().size) {
             "ambiguous product mapping"
         }
-        for (id in selectedVersions) {
+        for ((food, id) in selectedVersions) {
+            val unit = when (knownFoods.getValue(food).unit) {
+                "g" -> BaseUnit.GRAM
+                "ml" -> BaseUnit.MILLILITRE
+                "portion" -> BaseUnit.PORTION
+                else -> throw IllegalArgumentException("unsupported ingredient unit")
+            }
             val selected = catalog.filter { it.id == id }.singleOrNull()
                 ?: throw IllegalArgumentException("unknown product version")
             val current = catalog.filter {
@@ -50,8 +56,8 @@ internal object RecipeOfflineAllergenEvidence {
                 current.count { it.revision == latest } == 1 &&
                 selected.source != Source.DEMO &&
                 selected.quality in setOf(Quality.CONFIRMED, Quality.SOURCED) &&
-                selected.baseUnit == BaseUnit.GRAM) {
-                "allergen pre-selection requires a current sourced gram product version"
+                selected.baseUnit == unit) {
+                "allergen pre-selection requires a current sourced product version with matching unit"
             }
         }
         return declaredAbsent.groupBy { it.first }.mapValues { (_, items) ->
