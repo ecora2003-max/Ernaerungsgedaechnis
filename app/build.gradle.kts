@@ -6,7 +6,7 @@ plugins {
 }
 android {
     namespace="de.ernaehrung.demo"
-    compileSdk=35
+    compileSdk=36
     defaultConfig {
         applicationId="de.ernaehrung.demo"
         minSdk=26
