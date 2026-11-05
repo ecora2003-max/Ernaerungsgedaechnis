@@ -956,6 +956,52 @@ class RecipeDraftCatalogSaveTest {
         assertEquals(0, dao.consumptionCount())
         assertTrue(dao.allPaidPrices().isEmpty())
     }
+    @Test fun dietaryReviewRunsAtFoodStoreBeforeSignedConsentAndIdempotentSave() = runBlocking {
+        val req = request.copy(confirmedRestrictions = setOf("ALLERGEN:SOY", "DIET:vegan", "DIET:VEGETARIAN"))
+        val facts = confirmed().mapValues { (_, c) -> c.copy(diets = linkedMapOf(
+            "VEGAN" to true, "VEGETARIAN" to true)) }
+        val before = dao.operationCount()
+        for (answer in listOf(null, false)) {
+            val changed = facts.mapValues { (_, c) -> c.copy(diets = c.diets + ("VEGAN" to answer)) }
+            val review = store.previewRecipeDraftV1(json, req, changed, states)
+            assertEquals(if (answer == null) Gate.Status.REVIEW_REQUIRED else Gate.Status.BLOCKED, review.status)
+            assertNull(review.approvalBasisDigest)
+            rejected { consent("diet-blocked-$answer", review, facts = changed, req = req) }
+            rejected { save("diet-blocked-$answer", review, facts = changed, req = req) }
+        }
+        assertEquals(before, dao.operationCount())
+        val ready = store.previewRecipeDraftV1(json, req, facts, states)
+        assertEquals(Gate.Status.READY_FOR_EXPLICIT_SAVE, ready.status)
+        assertFalse("DIET_UNKNOWN" in requireNotNull(ready.referenceReport).findings)
+        val reordered = facts.mapValues { (_, c) -> c.copy(diets = linkedMapOf(
+            "VEGETARIAN" to true, "VEGAN" to true)) }
+        assertEquals(ready.approvalBasisDigest,
+            store.previewRecipeDraftV1(json, req, reordered, states).approvalBasisDigest)
+        consent("diet-ok", ready, facts = facts, req = req)
+        val unknown = facts.mapValues { (_, c) -> c.copy(diets = emptyMap()) }
+        rejected { save("diet-ok", ready, facts = unknown, req = req) }
+        val saved = save("diet-ok", ready, facts = reordered, req = req)
+        assertEquals(saved, save("diet-ok", ready, facts = facts, req = req))
+        assertEquals(1, dao.observeRecipes().first().size)
+        assertEquals(0, dao.activeConsumptionCount())
+        assertTrue(dao.planningBatches().isEmpty())
+        assertTrue(dao.purchases().isEmpty())
+    }
+
+    @Test fun dietConfirmationCannotFollowANewImmutableProductVersion() = runBlocking {
+        val req = request.copy(confirmedRestrictions = setOf("ALLERGEN:SOY", "DIET:VEGAN"))
+        val facts = confirmed().mapValues { (_, c) -> c.copy(diets = mapOf("VEGAN" to true)) }
+        val ready = store.previewRecipeDraftV1(json, req, facts, states)
+        consent("diet-old-version", ready, facts = facts, req = req)
+        val version = requireNotNull(dao.version(versionId))
+        store.rememberProduct("diet-product-correction", ProductInput("Reis geändert",
+            source = Source.USER, quality = Quality.CONFIRMED), version.productId, "Geprüfte Korrektur")
+        val before = dao.operationCount()
+        rejected { save("diet-old-version", ready, facts = facts, req = req) }
+        assertEquals(before, dao.operationCount())
+        assertTrue(dao.observeRecipes().first().isEmpty())
+    }
+
     @Test fun changedRequestPreferencesCannotReuseSignedConsentEvenWhenRecipeIngredientsStayIdentical() = runBlocking {
         val facts = confirmed()
         val original = store.previewRecipeDraftV1(json, request, facts, states)

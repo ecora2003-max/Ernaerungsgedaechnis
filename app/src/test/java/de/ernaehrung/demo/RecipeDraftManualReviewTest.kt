@@ -46,6 +46,27 @@ class RecipeDraftManualReviewTest {
         catch (_: IllegalArgumentException) { /* expected */ }
     }
 
+    @Test fun dietAnswersAreVersionBoundAndUnknownNeverBecomesCompatibility() {
+        val restrictions = setOf("DIET:vegan")
+        val base = Manual.Choice("v1", Gate.Basis.NET, Gate.State.RAW)
+        rejects { Manual.prepare(imported(), listOf(catalog()), mapOf("rice" to base),
+            restrictions, true, nowMillis) }
+        for ((answer, expected) in listOf(null to Gate.Status.REVIEW_REQUIRED,
+            false to Gate.Status.BLOCKED, true to Gate.Status.READY_FOR_EXPLICIT_SAVE)) {
+            val prepared = Manual.prepare(imported(), listOf(catalog()),
+                mapOf("rice" to base.copy(diets = mapOf("VEGAN" to answer))),
+                restrictions, true, nowMillis)
+            val facts = RecipeCatalogEvidence.resolve(imported().draft.lines,
+                listOf(catalog()), prepared.confirmations, nowMillis)
+            assertEquals(mapOf("VEGAN" to answer), facts["rice"]?.diets)
+            val review = RecipeDraftV1Import.review(json(), prepared.request,
+                facts, prepared.reviewedStates, now)
+            assertEquals(expected, review.status)
+            assertTrue(RecipeCatalogEvidence.resolve(imported().draft.lines,
+                listOf(catalog(), catalog("v2", 2)), prepared.confirmations, nowMillis).isEmpty())
+        }
+    }
+
     @Test fun explicitCatalogReviewCreatesOnlyHostFactsNotAWrite() {
         val prepared = Manual.prepare(imported(), listOf(catalog()),
             mapOf("rice" to choice(false)), setOf("ALLERGEN:SOY"), true, nowMillis)

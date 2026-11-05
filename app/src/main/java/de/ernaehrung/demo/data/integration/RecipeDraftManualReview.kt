@@ -17,7 +17,8 @@ internal object RecipeDraftManualReview {
         val basis: Gate.Basis?,
         val state: Gate.State?,
         /** null means unknown; false requires an explicit negative user review. */
-        val allergens: Map<String, Boolean?> = emptyMap()
+        val allergens: Map<String, Boolean?> = emptyMap(),
+        val diets: Map<String, Boolean?> = emptyMap()
     )
     data class Prepared(
         val request: Gate.Request,
@@ -69,6 +70,8 @@ internal object RecipeDraftManualReview {
         }
         val allergens = restrictions.filter { it.startsWith("ALLERGEN:") }
             .map { it.removePrefix("ALLERGEN:") }.toSet()
+        val diets = restrictions.filter { it.startsWith("DIET:") }
+            .map { it.removePrefix("DIET:").uppercase() }.toSet()
         val byId = catalog.groupBy { it.id }
         // Select the latest version known at this review instant. A future-dated
         // revision must neither displace a currently valid row nor authorize itself.
@@ -107,10 +110,14 @@ internal object RecipeDraftManualReview {
             require(choice.allergens.keys == allergens) {
                 "all restricted allergens need explicit per-line answers (unknown allowed)"
             }
+            require(choice.diets.keys == diets) {
+                "all confirmed diets need explicit per-line answers (unknown allowed)"
+            }
             val state = requireNotNull(choice.state)
             confirmations[line.foodTypeId] = RecipeCatalogEvidence.ConfirmedLine(
                 line.foodTypeId, version.id, version.revision, version.recordedAt,
-                nowMillis, version.baseUnit, choice.basis, state, choice.allergens.toMap()
+                nowMillis, version.baseUnit, choice.basis, state, choice.allergens.toMap(),
+                diets = choice.diets.toMap()
             )
             reviewedStates[line.foodTypeId] = state
         }

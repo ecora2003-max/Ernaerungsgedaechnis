@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.ViewModel
@@ -284,15 +285,20 @@ class RecipeDeviceCredentialUiTest {
             }
             compose.onNodeWithText(label).performScrollTo().performClick()
         }
-        fun tag(label: String) {
-            finishEditing()
+        fun tag(label: String, endEditing: Boolean = true) {
+            if (endEditing) finishEditing()
+            compose.waitUntil(25_000) {
+                compose.onAllNodesWithTag(label).fetchSemanticsNodes().size == 1
+            }
             compose.onNodeWithTag(label).performScrollTo().performClick()
         }
         fun field(label: String, value: String) = compose.onNodeWithText(label)
             .performScrollTo().performTextReplacement(value)
         fun choose(label: String, id: String) {
             tag(label)
-            tag("choose_$id")
+            // Ending main-window focus after opening a popup can dismiss it.
+            // Keep that live popup focused until its actual option is selected.
+            tag("choose_$id", endEditing = false)
         }
         fun mount(store: FoodStore): LocalDataViewModel {
             val model = ViewModelProvider(models, object : ViewModelProvider.Factory {
@@ -351,7 +357,7 @@ class RecipeDeviceCredentialUiTest {
             tap("Eigene Nährwertbereiche je Portion")
             tap("Vorgaben für den Rezeptvorschlag")
             compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
-                .performTextReplacement("ALLERGEN:SOY")
+                .performTextReplacement("ALLERGEN:SOY, DIET:VEGAN")
             tag("recipe_offline_generate")
             compose.onNodeWithTag("recipe_draft_import_error").assertExists()
             assertEquals(baseline, database.foodDao().operationCount())
@@ -378,6 +384,7 @@ class RecipeDeviceCredentialUiTest {
                 lineField(state).performScrollTo().performClick().assertIsSelected()
                 lineField("Nachweislich nicht enthalten")
                     .performScrollTo().performClick()
+                lineField("Nachweislich geeignet").performScrollTo().performClick().assertIsSelected()
             }
             tag("recipe_draft_manual_review_checkbox")
             tag("recipe_draft_manual_review")
@@ -407,6 +414,7 @@ class RecipeDeviceCredentialUiTest {
                 model.recipeDraftConsentState.value.recordedDigest != null
             }
             val reference = requireNotNull(model.recipeDraftConsentState.value.review?.referenceReport)
+            assertFalse("DIET_UNKNOWN" in reference.findings)
             assertEquals(35, reference.preferences.maxMinutes)
             assertEquals(0L, reference.preferences.budgetCents)
             assertEquals(setOf("HOB", "POT"), reference.preferences.equipment)

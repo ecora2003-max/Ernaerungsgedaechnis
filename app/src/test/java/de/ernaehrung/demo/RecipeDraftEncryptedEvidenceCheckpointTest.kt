@@ -24,7 +24,9 @@ class RecipeDraftEncryptedEvidenceCheckpointTest {
         mapOf("rice" to "NET"),
         mapOf("rice" to "RAW"),
         mapOf(("rice" to "SOY") to null, ("rice" to "MILK") to false),
-        "ALLERGEN:SOY, ALLERGEN:MILK"
+        "ALLERGEN:SOY, ALLERGEN:MILK, DIET:VEGAN",
+        mapOf(("rice" to "VEGAN") to true, ("rice" to "OTHER") to false,
+            ("rice" to "UNREVIEWED") to null)
     )
 
     @Test fun explicitEncryptedFormRoundtripNeverExposesEvidenceOrIdentity() {
@@ -49,6 +51,25 @@ class RecipeDraftEncryptedEvidenceCheckpointTest {
             store.discard()
         }
         assertFalse(file.exists())
+    }
+
+    @Test fun originalVersionOneCheckpointRemainsReadableWithoutInventingDietAnswers() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val store = PrivateRecipeDraftEncryptedEvidenceCheckpoint(context, { 1_000L }, { keyA })
+        val legacy = de.ernaehrung.demo.data.local.PrivateRecipeDraftEncryptedImportCheckpoint(
+            context, { 1_000L }, { keyA }, "recipe-draft-encrypted-evidence-v1")
+        store.discard()
+        try {
+            legacy.save("""{"v":1,"draftHash":"${form.draftHash}",
+                "versions":{"rice":"product-v2"},"bases":{"rice":"NET"},
+                "states":{"rice":"RAW"},"allergens":[],"restrictions":"DIET:VEGAN"}""")
+            val restored = requireNotNull(store.load())
+            assertEquals("product-v2", restored.versionIds["rice"])
+            assertEquals("DIET:VEGAN", restored.restrictionsText)
+            assertTrue(restored.diets.isEmpty())
+            store.save(restored.copy(diets = mapOf(("rice" to "VEGAN") to null)))
+            assertEquals(mapOf(("rice" to "VEGAN") to null), store.load()?.diets)
+        } finally { store.discard() }
     }
 
     @Test fun ttlRollbackTamperAndExplicitRevocationFailClosed() {

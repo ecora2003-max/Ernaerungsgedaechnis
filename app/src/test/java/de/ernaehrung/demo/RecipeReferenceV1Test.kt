@@ -39,6 +39,23 @@ class RecipeReferenceV1Test {
                     "considerShopping" to selected.considerShopping, "considerOffers" to selected.considerOffers),
                 "nutrition" to suppliedEnergy?.let { mapOf("total" to mapOf("energyKcal" to it)) })))
 
+    @Test fun dietaryProjectionKeepsUnknownPartialAndKnownConflictDistinct() {
+        val req = Gate.Request(flags, 2, setOf("DIET:VEGAN", "DIET:VEGETARIAN"))
+        val approved = facts().mapValues { (_, host) -> host.copy(
+            diets = mapOf("VEGAN" to true, "VEGETARIAN" to true)) }
+        val accepted = RecipeReferenceV1.revalidate(json(), req, approved, now, listOf(rice, drink))
+        assertTrue(accepted.blockers.isEmpty())
+        assertFalse("DIET_UNKNOWN" in accepted.findings)
+        val partial = approved + ("drink" to approved.getValue("drink").copy(
+            diets = mapOf("VEGAN" to true, "VEGETARIAN" to null)))
+        val unknown = RecipeReferenceV1.revalidate(json(), req, partial, now, listOf(rice, drink))
+        assertTrue("DIET_UNKNOWN" in unknown.findings)
+        val conflict = approved + ("drink" to approved.getValue("drink").copy(
+            diets = mapOf("VEGAN" to false, "VEGETARIAN" to true)))
+        assertTrue("DIET_CONFLICT" in RecipeReferenceV1.revalidate(
+            json(), req, conflict, now, listOf(rice, drink)).blockers)
+    }
+
     @Test fun exactVersionBasisAndUnitsDetermineNutritionWhileModelClaimsRemainUntrusted() {
         val report = RecipeReferenceV1.revalidate(json(suppliedEnergy = BigDecimal("999999")),
             Gate.Request(flags, 2), facts(), now, listOf(rice, drink,

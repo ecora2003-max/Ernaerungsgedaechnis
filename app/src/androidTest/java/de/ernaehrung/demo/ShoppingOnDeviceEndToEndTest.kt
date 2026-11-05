@@ -3,6 +3,8 @@ package de.ernaehrung.demo
 import android.content.pm.ApplicationInfo
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.key
@@ -49,8 +51,14 @@ class ShoppingOnDeviceEndToEndTest {
         compose.onNodeWithText(text, substring = false).performScrollTo().performClick()
     }
 
-    private fun field(label: String, value: String) =
+    private fun field(label: String, value: String) {
+        // A reopened ViewModel can finish loading before its new composition
+        // displays the form. Wait for the actual field, as tap() already does.
+        compose.waitUntil(25_000) {
+            compose.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().size == 1
+        }
         compose.onNodeWithText(label, substring = false).performScrollTo().performTextReplacement(value)
+    }
 
     private fun choose(label: String, id: String) {
         compose.onNodeWithTag(label).performScrollTo().performClick()
@@ -74,7 +82,7 @@ class ShoppingOnDeviceEndToEndTest {
             compose.activity.setContent {
                 DemoTheme {
                     key(generation) {
-                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Column(Modifier.systemBarsPadding().imePadding().verticalScroll(rememberScrollState())) {
                             LocalDataContent(model, section, "Bon & OCR")
                         }
                     }
@@ -82,6 +90,7 @@ class ShoppingOnDeviceEndToEndTest {
             }
         }
         compose.waitUntil(25_000) { !model.state.value.loading }
+        compose.waitForIdle()
         return model
     }
 
@@ -264,6 +273,9 @@ class ShoppingOnDeviceEndToEndTest {
             assertTrue(store.historicalPaidComparison(HistoricalPaidComparisonScope(
                 version, day, System.currentTimeMillis())).references.isEmpty())
             assertEquals(0, target.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("shopping-flow")
+            throw failure
         } finally {
             compose.runOnUiThread { compose.activity.setContent {} ; models.clear() }
             files.remove(capture)

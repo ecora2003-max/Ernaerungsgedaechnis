@@ -577,8 +577,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         trustedContextSnapshotAt?.toInstant()?.toString()
     )
         // Preserve all existing default-request approval/retry fingerprints.
-        return if (request.preferences == de.ernaehrung.demo.data.integration.RecipeRequestPreferences()) legacy
+        val preferencesDigest = if (request.preferences == de.ernaehrung.demo.data.integration.RecipeRequestPreferences()) legacy
             else WriteRules.fingerprint("RECIPE_DRAFT_PREFERENCES_APPROVAL_V1", legacy, request.preferences.binding())
+        val dietEvidence = confirmations.toSortedMap().filterValues { it.diets.isNotEmpty() }
+            .map { (foodType, c) -> listOf(foodType,
+                c.diets.toSortedMap().map { (diet, compatible) -> listOf(diet, compatible) }) }
+        return if (dietEvidence.isEmpty()) preferencesDigest else WriteRules.fingerprint(
+            "RECIPE_DRAFT_DIET_APPROVAL_V1", preferencesDigest, dietEvidence)
     }
 
     fun watchRecognition() = recognitionReader.watch()

@@ -22,7 +22,8 @@ internal object RecipeCatalogEvidence {
         val basis: RecipeDraftHostGate.Basis?,
         val state: RecipeDraftHostGate.State?,
         val allergens: Map<String, Boolean?> = emptyMap(),
-        val pieceMassMilliGrams: Long? = null
+        val pieceMassMilliGrams: Long? = null,
+        val diets: Map<String, Boolean?> = emptyMap()
     )
 
     fun resolve(
@@ -96,7 +97,8 @@ internal object RecipeCatalogEvidence {
                 state = confirmed.state,
                 stateConfirmed = confirmed.state != null,
                 confirmedPieceMassMilliGrams = confirmed.pieceMassMilliGrams,
-                allergens = confirmed.allergens.toMap()
+                allergens = confirmed.allergens.toMap(),
+                diets = confirmed.diets.toMap()
             )
         }.toMap()
     }
