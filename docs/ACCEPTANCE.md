@@ -1,6 +1,6 @@
 # Haupt-App: verbindliche modulübergreifende Integrationsabnahme
 
-Stand 31.10.2026; aktive Priorisierung seit 03.11.2026 gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md). Die Haupt-App ist das **einzige** Schreibrepository; zwei spezialisierte Integratoren schreiben dort nur nacheinander unter exklusiver JSON-Sperre. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
+Stand 31.10.2026; aktive Priorisierung seit 03.11.2026 gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md). Die Haupt-App ist das **einzige** Schreibrepository; der exklusive Codex-Einzelentwickler arbeitet unter drei eigenen JSON-Sperren; A/B/III/IV bleiben pausiert. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
 
 ## 1. Version / unveränderliche Vertrags-SHAs
 

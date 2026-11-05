@@ -32,8 +32,10 @@ internal object RecipeDraftManualReview {
         restrictions: Set<String>,
         explicitlyReviewed: Boolean,
         nowMillis: Long,
-        independentlyBoundContext: Boolean = false
+        independentlyBoundContext: Boolean = false,
+        preferences: RecipeRequestPreferences = RecipeRequestPreferences()
     ): Prepared {
+        preferences.validate(imported.draft.portions)
         require(explicitlyReviewed) { "explicit manual review required" }
         require(nowMillis >= 0L) { "invalid review timestamp" }
         // A separately confirmed review must not predate the draft it approves.
@@ -114,7 +116,7 @@ internal object RecipeDraftManualReview {
         }
         return Prepared(
             Gate.Request(draft.flags, draft.portions, restrictions.toSet(),
-                userConfirmedRecipeSave = true),
+                userConfirmedRecipeSave = true, preferences = preferences),
             confirmations, reviewedStates
         )
     }

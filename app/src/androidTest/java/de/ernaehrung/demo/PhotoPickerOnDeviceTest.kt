@@ -17,7 +17,6 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import de.ernaehrung.demo.data.local.FoodDatabase
 import de.ernaehrung.demo.data.recognition.ReceiptParser
-import java.io.File
 import java.util.UUID
 import java.util.regex.Pattern
 import kotlinx.coroutines.runBlocking
@@ -107,8 +106,7 @@ class PhotoPickerOnDeviceTest {
             assertEquals(meals, db.foodDao().activeConsumptionCount())
             assertEquals(batches, db.foodDao().planningBatches().size)
         } catch (failure: Throwable) {
-            runCatching { device.dumpWindowHierarchy(File(target.filesDir, "picker-diagnostic.xml")) }
-            runCatching { device.takeScreenshot(File(target.filesDir, "picker-diagnostic.png")) }
+            captureDeviceFailureEvidence("picker")
             throw failure
         } finally {
             resolver.delete(uri, null, null) // Only this test's own synthetic image.

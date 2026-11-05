@@ -21,28 +21,38 @@ internal object RecipeOfflineDraftGenerator {
     private val grains = listOf("dry-rice", "dry-quinoa", "dry-bulgur")
     private val legumes = listOf("cooked-beans", "cooked-chickpeas", "cooked-lentils")
     private val vegetables = listOf("tomato", "carrot", "bell-pepper")
-    private val grammar by lazy {
-        CombinatorialGenerator().generate(Core.Request("host-grammar",
-            "2000-01-01T00:00:00Z", LocalDate.of(2000, 1, 1), 1))
-    }
+    private val sampleRequest = Core.Request("host-grammar", "2000-01-01T00:00:00Z", LocalDate.of(2000, 1, 1), 1)
+    private val grammar by lazy { CombinatorialGenerator().generate(sampleRequest) }
+    private val templates by lazy { Core.OfflineGenerator().generate(sampleRequest) }
 
-    const val VARIANT_COUNT = 27
+    const val VARIANT_COUNT = 30
 
     data class Ingredient(val foodTypeId: String, val label: String,
-        val gramsPerPortion: Long, val basis: String)
+        val amountPerPortion: Long, val basis: String, val unit: String = "g")
 
-    private fun ingredient(id: String): Ingredient {
-        val line = grammar.first { c -> c.ingredients.any { it.foodTypeId == id } }
-            .ingredients.single { it.foodTypeId == id }
-        return Ingredient(id, line.label, requireNotNull(line.quantity.amount), line.quantity.basis.name)
+    private fun Core.Line.hostIngredient() = Ingredient(foodTypeId, label,
+        requireNotNull(quantity.amount), quantity.basis.name, quantity.unit.wire)
+
+    private fun ingredient(id: String): Ingredient = grammar.first { c -> c.ingredients.any { it.foodTypeId == id } }
+        .ingredients.single { it.foodTypeId == id }.hostIngredient()
+
+    val ingredientTypes: List<Ingredient> by lazy {
+        ((grains + legumes + vegetables).map(::ingredient) + templates.flatMap { c -> c.ingredients.map { it.hostIngredient() } })
+            .distinctBy { it.foodTypeId }
     }
-
-    val ingredientTypes: List<Ingredient> by lazy { (grains + legumes + vegetables).map(::ingredient) }
 
     fun ingredientsFor(variant: Int): List<Ingredient> {
         require(variant in 0 until VARIANT_COUNT)
-        return listOf(grains[variant / 9], legumes[(variant / 3) % 3], vegetables[variant % 3])
-            .map(::ingredient)
+        return if (variant < 27) listOf(grains[variant / 9], legumes[(variant / 3) % 3], vegetables[variant % 3]).map(::ingredient)
+            else templates[variant - 27].ingredients.map { it.hostIngredient() }
+    }
+
+    private fun candidate(variant: Int, request: Core.Request): Core.Candidate? {
+        require(variant in 0 until VARIANT_COUNT)
+        return if (variant < 27) {
+            val ids = ingredientsFor(variant).map { it.foodTypeId }
+            CombinatorialGenerator().generate(request).firstOrNull { it.ingredients.map { line -> line.foodTypeId } == ids }
+        } else Core.OfflineGenerator().generate(request).firstOrNull { it.template.id == templates[variant - 27].template.id }
     }
 
     /**
@@ -53,7 +63,8 @@ internal object RecipeOfflineDraftGenerator {
     fun allowsSuggestion(
         variant: Int,
         requestedRestrictions: Set<String>,
-        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap(),
+        preferences: RecipeRequestPreferences = RecipeRequestPreferences(), portions: Int = 1
     ): Boolean {
         require(requestedRestrictions.all(RecipeDraftHostGate::isSupportedRestriction)) {
             "unsupported restriction"
@@ -62,6 +73,9 @@ internal object RecipeOfflineDraftGenerator {
             .map { it.removePrefix("FOOD:") }.toSet()
         val excludedAllergens = requestedRestrictions.filter { it.startsWith("ALLERGEN:") }
             .map { it.removePrefix("ALLERGEN:") }.toSet()
+        val request = preferences.applyTo(sampleRequest.copy(portions = portions))
+        val selected = candidate(variant, request) ?: return false
+        if (Core.validate(selected, request, Core.RecipeFacts(emptyMap())).verdict == Core.Verdict.BLOCKED) return false
         return ingredientsFor(variant).all { ingredient ->
             excludedFoods.none { it.equals(ingredient.foodTypeId, ignoreCase = true) } &&
                 excludedAllergens.all { allergen ->
@@ -73,7 +87,8 @@ internal object RecipeOfflineDraftGenerator {
     fun nextAllowedVariant(
         startVariant: Int,
         requestedRestrictions: Set<String>,
-        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap(),
+        preferences: RecipeRequestPreferences = RecipeRequestPreferences(), portions: Int = 1
     ): Int? {
         require(startVariant in 0 until VARIANT_COUNT)
         require(requestedRestrictions.all(RecipeDraftHostGate::isSupportedRestriction)) {
@@ -81,22 +96,23 @@ internal object RecipeOfflineDraftGenerator {
         }
         return (0 until VARIANT_COUNT).asSequence()
             .map { (startVariant + it) % VARIANT_COUNT }
-            .firstOrNull { allowsSuggestion(it, requestedRestrictions, independentlyConfirmedAllergens) }
+            .firstOrNull { allowsSuggestion(it, requestedRestrictions, independentlyConfirmedAllergens, preferences, portions) }
     }
 
-    /** Context flags label separately captured host inputs; variant ranking is not yet context-aware. */
+    /** Ranking is supplied by the separately bound host context, never by untrusted JSON. */
     fun generate(
         portions: Int, variant: Int, issuedAt: OffsetDateTime, draftId: String,
         flags: RecipeDraftHostGate.Flags = RecipeDraftHostGate.Flags(false, false, false),
         trustedSnapshotAt: OffsetDateTime? = null,
         requestedRestrictions: Set<String> = emptySet(),
-        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap()
+        independentlyConfirmedAllergens: Map<String, Map<String, Boolean?>> = emptyMap(),
+        preferences: RecipeRequestPreferences = RecipeRequestPreferences()
     ): String {
         require(portions in 1..1000) { "portions outside host bounds" }
         require(variant in 0 until VARIANT_COUNT) { "unknown recipe combination" }
         // Enforce user exclusions at the generator boundary as well as UI selection.
         // An unverified allergen is never treated as absent in a proposed draft.
-        require(allowsSuggestion(variant, requestedRestrictions, independentlyConfirmedAllergens)) {
+        require(allowsSuggestion(variant, requestedRestrictions, independentlyConfirmedAllergens, preferences, portions)) {
             "recipe candidate conflicts with exclusions or unverified allergens"
         }
         require(Regex("[A-Za-z0-9-]{1,80}").matches(draftId)) { "invalid draft identifier" }
@@ -109,13 +125,10 @@ internal object RecipeOfflineDraftGenerator {
             "invalid context snapshot instant"
         }
         val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-        val request = Core.Request(draftId, issuedAt.format(formatter), issuedAt.toLocalDate(), portions,
+        val request = preferences.applyTo(Core.Request(draftId, issuedAt.format(formatter), issuedAt.toLocalDate(), portions,
             Core.Flags(flags.considerStock, flags.considerShopping, flags.considerOffers),
-            restrictions = requestedRestrictions.sorted().map { Core.Restriction(it, true) })
-        val foodIds = ingredientsFor(variant).map { it.foodTypeId }
-        val candidate = CombinatorialGenerator().generate(request).single {
-            it.ingredients.map { line -> line.foodTypeId } == foodIds
-        }.copy(id = draftId)
+            restrictions = requestedRestrictions.sorted().map { Core.Restriction(it, true) }))
+        val candidate = requireNotNull(candidate(variant, request)) { "no recipe for requested meal type" }.copy(id = draftId)
         val result = Core.propose(request, Core.RecipeFacts(emptyMap()), Core.ProvidedCandidates(listOf(candidate)))
         require(result.rejected.isEmpty()) { "reference generator rejected this candidate" }
         val message = result.messages.single().toMutableMap()

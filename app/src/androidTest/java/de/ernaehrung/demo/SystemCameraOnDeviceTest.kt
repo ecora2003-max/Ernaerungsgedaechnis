@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
+import androidx.test.uiautomator.StaleObjectException
 import de.ernaehrung.demo.data.local.FoodDatabase
 import java.io.File
 import java.util.regex.Pattern
@@ -61,8 +62,7 @@ class SystemCameraOnDeviceTest {
     }
 
     private fun diagnose(name: String, failure: Throwable): Nothing {
-        runCatching { device.dumpWindowHierarchy(File(target.filesDir, "camera-$name-diagnostic.xml")) }
-        runCatching { device.takeScreenshot(File(target.filesDir, "camera-$name-diagnostic.png")) }
+        captureDeviceFailureEvidence("camera-$name")
         throw failure
     }
 
@@ -98,8 +98,14 @@ class SystemCameraOnDeviceTest {
             shutter.click()
             val deadline = SystemClock.uptimeMillis() + 20_000L
             while (device.currentPackageName != target.packageName && SystemClock.uptimeMillis() < deadline) {
-                control("done_button", "btn_done", "review_done")?.click()
-                    ?: device.findObject(By.desc(Pattern.compile("(?i)(Done|OK|Fertig|Use photo|Foto verwenden)")))?.click()
+                try {
+                    control("done_button", "btn_done", "review_done")?.click()
+                        ?: device.findObject(By.desc(Pattern.compile("(?i)(Done|OK|Fertig|Use photo|Foto verwenden)")))?.click()
+                } catch (_: StaleObjectException) {
+                    // The external camera replaces its preview/review view.
+                    // Re-find the real control in this bounded loop; never
+                    // retain an obsolete accessibility handle or fake a result.
+                }
                 SystemClock.sleep(150L)
             }
             assertEquals("System camera did not return a real result", target.packageName, device.currentPackageName)

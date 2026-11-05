@@ -105,7 +105,22 @@ internal fun RecipeDraftImportPanel(
     var allergenAnswers by remember { mutableStateOf<Map<Pair<String, String>, Boolean?>>(emptyMap()) }
     var restrictionsText by remember { mutableStateOf("") }
     var reviewed by remember { mutableStateOf(false) }
+    var preferenceForm by remember { mutableStateOf(RecipePreferenceForm()) }
     fun invalidate() { reviewed = false; onInvalidate() }
+    fun invalidateGeneratedDraft() {
+        // A new serving count or exclusion must not retain an old JSON
+        // preview, evidence checkpoint or pending FoodStore consent.
+        invalidate()
+        checkpoint.discard()
+        evidenceCheckpoint.discard()
+        json = ""
+        imported = null
+        reviewed = false
+        versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+        allergenAnswers = emptyMap(); restrictionsText = ""
+        rankingHint = null
+        error = null
+    }
     val eligible = catalog.filter {
         it.source != Source.DEMO && it.quality in setOf(Quality.CONFIRMED, Quality.SOURCED)
     }
@@ -116,6 +131,15 @@ internal fun RecipeDraftImportPanel(
             Text("Eine Rezeptbestätigung wird gerade verarbeitet. Änderungen erst nach Abschluss möglich.")
             return@Fold
         }
+        val requestPreferences = runCatching {
+            preferenceForm.preferences().also { it.validate(imported?.draft?.portions ?: offlinePortions.toIntOrNull() ?: 2) }
+        }
+        RecipeRequestPreferencesEditor(preferenceForm) {
+            invalidateGeneratedDraft()
+            preferenceForm = it
+        }
+        if (requestPreferences.isFailure) Text("Rezeptvorgaben prüfen: ${requestPreferences.exceptionOrNull()?.message}",
+            Modifier.testTag("recipe_preferences_error"))
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
 
         Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
@@ -201,7 +225,7 @@ internal fun RecipeDraftImportPanel(
             enabled = json.isNotBlank(),
             modifier = Modifier.testTag("recipe_draft_json_inspect")
         ) { Text("JSON-Entwurf lokal prüfen") }
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen. Bei geprüftem Room-Kontext werden nur ausdrücklich zugeordnete Produktversionen nach potenziellen Gramm-Mengen in Bestand und Einkaufsbedarf sortiert. Keine Allergen-, Abtropfgewichts- oder Garzustandsfreigabe; die spätere Einzelprüfung bleibt Pflicht. Angebote ohne Rechtequelle bleiben gesperrt.")
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen und drei geprüfte Referenzvorlagen einschließlich Frühstück mit Millilitermengen. Bei geprüftem Room-Kontext werden nur ausdrücklich zugeordnete Produktversionen nach potenziellen Gramm-Mengen in Bestand und Einkaufsbedarf sortiert. Keine Allergen-, Abtropfgewichts- oder Garzustandsfreigabe; die spätere Einzelprüfung bleibt Pflicht. Angebote ohne Rechtequelle bleiben gesperrt.")
         fun contextChanged() {
             invalidate()
             onClearContext()
@@ -282,20 +306,6 @@ internal fun RecipeDraftImportPanel(
             }
         }
         rankingHint?.let { Text(it, Modifier.testTag("recipe_context_ranking_hint")) }
-        fun invalidateGeneratedDraft() {
-            // A new serving count or exclusion must not retain an old JSON
-            // preview, evidence checkpoint or pending FoodStore consent.
-            invalidate()
-            checkpoint.discard()
-            evidenceCheckpoint.discard()
-            json = ""
-            imported = null
-            reviewed = false
-            versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-            allergenAnswers = emptyMap(); restrictionsText = ""
-            rankingHint = null
-            error = null
-        }
         OutlinedTextField(
             value = offlineRestrictionsText,
             onValueChange = { next ->
@@ -373,7 +383,7 @@ internal fun RecipeDraftImportPanel(
             singleLine = true
         )
         Button(
-            enabled = (offlinePortions.toIntOrNull() ?: 0) in 1..1000 &&
+            enabled = requestPreferences.isSuccess && (offlinePortions.toIntOrNull() ?: 0) in 1..1000 &&
                 (!selectedNeedsContext || (boundContext != null && !useOffers &&
                     rankingReviewed && rankingVersionIds.size >= 3)),
             modifier = Modifier.testTag("recipe_offline_generate"),
@@ -399,20 +409,21 @@ internal fun RecipeDraftImportPanel(
                             offlinePortions.toInt(), selectedFlags,
                             requireNotNull(boundContext), catalog,
                             rankingVersionIds, rankingReviewed,
-                            requestedRestrictions, confirmedAllergenAbsences
+                            requestedRestrictions, confirmedAllergenAbsences, requestPreferences.getOrThrow()
                         )
                         require(ranked.isNotEmpty()) { "no independently safe recipe candidate" }
                         val first = ranked.first()
                         rankingHint = "Kontext-Hinweis: potenziell ${first.stockCoveredMilliGrams / 1000} g im Bestand; ${first.shoppingNeedMilliGrams / 1000} g vorgemerkter Einkaufsbedarf. Mengenbasis, Zustand und Allergene weiterhin einzeln prüfen."
                         first.variant
                     } else requireNotNull(RecipeOfflineDraftGenerator.nextAllowedVariant(
-                        offlineVariant, requestedRestrictions, confirmedAllergenAbsences
+                        offlineVariant, requestedRestrictions, confirmedAllergenAbsences,
+                        requestPreferences.getOrThrow(), offlinePortions.toInt()
                     )) { "no independently safe recipe candidate" }
                     val generated = RecipeOfflineDraftGenerator.generate(
                         offlinePortions.toInt(), chosenVariant,
                         issuedAt, "offline-" + UUID.randomUUID().toString(),
                         selectedFlags, snapshotAt, requestedRestrictions,
-                        confirmedAllergenAbsences
+                        confirmedAllergenAbsences, requestPreferences.getOrThrow()
                     )
                     // Use the identical bounded v1 import boundary as pasted JSON.
                     val checked = RecipeDraftV1Import.read(
@@ -583,7 +594,7 @@ internal fun RecipeDraftImportPanel(
                     Modifier.padding(top = 10.dp))
             }
             Button(
-                enabled = reviewed && (!contextRequested || verifiedContext),
+                enabled = reviewed && requestPreferences.isSuccess && (!contextRequested || verifiedContext),
                 modifier = Modifier.testTag("recipe_draft_manual_review"),
                 onClick = {
                     try {
@@ -598,7 +609,8 @@ internal fun RecipeDraftImportPanel(
                         }
                         val prepared = RecipeDraftManualReview.prepare(
                             parsed, catalog, choices, restrictions, reviewed,
-                            System.currentTimeMillis(), independentlyBoundContext = verifiedContext
+                            System.currentTimeMillis(), independentlyBoundContext = verifiedContext,
+                            preferences = requestPreferences.getOrThrow()
                         )
                         error = null
                         reviewed = false

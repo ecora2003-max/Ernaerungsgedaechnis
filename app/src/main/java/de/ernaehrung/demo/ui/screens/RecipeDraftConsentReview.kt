@@ -57,6 +57,17 @@ internal fun RecipeDraftConsentReview(
         }
         Text(recipe.steps)
         review.referenceReport?.let { report ->
+            val preferences = report.preferences
+            Text("Eigene Rezeptvorgaben: ${preferences.mealType ?: "Mahlzeitenart offen"} · Zeitgrenze ${preferences.maxMinutes?.let { "$it Minuten" } ?: "offen"}")
+            Text("Verfügbare Geräte: ${preferences.equipment?.sorted()?.joinToString()?.ifEmpty { "ausdrücklich keine" } ?: "unbekannt"}")
+            Text("Rezeptbudget: ${preferences.budgetCents?.let(de.ernaehrung.demo.data.local.Money::format) ?: "unbekannt"}; Kosteneinhaltung nicht belegt.")
+            if (preferences.freezePortions > 0) Text("Einfrieren: ${preferences.freezePortions} Portionen · geprüfte freie Kapazität ${preferences.freezerCapacityPortions ?: "unbekannt"}. Lagerbedingungen separat prüfen.")
+            report.targets.forEach { target ->
+                val label = de.ernaehrung.demo.data.integration.RecipeRequestPreferences.nutrientLabels[target["nutrient"]] ?: target["nutrient"]
+                val state = when (target["status"]) { "IN_RANGE" -> "im eingegebenen Bereich"; "BELOW" -> "unter dem Bereich"; "ABOVE" -> "über dem Bereich"; else -> "Einhaltung unbekannt" }
+                Text("$label je Portion: $state", Modifier.testTag("recipe_target_${target["nutrient"]}"))
+            }
+            if ("FREEZER_UNKNOWN" in report.findings) Text("Die freie Gefrierkapazität ist unbekannt.")
             if ("ALLERGEN_DATA_GAP" in report.findings) {
                 Text("Die vollständige Allergenkennzeichnung ist nicht belegt. Geprüft sind nur die einzeln bestätigten Ausschlüsse; daraus folgt keine Allergenfreiheit.")
             }

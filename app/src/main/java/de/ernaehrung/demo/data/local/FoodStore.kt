@@ -550,7 +550,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         confirmations: Map<String, de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.ConfirmedLine>,
         reviewedStates: Map<String, de.ernaehrung.demo.data.integration.RecipeDraftHostGate.State>,
         trustedContextSnapshotAt: java.time.OffsetDateTime?
-    ): String = WriteRules.fingerprint(
+    ): String {
+        val legacy = WriteRules.fingerprint(
         "RECIPE_DRAFT_APPROVAL_BASIS_V1", json,
         listOf(request.flags.considerStock, request.flags.considerShopping,
             request.flags.considerOffers, request.portions,
@@ -568,6 +569,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         },
         trustedContextSnapshotAt?.toInstant()?.toString()
     )
+        // Preserve all existing default-request approval/retry fingerprints.
+        return if (request.preferences == de.ernaehrung.demo.data.integration.RecipeRequestPreferences()) legacy
+            else WriteRules.fingerprint("RECIPE_DRAFT_PREFERENCES_APPROVAL_V1", legacy, request.preferences.binding())
+    }
 
     fun watchRecognition() = recognitionReader.watch()
     suspend fun recognitionData() = recognitionReader.data()
