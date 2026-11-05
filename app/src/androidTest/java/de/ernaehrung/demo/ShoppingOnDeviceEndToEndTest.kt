@@ -97,7 +97,7 @@ class ShoppingOnDeviceEndToEndTest {
             .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3,
                 FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5,
                 FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7,
-                FoodMigrations.MIGRATION_7_8).build()
+                FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
         var db = open()
         val files = CaptureFiles(target)
         val capture = files.create()

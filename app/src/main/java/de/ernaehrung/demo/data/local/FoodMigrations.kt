@@ -4,6 +4,63 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Additive local health cache only. Every pre-existing food/history row stays unchanged. */
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `health_import_runs` (`id` TEXT NOT NULL,
+                `sourcePackage` TEXT NOT NULL,
+                `kind` TEXT NOT NULL,
+                `fingerprint` TEXT NOT NULL,
+                `recordedAt` INTEGER NOT NULL,
+                `authorizationRevision` INTEGER NOT NULL,
+                `capturedAt` INTEGER,
+                `windowStart` INTEGER,
+                `windowEnd` INTEGER,
+                `day` TEXT,
+                `dayZone` TEXT,
+                `dayStart` INTEGER,
+                `dayEnd` INTEGER,
+                `aggregatedSteps` INTEGER,
+                `changedRecords` INTEGER NOT NULL,
+                `hiddenRecords` INTEGER NOT NULL, PRIMARY KEY(`id`))""")
+            db.execSQL("""CREATE INDEX IF NOT EXISTS `index_health_import_runs_sourcePackage` ON `health_import_runs` (`sourcePackage`)""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `health_import_state` (`sourcePackage` TEXT NOT NULL,
+                `enabled` INTEGER NOT NULL,
+                `authorizationRevision` INTEGER NOT NULL,
+                `lastSuccessRunId` TEXT,
+                `lastAttemptAt` INTEGER,
+                `lastErrorCode` TEXT, PRIMARY KEY(`sourcePackage`), FOREIGN KEY(`lastSuccessRunId`) REFERENCES `health_import_runs`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )""")
+            db.execSQL("""CREATE INDEX IF NOT EXISTS `index_health_import_state_lastSuccessRunId` ON `health_import_state` (`lastSuccessRunId`)""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `health_source_record_versions` (`sourcePackage` TEXT NOT NULL,
+                `kind` TEXT NOT NULL,
+                `externalId` TEXT NOT NULL,
+                `revision` INTEGER NOT NULL,
+                `runId` TEXT NOT NULL,
+                `visible` INTEGER NOT NULL,
+                `visibilityReason` TEXT NOT NULL,
+                `fingerprint` TEXT NOT NULL,
+                `startAt` INTEGER NOT NULL,
+                `endAt` INTEGER NOT NULL,
+                `startOffsetSeconds` INTEGER,
+                `endOffsetSeconds` INTEGER,
+                `sourceModifiedAt` INTEGER NOT NULL,
+                `clientRecordId` TEXT,
+                `clientRecordVersion` INTEGER NOT NULL,
+                `manufacturer` TEXT,
+                `model` TEXT,
+                `deviceType` INTEGER,
+                `recordingMethod` INTEGER NOT NULL,
+                `steps` INTEGER,
+                `exerciseType` INTEGER,
+                `title` TEXT,
+                `notes` TEXT, PRIMARY KEY(`sourcePackage`,
+                `kind`,
+                `externalId`,
+                `revision`), FOREIGN KEY(`runId`) REFERENCES `health_import_runs`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )""")
+            db.execSQL("""CREATE INDEX IF NOT EXISTS `index_health_source_record_versions_runId` ON `health_source_record_versions` (`runId`)""")
+        }
+    }
+
     /** Purely additive. Legacy paid receipts do not prove line-level merchandise basis. */
     val MIGRATION_7_8 = object : Migration(7, 8) {
         override fun migrate(db: SupportSQLiteDatabase) {

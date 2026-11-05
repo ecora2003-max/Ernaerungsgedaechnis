@@ -97,24 +97,32 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
                 is FitnessSourceChanged -> "SOURCE_CHANGED_RETRY"
                 else -> "IMPORT_FAILED"
             }
-            recordFailure(initial.authorizationRevision, startedAt, code)
+            recordFailure(initial.authorizationRevision, initial.lastSuccessRunId, startedAt, code)
             throw failure
         }
     }
 
     /** A late failed attempt cannot overwrite newer consent or successful data. */
-    private suspend fun recordFailure(revision: Long, startedAt: Long, code: String) = db.withTransaction {
+    private suspend fun recordFailure(revision: Long, baselineSuccess: String?, startedAt: Long, code: String) = db.withTransaction {
         val current = state()
-        if (current.authorizationRevision != revision ||
-            (current.lastAttemptAt != null && current.lastAttemptAt > startedAt)) return@withTransaction
+        if (current.authorizationRevision != revision) return@withTransaction
         val revoked = code == "PERMISSION_MISSING"
+        // A same-millisecond success is still newer than this failed read.
+        // Revoked rights stop future reads while retaining that successful cache.
+        if (!revoked && (current.lastSuccessRunId != baselineSuccess ||
+            (current.lastAttemptAt != null && current.lastAttemptAt > startedAt))) return@withTransaction
         dao.saveState(current.copy(enabled = if (revoked) false else current.enabled,
             authorizationRevision = if (revoked) next(current.authorizationRevision) else current.authorizationRevision,
             lastAttemptAt = now(), lastErrorCode = code))
     }
 
     /** Stop future reads on foreground permission discovery, without deleting cache. */
-    suspend fun permissionsLost(expectedRevision: Long) = recordFailure(expectedRevision, now(), "PERMISSION_MISSING")
+    suspend fun permissionsLost(expectedRevision: Long) = db.withTransaction {
+        val current = state()
+        if (!current.enabled || current.authorizationRevision != expectedRevision) return@withTransaction
+        dao.saveState(current.copy(enabled = false, authorizationRevision = next(current.authorizationRevision),
+            lastAttemptAt = now(), lastErrorCode = "PERMISSION_MISSING"))
+    }
 
     suspend fun purge(key: String, confirmed: Boolean) = db.withTransaction {
         require(confirmed) { "HEALTH_EXPLICIT_ACTION_REQUIRED" }

@@ -27,6 +27,8 @@ class DatabaseMigrationTest {
     @Test fun upgradeFromPublishedV6Preserves32TablesPaidReceiptsBookingsAndExpenseHistory() = upgradeFromPublishedVersion(6)
     @Test fun upgradeFromPublishedV7Preserves35TablesScansAndAliasesWithoutInventingPaidPrices() = upgradeFromPublishedVersion(7)
 
+    @Test fun upgradeFromPublishedV8Preserves36TablesIncludingPrivatePaidPricesAndIntroducesOnlyEmptyHealthTables() = upgradeFromPublishedVersion(8)
+
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-${UUID.randomUUID()}.db"
@@ -64,22 +66,25 @@ class DatabaseMigrationTest {
                 if (fromVersion >= 5) seedV5(old)
                 if (fromVersion >= 6) seedV6(old)
                 if (fromVersion >= 7) seedV7(old)
+                if (fromVersion >= 8) seedV8(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; else -> 35 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; else -> 36 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v8.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v9.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(8, sql.version)
-            assertTrue("Old receipts cannot create paid price evidence automatically", upgraded.foodDao().allPaidPrices().isEmpty())
+            assertEquals(9, sql.version)
+            assertEquals("No new paid price is inferred during migration", if (fromVersion < 8) 0 else 1, upgraded.foodDao().allPaidPrices().size)
+            assertTrue(upgraded.healthDao().history("com.sec.android.app.shealth").isEmpty())
+            assertNull(upgraded.healthDao().state("com.sec.android.app.shealth"))
             val dao = upgraded.foodDao()
             assertEquals(if (fromVersion < 6) 0 else 1, dao.purchases().size)
-            assertEquals(if (fromVersion == 7) 1 else 0, dao.receiptScans().size)
-            assertEquals(if (fromVersion == 7) 1 else 0, dao.aliasDecisions().size)
+            assertEquals(if (fromVersion >= 7) 1 else 0, dao.receiptScans().size)
+            assertEquals(if (fromVersion >= 7) 1 else 0, dao.aliasDecisions().size)
             val expenses = FoodStore(upgraded).expenseReport(ExpenseScope("2026-10-01", "2026-10-30"))
             assertEquals(if (fromVersion < 6) 0L else 398L, expenses.knownSubtotalCents); assertNull(expenses.totalCents)
             assertEquals(1, expenses.unconfirmedReceipts.size); assertFalse(expenses.complete)
@@ -134,9 +139,9 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; else -> 19 }, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -163,6 +168,14 @@ class DatabaseMigrationTest {
         db.execSQL("INSERT INTO receipt_scans(operationId,rawText,method,parserVersion,imageHash) VALUES('v7-scan','TESTMARKT','MANUAL_TEXT','1','synthetic-v7')")
         db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('v7-resolution','SCAN_RESOLUTION','synthetic-resolution',1,'v6-receipt')")
         db.execSQL("INSERT INTO receipt_scan_resolutions(scanId,operationId,receiptId,reason) VALUES('v7-scan','v7-resolution','v6-receipt','Ausdrücklich bestätigt')")
+    }
+
+    private fun seedV8(db: SQLiteDatabase) {
+        db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('v8-price','HISTORICAL_PAID','synthetic-private-basis',1,'v8-private-price')")
+        db.execSQL("""INSERT INTO paid_price_observations(id,operationId,purchaseOperationId,receiptLineId,
+            versionId,retailerId,purchasedOn,purchaseUnits,unitPriceCents,linePaidCents,allocatedDiscountCents,
+            depositPerUnitCents,basisReason,recordedAt) VALUES('v8-private-price','v8-price','v6-pay','v6-line',
+            'pv1','Testmarkt','2026-10-30',1,398,398,0,NULL,'Eine Einheit unabhängig geprüft',1)""")
     }
 
     private fun seedV6(db: SQLiteDatabase) {
