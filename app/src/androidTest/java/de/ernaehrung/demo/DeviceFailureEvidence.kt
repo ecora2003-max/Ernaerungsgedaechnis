@@ -12,7 +12,7 @@ import java.io.FileOutputStream
  * shell-owned diagnostic directory. No app storage permission is added.
  */
 internal fun captureDeviceFailureEvidence(name: String) {
-    require(name in setOf("picker", "camera-cancel", "camera-capture", "recipe-flow"))
+    require(name in setOf("picker", "camera-cancel", "camera-capture", "recipe-flow", "shopping-flow"))
     val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
     val directory = "/sdcard/Download/eg-synthetic-test-diagnostics"
