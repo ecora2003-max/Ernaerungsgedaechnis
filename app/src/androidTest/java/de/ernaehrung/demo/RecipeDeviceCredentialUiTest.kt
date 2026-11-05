@@ -1,14 +1,19 @@
 package de.ernaehrung.demo
 
 import android.app.KeyguardManager
+import android.os.Build
 import androidx.activity.compose.setContent
 import android.content.Context
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
@@ -255,13 +260,34 @@ class RecipeDeviceCredentialUiTest {
                 FoodMigrations.MIGRATION_7_8).build()
         var database = open()
         var models = ViewModelStore()
+        var appFocus: FocusManager? = null
+        fun finishEditing() {
+            // The IME is an external window: Compose idleness alone does not
+            // mean that its resize animation has finished. End the text edit
+            // before scrolling and tapping a review choice on the real screen.
+            compose.runOnUiThread {
+                appFocus?.clearFocus(force = true)
+                val window = compose.activity.window
+                (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+            }
+            compose.waitUntil(5_000) {
+                Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets
+                    ?.isVisible(WindowInsets.Type.ime()) != true
+            }
+            compose.waitForIdle()
+        }
         fun tap(label: String) {
+            finishEditing()
             compose.waitUntil(25_000) {
                 compose.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText(label).performScrollTo().performClick()
         }
-        fun tag(label: String) = compose.onNodeWithTag(label).performScrollTo().performClick()
+        fun tag(label: String) {
+            finishEditing()
+            compose.onNodeWithTag(label).performScrollTo().performClick()
+        }
         fun field(label: String, value: String) = compose.onNodeWithText(label)
             .performScrollTo().performTextReplacement(value)
         fun choose(label: String, id: String) {
@@ -275,6 +301,7 @@ class RecipeDeviceCredentialUiTest {
             })[LocalDataViewModel::class.java]
             compose.runOnUiThread {
                 compose.activity.setContent {
+                    appFocus = LocalFocusManager.current
                     DemoTheme {
                         Column(Modifier.systemBarsPadding().imePadding().verticalScroll(rememberScrollState())) {
                             LocalDataContent(model, "Küche")
@@ -345,6 +372,7 @@ class RecipeDeviceCredentialUiTest {
                 lineField("Unabhängig geprüfte Katalogversion")
                     .performScrollTo().performClick()
                 compose.onNode(hasText(labels[index]) and hasAnyAncestor(isPopup())).performClick()
+                finishEditing()
                 lineField(ingredient.basis).performScrollTo().performClick().assertIsSelected()
                 val state = if (ingredient.foodTypeId.startsWith("cooked-")) "COOKED" else "RAW"
                 lineField(state).performScrollTo().performClick().assertIsSelected()
@@ -456,6 +484,9 @@ class RecipeDeviceCredentialUiTest {
             assertEquals(1, database.foodDao().observeRecipes().first().size)
             assertEquals(1, database.foodDao().activeConsumptionCount())
             assertEquals(1_000L, database.foodDao().balance(output.id))
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("recipe-flow")
+            throw failure
         } finally {
             compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
             database.close()
