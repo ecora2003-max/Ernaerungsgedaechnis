@@ -136,7 +136,7 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
         // Detach the FK before removing only this source's local health history.
         dao.saveState(HealthImportStateEntity(source, false, revision))
         dao.purgeRecords(source)
-        dao.purgeRuns(source)
+        dao.redactRuns(source)
         dao.insertRun(HealthImportRunEntity(key, source, "PURGE", hash, now(), revision))
     }
 

@@ -167,9 +167,41 @@ class FitnessImportRoomTest {
         assertEquals(state, db.healthDao().state(sourceId))
         assertEquals(false, state?.enabled); assertNull(state?.lastSuccessRunId)
         assertTrue(db.healthDao().history(sourceId).isEmpty())
-        assertEquals(listOf("PURGE"), db.healthDao().runs(sourceId).map { it.kind })
+        val runs = db.healthDao().runs(sourceId)
+        assertEquals(1, runs.count { it.kind == "PURGE" })
+        assertEquals(2, runs.count { it.kind == "REDACTED" })
+        runs.filter { it.kind == "REDACTED" }.forEach { marker ->
+            assertEquals(HealthImportRunEntity(marker.id, sourceId, "REDACTED", "", 0L, 0L), marker)
+        }
         assertNotNull(db.foodDao().version(version)); assertEquals(1, db.foodDao().operationCount())
         assertEquals(1, provider.reads.get())
         assertEquals(2, provider.snapshot.records.size)
     }
+    @Test fun anOldPurgeOrImportRequestCannotEraseOrRecreateDataAfterLaterPurgeCyclesAndRestart() = runBlocking {
+        val provider = SyntheticHealthSource()
+        store.enableFitnessImport("enable-one", true, true)
+        store.syncFitness("sync-one", provider)
+        store.purgeLocalFitnessImport("purge-one", true)
+        store.enableFitnessImport("enable-two", true, true)
+        store.syncFitness("sync-two", provider)
+        store.purgeLocalFitnessImport("purge-two", true)
+        store.enableFitnessImport("enable-three", true, true)
+        store.syncFitness("sync-three", provider)
+        db.close(); db = open(); store = FoodStore(db) { clock }
+        val current = store.fitnessCache().first()
+        val runs = db.healthDao().runs(sourceId)
+        store.purgeLocalFitnessImport("purge-one", true)
+        assertEquals("A delayed old deletion must not erase a newer cache", current, store.fitnessCache().first())
+        store.purgeLocalFitnessImport("purge-two", true)
+        assertEquals(current, store.fitnessCache().first())
+        rejected { store.enableFitnessImport("enable-one", true, true) }
+        rejected { store.syncFitness("sync-one", provider) }
+        rejected { store.enableFitnessImport("enable-two", false, true) }
+        rejected { store.syncFitness("sync-two", provider) }
+        assertEquals(runs, db.healthDao().runs(sourceId))
+        assertEquals(current, store.fitnessCache().first())
+        assertEquals(3, provider.reads.get())
+        assertEquals(1, db.foodDao().operationCount())
+    }
+
 }

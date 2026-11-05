@@ -48,7 +48,11 @@ class FitnessImportOnDeviceTest {
                 at - 1L, null, null, at - 1L, null, 0L, "CI SYNTHETIC", "No Watch proof", null, 0, steps = 500L),
             FitnessSourceRecord("$token-workout", FitnessRecordKind.WORKOUT, origin, at - 1_800_000L,
                 at - 1L, null, null, at - 1L, null, 0L, "CI SYNTHETIC", "No Watch proof", null, 0,
-                exerciseType = 0, title = "Synthetisches Testtraining"))
+                exerciseType = 0, title = "Synthetisches Testtraining"),
+            FitnessSourceRecord("$token-missing", FitnessRecordKind.WORKOUT, origin, at - 3_600_000L,
+                at - 1_800_001L, null, null, at - 1L, null, 0L, "CI SYNTHETIC", "No Watch proof", null, 0,
+                exerciseType = 0, title = "Synthetisches verschwundenes Training"))
+        var currentRecords = records
         var reads = 0
         val provider = object : FitnessHealthSource {
             override val requiredPermissions = FitnessHealthPolicy.REQUIRED_PERMISSIONS
@@ -56,8 +60,8 @@ class FitnessImportOnDeviceTest {
             override suspend fun grantedPermissions() = requiredPermissions
             override suspend fun readSnapshot(): FitnessHealthSnapshot {
                 reads++
-                return FitnessHealthSnapshot(origin, at - Duration.ofDays(28).toMillis(), at, at,
-                    records, day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), at, 321L)
+                return FitnessHealthSnapshot(origin, at - Duration.ofDays(28).toMillis(), at, at + reads - 1L,
+                    currentRecords, day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), at, 321L)
             }
         }
         fun waitTag(tag: String) = compose.waitUntil(25_000) {
@@ -67,16 +71,27 @@ class FitnessImportOnDeviceTest {
             store.enableFitnessImport("$token-enable", true, true)
             store.syncFitness("$token-sync", provider)
             store.syncFitness("$token-sync", provider)
+            assertEquals(1, reads)
+            currentRecords = records.filterNot { it.externalId == "$token-missing" }
+            store.syncFitness("$token-rescan", provider)
             // Only the local synthetic cache is tested. Do not enable the real
             // provider when the default screen resumes on this CI emulator.
             store.enableFitnessImport("$token-stop", false, true)
+            waitTag("workspace_tab_MORE")
             compose.onNodeWithTag("workspace_tab_MORE").performClick()
             compose.onNodeWithTag("workspace_go_FITNESS").performScrollTo().performClick()
             waitTag("fitness_daily_steps")
             compose.onNodeWithTag("fitness_daily_steps").performScrollTo().assertTextContains("321", substring = true)
             compose.onNodeWithTag("fitness_record_counts").assertTextContains("Trainings: 1", substring = true)
             compose.onNodeWithTag("fitness_record_counts").assertTextContains("Schrittintervalle: 1", substring = true)
-            assertEquals(1, reads)
+            compose.onNodeWithTag("fitness_missing_records").performScrollTo().assertTextContains("1", substring = true)
+            compose.onNodeWithTag("fitness_missing_$token-missing").performScrollTo().performClick()
+            compose.waitUntil(15_000) {
+                compose.onAllNodesWithText("Gespeicherte Änderungshistorie").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Gespeicherte Änderungshistorie").performScrollTo().assertIsDisplayed()
+            assertEquals(2, db.healthDao().historyFor(origin, FitnessRecordKind.WORKOUT.name, "$token-missing").size)
+            assertEquals(2, reads)
             compose.activityRule.scenario.recreate()
             waitTag("fitness_daily_steps")
             compose.onNodeWithTag("fitness_daily_steps").performScrollTo().assertTextContains("321", substring = true)
@@ -96,7 +111,7 @@ class FitnessImportOnDeviceTest {
             assertEquals(mealsBefore, db.foodDao().activeConsumptionCount())
             assertEquals(0, target.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
             assertNull((target.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
-            assertEquals(1, reads)
+            assertEquals(2, reads)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("fitness-flow")
             throw failure

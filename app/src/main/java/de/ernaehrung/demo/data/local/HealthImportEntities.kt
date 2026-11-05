@@ -11,7 +11,8 @@ internal data class HealthImportStateEntity(@PrimaryKey val sourcePackage: Strin
     val enabled: Boolean, val authorizationRevision: Long, val lastSuccessRunId: String? = null,
     val lastAttemptAt: Long? = null, val lastErrorCode: String? = null)
 
-/** Append-only operation evidence. No personal payload in operation keys/logs. */
+/** Operation evidence; explicit privacy purge redacts all source payload.
+ * Opaque retired keys remain to reject late retries. No personal payload in keys/logs. */
 @Entity(tableName = "health_import_runs", indices = [Index("sourcePackage")])
 internal data class HealthImportRunEntity(@PrimaryKey val id: String, val sourcePackage: String,
     val kind: String, val fingerprint: String, val recordedAt: Long, val authorizationRevision: Long,

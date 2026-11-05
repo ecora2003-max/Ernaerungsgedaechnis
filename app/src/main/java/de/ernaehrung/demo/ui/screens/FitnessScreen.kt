@@ -130,6 +130,18 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel()) {
             } }
         }
         if (visible.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere Einträge anzeigen") }
+        val noLongerVisible = cache?.records.orEmpty().filterNot { it.visible }
+        if (noLongerVisible.isNotEmpty()) {
+            Text("Im vollständig gelesenen Fenster nicht mehr sichtbar: ${noLongerVisible.size}",
+                Modifier.testTag("fitness_missing_records"))
+            Text("Das kann eine Quelländerung oder Löschung sein. Die gespeicherte Historie bleibt erhalten; diese Einträge zählen nicht zum aktuellen Bestand.")
+            noLongerVisible.take(shown).forEach { row ->
+                TextButton({ model.showHistory(row) }, Modifier.testTag("fitness_missing_${row.externalId}")) {
+                    Text("Historie: ${row.title?.takeIf { it.isNotBlank() } ?: if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall" else "Training"} · ${time(row.startAt)}")
+                }
+            }
+            if (noLongerVisible.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere nicht sichtbare Einträge anzeigen") }
+        }
         state.history?.let { rows ->
             Text("Gespeicherte Änderungshistorie", style = MaterialTheme.typography.titleSmall)
             rows.forEach { row -> Text("Version ${row.revision}: ${if (row.visible) "aus Quelle gelesen" else "im vollständigen Fenster nicht mehr sichtbar"} · ${time(row.startAt)} · ${if (row.kind == "STEPS") "${row.steps} Schritte" else row.title ?: "Training"}") }

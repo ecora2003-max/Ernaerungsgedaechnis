@@ -24,6 +24,7 @@ class FitnessPrivacyActivity : ComponentActivity() {
                 Text("Die Kopie bleibt lokal in der App. Die App überträgt diese Gesundheitsdaten nicht an einen Server und schreibt keine Gesundheitsdaten an Samsung Health oder Health Connect zurück. Es gibt keine automatische Ernährungs-, Bestands- oder Kalorienzielbuchung.")
                 Text("Nach Freigabe wird beim Öffnen der Fitnessansicht ein begrenztes 28-Tage-Fenster aktualisiert. Es werden keine zusätzlichen Hintergrund-, älteren Historien-, Standort-, Herzfrequenz- oder Schreibrechte angefordert. Synchronisation der Quelle kann verzögert sein.")
                 Text("Du kannst die Übernahme in der Fitnessansicht ausschalten, Leserechte in Health Connect entziehen und die lokale Gesundheitskopie einschließlich ihrer Änderungshistorie separat löschen. Deine Ernährung und Vorräte sowie die Daten in Samsung Health bleiben dabei erhalten. Backups und automatische Exporte dieser App sind ausgeschaltet.")
+                Text("Nach dem Löschen bleibt nur eine minimale lokale Wiederholungssperre ohne Gesundheitswerte oder Quelldatensatz-IDs erhalten. Sie verhindert, dass alte Übernahme- oder Löschaufrufe später erneut wirken.")
                 Button({ finish() }) { Text("Schließen") }
             }
         } } }

@@ -23,5 +23,12 @@ internal interface HealthImportDao {
     @Insert suspend fun insertRun(run: HealthImportRunEntity)
     @Insert suspend fun insertVersions(versions: List<HealthRecordVersionEntity>)
     @Query("DELETE FROM health_source_record_versions WHERE sourcePackage=:source") suspend fun purgeRecords(source: String)
-    @Query("DELETE FROM health_import_runs WHERE sourcePackage=:source") suspend fun purgeRuns(source: String)
+    // Retain only opaque retry markers. Erasing their keys would let an old
+    // delete request erase a later cache, or an old import silently reactivate.
+    // No record IDs, source values, windows, dates or digests survive redaction.
+    @Query("""UPDATE health_import_runs SET kind='REDACTED', fingerprint='', recordedAt=0,
+        authorizationRevision=0, capturedAt=NULL, windowStart=NULL, windowEnd=NULL,
+        day=NULL, dayZone=NULL, dayStart=NULL, dayEnd=NULL, aggregatedSteps=NULL,
+        changedRecords=0, hiddenRecords=0 WHERE sourcePackage=:source AND kind!='PURGE'""")
+    suspend fun redactRuns(source: String)
 }

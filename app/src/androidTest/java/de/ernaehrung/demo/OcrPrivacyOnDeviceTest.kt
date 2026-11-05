@@ -32,7 +32,7 @@ class OcrPrivacyOnDeviceTest {
             Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         prepareUnlockedTestDevice()
     }
-    @Test fun bundledReceiptOcrDoesNotQueueSdkTelemetryOrSendAppTrafficOnAnAvailableNetwork() = runBlocking {
+    @Test fun bundledReceiptOcrDoesNotQueueSdkTelemetryOrSendAppTrafficOnAnAvailableNetwork(): Unit = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val target = instrumentation.targetContext
         val device = UiDevice.getInstance(instrumentation)
