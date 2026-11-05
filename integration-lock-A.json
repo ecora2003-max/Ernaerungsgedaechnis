@@ -6,10 +6,10 @@
   "ownerRunId": null,
   "ownerRunToken": "codex-exclusive-ernaehrung-20261104-0d0d788cb0d148939ec74037f3206b8e",
   "acquiredAtUtc": "2026-11-05T08:12:42.745Z",
-  "lastHeartbeatUtc": "2026-11-05T10:22:41.979Z",
+  "lastHeartbeatUtc": "2026-11-05T10:30:17.022Z",
   "leaseExpiresAtUtc": null,
   "task": "Bestehende FEFO-Integration PR251 abschließen und reale System-Kamera-/Offline-/Neustartprüfung fortsetzen",
-  "workingBranch": "codex-recipe-diet-evidence-20261105",
+  "workingBranch": "codex-health-connect-import-20261105",
   "lastReleasedAtUtc": "2026-11-05T05:39:40.503Z",
   "lastReleasedCommit": "32fdae471c5ecef64e0f03c1ac1549c083a785a5",
   "nextStep": "Aus docs/STATUS.md fortsetzen; JSON-Sperre neu uebernehmen"
