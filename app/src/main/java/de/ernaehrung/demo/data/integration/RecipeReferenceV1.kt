@@ -33,6 +33,8 @@ internal object RecipeReferenceV1 {
         context: Gate.Context<*, *, *>? = null
     ): Report {
         val rows = catalog.groupBy { it.id }
+        val requestedDiets = request.confirmedRestrictions.filter { it.startsWith("DIET:") }
+            .map { it.removePrefix("DIET:").uppercase() }.toSet()
         val nutrientKeys = linkedMapOf(
             "energyKcal" to Nutrient.ENERGY, "proteinG" to Nutrient.PROTEIN,
             "carbohydrateG" to Nutrient.CARBS, "fatG" to Nutrient.FAT,
@@ -63,7 +65,11 @@ internal object RecipeReferenceV1 {
                 // Per-restriction answers do not prove a comprehensive allergen
                 // declaration. In particular, never infer COMPLETE from false.
                 if (host.allergens.isEmpty()) Core.Evidence.UNKNOWN else Core.Evidence.PARTIAL,
-                dietTags = null, source = "host-version:${version.id}", dataQuality = version.quality.name)
+                // A negative review is a known incompatibility, never UNKNOWN.
+                // Partial answers cannot become a complete dietary declaration.
+                dietTags = if (requestedDiets.isEmpty() || requestedDiets.any { host.diets[it] == null }) null
+                    else requestedDiets.filterTo(linkedSetOf()) { host.diets[it] == true },
+                source = "host-version:${version.id}", dataQuality = version.quality.name)
         }.toMap()
         val flags = Core.Flags(request.flags.considerStock, request.flags.considerShopping, request.flags.considerOffers)
         val projected = context?.takeIf { it.projectedFlags == request.flags }

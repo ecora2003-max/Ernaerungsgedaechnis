@@ -103,6 +103,7 @@ internal fun RecipeDraftImportPanel(
     var bases by remember { mutableStateOf<Map<String, Gate.Basis>>(emptyMap()) }
     var states by remember { mutableStateOf<Map<String, Gate.State>>(emptyMap()) }
     var allergenAnswers by remember { mutableStateOf<Map<Pair<String, String>, Boolean?>>(emptyMap()) }
+    var dietAnswers by remember { mutableStateOf<Map<Pair<String, String>, Boolean?>>(emptyMap()) }
     var restrictionsText by remember { mutableStateOf("") }
     var reviewed by remember { mutableStateOf(false) }
     var preferenceForm by remember { mutableStateOf(RecipePreferenceForm()) }
@@ -117,7 +118,7 @@ internal fun RecipeDraftImportPanel(
         imported = null
         reviewed = false
         versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-        allergenAnswers = emptyMap(); restrictionsText = ""
+        allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
         rankingHint = null
         error = null
     }
@@ -167,7 +168,7 @@ internal fun RecipeDraftImportPanel(
                         json = saved
                         imported = null
                         versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                        allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+                        allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""; reviewed = false
                         error = "JSON wiederhergestellt. Alle Nachweise neu prüfen und erneut ausdrücklich bestätigen."
                     }
                 }
@@ -180,7 +181,7 @@ internal fun RecipeDraftImportPanel(
                 imported = null
                 error = null
                 versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                allergenAnswers = emptyMap(); restrictionsText = ""
+                allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
                 checkpoint.discard()
                 evidenceCheckpoint.discard()
                 onDiscardPending()
@@ -203,7 +204,7 @@ internal fun RecipeDraftImportPanel(
                     imported = null
                     error = null
                     versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); restrictionsText = ""
+                    allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
                     json = next
                 }
             },
@@ -236,7 +237,7 @@ internal fun RecipeDraftImportPanel(
             rankingHint = null
             imported = null
             versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-            allergenAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+            allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""; reviewed = false
             evidenceCheckpoint.discard()
         }
         Row {
@@ -320,7 +321,7 @@ internal fun RecipeDraftImportPanel(
             label = { Text("Ausschlüsse vor dem Vorschlag (z. B. FOOD:tomato)") },
             maxLines = 2
         )
-        Text("Lebensmittel-Ausschlüsse filtern nur Vorschläge. Bei Allergenen ohne unabhängig bestätigte Abwesenheit wird kein Vorschlag erzeugt; eine spätere Einzelprüfung bleibt Pflicht.")
+        Text("Lebensmittel-Ausschlüsse filtern nur Vorschläge. Bei Allergenen ohne unabhängig bestätigte Abwesenheit wird kein Vorschlag erzeugt. DIET:VEGAN oder andere Ernährungsformen sind erst nach unabhängiger Einzelprüfung jeder Produktversion freigegeben; der Vorschlag garantiert keine Eignung.")
         if (offlineAllergens.isNotEmpty()) {
             Fold("Allergennachweise für Offline-Vorschläge") {
                 Text("Nur für die Vorschlagsauswahl: Jede Allergen-Abwesenheit muss für eine aktuell zugeordnete Produktversion separat anhand unabhängiger Angaben geprüft werden. Diese Vorprüfung wird nicht in den Entwurf übernommen und ersetzt niemals die spätere vollständige Rezeptprüfung.")
@@ -433,7 +434,7 @@ internal fun RecipeDraftImportPanel(
                     evidenceCheckpoint.discard()
                     invalidate()
                     versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); restrictionsText = offlineRestrictionsText; reviewed = false
+                    allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = offlineRestrictionsText; reviewed = false
                     json = generated
                     imported = checked
                     error = null
@@ -467,13 +468,15 @@ internal fun RecipeDraftImportPanel(
             OutlinedTextField(
                 restrictionsText, { evidenceCheckpoint.discard(); invalidate(); restrictionsText = it },
                 Modifier.fillMaxWidth().testTag("recipe_draft_restrictions"),
-                label = { Text("Bestätigte Ausschlüsse, z. B. ALLERGEN:SOY, FOOD:milk") },
+                label = { Text("Bestätigte Vorgaben, z. B. ALLERGEN:SOY, FOOD:milk, DIET:VEGAN") },
                 singleLine = false, maxLines = 2
             )
             val restrictions = restrictionsText.split(",").map { it.trim() }
                 .filter { it.isNotEmpty() }.toSet()
             val allergens = restrictions.filter { it.startsWith("ALLERGEN:") && it.length > 9 }
                 .map { it.removePrefix("ALLERGEN:") }.toSet()
+            val diets = restrictions.filter { it.startsWith("DIET:") }
+                .map { it.removePrefix("DIET:").uppercase() }.toSet()
             Text("Leeres Ausschlussfeld bedeutet keine erfassten Ausschlüsse, nicht geprüfte Allergenfreiheit.")
             Text("Unbestätigte Formulareingaben nur auf ausdrücklichen Wunsch für maximal 24 Stunden verschlüsselt merken. Wiederherstellung ist KEIN Nachweis: aktuelle Katalogversionen und Room werden vor einer Buchung erneut geprüft; die Prüfbestätigung bleibt immer aus.")
             Button(
@@ -484,7 +487,7 @@ internal fun RecipeDraftImportPanel(
                             recipeDraftEvidenceDigest(json), versionIds,
                             bases.mapValues { it.value.name },
                             states.mapValues { it.value.name },
-                            allergenAnswers, restrictionsText
+                            allergenAnswers, restrictionsText, dietAnswers
                         ))
                         error = "Unbestätigte Formulareingaben verschlüsselt gemerkt (maximal 24 Stunden)."
                     } catch (_: Exception) {
@@ -526,6 +529,12 @@ internal fun RecipeDraftImportPanel(
                         allergenAnswers = saved.allergens.filterKeys {
                             it.first in ids && it.second in restoredAllergens
                         }
+                        val restoredDiets = saved.restrictionsText.split(",").map { it.trim() }
+                            .filter { it.startsWith("DIET:") }
+                            .map { it.removePrefix("DIET:").uppercase() }.toSet()
+                        dietAnswers = saved.diets.filterKeys {
+                            it.first in ids && it.second in restoredDiets
+                        }
                         restrictionsText = saved.restrictionsText
                         reviewed = false
                         invalidate()
@@ -544,8 +553,16 @@ internal fun RecipeDraftImportPanel(
                     ) { selected ->
                         evidenceCheckpoint.discard()
                         invalidate()
-                        versionIds = versionIds + (line.foodTypeId to
-                            (labels.entries.firstOrNull { it.value == selected }?.key ?: ""))
+                        val version = labels.entries.firstOrNull { it.value == selected }?.key ?: ""
+                        if (versionIds[line.foodTypeId] != version) {
+                            // Evidence for one immutable product version cannot
+                            // silently follow a different catalog selection.
+                            bases = bases - line.foodTypeId
+                            states = states - line.foodTypeId
+                            allergenAnswers = allergenAnswers.filterKeys { it.first != line.foodTypeId }
+                            dietAnswers = dietAnswers.filterKeys { it.first != line.foodTypeId }
+                        }
+                        versionIds = versionIds + (line.foodTypeId to version)
                     }
                     Text("Mengenbasis separat am Produkt prüfen")
                     WrappingChoices(listOf("Ungeprüft", line.basis.name),
@@ -585,6 +602,26 @@ internal fun RecipeDraftImportPanel(
                             })
                         }
                     }
+                    diets.forEach { diet ->
+                        val key = line.foodTypeId to diet
+                        val selected = when (dietAnswers[key]) {
+                            true -> "Nachweislich geeignet"
+                            false -> "Nachweislich ungeeignet"
+                            null -> "Unbekannt"
+                        }
+                        Text("Ernährungsform $diet: diese Produktversion unabhängig prüfen")
+                        WrappingChoices(listOf("Unbekannt", "Nachweislich geeignet",
+                            "Nachweislich ungeeignet"), selected,
+                            "recipe_draft_diet_${line.foodTypeId}_${diet}_") { answer ->
+                            evidenceCheckpoint.discard()
+                            invalidate()
+                            dietAnswers = dietAnswers + (key to when (answer) {
+                                "Nachweislich geeignet" -> true
+                                "Nachweislich ungeeignet" -> false
+                                else -> null
+                            })
+                        }
+                    }
                 }
             }
             Row {
@@ -604,6 +641,9 @@ internal fun RecipeDraftImportPanel(
                                 bases[line.foodTypeId], states[line.foodTypeId],
                                 allergens.associateWith { allergen ->
                                     allergenAnswers[line.foodTypeId to allergen]
+                                },
+                                diets.associateWith { diet ->
+                                    dietAnswers[line.foodTypeId to diet]
                                 }
                             )
                         }
@@ -624,6 +664,8 @@ internal fun RecipeDraftImportPanel(
                                 "Mengenbasis oder Zubereitungszustand unvollständig. Für jede Zutat beides separat prüfen und auswählen."
                             "all restricted allergens need explicit per-line answers (unknown allowed)" ->
                                 "Allergenprüfung unvollständig. Jeden erfassten Ausschluss für jede Zutat separat beantworten."
+                            "all confirmed diets need explicit per-line answers (unknown allowed)" ->
+                                "Ernährungsform unvollständig geprüft. Jede Vorgabe für jede Produktversion separat beantworten."
                             "duplicate product version" ->
                                 "Dieselbe Produktversion wurde mehreren unterschiedlichen Zutaten zugeordnet. Zuordnung korrigieren."
                             "manual review of stale draft", "manual review predates draft creation" ->

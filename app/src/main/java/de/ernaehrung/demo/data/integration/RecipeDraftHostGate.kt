@@ -89,7 +89,9 @@ internal object RecipeDraftHostGate {
         /** Confirmed milligrams-equivalent in host milli-grams for one piece. */
         val confirmedPieceMassMilliGrams: Long? = null,
         /** true=present, false=independently confirmed absent, null=unknown. */
-        val allergens: Map<String, Boolean?> = emptyMap()
+        val allergens: Map<String, Boolean?> = emptyMap(),
+        /** Explicit per-version dietary compatibility; missing/null is unknown. */
+        val diets: Map<String, Boolean?> = emptyMap()
     )
     data class Request(
         val flags: Flags, val portions: Int,
@@ -114,7 +116,8 @@ internal object RecipeDraftHostGate {
      * later FoodStore gate would reject (or silently fail to match).
      */
     fun isSupportedRestriction(code: String): Boolean {
-        if (!code.startsWith("ALLERGEN:") && !code.startsWith("FOOD:")) return false
+        if (!code.startsWith("ALLERGEN:") && !code.startsWith("FOOD:") &&
+            !code.startsWith("DIET:")) return false
         val identifier = code.substringAfter(':', "")
         if (code.count { it == ':' } != 1 || identifier.isEmpty()) return false
         // UTF-16 char iteration misses supplementary default-ignorable format
@@ -222,6 +225,7 @@ internal object RecipeDraftHostGate {
 
         val allergies = linkedSetOf<String>()
         val bannedFoods = linkedSetOf<String>()
+        val diets = linkedSetOf<String>()
         for (code in request.confirmedRestrictions) {
             if (!isSupportedRestriction(code)) {
                 blockers += "UNSUPPORTED_RESTRICTION"
@@ -231,6 +235,7 @@ internal object RecipeDraftHostGate {
             when {
                 code.startsWith("ALLERGEN:") -> allergies += identifier
                 code.startsWith("FOOD:") -> bannedFoods += identifier
+                code.startsWith("DIET:") -> diets += identifier.uppercase()
             }
         }
         val items = mutableListOf<RecipeItemInput>()
@@ -261,6 +266,14 @@ internal object RecipeDraftHostGate {
                     true -> blockers += "CONFIRMED_ALLERGEN_CONFLICT"
                     false -> Unit
                     null -> gaps += "ALLERGEN_STATUS_UNKNOWN"
+                }
+            }
+            if (host.diets.keys.any { it !in diets }) blockers += "FOREIGN_DIET_EVIDENCE"
+            for (diet in diets) {
+                when (host.diets[diet]) {
+                    true -> Unit
+                    false -> blockers += "CONFIRMED_DIET_CONFLICT"
+                    null -> gaps += "DIET_STATUS_UNKNOWN"
                 }
             }
             val expectedUnit = when (line.unit) {
