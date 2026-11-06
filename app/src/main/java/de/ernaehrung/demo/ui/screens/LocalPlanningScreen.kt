@@ -32,6 +32,7 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
         return
     }
     Text("${report.startsOn} bis ${report.endsOn} · Bestandsstand ${report.asOf}")
+    PlanNutritionPreview(report.startsOn, report.endsOn)
     Hint("Berechnet wird der noch offene Bedarf. Bereits gebuchten Verzehr oder Herstellung ausdrücklich dem Plan zuordnen. Das bucht nichts erneut. Vergangene offene Termine werden nicht mit heutigem Bestand rückgerechnet.")
     val currentReport = rememberUpdatedState(report)
     androidx.compose.runtime.key(operationId) {
