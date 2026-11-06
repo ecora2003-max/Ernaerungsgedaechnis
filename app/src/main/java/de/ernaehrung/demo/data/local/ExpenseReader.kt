@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 internal class ExpenseReader(private val db: FoodDatabase, private val now: () -> Long) {
     private val dao = db.foodDao()
     fun watch(scope: ExpenseScope) = db.invalidationTracker.createFlow("purchase_events", "receipts", "receipt_lines",
-        "receipt_stock_bookings", "batches", "operation_reversals", "expense_status_events")
+        "receipt_stock_bookings", "batches", "batch_reviews", "operation_reversals", "expense_status_events")
         .map { report(scope) }.distinctUntilChanged()
 
     suspend fun report(scope: ExpenseScope): ExpenseReport = db.withTransaction {

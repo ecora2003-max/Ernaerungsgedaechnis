@@ -4,6 +4,26 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Preserve original batches and every old write key; only explicit later reviews override descriptions. */
+    val MIGRATION_12_13 = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `batch_reviews` (`id` TEXT NOT NULL, `batchId` TEXT NOT NULL,
+                `revision` INTEGER NOT NULL, `previousId` TEXT, `operationId` TEXT NOT NULL,
+                `acquiredOn` TEXT, `bestBefore` TEXT, `useBy` TEXT, `openedAt` INTEGER, `thawedAt` INTEGER,
+                `openedAtText` TEXT, `thawedAtText` TEXT,
+                `release` TEXT NOT NULL, `safetyNote` TEXT, `reason` TEXT NOT NULL, `conditionsConfirmed` INTEGER NOT NULL, `source` TEXT NOT NULL,
+                `quality` TEXT NOT NULL, `recordedAt` INTEGER NOT NULL, PRIMARY KEY(`id`),
+                FOREIGN KEY(`batchId`) REFERENCES `batches`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`operationId`) REFERENCES `operations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`batchId`, `previousId`) REFERENCES `batch_reviews`(`batchId`, `id`) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_batch_reviews_batchId_revision ON batch_reviews(batchId,revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_batch_reviews_batchId_id ON batch_reviews(batchId,id)")
+            db.execSQL("CREATE INDEX index_batch_reviews_batchId_previousId ON batch_reviews(batchId,previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_batch_reviews_previousId ON batch_reviews(previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_batch_reviews_operationId ON batch_reviews(operationId)")
+            db.execSQL("CREATE VIEW `current_batches` AS $CURRENT_BATCHES_SQL")
+        }
+    }
     /** Link explicitly corrected scalar legacy fields; never infer values or local dates. */
     val MIGRATION_11_12 = object : Migration(11, 12) {
         override fun migrate(db: SupportSQLiteDatabase) {

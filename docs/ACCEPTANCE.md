@@ -35,7 +35,7 @@ Stand 06.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EX
 
 ## 4. Room-Bestands-, Kosten- und Datenschutzschutz
 
-- [ ] Synthetische bestandsgefüllte Migrationspfade jeder veröffentlichten Version 1 bis 11 → aktuelles Room 12 sowie Fremdschlüssel prüfen. Alle vorhandenen Lebensmittel-, Privatpreis-, Plan-, Körper- und Health-Importhistorien einschließlich Null/0 und Retry-Schlüsseln erhalten; neue Tabellen beginnen ohne erfundene Altdaten.
+- [ ] Synthetische bestandsgefüllte Migrationspfade jeder veröffentlichten Version 1 bis 12 → aktuelles Room 13 sowie Fremdschlüssel prüfen. Alle vorhandenen Lebensmittel-, Privatpreis-, Plan-, Körper- und Health-Importhistorien einschließlich Null/0 und Retry-Schlüsseln erhalten; neue Tabellen beginnen ohne erfundene Altdaten.
 - [ ] Alte IDs, Produkt-/Rezeptversionen, Chargen, Beleg-/Zahlungs-/Reversal-/Preis-/Planereignisse unverändert erhalten; keine `fallbackToDestructiveMigration`, keine Datenbanklöschung als Workaround. Für neue Felder eine versionierte Schemaexportdatei und explizite Migration.
 - [ ] Tests ausschließlich mit synthetischen Daten/Sandbox; kein produktiver Google-Sheets-Import oder Geräte-/Benutzerdatenexport ohne separate ausdrückliche Freigabe.
 - [ ] Kernfunktionen kostenlos, offlinefähig und ohne Cloudpflicht; fehlende Daten/Quellen/LLM müssen korrekt deaktivierte Funktionen bzw. nachvollziehbar unvollständige Ergebnisse liefern.
@@ -68,3 +68,11 @@ SDK-Fallback, optionale Herzfrequenz-/Schlaf-/BIA-Berechtigungen, genaue Krafttr
 - [ ] Bekannte Null, fehlende Werte, Teilwissen und Konflikte unterscheiden. Neue Produktfassungen ändern frühere Verzehre nicht; ausdrücklich vollständige Tage können Nährwertlücken behalten. Fehlende Tage nicht erfinden; Nichtwaren nicht zu Lebensmitteln umdeuten.
 - [ ] Korrekturaktion führt in die tatsächliche passende Seite bzw. denselben Ernährungstag. Produktkorrektur bindet erwartete Vorversion atomar, Replay bleibt stabil und veraltete Eingabe überschreibt keine neuere Fassung. Kein automatisches Heilen, Umrechnen oder Sicherheitsfreigeben.
 - [ ] Tatsächlicher MainActivity-/Room- und Android-Fall mit Korrektur, Neustart/SQLite-Reopen, getrennt belegter Netzfreiheit sowie unveränderter übriger Lebensmittel-/Health-/Body-/Trainingshistorie. Kein Gesamt-App-/Watch-Abschluss daraus.
+
+## 8. Bestehende Chargen nachträglich prüfen – Produktplan §6/§22.4
+
+- [ ] Original und append-only Prüfhistorie bleiben erhalten. Tatsächlich bestätigte aktuelle Metadaten in FoodStore, Lager, FEFO, Planung, Einkauf und Datenqualität gemeinsam verwenden; keinen Bestand, Artikel, Lagerort, Herkunft oder alten Ereigniszeitpunkt überschreiben.
+- [ ] Aktuellen Vorgänger atomar prüfen, Retry ohne doppelte Version, Konkurrenz/Leseausfall/Storno sicher sperren. Eingabeänderung entzieht Bestätigung und Eignungsprüfung; Neustart übernimmt keine ungespeicherte Zustimmung.
+- [ ] MHD/Verbrauchsdatum unterscheiden, keine automatische Sicherheitsfreigabe. Explizite Eignungsprüfung für Freigabe, überschrittenes Verbrauchsdatum sperren. Unbekannte Zeit bleibt unbekannt; nur explizite Offset-Zeit, Originaltext und exakte Millisekunden behalten.
+- [ ] Historische Rezeptkontexte verwenden nur damals vorhandene Prüfdaten; neue Prüfidentität invalidiert alte Evidenz auch bei gleichen Fakten. Keine Ist-Bewegung oder rückwirkende Kenntnis durch Prüfung.
+- [ ] Erhaltendes Room 13, alle zwölf befüllten Migrationspfade, Original-/Null-/0-/Versions-/Retry-FKs und tatsächlicher Android-Korrektur-/Offline-/Restart-/SQLite-/Privacyfall auf exaktem Head.

@@ -43,7 +43,8 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 /** Shared actual editors for the primary workspace and the explicit design tour. */
 @Composable
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
-    showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "") {
+    showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
+    onOpenBatchReview: ((String) -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -107,6 +108,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
                     KV("MHD", row.batch.bestBefore ?: "Unbekannt")
                     KV("Verbrauchsdatum", row.batch.useBy ?: "Unbekannt")
                     Text("Charge: ${row.batch.id}", style = MaterialTheme.typography.labelSmall)
+                    onOpenBatchReview?.let { open -> Action("Chargenangaben prüfen", true, "stock_review_${row.batch.id}") { open(row.batch.id) } }
                     if (row.originReversed) Badge("Herkunft storniert · nur Historie", Amber)
                 }
             }

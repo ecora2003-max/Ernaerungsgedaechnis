@@ -26,16 +26,17 @@ import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
 import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
 import de.ernaehrung.demo.ui.screens.DataQualityScreen
+import de.ernaehrung.demo.ui.screens.BatchReviewScreen
 import de.ernaehrung.demo.data.local.DataQualityTarget
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
-        STOCK, CATALOG -> STOCK
+        STOCK, CATALOG, BATCH_REVIEW -> STOCK
         SCAN -> SCAN
         PLAN -> PLAN
         else -> MORE
@@ -55,6 +56,7 @@ fun LocalWorkspaceApp() {
     var demo by rememberSaveable { mutableStateOf(false) }
     var catalogFilter by rememberSaveable { mutableStateOf("") }
     var recognitionMode by rememberSaveable { mutableStateOf("Barcode & Produkt") }
+    var selectedBatch by rememberSaveable { mutableStateOf("") }
     if (demo) {
         BackHandler { demo = false }
         DemoApp()
@@ -93,7 +95,8 @@ fun LocalWorkspaceApp() {
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (page.section != null) {
                         LocalDataContent(model, page.section, initialRecognitionMode = recognitionMode, showSectionNavigation = false,
-                            onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter)
+                            onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter,
+                            onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) })
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
@@ -108,6 +111,8 @@ fun LocalWorkspaceApp() {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
                     } else if (page == WorkspacePage.TRAINING) {
                         TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) })
+                    } else if (page == WorkspacePage.BATCH_REVIEW) {
+                        BatchReviewScreen(selectedBatch)
                     } else if (page == WorkspacePage.QUALITY) {
                         DataQualityScreen { issue ->
                             when (issue.target) {
@@ -118,7 +123,10 @@ fun LocalWorkspaceApp() {
                                     recognitionMode = "Bon & OCR"; go(WorkspacePage.SCAN)
                                 }
                                 DataQualityTarget.PURCHASES -> go(WorkspacePage.PURCHASES)
-                                DataQualityTarget.STOCK -> go(WorkspacePage.STOCK)
+                                DataQualityTarget.STOCK -> {
+                                    if (issue.argument == null) go(WorkspacePage.STOCK)
+                                    else { selectedBatch = issue.argument; go(WorkspacePage.BATCH_REVIEW) }
+                                }
                                 DataQualityTarget.NUTRITION -> {
                                     issue.argument?.let(model::showDay); go(WorkspacePage.NUTRITION)
                                 }

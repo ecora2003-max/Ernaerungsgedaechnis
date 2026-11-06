@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.map
 internal class PlanExecutionReader(private val db: FoodDatabase) {
     private val dao = db.foodDao()
     fun watch(entryId: String) = db.invalidationTracker.createFlow("plans", "planned_entries", "plan_executions",
-        "operations", "operation_reversals", "consumption_events", "productions", "product_versions", "batches")
+        "operations", "operation_reversals", "consumption_events", "productions", "product_versions", "batches", "batch_reviews")
         .map { view(entryId) }.distinctUntilChanged()
 
     suspend fun view(entryId: String): PlanExecutionView = db.withTransaction {
