@@ -103,7 +103,7 @@ class BodyMeasurementOnDeviceTest {
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
                 .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
             try {
-                assertEquals(13, reopened.openHelper.readableDatabase.version)
+                assertEquals(14, reopened.openHelper.readableDatabase.version)
                 assertEquals(first, reopened.bodyDao().version(first.id))
                 assertEquals(first.id, FoodStore(reopened).saveBodyMeasurement(first.runId, first.input(), null, true))
                 assertEquals(2, reopened.bodyDao().versions().size)

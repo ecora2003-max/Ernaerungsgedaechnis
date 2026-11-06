@@ -90,6 +90,12 @@ class MultiBatchProductionOnDeviceTest {
             }
             tap("Tatsächliche Herstellung buchen")
             rule.onNodeWithText("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen").assertIsOff()
+            // A restart never replays physical storage/release approval. Read
+            // the retained facts and perform both real, fresh user gestures.
+            rule.onNodeWithText("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft").assertIsOff()
+            rule.onNodeWithText("Fertigportionen für diesen Test ausdrücklich freigeben").assertIsOff()
+            tap("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft")
+            tap("Fertigportionen für diesen Test ausdrücklich freigeben")
             tap("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen")
             val newest = store.receive("$fixture-newest", BatchInput(version, location, 20_000L,
                 day.toString(), useBy = day.toString(), release = ReleaseStatus.RELEASED), true)
