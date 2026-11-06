@@ -68,6 +68,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val batchReviews = BatchReviewOperations(db, now)
     internal fun watchBatchReview(id: String) = batchReviews.watch(id)
     internal suspend fun reviewBatch(key: String, input: BatchReviewInput, confirmed: Boolean) = batchReviews.save(key, input, confirmed)
+    private val backups = FoodBackupStore(db, now)
+    internal suspend fun captureBackup(applicationId: String, fitnessIncluded: Boolean, confirmed: Boolean) =
+        backups.capture(applicationId, fitnessIncluded, confirmed)
+    internal suspend fun validateBackupForPreview(archive: de.ernaehrung.demo.data.backup.BackupArchive, applicationId: String) =
+        backups.validateForPreview(archive, applicationId)
+    internal suspend fun restoreBackup(key: String, archive: de.ernaehrung.demo.data.backup.BackupArchive,
+        expectedDigest: String, applicationId: String, confirmed: Boolean) =
+        backups.restore(key, archive, expectedDigest, applicationId, confirmed)
     private val manualWorkouts = ManualWorkoutOperations(db, now)
     internal suspend fun manualWorkoutRun(key: String) = manualWorkouts.run(key)
     internal suspend fun beginManualWorkout(key: String) = manualWorkouts.begin(key)
