@@ -4,6 +4,26 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Empty private goal intent/history only; no suggested defaults become personal targets. */
+    val MIGRATION_14_15 = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS nutrition_goal_runs (id TEXT NOT NULL,kind TEXT NOT NULL,
+                payloadHash TEXT,outcome TEXT NOT NULL,versionId TEXT,recordedAt INTEGER NOT NULL,PRIMARY KEY(id))""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS nutrition_goal_versions (id TEXT NOT NULL,revision INTEGER NOT NULL,
+                previousId TEXT,runId TEXT NOT NULL,status TEXT NOT NULL,proposalId TEXT,effectiveFrom TEXT NOT NULL,
+                reason TEXT NOT NULL,recordedAt INTEGER NOT NULL,zoneId TEXT NOT NULL,PRIMARY KEY(id),
+                FOREIGN KEY(runId) REFERENCES nutrition_goal_runs(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(previousId) REFERENCES nutrition_goal_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(proposalId) REFERENCES nutrition_goal_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_nutrition_goal_versions_revision ON nutrition_goal_versions(revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_nutrition_goal_versions_runId ON nutrition_goal_versions(runId)")
+            db.execSQL("CREATE INDEX index_nutrition_goal_versions_previousId ON nutrition_goal_versions(previousId)")
+            db.execSQL("CREATE INDEX index_nutrition_goal_versions_proposalId ON nutrition_goal_versions(proposalId)")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS nutrition_goal_values (versionId TEXT NOT NULL,nutrient TEXT NOT NULL,
+                minimumText TEXT,maximumText TEXT,PRIMARY KEY(versionId,nutrient),
+                FOREIGN KEY(versionId) REFERENCES nutrition_goal_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+        }
+    }
     /** Add physical capacity history; do not infer occupied/free space or alter any old fact. */
     val MIGRATION_13_14 = object : Migration(13, 14) {
         override fun migrate(db: SupportSQLiteDatabase) {

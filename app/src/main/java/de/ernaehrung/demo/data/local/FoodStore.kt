@@ -73,6 +73,15 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun reviewStorageCapacity(key: String, input: StorageCapacityInput, confirmed: Boolean) =
         storageCapacity.save(key, input, confirmed)
     private val backups = FoodBackupStore(db, now)
+    private val nutritionGoals = NutritionGoalOperations(db, now)
+    internal fun watchNutritionGoals() = nutritionGoals.watch()
+    internal suspend fun readNutritionGoals() = db.withTransaction { nutritionGoals.snapshot() }
+    internal suspend fun proposeNutritionGoals(key: String, input: NutritionGoalDraftInput, saveRequested: Boolean) =
+        nutritionGoals.propose(key, input, saveRequested)
+    internal suspend fun confirmNutritionGoals(key: String, proposalId: String, reviewedBinding: String, confirmed: Boolean) =
+        nutritionGoals.confirm(key, proposalId, reviewedBinding, confirmed)
+    internal suspend fun eraseNutritionGoals(key: String, reviewedToken: String, confirmed: Boolean) =
+        nutritionGoals.erase(key, reviewedToken, confirmed)
     internal suspend fun captureBackup(applicationId: String, fitnessIncluded: Boolean, confirmed: Boolean) =
         backups.capture(applicationId, fitnessIncluded, confirmed)
     internal suspend fun validateBackupForPreview(archive: de.ernaehrung.demo.data.backup.BackupArchive, applicationId: String) =

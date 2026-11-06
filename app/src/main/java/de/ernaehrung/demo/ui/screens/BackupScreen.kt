@@ -72,7 +72,7 @@ internal fun BackupScreen(providedModel: BackupViewModel? = null, onFileWritten:
         Check("Gesundheits- und Fitnesshistorie ausdrücklich einschließen", includeFitness) {
             if (!state.busy) { includeFitness = it; exportConfirmed = false }
         }
-        if (includeFitness) Text("Zusätzlich: Körpermessungen, Training und lokale Health-Connect-Kopie einschließlich Korrekturhistorien. Auch diese Daten werden verschlüsselt; wähle bewusst einen passenden Speicherort.")
+        if (includeFitness) Text("Zusätzlich: Körpermessungen, persönliche Ernährungsziele, Training und lokale Health-Connect-Kopie einschließlich Korrekturhistorien. Auch diese Daten werden verschlüsselt; wähle bewusst einen passenden Speicherort.")
         SecretField("Sicherungspasswort · 12–1024 Zeichen", "backup_export_password", exportPassword, !state.busy) {
             exportPassword = it; exportConfirmed = false
         }

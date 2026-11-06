@@ -222,7 +222,7 @@ class BackupOnDeviceTest {
             assertEquals(sourceCount + 1, restored.foodDao().operationCount())
             models.forEach { it.clear() }
             restored.close()
-            restored = Room.databaseBuilder(target, FoodDatabase::class.java, targetName).addMigrations(FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
+            restored = Room.databaseBuilder(target, FoodDatabase::class.java, targetName).addMigrations(FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15).build()
             assertEquals(source.foodDao().allVersions(), restored.foodDao().allVersions())
             assertEquals(source.bodyDao().versions(), restored.bodyDao().versions())
             assertEquals(100_000L, restored.foodDao().balance(batch))
