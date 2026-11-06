@@ -76,13 +76,13 @@ class DataQualityUiTest {
             assertNull(db.foodDao().scanResolution(scan)); assertEquals(before, db.foodDao().operationCount())
             tap("workspace_back"); tap("quality_category_PRODUCT"); tap("quality_open_product:$old")
             waitTag("workspace_page_CATALOG")
-            compose.onNodeWithText("Lokalen Produktkatalog durchsuchen").assertTextContains(identity)
+            compose.onNodeWithTag("catalog_search", useUnmergedTree = true).assertTextContains(identity)
             tapText("Produkt speichern / neue Version"); tapText("Produkt")
             val option = "${input.name} · $identity"
             compose.waitUntil(25_000) { compose.onAllNodesWithText(option).fetchSemanticsNodes().size == 1 }
             compose.onNodeWithText(option).performScrollTo().performClick()
-            compose.onNodeWithText("Energie in kcal · optional").performScrollTo().performTextReplacement("0")
-            compose.onNodeWithText("Änderungsgrund").performScrollTo().performTextReplacement("Bekannte Null am Etikett ausdrücklich geprüft")
+            compose.onNodeWithTag("catalog_nutrient_ENERGY", useUnmergedTree = true).performScrollTo().performTextReplacement("0")
+            compose.onNodeWithTag("catalog_change_reason", useUnmergedTree = true).performScrollTo().performTextReplacement("Bekannte Null am Etikett ausdrücklich geprüft")
             tapText("Produkt lokal speichern")
             compose.waitUntil(25_000) { runBlocking { db.foodDao().latestVersion(identity)?.revision == 2 } }
             val fresh = db.foodDao().latestVersion(identity)!!
