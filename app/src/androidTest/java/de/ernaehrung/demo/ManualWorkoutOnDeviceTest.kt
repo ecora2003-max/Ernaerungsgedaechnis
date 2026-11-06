@@ -114,7 +114,7 @@ class ManualWorkoutOnDeviceTest {
             tap("workout_history_${current.id}"); waitTag("workout_version_${first.id}")
             compose.onNodeWithTag("workout_version_${first.id}").performScrollTo().assertTextContains("45,6000", substring = true)
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13).build()
+                .addMigrations(FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
             try {
                 assertEquals(13, reopened.openHelper.readableDatabase.version)
                 val sets = reopened.manualWorkoutDao().sets()

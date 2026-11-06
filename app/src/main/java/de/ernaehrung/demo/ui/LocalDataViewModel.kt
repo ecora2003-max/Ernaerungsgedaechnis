@@ -71,6 +71,9 @@ class LocalDataViewModel internal constructor(
     private val productLookup: ProductLookupGateway = OpenFoodFactsClient(),
     private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore
 ) : ViewModel() {
+    internal val storageCapacity: StateFlow<StorageCapacityUiState> = store.watchStorageCapacity()
+        .map { StorageCapacityUiState(it) }.catch { emit(StorageCapacityUiState(readError = true)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StorageCapacityUiState())
     val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
         .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())

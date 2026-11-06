@@ -156,7 +156,7 @@ class BackupOnDeviceTest {
             // Diagnose the real Android SQLite representation independently of
             // the external chooser; this is a read-only synthetic snapshot.
             val androidSnapshot = store.captureBackup(target.packageName, true, true)
-            assertEquals(45, androidSnapshot.tables.size)
+            assertEquals(46, androidSnapshot.tables.size)
             assertEquals(sourceCount, source.foodDao().operationCount())
             val sourceModel = model(store)
             mount(sourceModel, "source")
@@ -222,7 +222,7 @@ class BackupOnDeviceTest {
             assertEquals(sourceCount + 1, restored.foodDao().operationCount())
             models.forEach { it.clear() }
             restored.close()
-            restored = Room.databaseBuilder(target, FoodDatabase::class.java, targetName).addMigrations(FoodMigrations.MIGRATION_12_13).build()
+            restored = Room.databaseBuilder(target, FoodDatabase::class.java, targetName).addMigrations(FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
             assertEquals(source.foodDao().allVersions(), restored.foodDao().allVersions())
             assertEquals(source.bodyDao().versions(), restored.bodyDao().versions())
             assertEquals(100_000L, restored.foodDao().balance(batch))

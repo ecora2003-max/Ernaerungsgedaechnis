@@ -28,16 +28,17 @@ import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
 import de.ernaehrung.demo.ui.screens.DataQualityScreen
 import de.ernaehrung.demo.ui.screens.BatchReviewScreen
 import de.ernaehrung.demo.ui.screens.BackupScreen
+import de.ernaehrung.demo.ui.screens.StorageCapacityScreen
 import de.ernaehrung.demo.data.local.DataQualityTarget
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
-    PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
+    PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
     PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
-        STOCK, CATALOG, BATCH_REVIEW -> STOCK
+        STOCK, CATALOG, BATCH_REVIEW, STORAGE_CAPACITY -> STOCK
         SCAN -> SCAN
         PLAN -> PLAN
         else -> MORE
@@ -58,6 +59,7 @@ fun LocalWorkspaceApp() {
     var catalogFilter by rememberSaveable { mutableStateOf("") }
     var recognitionMode by rememberSaveable { mutableStateOf("Barcode & Produkt") }
     var selectedBatch by rememberSaveable { mutableStateOf("") }
+    var selectedStorageLocation by rememberSaveable { mutableStateOf<String?>(null) }
     if (demo) {
         BackHandler { demo = false }
         DemoApp()
@@ -97,7 +99,8 @@ fun LocalWorkspaceApp() {
                     if (page.section != null) {
                         LocalDataContent(model, page.section, initialRecognitionMode = recognitionMode, showSectionNavigation = false,
                             onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter,
-                            onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) })
+                            onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) },
+                            onOpenStorageCapacity = { selectedStorageLocation = it; go(WorkspacePage.STORAGE_CAPACITY) })
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
@@ -116,6 +119,8 @@ fun LocalWorkspaceApp() {
                         BatchReviewScreen(selectedBatch)
                     } else if (page == WorkspacePage.BACKUP) {
                         BackupScreen()
+                    } else if (page == WorkspacePage.STORAGE_CAPACITY) {
+                        StorageCapacityScreen(selectedStorageLocation, onCreateLocation = { go(WorkspacePage.STOCK) })
                     } else if (page == WorkspacePage.QUALITY) {
                         DataQualityScreen { issue ->
                             when (issue.target) {
@@ -139,7 +144,7 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }

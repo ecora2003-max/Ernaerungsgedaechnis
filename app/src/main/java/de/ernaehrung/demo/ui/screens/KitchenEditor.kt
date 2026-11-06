@@ -11,7 +11,8 @@ import de.ernaehrung.demo.ui.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
+internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
+    onOpenStorageCapacity: ((String?) -> Unit)? = null) {
     Heading("Rezepte & tatsächliche Herstellung", "Kochen ist kein Essen.")
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
@@ -77,7 +78,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
             }
         }
     }
-    if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model, productionPrefill)
+    if (state.recipes.isNotEmpty()) ProductionEditor(state, blocked, key, model, productionPrefill, onOpenStorageCapacity)
     // Consumption is a distinct user gesture and FoodStore transaction, never a side effect
     // of recipe save or production. Only released output batches are offered here.
     if (eligibleConsumptionBatches(state.batches, preparedOnly = true).isNotEmpty()) {
@@ -148,7 +149,7 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
 
 @Composable
 private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
-    preselected: ProductionPrefillUiState?) {
+    preselected: ProductionPrefillUiState?, onOpenStorageCapacity: ((String?) -> Unit)?) {
     var allocationMode by rememberSaveable { mutableStateOf("Chargen selbst eintragen") }
     var selected by rememberSaveable { mutableStateOf("") }
     var batches by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
@@ -159,9 +160,24 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var storageNote by rememberSaveable { mutableStateOf("") }
     var deviation by rememberSaveable { mutableStateOf("") }
     var useBy by rememberSaveable { mutableStateOf("") }
-    var checked by rememberSaveable { mutableStateOf(false) }
-    var released by rememberSaveable { mutableStateOf(false) }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
+    var checked by remember { mutableStateOf(false) }
+    var released by remember { mutableStateOf(false) }
+    var confirmed by remember { mutableStateOf(false) }
+    val capacityState by model.storageCapacity.collectAsStateWithLifecycle()
+    var useCapacity by remember { mutableStateOf(false) }
+    var outerVolume by remember { mutableStateOf("") }
+    var capacityConfirmed by remember { mutableStateOf(false) }
+    var capacityBasis by remember { mutableStateOf<String?>(null) }
+    val capacityData = capacityState.snapshot
+    val currentCapacity = capacityData?.history?.filter { it.locationId == location }?.maxByOrNull { it.revision }
+    val freeCapacity = if (currentCapacity == null || capacityData == null) null
+        else StorageCapacityRules.trustedFree(currentCapacity, capacityData.history, capacityData.reversedOperationIds)
+    val parsedOuterVolume = outerVolume.trim().toLongOrNull()?.takeIf { it >= 0L }
+    LaunchedEffect(useCapacity, location, currentCapacity?.id, capacityState.readError, capacityData?.reversedOperationIds) {
+        capacityBasis = if (useCapacity) currentCapacity?.id else null
+        capacityConfirmed = false
+        if (useCapacity) confirmed = false
+    }
     LaunchedEffect(preselected?.requestSequence) {
         if (preselected != null && state.recipes.any { it.id == preselected.recipeVersionId }) {
             selected = preselected.recipeVersionId
@@ -232,6 +248,26 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
         }
         IdPicker("Fertigportionen lagern in", state.locations.filter { it.confirmed }.map { it.id to it.name }, location) { location = it; confirmed = false; checked = false }
         Check("Platz, Behälter und geeignete Lagerbedingungen tatsächlich geprüft", checked) { checked = it; confirmed = false }
+        if (onOpenStorageCapacity != null) OutlinedButton({ onOpenStorageCapacity(location.takeIf { it.isNotBlank() }) },
+            enabled = !blocked, modifier = Modifier.testTag("production_open_capacity")) { Text("Lagerkapazität vor Ort prüfen") }
+        Check("Herstellung an strukturierte physische Kapazitätsprüfung binden", useCapacity) {
+            useCapacity = it; capacityConfirmed = false; confirmed = false
+        }
+        if (useCapacity) {
+            Text("Freier Platz der aktuellen Prüfgrundlage: ${freeCapacity?.let { "$it ml" } ?: "unbekannt"}",
+                Modifier.testTag("production_capacity_free"))
+            if (capacityState.readError) Text("Kapazitätsangaben nicht lesbar; strukturierte Herstellung bleibt gesperrt.")
+            if (currentCapacity == null) Text("Zuerst für diesen tatsächlich vorhandenen Lagerort eine physische Kapazitätsprüfung speichern.")
+            Field("Zusätzliches Behälter-Außenvolumen · ganze ml", outerVolume, {
+                outerVolume = it; capacityConfirmed = false; confirmed = false
+            }, modifier = Modifier.testTag("production_capacity_volume"))
+            Text("Leer bleibt unbekannt. 0 ist erlaubt, wenn bereits im belegten Platz enthaltene Behälter weiterverwendet werden. Keine Umrechnung aus Lebensmittelmasse oder Portionszahl.")
+            Check("Diese Kapazitätsfassung aktuell vor Ort geprüft und zusätzliches Außenvolumen bestätigen", capacityConfirmed) {
+                capacityConfirmed = it; confirmed = false
+            }
+            if (freeCapacity != null && parsedOuterVolume != null && parsedOuterVolume > freeCapacity)
+                Text("Zusätzliche Behälter überschreiten den bestätigten freien Platz.")
+        } else Text("Keine rechnerische Kapazitätsbindung gewählt. Tatsächlich verfügbaren Platz, Behälter und geeignete Bedingungen selbst prüfen und beschreiben; unbekannter Platz wird nicht als frei berechnet.")
         Field("Geprüfte Lagerbedingungen und Platz beschreiben", storageNote, { storageNote = it; confirmed = false })
         Field("Abweichungen von Rezeptmengen oder Ausbeute · falls nötig", deviation, { deviation = it; confirmed = false })
         Field("Verbrauchsdatum der Portionen · optional", useBy, { useBy = it; confirmed = false })
@@ -239,26 +275,38 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
         Hint("Unbekannte Haltbarkeit wird nicht berechnet. Keine automatische Sicherheitsfreigabe. Nährwerte entstehen aus den tatsächlich verwendeten Chargen; fehlende Werte bleiben offen.")
         var proposalApproved by remember(proposal?.digest, allocationMode, selected, portions, date,
             location, checked, storageNote, deviation, useBy, released, key) { mutableStateOf(false) }
-        val acceptedProposal = if (proposal == null) confirmed else proposal.complete && proposalApproved
+        val acceptedProposal = confirmed && (proposal == null || proposal.complete && proposalApproved)
         if (proposal == null || proposal.complete) {
             Check("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen", acceptedProposal) {
-                if (proposal == null) confirmed = it else proposalApproved = it
+                confirmed = it
+                if (proposal != null) proposalApproved = it
             }
         }
-        SaveButton("Herstellung buchen", blocked || selected.isEmpty() || proposal != null && !proposal.complete) {
+        val capacityReady = !useCapacity || (!capacityState.readError && currentCapacity != null &&
+            currentCapacity.id == capacityBasis && freeCapacity != null && parsedOuterVolume != null &&
+            parsedOuterVolume <= freeCapacity && capacityConfirmed)
+        SaveButton("Herstellung buchen", blocked || selected.isEmpty() || proposal != null && !proposal.complete || !capacityReady) {
             val recipeVersion = selected; val yield = portions; val day = date; val target = location
             val inputs = batches.zip(quantities).toList(); val storage = storageNote; val deviations = deviation.takeIf { it.isNotBlank() }
-            val conditions = checked; val accepted = acceptedProposal; val release = if (released) ReleaseStatus.RELEASED else ReleaseStatus.UNCHECKED
+            val conditions = checked
+            // Read confirmation state at this gesture, not an earlier composition.
+            val accepted = confirmed && (proposal == null || proposal.complete && proposalApproved) && (!useCapacity || capacityConfirmed)
+            val release = if (released) ReleaseStatus.RELEASED else ReleaseStatus.UNCHECKED
             val expiry = useBy.takeIf { it.isNotBlank() }
             val stockProposal = proposal
+            val bindCapacity = useCapacity; val basisToUse = capacityBasis
+            val volumeToUse = parsedOuterVolume; val spaceConfirmed = capacityConfirmed
             model.save(key) {
+                val capacityProof = if (bindCapacity) ProductionCapacityEvidence(
+                    requireNotNull(basisToUse) { "Kapazitätsfassung zuerst prüfen." },
+                    requireNotNull(volumeToUse) { "Zusätzliches Außenvolumen zuerst prüfen." }, spaceConfirmed) else null
                 val allocations = if (stockProposal == null) inputs.map { (id, amount) -> Allocation(id, Amounts.parse(amount)) }
                     else {
                         require(stockProposal.complete) { "Chargenvorschlag unvollständig. Tatsächliche Zutaten prüfen." }
                         stockProposal.allocations.map { Allocation(it.batchId, it.amount) }
                     }
                 produce(key, ProductionInput(recipeVersion, Amounts.parse(yield), allocations,
-                    target, day, conditions, storage, release, deviations, useBy = expiry), accepted)
+                    target, day, conditions, storage, release, deviations, useBy = expiry, capacityEvidence = capacityProof), accepted)
             }
         }
     }

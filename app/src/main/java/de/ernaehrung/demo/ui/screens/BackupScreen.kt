@@ -102,6 +102,7 @@ internal fun BackupScreen(providedModel: BackupViewModel? = null, onFileWritten:
         state.preview?.let { preview ->
             val archive = preview.archive
             Text("Geprüfte Sicherung vom ${Instant.ofEpochMilli(archive.createdAt)}", Modifier.testTag("backup_preview_ready"))
+            if (preview.olderSchema) Text("Ältere Sicherung: Alle Originaldaten bleiben erhalten. Für neu hinzugekommene Lagerkapazitätsprüfungen werden keine Angaben erfunden.", Modifier.testTag("backup_older_schema"))
             fun rows(name: String) = archive.tables.find { it.name == name }?.rows?.size ?: 0
             Text("${rows("products")} Produkte · ${rows("batches")} historische Chargen · ${rows("consumption_events")} Verzehrereignisse · ${rows("purchase_events")} Kaufereignisse")
             Text(if (archive.fitnessIncluded) "Gesundheits-/Fitnesshistorie eingeschlossen" else "Gesundheits-/Fitnesshistorie ausgeschlossen")
