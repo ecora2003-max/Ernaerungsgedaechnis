@@ -24,6 +24,10 @@ data class OperationDetails(val operation: OperationEntity, val reversal: Operat
 /** Internal write API: application callers must use FoodStore's validated transactions. No replace/upsert of history. */
 @Dao
 internal interface FoodDao {
+    @Query("SELECT * FROM training_events ORDER BY occurredAt DESC,id")
+    suspend fun legacyTrainingEvents(): List<TrainingEventEntity>
+    @Query("SELECT * FROM training_sets ORDER BY trainingId,position,id")
+    suspend fun legacyTrainingSets(): List<TrainingSetEntity>
     @Insert suspend fun insertProduct(value: ProductEntity)
     @Insert suspend fun insertVersion(value: ProductVersionEntity)
     @Insert suspend fun insertAlias(value: ProductAliasEntity)

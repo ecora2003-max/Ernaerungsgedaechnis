@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
-import androidx.health.connect.client.records.metadata.Metadata
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,7 +40,8 @@ private fun rememberFitnessModel(): FitnessViewModel {
 
 @Composable
 internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
-    onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null) {
+    onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null,
+    onOpenTraining: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -133,6 +133,9 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
         val visible = cache?.records.orEmpty().filter { it.visible }
         Text("Gespeicherte Trainings: ${visible.count { it.kind == FitnessRecordKind.WORKOUT.name }} · Schrittintervalle: ${visible.count { it.kind == FitnessRecordKind.STEPS.name }}",
             Modifier.testTag("fitness_record_counts"))
+        onOpenTraining?.let { open ->
+            OutlinedButton(open, Modifier.testTag("fitness_open_training")) { Text("Trainingsjournal öffnen") }
+        }
         nutritionContent?.invoke()
         visible.take(shown).forEach { row ->
             OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -142,12 +145,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                 Text("${time(row.startAt)} bis ${time(row.endAt)} · ${FitnessPresentation.duration(row.endAt - row.startAt)}",
                     Modifier.testTag("fitness_duration_${row.kind}_${row.externalId}"))
                 Text("Quelle: Samsung Health · ${row.manufacturer?.takeIf { it.isNotBlank() } ?: "Hersteller unbekannt"} · ${row.model?.takeIf { it.isNotBlank() } ?: "Gerätemodell unbekannt"}")
-                Text(when (row.recordingMethod) {
-                    Metadata.RECORDING_METHOD_MANUAL_ENTRY -> "In der Quelle manuell erfasst"
-                    Metadata.RECORDING_METHOD_ACTIVELY_RECORDED -> "In der Quelle aktiv aufgezeichnet"
-                    Metadata.RECORDING_METHOD_AUTOMATICALLY_RECORDED -> "In der Quelle automatisch aufgezeichnet"
-                    else -> "Aufzeichnungsmethode unbekannt"
-                })
+                Text(FitnessPresentation.recordingMethod(row.recordingMethod))
                 Text("Erfasster Gerätetyp: ${FitnessPresentation.device(row.deviceType)}")
                 if (row.kind == FitnessRecordKind.WORKOUT.name) {
                     Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}",
