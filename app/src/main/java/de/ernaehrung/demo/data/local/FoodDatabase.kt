@@ -139,6 +139,8 @@ internal interface FoodDao {
     @Query("SELECT * FROM product_versions ORDER BY name, revision DESC") fun observeVersions(): Flow<List<ProductVersionEntity>>
 
     @Query("SELECT * FROM operations WHERE id = :id") suspend fun operation(id: String): OperationEntity?
+    @Query("SELECT * FROM operations WHERE kind='LOCAL_BACKUP_RESTORE_V1' AND fingerprint=:fingerprint ORDER BY recordedAt,id LIMIT 1")
+    suspend fun backupRestoration(fingerprint: String): OperationEntity?
     @Query("""SELECT * FROM operations WHERE kind = 'RECIPE_DRAFT_ATTESTED_CONSENT_V1'
         AND resultId = :digest ORDER BY recordedAt, id""")
     suspend fun recipeDraftConsentsForDigest(digest: String): List<OperationEntity>

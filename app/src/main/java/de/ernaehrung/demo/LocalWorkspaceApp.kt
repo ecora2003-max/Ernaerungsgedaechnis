@@ -27,13 +27,14 @@ import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
 import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
 import de.ernaehrung.demo.ui.screens.DataQualityScreen
 import de.ernaehrung.demo.ui.screens.BatchReviewScreen
+import de.ernaehrung.demo.ui.screens.BackupScreen
 import de.ernaehrung.demo.data.local.DataQualityTarget
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG, BATCH_REVIEW -> STOCK
@@ -113,6 +114,8 @@ fun LocalWorkspaceApp() {
                         TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) })
                     } else if (page == WorkspacePage.BATCH_REVIEW) {
                         BatchReviewScreen(selectedBatch)
+                    } else if (page == WorkspacePage.BACKUP) {
+                        BackupScreen()
                     } else if (page == WorkspacePage.QUALITY) {
                         DataQualityScreen { issue ->
                             when (issue.target) {
@@ -136,7 +139,7 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }
