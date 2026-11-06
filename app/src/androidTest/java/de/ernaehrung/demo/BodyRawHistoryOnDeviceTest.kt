@@ -3,12 +3,16 @@ package de.ernaehrung.demo
 import android.content.Context
 import android.net.ConnectivityManager
 import android.os.Build
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
+import de.ernaehrung.demo.ui.Forest
 import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.flow.first
@@ -69,6 +73,19 @@ class BodyRawHistoryOnDeviceTest {
             compose.onNodeWithTag("body_raw_value_$corrected").assertDoesNotExist()
             tap("body_raw_period_DAYS_7")
             compose.onNodeWithTag("body_raw_count").performScrollTo().assertTextEquals("3 Messungen im Zeitraum · 2 außerhalb")
+            compose.onNodeWithTag("body_plot_count_WEIGHT__kg").performScrollTo()
+                .assertTextEquals("Rohmesspunkte · 2 darstellbar · 1 unbekannt")
+            val canvas = compose.onNodeWithTag("body_plot_WEIGHT__kg").performScrollTo().assertIsDisplayed()
+                .assertContentDescriptionEquals("2 einzelne Rohmesspunkte, 1 unbekannte Werte, 1 ausgeschlossene Messpunkte weiterhin sichtbar. Keine Verbindung oder Glättung.")
+            // Actual rendered chart, not just a label: the known-zero scale
+            // circle and excluded BIA cross must both produce their own pixels.
+            val pixels = canvas.captureToImage().toPixelMap()
+            val count = mutableMapOf<Int, Int>()
+            for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
+                val color = pixels[x, y].toArgb(); count[color] = (count[color] ?: 0) + 1
+            }
+            assertTrue("Known zero circle must actually render", (count[Forest.toArgb()] ?: 0) > 12)
+            assertTrue("Excluded BIA cross must actually render", (count[Color(0xFF945312).toArgb()] ?: 0) > 12)
             compose.onNodeWithTag("body_raw_gaps_WEIGHT_").performScrollTo().assertTextContains("5 Kalendertage", substring = true)
             compose.onNodeWithTag("body_raw_value_$excluded").performScrollTo().assertTextContains("9999,9999", substring = true)
             compose.onNodeWithText("Bioimpedanz · Geräteschätzung · Geräteschätzung").performScrollTo().assertIsDisplayed()
@@ -78,6 +95,8 @@ class BodyRawHistoryOnDeviceTest {
             compose.onNodeWithTag("body_raw_value_$outside").assertDoesNotExist()
             compose.activityRule.scenario.recreate(); waitTag("body_raw_value_$corrected")
             compose.onNodeWithTag("body_raw_period_DAYS_90").performScrollTo().assertIsSelected()
+            compose.onNodeWithTag("body_plot_count_WEIGHT__kg").performScrollTo()
+                .assertTextEquals("Rohmesspunkte · 3 darstellbar · 1 unbekannt")
             tap("body_raw_period_ALL"); waitTag("body_raw_value_$outside")
             assertEquals(originals, db.bodyDao().versions())
             db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM body_measurement_runs").use { it.moveToFirst(); assertEquals(runCount, it.getInt(0)) }

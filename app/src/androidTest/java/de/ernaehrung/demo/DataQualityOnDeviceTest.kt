@@ -33,8 +33,8 @@ class DataQualityOnDeviceTest {
     }
     private fun tapText(text: String) {
         finishEditing()
-        compose.waitUntil(25_000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().size == 1 }
-        compose.onNodeWithText(text).performScrollTo().performClick()
+        compose.waitUntil(25_000) { compose.onAllNodesWithText(text, useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
+        compose.onNodeWithText(text, useUnmergedTree = true).performScrollTo().performClick()
     }
 
     @Test fun actualQualityActionsCorrectOnlyTheReviewedProductAndRetainHistoricalDiaryGapsWithoutDisplayWrites() = runBlocking {
@@ -66,17 +66,20 @@ class DataQualityOnDeviceTest {
             assertEquals(before, db.foodDao().operationCount())
             tap("quality_category_RECEIPT"); tap("quality_open_scan:$scan")
             waitTag("workspace_page_SCAN")
-            compose.waitUntil(25_000) { compose.onAllNodesWithText("Geprüften Bon als bezahlten Einkauf übernehmen").fetchSemanticsNodes().size == 1 }
+            compose.waitUntil(25_000) { compose.onAllNodesWithText("Geprüften Bon als bezahlten Einkauf übernehmen", useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
             assertNull(db.foodDao().scanResolution(scan)); assertEquals(before, db.foodDao().operationCount())
             tap("workspace_back"); tap("quality_category_PRODUCT"); tap("quality_open_product:$old")
             waitTag("workspace_page_CATALOG")
-            compose.onNodeWithText("Lokalen Produktkatalog durchsuchen").assertTextContains(identity)
+            compose.onNodeWithTag("catalog_search", useUnmergedTree = true).assertTextContains(identity)
             tapText("Produkt speichern / neue Version"); tapText("Produkt")
             val option = "${input.name} · $identity"
-            compose.waitUntil(25_000) { compose.onAllNodesWithText(option).fetchSemanticsNodes().size == 1 }
-            compose.onNodeWithText(option).performScrollTo().performClick()
-            compose.onNodeWithText("Energie in kcal · optional").performScrollTo().performTextReplacement("0")
-            compose.onNodeWithText("Änderungsgrund").performScrollTo().performTextReplacement("Bekannte Null am Etikett ausdrücklich geprüft")
+            compose.waitUntil(25_000) { compose.onAllNodesWithText(option, useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
+            compose.onNodeWithText(option, useUnmergedTree = true).performScrollTo().performClick()
+            // Address the editable node directly. Merging label descendants
+            // during an off-main selector can race Compose's main-thread
+            // SnapshotStateObserver while the form is being laid out.
+            compose.onNodeWithTag("catalog_nutrient_ENERGY", useUnmergedTree = true).performScrollTo().performTextReplacement("0")
+            compose.onNodeWithTag("catalog_change_reason", useUnmergedTree = true).performScrollTo().performTextReplacement("Bekannte Null am Etikett ausdrücklich geprüft")
             tapText("Produkt lokal speichern")
             compose.waitUntil(25_000) { runBlocking { db.foodDao().latestVersion(identity)?.revision == 2 } }
             val fresh = db.foodDao().latestVersion(identity)!!

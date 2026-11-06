@@ -96,8 +96,8 @@ import de.ernaehrung.demo.navigation.*
         };if(open)content()
     }
 }
-@Composable fun Field(label:String,text:String,onChange:(String)->Unit,placeholder:String=""){
-    OutlinedTextField(text,onChange,Modifier.fillMaxWidth(),label={Text(label)},placeholder={Text(placeholder)},singleLine=true,shape=RoundedCornerShape(12.dp))
+@Composable fun Field(label:String,text:String,onChange:(String)->Unit,placeholder:String="",modifier:Modifier=Modifier){
+    OutlinedTextField(text,onChange,modifier.fillMaxWidth(),label={Text(label)},placeholder={Text(placeholder)},singleLine=true,shape=RoundedCornerShape(12.dp))
 }
 @Composable fun Picker(label:String,options:List<String>,selected:String,onSelect:(String)->Unit){var open by remember{mutableStateOf(false)}
     Box{

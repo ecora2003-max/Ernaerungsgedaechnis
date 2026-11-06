@@ -68,7 +68,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
     when (mode) {
         "Katalog" -> {
             Text("${state.catalog.size} gespeicherte Produkte · unabhängig vom Bestand")
-            Field("Lokalen Produktkatalog durchsuchen", catalogQuery, { catalogQuery = it })
+            Field("Lokalen Produktkatalog durchsuchen", catalogQuery, { catalogQuery = it }, modifier = Modifier.testTag("catalog_search"))
             ProductEditor(state, blocked, operationId, model)
             if (state.catalog.isEmpty()) Hint("Noch keine Produkte gespeichert. Der Katalog startet bewusst leer.", Sage)
             val filtered = state.catalog.filter { row -> listOfNotNull(row.version.name, row.version.brand, row.version.barcode,
@@ -185,7 +185,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
         Nutrient.entries.take(5).forEach { nutrient ->
             Field("${nutrient.label} in ${nutrient.unit} · optional", nutrientTexts[nutrient.ordinal], { text ->
                 nutrientTexts = nutrientTexts.toMutableList().apply { this[nutrient.ordinal] = text }
-            })
+            }, modifier = Modifier.testTag("catalog_nutrient_${nutrient.name}"))
         }
         Fold("Weitere Produktnährstoffe") {
             Nutrient.entries.drop(5).forEach { nutrient ->
@@ -194,7 +194,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
                 })
             }
         }
-        Field("Änderungsgrund", reason, { reason = it })
+        Field("Änderungsgrund", reason, { reason = it }, modifier = Modifier.testTag("catalog_change_reason"))
         SaveButton("Produkt lokal speichern", busy || stale) {
             // Capture this form before launching; edits during a save cannot change its request.
             val productName = name; val productBrand = brand; val values = nutrientTexts.toList()
