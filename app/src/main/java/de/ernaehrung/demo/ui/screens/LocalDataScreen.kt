@@ -43,11 +43,11 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 /** Shared actual editors for the primary workspace and the explicit design tour. */
 @Composable
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
-    showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null) {
+    showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "") {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
-    var catalogQuery by rememberSaveable { mutableStateOf("") }
+    var catalogQuery by rememberSaveable(initialCatalogQuery) { mutableStateOf(initialCatalogQuery) }
     var operationId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     val blocked = save.busy || save.succeeded
 
@@ -155,6 +155,7 @@ internal fun WrappingChoices(options: List<String>, selected: String, tagPrefix:
 @Composable
 private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: String, model: LocalDataViewModel) {
     var selected by rememberSaveable { mutableStateOf("") }
+    var selectedVersion by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var brand by rememberSaveable { mutableStateOf("") }
     var unitName by rememberSaveable { mutableStateOf(BaseUnit.GRAM.name) }
@@ -165,6 +166,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
             state.catalog.find { it.version.productId == selected }?.version?.name ?: "Neues Produkt") { choice ->
             val row = state.catalog.find { it.version.name + " · " + it.version.productId == choice }
             selected = row?.version?.productId.orEmpty(); name = row?.version?.name.orEmpty()
+            selectedVersion = row?.version?.id.orEmpty()
             brand = row?.version?.brand.orEmpty(); unitName = (row?.version?.baseUnit ?: BaseUnit.GRAM).name
             nutrientTexts = Nutrient.entries.map { nutrient -> row?.version?.nutrient(nutrient)?.toString()?.replace('.', ',').orEmpty() }
             reason = ""
@@ -173,7 +175,9 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
         Field("Marke · optional", brand, { brand = it })
         if (selected.isEmpty()) Picker("Basiseinheit", BaseUnit.entries.map { it.label }, BaseUnit.valueOf(unitName).label) { label -> unitName = BaseUnit.entries.first { it.label == label }.name }
         val unit = BaseUnit.valueOf(unitName)
-        val previous = state.catalog.find { it.version.productId == selected }?.version
+        val previous = state.versions.find { it.id == selectedVersion }
+        val stale = selected.isNotEmpty() && (previous == null || state.catalog.find { it.version.productId == selected }?.version?.id != selectedVersion)
+        if (stale) Hint("Produktfassung inzwischen geändert. Aktuelle Fassung erneut auswählen und Angaben prüfen.")
         val basis = previous?.nutritionBasis ?: if (unit == BaseUnit.PORTION) 1000L else 100_000L
         Text("Nährwerte je ${Amounts.format(basis)} ${unit.label}. Leer bedeutet unbekannt, 0 bedeutet bekannte Null.")
         Nutrient.entries.take(5).forEach { nutrient ->
@@ -189,7 +193,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
             }
         }
         Field("Änderungsgrund", reason, { reason = it })
-        SaveButton("Produkt lokal speichern", busy) {
+        SaveButton("Produkt lokal speichern", busy || stale) {
             // Capture this form before launching; edits during a save cannot change its request.
             val productName = name; val productBrand = brand; val values = nutrientTexts.toList()
             val productId = selected.takeIf { it.isNotEmpty() }; val change = reason
@@ -198,7 +202,7 @@ private fun ProductEditor(state: LocalDataState, busy: Boolean, operationId: Str
                 val parsed = Nutrient.entries.associateWith { optionalNutrient(values[it.ordinal]) }
                 rememberProduct(operationId, base.copy(name = productName, brand = productBrand, source = Source.USER,
                     quality = Quality.UNKNOWN, sourceDetail = previous?.let { "Manuelle Bearbeitung; vorige Version ${it.id}" })
-                    .withNutrients(parsed), productId, change)
+                    .withNutrients(parsed), productId, change, expectedVersionId = previous?.id)
             }
         }
     }

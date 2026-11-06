@@ -25,12 +25,14 @@ import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
 import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
+import de.ernaehrung.demo.ui.screens.DataQualityScreen
+import de.ernaehrung.demo.data.local.DataQualityTarget
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG -> STOCK
@@ -51,6 +53,8 @@ fun LocalWorkspaceApp() {
     val entry by nav.currentBackStackEntryAsState()
     val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route } ?: WorkspacePage.HOME
     var demo by rememberSaveable { mutableStateOf(false) }
+    var catalogFilter by rememberSaveable { mutableStateOf("") }
+    var recognitionMode by rememberSaveable { mutableStateOf("Barcode & Produkt") }
     if (demo) {
         BackHandler { demo = false }
         DemoApp()
@@ -88,8 +92,8 @@ fun LocalWorkspaceApp() {
                     .verticalScroll(rememberScrollState()).padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (page.section != null) {
-                        LocalDataContent(model, page.section, showSectionNavigation = false,
-                            onOpenPurchases = { go(WorkspacePage.PURCHASES) })
+                        LocalDataContent(model, page.section, initialRecognitionMode = recognitionMode, showSectionNavigation = false,
+                            onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter)
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
@@ -104,10 +108,27 @@ fun LocalWorkspaceApp() {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
                     } else if (page == WorkspacePage.TRAINING) {
                         TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) })
+                    } else if (page == WorkspacePage.QUALITY) {
+                        DataQualityScreen { issue ->
+                            when (issue.target) {
+                                DataQualityTarget.CATALOG -> { catalogFilter = issue.argument.orEmpty(); go(WorkspacePage.CATALOG) }
+                                DataQualityTarget.ALIASES -> { recognitionMode = "Aliase"; go(WorkspacePage.SCAN) }
+                                DataQualityTarget.SCAN -> {
+                                    issue.argument?.let(model::showReceiptReview)
+                                    recognitionMode = "Bon & OCR"; go(WorkspacePage.SCAN)
+                                }
+                                DataQualityTarget.PURCHASES -> go(WorkspacePage.PURCHASES)
+                                DataQualityTarget.STOCK -> go(WorkspacePage.STOCK)
+                                DataQualityTarget.NUTRITION -> {
+                                    issue.argument?.let(model::showDay); go(WorkspacePage.NUTRITION)
+                                }
+                                DataQualityTarget.KITCHEN -> go(WorkspacePage.KITCHEN)
+                            }
+                        }
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }
@@ -126,7 +147,7 @@ fun LocalWorkspaceApp() {
                         }
                         listOf(WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.STOCK, WorkspacePage.SCAN,
                             WorkspacePage.KITCHEN, WorkspacePage.PLAN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.CATALOG).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.CATALOG, WorkspacePage.QUALITY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Hint("Nur Testdaten eingeben. Sie bleiben nach Neustart erhalten. Vorschläge und Pläne sind keine Einkäufe oder Verzehre.", Sage)
