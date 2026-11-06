@@ -63,9 +63,18 @@ class BackupOnDeviceTest {
     }
     private fun saveDocument(name: String, model: BackupViewModel) {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        val documentPackages = setOf("com.google.android.documentsui", "com.android.documentsui")
+        // Encryption completes off the UI thread, then a Compose LaunchedEffect
+        // starts the picker. A native-only wait does not advance Compose's test
+        // clock, leaving that recomposition/effect frozen. Wait for the actual
+        // platform Activity while driving frames; never repeat the export click.
+        compose.waitUntil(90_000) {
+            model.state.value.error != null || device.currentPackageName in documentPackages
+        }
+        assertNull("Backup preparation failed", model.state.value.error)
         val editor = device.wait(Until.findObject(By.res("android:id/title").clazz("android.widget.EditText")), 15_000L)
         assertNotNull("Real DocumentsUI filename editor required; backup preparation busy=${model.state.value.busy}, error=${model.state.value.error}", editor)
-        assertTrue(device.currentPackageName in setOf("com.google.android.documentsui", "com.android.documentsui"))
+        assertTrue(device.currentPackageName in documentPackages)
         requireNotNull(editor).text = name
         device.waitForIdle(1_500L)
         val save = device.wait(Until.findObject(By.res("android:id/button1").enabled(true)), 15_000L)
