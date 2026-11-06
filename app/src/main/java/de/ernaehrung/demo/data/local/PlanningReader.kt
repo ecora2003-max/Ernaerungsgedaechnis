@@ -12,7 +12,7 @@ internal class PlanningReader(private val db: FoodDatabase, private val now: () 
     private val dao = db.foodDao()
     fun watch(startsOn: String, endsOn: String) = db.invalidationTracker.createFlow(
         "plans", "planned_entries", "plan_series", "product_versions", "recipe_versions", "recipe_ingredients",
-        "batches", "stock_movements", "operation_reversals", "storage_locations", "plan_positions", "plan_executions",
+        "batches", "batch_reviews", "stock_movements", "operation_reversals", "storage_locations", "plan_positions", "plan_executions",
         "operations", "consumption_events", "productions"
     ).map { report(startsOn, endsOn) }.distinctUntilChanged()
 

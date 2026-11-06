@@ -50,7 +50,9 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
     suspend fun read(capturedAt: Instant): RecipeContextContentBinding.Snapshot? {
         val asOfMillis = capturedAt.toEpochMilli()
         if (asOfMillis < 0L) return null
-        val rows = dao.planningBatches()
+        // A later safety review must not rewrite an earlier contextual snapshot.
+        val reviews = dao.batchReviewsAt(asOfMillis).associateBy { it.batchId }
+        val rows = dao.originalPlanningBatches().map { row -> row.copy(batch = row.batch.withReview(reviews[row.batch.id])) }
         // Inner joins to product versions and locations can silently hide damaged
         // legacy batches. A partial projection is not an independently verified
         // stock snapshot, even if the hidden batch currently has zero movements.
@@ -269,7 +271,7 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         val ordered = rows.sortedBy { it.batch.id }
         // Include non-visible batches and movement identities in the revision:
         // a release, reversal or compensating movement must invalidate an old review.
-        val revision = WriteRules.fingerprint("RECIPE_ROOM_STOCK_REVISION_V1",
+        val baseRevision = WriteRules.fingerprint("RECIPE_ROOM_STOCK_REVISION_V1",
             ordered.map { row ->
                 val b = row.batch
                 listOf(b.id, b.versionId, b.locationId, b.originOperationId,
@@ -289,6 +291,12 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 it.consumptionOccurredAt, it.allocationAmount,
                 it.consumptionAllocatedTotal, it.unmatchedConsumptionAllocations) },
             eligibleBatchIds.sorted())
+        val revision = if (reviews.isEmpty()) baseRevision else WriteRules.fingerprint(
+            "RECIPE_ROOM_STOCK_BATCH_REVIEWS_V1", baseRevision, reviews.values.sortedBy { it.batchId }.map {
+                listOf(it.id, it.batchId, it.revision, it.previousId, it.operationId, it.recordedAt,
+                    it.source, it.quality, it.reason, it.conditionsConfirmed, it.acquiredOn, it.bestBefore, it.useBy,
+                    it.openedAt, it.thawedAt, it.openedAtText, it.thawedAtText, it.release, it.safetyNote)
+            })
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds
         }.map { row ->

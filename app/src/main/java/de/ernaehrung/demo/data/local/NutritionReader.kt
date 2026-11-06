@@ -10,7 +10,7 @@ internal class NutritionReader(private val db: FoodDatabase) {
     private val dao = db.foodDao()
     fun watchDay(date: String): Flow<DayNutrition> = invalidations().map { day(date) }.distinctUntilChanged()
     fun watchRecipe(id: String): Flow<NutritionResult> = invalidations().map { recipe(id) }.distinctUntilChanged()
-    private fun invalidations() = db.invalidationTracker.createFlow("product_versions", "batches", "stock_movements",
+    private fun invalidations() = db.invalidationTracker.createFlow("product_versions", "batches", "batch_reviews", "stock_movements",
         "productions", "recipe_versions", "recipe_ingredients", "consumption_events", "operation_reversals", "diary_days", "operations")
 
     suspend fun day(date: String): DayNutrition = db.withTransaction {

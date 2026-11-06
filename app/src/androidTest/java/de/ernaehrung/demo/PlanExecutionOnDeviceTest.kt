@@ -146,7 +146,7 @@ class PlanExecutionOnDeviceTest {
             assertEquals(nutritionBefore, store.dayNutrition(day.toString()))
 
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
+                .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13).build()
             try {
                 val restarted = FoodStore(reopened)
                 assertEquals(100_000L, restarted.planExecution(entry.id).status.remainingAmount)

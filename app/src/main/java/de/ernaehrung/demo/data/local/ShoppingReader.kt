@@ -14,7 +14,7 @@ internal class ShoppingReader(private val db: FoodDatabase, private val now: () 
     private val dao = db.foodDao()
     fun watch(scope: ShoppingScope) = db.invalidationTracker.createFlow("price_observations", "budgets", "shopping_marks",
         "operations", "plans", "planned_entries", "plan_executions", "plan_positions", "product_versions", "recipe_versions",
-        "recipe_ingredients", "batches", "stock_movements", "operation_reversals", "storage_locations", "consumption_events", "productions",
+        "recipe_ingredients", "batches", "batch_reviews", "stock_movements", "operation_reversals", "storage_locations", "consumption_events", "productions",
         "purchase_events", "receipts", "expense_status_events")
         .map { report(scope) }.distinctUntilChanged()
 
