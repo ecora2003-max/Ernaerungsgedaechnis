@@ -23,6 +23,7 @@ import de.ernaehrung.demo.ui.screens.rememberLocalDataViewModel
 import de.ernaehrung.demo.ui.screens.FitnessScreen
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
+import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
@@ -89,8 +90,12 @@ fun LocalWorkspaceApp() {
                         LocalDataContent(model, page.section, showSectionNavigation = false,
                             onOpenPurchases = { go(WorkspacePage.PURCHASES) })
                     } else if (page == WorkspacePage.FITNESS) {
+                        val daily by model.daily.collectAsStateWithLifecycle()
+                        val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
-                            onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) })
+                            onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
+                                FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
+                            })
                     } else if (page == WorkspacePage.BODY) {
                         BodyMeasurementScreen()
                     } else if (page == WorkspacePage.BODY_RAW) {

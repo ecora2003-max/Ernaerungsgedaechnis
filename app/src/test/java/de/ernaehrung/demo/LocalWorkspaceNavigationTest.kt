@@ -16,7 +16,8 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [34], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class LocalWorkspaceNavigationTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val database: org.junit.rules.TestRule = IsolatedWorkspaceDatabase()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun tap(text: String) = rule.onNodeWithText(text).performScrollTo().performClick()
 
     @Test fun defaultNavigationUsesActualRoomDataAndExplicitMealSurvivesActivityRecreation() = runBlocking {
