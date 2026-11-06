@@ -4,7 +4,7 @@ Stand 06.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EX
 
 ## 1. Version / unveränderliche Vertrags-SHAs
 
-- [ ] Alle fünf Leserepositories bei jeder Integrationsphase auf aktuellen HEAD und den konkret **getesteten** Commit pinnen; beide SHAs getrennt dokumentieren, falls ungleich.
+- [ ] Alle fünf bisherigen Architektur-/Fach-Leserepositories und das neue Zusatzrepo [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik) bei relevanter Integrationsarbeit auf aktuellen HEAD und konkret **getesteten** Commit pinnen; beide SHAs getrennt dokumentieren, falls ungleich. Das neue Repo ist Recherche-Referenz, kein zusätzlicher schreibender Codezulieferer.
 - [ ] `EG-Architecture/contracts/v1`: `1.0.0-draft`, `contracts/v1/contract.schema.json` Blob `bedde4677342817fe6b883962c8dfbbd60100072`; nicht als STABLE behaupten.
 - [ ] `EG-Architecture/contracts/v1.1`: **separater, nicht freigegebener Entwurf** `1.1.0-draft`, aktueller Blob `dca777d219307a90bf3d4dff6189fbf12476c508`. Neue Felder `unknownNeeds[]`, `packageLines[]` und `savingsBasis=MERCHANDISE_ONLY` dürfen v1 nicht still verändern.
 - [ ] Jede übernommene Nachrichtenstruktur vollständig gegen exakt die gepinnte Vertragsversion plus semantische Host-Tests prüfen, einschließlich Null vs 0, Integer-Cents, Menge/Basis, Händler-/Filiale, UTC-Offset/Gültigkeit, Quelle/Rechte, Provenienz.
