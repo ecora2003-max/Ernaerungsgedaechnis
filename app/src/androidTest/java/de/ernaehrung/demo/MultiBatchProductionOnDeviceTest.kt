@@ -22,18 +22,7 @@ import org.junit.runner.RunWith
 class MultiBatchProductionOnDeviceTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
     @Before fun unlockFixture() = prepareUnlockedTestDevice()
-    private fun finishEditing() {
-        rule.runOnUiThread {
-            (rule.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                .hideSoftInputFromWindow(rule.activity.window.decorView.windowToken, 0)
-        }
-        rule.waitUntil(5_000) {
-            Build.VERSION.SDK_INT < 30 || rule.activity.window.decorView.rootWindowInsets
-                ?.isVisible(WindowInsets.Type.ime()) != true
-        }
-        rule.waitForIdle()
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(1_500L)
-    }
+    private fun finishEditing() = finishDeviceTextEditing(compose)
     private fun waitTag(tag: String) = rule.waitUntil(25_000) {
         rule.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1
     }

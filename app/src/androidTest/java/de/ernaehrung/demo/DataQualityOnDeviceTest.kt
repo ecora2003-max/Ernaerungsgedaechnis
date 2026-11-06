@@ -25,16 +25,7 @@ class DataQualityOnDeviceTest {
     private fun waitTag(tag: String) = compose.waitUntil(25_000) {
         compose.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1
     }
-    private fun finishEditing() {
-        compose.runOnUiThread {
-            (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                .hideSoftInputFromWindow(compose.activity.window.decorView.windowToken, 0)
-        }
-        compose.waitUntil(5_000) {
-            Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) != true
-        }
-        compose.waitForIdle()
-    }
+    private fun finishEditing() = finishDeviceTextEditing(compose)
     private fun tap(tag: String) {
         finishEditing(); waitTag(tag)
         if (tag.startsWith("workspace_tab_") || tag == "workspace_back") compose.onNodeWithTag(tag).performClick()
