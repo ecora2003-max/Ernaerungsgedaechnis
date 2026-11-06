@@ -4,6 +4,36 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Additive manual training versions; all prior food/body/health rows stay unchanged. */
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `manual_workout_runs` (`id` TEXT NOT NULL,
+                `kind` TEXT NOT NULL, `fingerprint` TEXT NOT NULL, `resultId` TEXT,
+                `recordedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `manual_workout_versions` (`id` TEXT NOT NULL,
+                `seriesId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `previousId` TEXT, `legacyOriginId` TEXT,
+                `runId` TEXT NOT NULL, `sport` TEXT NOT NULL, `localDate` TEXT NOT NULL, `localTime` TEXT,
+                `zoneId` TEXT, `explicitOffset` TEXT, `utc` TEXT, `offsetSeconds` INTEGER,
+                `timePrecision` TEXT NOT NULL, `endUtc` TEXT, `rawDurationMinutes` TEXT, `durationMinutes` TEXT,
+                `rawDistanceMetres` TEXT, `distanceMetres` TEXT, `intensity` TEXT, `effort` TEXT, `device` TEXT,
+                `conditions` TEXT, `note` TEXT, `source` TEXT NOT NULL, `quality` TEXT NOT NULL,
+                `correctionReason` TEXT, PRIMARY KEY(`id`),
+                FOREIGN KEY(`runId`) REFERENCES `manual_workout_runs`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`previousId`) REFERENCES `manual_workout_versions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`legacyOriginId`) REFERENCES `training_events`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_workout_versions_runId` ON `manual_workout_versions` (`runId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_workout_versions_previousId` ON `manual_workout_versions` (`previousId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_workout_versions_legacyOriginId` ON `manual_workout_versions` (`legacyOriginId`)")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_workout_versions_seriesId_revision` ON `manual_workout_versions` (`seriesId`, `revision`)")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `manual_workout_sets` (`id` TEXT NOT NULL,
+                `versionId` TEXT NOT NULL, `position` INTEGER NOT NULL, `exercise` TEXT NOT NULL,
+                `rawRepetitions` TEXT, `repetitions` INTEGER, `rawLoadKg` TEXT, `loadKg` TEXT,
+                `effort` TEXT, `note` TEXT, PRIMARY KEY(`id`),
+                FOREIGN KEY(`versionId`) REFERENCES `manual_workout_versions`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_manual_workout_sets_versionId_position` ON `manual_workout_sets` (`versionId`, `position`)")
+        }
+    }
+
     /** Exact scalar body observations. Old body, health and food history is untouched. */
     val MIGRATION_9_10 = object : Migration(9, 10) {
         override fun migrate(db: SupportSQLiteDatabase) {

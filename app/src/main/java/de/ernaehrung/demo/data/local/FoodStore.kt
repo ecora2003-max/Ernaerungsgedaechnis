@@ -63,6 +63,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val body = BodyMeasurementOperations(db, now)
     private val trainingJournal = TrainingJournalReader(db)
     internal fun trainingJournal() = trainingJournal.observe()
+    private val manualWorkouts = ManualWorkoutOperations(db, now)
+    internal suspend fun manualWorkoutRun(key: String) = manualWorkouts.run(key)
+    internal suspend fun beginManualWorkout(key: String) = manualWorkouts.begin(key)
+    internal fun watchManualWorkoutRun(key: String) = manualWorkouts.observeRun(key)
+    internal suspend fun saveManualWorkout(key: String, input: de.ernaehrung.demo.data.fitness.ManualWorkoutInput,
+        previousId: String?, legacyId: String?, confirmed: Boolean) = manualWorkouts.save(key, input, previousId, legacyId, confirmed)
+    internal suspend fun purgeManualWorkouts(key: String, confirmed: Boolean) = manualWorkouts.purge(key, confirmed)
     internal fun bodyMeasurementHistory() = body.observe()
     internal suspend fun bodyMeasurementRun(key: String) = body.run(key)
     internal suspend fun saveBodyMeasurement(key: String, input: de.ernaehrung.demo.data.fitness.BodyMeasurementInput,
