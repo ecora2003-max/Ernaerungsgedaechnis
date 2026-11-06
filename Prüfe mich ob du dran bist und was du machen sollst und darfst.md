@@ -4,7 +4,7 @@
 
 **Ausschließlich Codex** entwickelt und integriert die Android-App im Hauptrepository `ecora2003-max/Ernaerungsgedaechnis`. Die früheren A/B/III/IV-Automatisierungen bleiben pausiert und dürfen nicht selbständig reaktiviert werden. Die GitHub-Sperrdateien, Token-/Heartbeat-Protokolle und automatische Lock-Recovery sind abgeschafft; niemals erneut anlegen oder als Schreibvoraussetzung verwenden.
 
-Nur lesen: `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsintelligenz` und `EG-Rezept-KI`. Nicht in Fremdrepositories schreiben, keine Force-Pushes, keine Überschreibung fremder Arbeit, keine produktive Datenmigration.
+Nur lesen: `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsintelligenz`, `EG-Rezept-KI` und zusätzlich **[`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik)** (Picnic-/Knuspr-API-Recherche). Nicht in Fremdrepositories schreiben, keine Force-Pushes, keine Überschreibung fremder Arbeit, keine produktive Datenmigration.
 
 ## Chronologischer Einstieg und Fortsetzung
 
@@ -19,6 +19,8 @@ Nur lesen: `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsin
 Einkauf: Bon/Kamera/OCR → Artikel-/Versions-/Filialkorrektur → ausdrücklicher Kauf → FoodStore → Bestand/private historische Preise → zeit-/rechtekorrekter Vergleich → FEFO-/Bedarf-/Gebinde-/Budgetvorschlag. Vorschläge buchen nichts.
 
 Rezepte: Offlinegenerator → Kontext-/Allergen-/Mengen-/Zustands-/Versionsprüfung → Vorschau → authentifizierte Bestätigung → FoodStore-validierter Save → bestätigte Herstellung → separat bestätigter Verzehr. Alle acht Kontextkombinationen, Änderung, Abbruch, Retry, Neustart, Offline und Datenschutz prüfen.
+
+**Picnic UND Knuspr – zusätzlich verbindlich:** Beide Online-Supermärkte in die echte Android-Einkaufsliste integrieren: nach belegten Fähigkeiten suchen, Sortiment/Preise/Angebote/Lieferverfügbarkeit anzeigen, Packungen vergleichen, ausgewählte Artikel nach ausdrücklicher Freigabe in den jeweiligen Warenkorb übernehmen und einen nutzerbestätigten Bestellpfad bzw. offiziellen Checkout-Handoff bereitstellen. Picnic nutzt laut Referenz derzeit nur einen inoffiziell dokumentierten API-Kandidaten; Knuspr hat eine offiziell dokumentierte OAuth-MCP-Schnittstelle. **Recherche ist noch kein getesteter Connector.** Zuerst [`piknik`](https://github.com/ecora2003-max/piknik) lesen; vollständige Ziel- und Nachweisvorgaben: [docs/PICNIC_KNUSPR_INTEGRATION.md](docs/PICNIC_KNUSPR_INTEGRATION.md). Weder unfreigegebene Live-Daten noch automatische Bestellung; existierende Offlinefunktionen bleiben nutzbar.
 
 Fitness: K01–K04 und echter automatischer Galaxy-Watch-4-Schritt-/Workoutimport gemäß [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253); kein Mock-/Emulatorbeleg als physische Watch-Abnahme.
 
