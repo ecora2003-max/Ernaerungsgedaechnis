@@ -61,10 +61,10 @@ class BackupOnDeviceTest {
         compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("backup_result") and hasText(value, substring = true)).fetchSemanticsNodes().size == 1 }
         compose.onNodeWithTag("backup_result").performScrollTo().assertTextContains(value, substring = true)
     }
-    private fun saveDocument(name: String) {
+    private fun saveDocument(name: String, model: BackupViewModel) {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         val editor = device.wait(Until.findObject(By.res("android:id/title").clazz("android.widget.EditText")), 15_000L)
-        assertNotNull("Real DocumentsUI filename editor required", editor)
+        assertNotNull("Real DocumentsUI filename editor required; backup preparation busy=${model.state.value.busy}, error=${model.state.value.error}", editor)
         assertTrue(device.currentPackageName in setOf("com.google.android.documentsui", "com.android.documentsui"))
         requireNotNull(editor).text = name
         device.waitForIdle(1_500L)
@@ -140,12 +140,17 @@ class BackupOnDeviceTest {
             val batch = store.receive("source-receive", BatchInput(version, location, 100_000, day), true)
             store.saveBodyMeasurement("source-body", BodyMeasurementInput(BodyMetric.WEIGHT, "73,0400", day), null, true)
             val sourceCount = source.foodDao().operationCount()
+            // Diagnose the real Android SQLite representation independently of
+            // the external chooser; this is a read-only synthetic snapshot.
+            val androidSnapshot = store.captureBackup(target.packageName, true, true)
+            assertEquals(45, androidSnapshot.tables.size)
+            assertEquals(sourceCount, source.foodDao().operationCount())
             val sourceModel = model(store)
             mount(sourceModel, "source")
             text("Gesundheits- und Fitnesshistorie ausdrücklich einschließen")
             input("backup_export_password", password); input("backup_export_repeat", password)
             text("Diesen genauen Datenumfang verschlüsselt in einer von mir gewählten Datei speichern")
-            tap("backup_export"); saveDocument(fileName)
+            tap("backup_export"); saveDocument(fileName, sourceModel)
             result("Verschlüsselte Sicherung gespeichert")
             compose.waitUntil(25_000) { written.get() != null }
             val uri = requireNotNull(written.get())
