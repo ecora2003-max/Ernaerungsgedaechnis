@@ -15,10 +15,12 @@ internal data class BackupRestoreResult(val status: BackupRestoreStatus, val dig
 internal class FoodBackupStore(private val db: FoodDatabase, private val now: () -> Long) {
     companion object {
         internal val FITNESS_TABLES = setOf("health_import_state", "health_import_runs", "health_source_record_versions",
+            "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "body_measurements", "body_measurement_runs", "body_measurement_versions", "training_events", "training_sets",
             "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
         internal val TABLES = setOf("alias_decisions",
+            "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "storage_capacity_reviews",
             "batch_reviews",
             "batches",
@@ -163,12 +165,23 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         currentSchema: Map<String, List<Column>>): BackupArchive {
         val archive = if (original.databaseVersion == sql.version && original.identityHash == identity(sql)) original
         else {
-            require(sql.version == 14 && original.databaseVersion == 13 &&
-                original.identityHash == "ddbdbf0fb475ae9d3a5c9a40b4284aa3" &&
-                original.tables.map { it.name }.toSet() == TABLES - "storage_capacity_reviews" && original.tables.size == TABLES.size - 1) {
+            val goals = setOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values")
+            val missing = when (original.databaseVersion) {
+                13 -> goals + "storage_capacity_reviews"
+                14 -> goals
+                else -> emptySet()
+            }
+            val pin = when (original.databaseVersion) {
+                13 -> "ddbdbf0fb475ae9d3a5c9a40b4284aa3"
+                14 -> "adf43266f88da0de1632891687871124"
+                else -> null
+            }
+            require(sql.version == 15 && pin != null && original.identityHash == pin &&
+                original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            original.copy(databaseVersion = 14, identityHash = identity(sql), tables = original.tables +
-                BackupTable("storage_capacity_reviews", currentSchema.getValue("storage_capacity_reviews").map { it.name }, emptyList()))
+            original.copy(databaseVersion = 15, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
+                BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
+            })
         }
         validate(archive, currentSchema)
         return archive
@@ -226,9 +239,10 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         this[enabled] = BackupCell.Integer(0)
         this[revision] = BackupCell.Integer(Math.addExact((this[revision] as BackupCell.Integer).value, 1L))
     }
-    private fun requireConsistent(sql: SupportSQLiteDatabase) {
+    private suspend fun requireConsistent(sql: SupportSQLiteDatabase) {
         sql.query("PRAGMA foreign_key_check").use { require(!it.moveToFirst()) { "Fremdschlüssel der Sicherung sind nicht vollständig erhalten." } }
         sql.query("SELECT batchId FROM stock_movements GROUP BY batchId HAVING SUM(delta)<0").use {
             require(!it.moveToFirst()) { "Sicherung würde negative Bestände erhalten." } }
+        NutritionGoalSnapshot(db.nutritionGoalDao().versions(), db.nutritionGoalDao().values())
     }
 }

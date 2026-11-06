@@ -16,7 +16,7 @@ internal fun captureDeviceFailureEvidence(name: String): Boolean {
     // Refuse unknown paths without masking the failure being diagnosed.
     if (name !in setOf("picker", "camera-cancel", "camera-capture", "recipe-flow", "credential-flow",
         "shopping-flow", "plan-flow", "fitness-flow", "fitness-nutrition", "training-journal", "manual-workout", "body-flow", "body-raw-history", "health-api-flow", "production-fefo-flow", "data-quality", "batch-review", "backup-flow",
-        "capacity-flow", "recipe-ai-flow", "diagnostic-self-check")) return false
+        "nutrition-goals-flow", "capacity-flow", "recipe-ai-flow", "diagnostic-self-check")) return false
     // Diagnostics must never hide the original failure by blocking the runner.
     val executor = Executors.newSingleThreadExecutor { task ->
         Thread(task, "synthetic-device-failure-evidence").apply { isDaemon = true }

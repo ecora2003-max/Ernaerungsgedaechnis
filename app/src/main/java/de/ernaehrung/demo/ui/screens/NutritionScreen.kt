@@ -41,6 +41,7 @@ internal fun NutritionScreen(state: LocalDataState, blocked: Boolean, operationI
     if (report.meals.isNotEmpty()) {
         Fold("Weitere Tagesnährwerte & Datenqualität") { NutrientLines(report.totals, "day_extra", extra = true); QualityNotes(report.totals) }
     }
+    PersonalNutritionGoalSummary(report)
     DayConfirmation(report, blocked, operationId, model)
     LocalMealEditor(state, report.date, blocked, operationId, model)
     Section("Tatsächlich erfasst", "Fehlerhafte Einträge stornieren und anschließend korrekt neu erfassen.")

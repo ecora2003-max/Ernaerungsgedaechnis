@@ -38,6 +38,8 @@ class DatabaseMigrationTest {
 
     @Test fun upgradeFromPublishedV13PreservesAll45TablesIncludingBatchReviewHistoryAndIntroducesOnlyEmptyCapacityHistory() = upgradeFromPublishedVersion(13)
 
+    @Test fun upgradeFromPublishedV14PreservesAll46TablesAndPhysicalCapacityHistoryWithoutInventingGoalTargets() = upgradeFromPublishedVersion(14)
+
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-${UUID.randomUUID()}.db"
@@ -87,19 +89,28 @@ class DatabaseMigrationTest {
                 if (fromVersion >= 11) seedV11(old)
                 if (fromVersion >= 12) seedV12(old)
                 if (fromVersion >= 13) seedV13(old)
+                if (fromVersion >= 14) seedV14(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; else -> 44 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; 14 -> 46; else -> 44 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v14.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v15.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(14, sql.version)
+            assertEquals(15, sql.version)
+            assertTrue(upgraded.nutritionGoalDao().versions().isEmpty())
+            assertTrue(upgraded.nutritionGoalDao().values().isEmpty())
             assertEquals(if (fromVersion >= 13) 1 else 0, upgraded.foodDao().batchReviewsAt(Long.MAX_VALUE).size)
-            assertTrue(upgraded.storageCapacityDao().history().isEmpty())
+            val capacityHistory = upgraded.storageCapacityDao().history()
+            assertEquals(if (fromVersion >= 14) 1 else 0, capacityHistory.size)
+            if (fromVersion >= 14) {
+                assertEquals("capacity-v14-review", capacityHistory.single().id)
+                assertEquals("-18,000000000000000001", capacityHistory.single().temperatureCelsiusText)
+                assertEquals(0L, capacityHistory.single().occupiedMl)
+            }
             if (fromVersion >= 12) assertEquals("measure", upgraded.bodyDao().versions().single { it.id == "body-v12-linked" }.legacyOriginId)
             assertEquals("No new paid price is inferred during migration", if (fromVersion < 8) 0 else 1, upgraded.foodDao().allPaidPrices().size)
             assertEquals(if (fromVersion >= 9) 1 else 0, upgraded.healthDao().history("com.sec.android.app.shealth").size)
@@ -193,9 +204,9 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; else -> 20 }, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; 14 -> 22; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -228,6 +239,14 @@ class DatabaseMigrationTest {
             'Selbst eingeschätzt','MANUAL','USER_REPORTED','Datum selbst geprüft')""")
         db.execSQL("""INSERT INTO manual_workout_sets(id,versionId,position,exercise,rawRepetitions,repetitions,
             rawLoadKg,loadKg) VALUES('workout-v11-set','workout-v11-version',0,'Kniebeuge','008',8,'40,0000','40')""")
+    }
+
+    private fun seedV14(db: SQLiteDatabase) {
+        db.execSQL("INSERT INTO operations(id,kind,fingerprint,recordedAt,resultId) VALUES('capacity-v14-op','STORAGE_CAPACITY_CHECK_V1','legacy-capacity-hash',1,'capacity-v14-review')")
+        db.execSQL("""INSERT INTO storage_capacity_reviews(id,locationId,revision,previousId,operationId,
+            totalMl,occupiedMl,temperatureCelsiusText,reason,basisKind,addedOuterVolumeMl,source,quality,recordedAt,zoneId)
+            VALUES('capacity-v14-review','loc',1,NULL,'capacity-v14-op',2000,0,'-18,000000000000000001',
+            'Historische physische Prüfung','PHYSICAL_CHECK_V1',NULL,'USER','CONFIRMED',1,'Europe/Berlin')""")
     }
 
     private fun seedV13(db: SQLiteDatabase) {
