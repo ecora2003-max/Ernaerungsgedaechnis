@@ -31,6 +31,13 @@ internal class NutritionReader(private val db: FoodDatabase) {
         DayNutrition(date, status, storedDay?.confirmedAt, meals, NutritionResult.sum(meals.map { it.nutrition }), snapshot)
     }
 
+    /** Exact referenced version, including a historical produced-food lineage.
+     * This read never substitutes the latest product version or books a meal.
+     */
+    suspend fun referenceProduct(id: String, amount: Long?, unit: BaseUnit): NutritionResult = db.withTransaction {
+        Resolver().version(id, amount, unit)
+    }
+
     /** Recipe preview is per one planned portion; it never becomes an actual consumption. */
     suspend fun recipe(id: String): NutritionResult = db.withTransaction {
         val recipe = dao.recipeVersion(id) ?: return@withTransaction NutritionResult.unknown(NutritionGap.MISSING_VERSION)

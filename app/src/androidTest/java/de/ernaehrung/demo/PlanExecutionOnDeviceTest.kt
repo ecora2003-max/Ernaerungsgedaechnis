@@ -98,6 +98,18 @@ class PlanExecutionOnDeviceTest {
             assertEquals(200_000L, entry.amount)
             assertEquals(operationsBefore + 1, dao.operationCount())
             assertEquals(mealsBefore, dao.activeConsumptionCount())
+            tap("Plan-Nährwerte aus gespeicherten Verzehrpositionen")
+            val week = "plan_nutrition_week_open_$day"
+            waitTag(week)
+            if (compose.onAllNodes(hasTestTag(week) and hasText("Plantage anzeigen")).fetchSemanticsNodes().isNotEmpty()) {
+                compose.onNodeWithTag(week).performScrollTo().performClick()
+            }
+            waitTag("plan_nutrition_day_${day}_ENERGY")
+            tap("Planpositionen und weitere Nährwerte · $day")
+            compose.onNodeWithTag("plan_nutrition_entry_${entry.id}_ENERGY").performScrollTo().assertTextContains("200 kcal", substring = true)
+            assertEquals(operationsBefore + 1, dao.operationCount())
+            assertEquals(mealsBefore, dao.activeConsumptionCount())
+            tap("Plan-Nährwerte aus gespeicherten Verzehrpositionen")
             waitTag("shopping_$version")
             compose.onNodeWithTag("shopping_$version").performScrollTo().assertTextContains("200 g", substring = true)
             tap("Neuen Vorgang beginnen")
