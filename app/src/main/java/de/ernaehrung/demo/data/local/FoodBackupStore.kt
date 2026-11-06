@@ -19,6 +19,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
         internal val TABLES = setOf("alias_decisions",
+            "storage_capacity_reviews",
             "batch_reviews",
             "batches",
             "body_measurement_runs",
@@ -84,8 +85,8 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
     suspend fun validateForPreview(archive: BackupArchive, applicationId: String) = db.withTransaction {
         val sql = db.openHelper.writableDatabase
         require(archive.applicationId == applicationId) { "Sicherung gehört zu einer anderen App-Variante." }
-        require(archive.databaseVersion == sql.version && archive.identityHash == identity(sql)) { "Nicht unterstütztes Sicherungsschema." }
-        validate(archive, schema(sql))
+        compatibleArchive(archive, sql, schema(sql))
+        archive.databaseVersion != sql.version
     }
 
     suspend fun restore(key: String, candidate: BackupArchive, expectedDigest: String,
@@ -95,16 +96,16 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         val frozen = BackupArchiveCodec.encode(candidate)
         val digest = BackupArchiveCodec.digest(frozen)
         require(digest == expectedDigest) { "Sicherungsprüfung geändert. Datei erneut prüfen und bestätigen." }
-        val archive = BackupArchiveCodec.decode(frozen)
+        val original = BackupArchiveCodec.decode(frozen)
         frozen.fill(0)
         val hash = WriteRules.fingerprint("LOCAL_BACKUP_RESTORE_V1", applicationId, digest)
         return db.withTransaction {
             val sql = db.openHelper.writableDatabase
             val schema = schema(sql)
-            require(archive.applicationId == applicationId) { "Sicherung gehört zu einer anderen App-Variante." }
-            require(archive.databaseVersion == sql.version && archive.identityHash == identity(sql)) {
-                "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            validate(archive, schema)
+            require(original.applicationId == applicationId) { "Sicherung gehört zu einer anderen App-Variante." }
+            // The approved digest/fingerprint above is ALWAYS the original file.
+            // Only this pinned, additive 13->14 bridge can add an empty table.
+            val archive = compatibleArchive(original, sql, schema)
             WriteRules.replay(dao, key, hash)?.let { return@withTransaction BackupRestoreResult(BackupRestoreStatus.ALREADY_PRESENT, digest, 0) }
             if (dao.backupRestoration(hash) != null)
                 return@withTransaction BackupRestoreResult(BackupRestoreStatus.ALREADY_PRESENT, digest, 0)
@@ -157,6 +158,20 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         return TABLES.associateWith { name -> sql.query("PRAGMA table_info(`${name}`)").use { cursor -> buildList {
             while (cursor.moveToNext()) add(Column(cursor.getString(1), cursor.getString(2), cursor.getInt(3) != 0, cursor.getInt(5)))
         } } }
+    }
+    private fun compatibleArchive(original: BackupArchive, sql: SupportSQLiteDatabase,
+        currentSchema: Map<String, List<Column>>): BackupArchive {
+        val archive = if (original.databaseVersion == sql.version && original.identityHash == identity(sql)) original
+        else {
+            require(sql.version == 14 && original.databaseVersion == 13 &&
+                original.identityHash == "ddbdbf0fb475ae9d3a5c9a40b4284aa3" &&
+                original.tables.map { it.name }.toSet() == TABLES - "storage_capacity_reviews" && original.tables.size == TABLES.size - 1) {
+                "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
+            original.copy(databaseVersion = 14, identityHash = identity(sql), tables = original.tables +
+                BackupTable("storage_capacity_reviews", currentSchema.getValue("storage_capacity_reviews").map { it.name }, emptyList()))
+        }
+        validate(archive, currentSchema)
+        return archive
     }
     private fun identity(sql: SupportSQLiteDatabase): String = sql.query("SELECT identity_hash FROM room_master_table WHERE id=42")
         .use { require(it.moveToFirst()); it.getString(0) }

@@ -13,7 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 internal data class BackupExportRequest(val id: String, val suggestedName: String)
-internal data class BackupPreview(val archive: BackupArchive, val digest: String)
+internal data class BackupPreview(val archive: BackupArchive, val digest: String, val olderSchema: Boolean = false)
 internal data class BackupUiState(val busy: Boolean = false, val exportRequest: BackupExportRequest? = null,
     val preview: BackupPreview? = null, val result: String? = null, val error: String? = null)
 
@@ -90,9 +90,9 @@ internal class BackupViewModel(private val store: FoodStore, private val documen
                         BackupPreview(archive, BackupArchiveCodec.digest(plain))
                     } finally { plain.fill(0) }
                 }
-                withContext(Dispatchers.IO) { store.validateBackupForPreview(preview.archive, applicationId) }
+                val olderSchema = withContext(Dispatchers.IO) { store.validateBackupForPreview(preview.archive, applicationId) }
                 ensureActive(); check(generation == attempt)
-                mutable.value = BackupUiState(preview = preview)
+                mutable.value = BackupUiState(preview = preview.copy(olderSchema = olderSchema))
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { mutable.value = BackupUiState(error = "Datei oder Passwort konnte nicht geprüft werden, oder diese Sicherung passt nicht zur App-Variante. Keine Daten wurden übernommen.") }
             finally { password.fill('\u0000') }

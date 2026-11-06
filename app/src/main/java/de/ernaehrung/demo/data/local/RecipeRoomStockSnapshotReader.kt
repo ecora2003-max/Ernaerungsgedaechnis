@@ -291,11 +291,18 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                 it.consumptionOccurredAt, it.allocationAmount,
                 it.consumptionAllocatedTotal, it.unmatchedConsumptionAllocations) },
             eligibleBatchIds.sorted())
-        val revision = if (reviews.isEmpty()) baseRevision else WriteRules.fingerprint(
+        val batchRevision = if (reviews.isEmpty()) baseRevision else WriteRules.fingerprint(
             "RECIPE_ROOM_STOCK_BATCH_REVIEWS_V1", baseRevision, reviews.values.sortedBy { it.batchId }.map {
                 listOf(it.id, it.batchId, it.revision, it.previousId, it.operationId, it.recordedAt,
                     it.source, it.quality, it.reason, it.conditionsConfirmed, it.acquiredOn, it.bestBefore, it.useBy,
                     it.openedAt, it.thawedAt, it.openedAtText, it.thawedAtText, it.release, it.safetyNote)
+            })
+        val capacities = dao.storageCapacityReviewsAt(asOfMillis)
+        val revision = if (capacities.isEmpty()) batchRevision else WriteRules.fingerprint(
+            "RECIPE_ROOM_STOCK_LOCATION_CAPACITY_V1", batchRevision, capacities.map {
+                listOf(it.id, it.locationId, it.revision, it.previousId, it.operationId, it.totalMl, it.occupiedMl,
+                    it.temperatureCelsiusText, it.reason, it.basisKind, it.addedOuterVolumeMl,
+                    it.source, it.quality, it.recordedAt, it.zoneId)
             })
         val lines = ordered.filter {
             it.batch.id in eligibleBatchIds

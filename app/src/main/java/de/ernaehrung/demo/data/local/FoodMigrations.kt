@@ -4,6 +4,24 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Add physical capacity history; do not infer occupied/free space or alter any old fact. */
+    val MIGRATION_13_14 = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS `storage_capacity_reviews` (`id` TEXT NOT NULL,
+                `locationId` TEXT NOT NULL, `revision` INTEGER NOT NULL, `previousId` TEXT, `operationId` TEXT NOT NULL,
+                `totalMl` INTEGER, `occupiedMl` INTEGER, `temperatureCelsiusText` TEXT, `reason` TEXT NOT NULL,
+                `basisKind` TEXT NOT NULL, `addedOuterVolumeMl` INTEGER, `source` TEXT NOT NULL, `quality` TEXT NOT NULL,
+                `recordedAt` INTEGER NOT NULL, `zoneId` TEXT NOT NULL, PRIMARY KEY(`id`),
+                FOREIGN KEY(`locationId`) REFERENCES `storage_locations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`operationId`) REFERENCES `operations`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`locationId`, `previousId`) REFERENCES `storage_capacity_reviews`(`locationId`, `id`) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_capacity_reviews_locationId_revision ON storage_capacity_reviews(locationId,revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_capacity_reviews_locationId_id ON storage_capacity_reviews(locationId,id)")
+            db.execSQL("CREATE INDEX index_storage_capacity_reviews_locationId_previousId ON storage_capacity_reviews(locationId,previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_capacity_reviews_previousId ON storage_capacity_reviews(previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_capacity_reviews_operationId ON storage_capacity_reviews(operationId)")
+        }
+    }
     /** Preserve original batches and every old write key; only explicit later reviews override descriptions. */
     val MIGRATION_12_13 = object : Migration(12, 13) {
         override fun migrate(db: SupportSQLiteDatabase) {

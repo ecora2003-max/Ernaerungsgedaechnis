@@ -40,6 +40,8 @@ internal interface FoodDao {
     @Query("SELECT * FROM batch_reviews WHERE batchId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestBatchReview(id: String): BatchReviewEntity?
     @Query("SELECT * FROM batch_reviews v WHERE recordedAt <= :at AND revision = (SELECT MAX(revision) FROM batch_reviews WHERE batchId=v.batchId AND recordedAt <= :at) ORDER BY batchId")
     suspend fun batchReviewsAt(at: Long): List<BatchReviewEntity>
+    @Query("SELECT * FROM storage_capacity_reviews v WHERE recordedAt <= :at AND revision=(SELECT MAX(revision) FROM storage_capacity_reviews WHERE locationId=v.locationId AND recordedAt <= :at) ORDER BY locationId")
+    suspend fun storageCapacityReviewsAt(at: Long): List<StorageCapacityReviewEntity>
     @Insert suspend fun insertMovement(value: StockMovementEntity)
     @Insert suspend fun insertConsumption(value: ConsumptionEntity)
     @Insert suspend fun insertAllocation(value: ConsumptionAllocationEntity)
@@ -229,7 +231,7 @@ internal interface FoodDao {
 // Room 2.7.2 clearAllTables uses a partial FK comparator (DatabaseWriter).
 // A deterministic child-before-parent order avoids its TimSort contract failure
 // and keeps generated deletion order consistent. Self-edges do not order entities.
-@Database(entities = [BatchReviewEntity::class,
+@Database(entities = [StorageCapacityReviewEntity::class, BatchReviewEntity::class,
     StockMovementEntity::class,
     RecipeIngredientEntity::class,
     ConsumptionAllocationEntity::class,
@@ -274,13 +276,14 @@ internal interface FoodDao {
     ProductEntity::class,
     RecipeEntity::class,
     PlanSeriesEntity::class],
-    views = [CurrentBatchView::class], version = 13, exportSchema = true)
+    views = [CurrentBatchView::class], version = 14, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
     internal abstract fun healthDao(): HealthImportDao
     internal abstract fun bodyDao(): BodyMeasurementDao
     internal abstract fun manualWorkoutDao(): ManualWorkoutDao
+    internal abstract fun storageCapacityDao(): StorageCapacityDao
 
     companion object {
         // Separate from future production storage and from immutable UI fixtures. Never seed personal data.
@@ -288,7 +291,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

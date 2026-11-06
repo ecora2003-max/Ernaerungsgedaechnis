@@ -44,7 +44,7 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 @Composable
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
     showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
-    onOpenBatchReview: ((String) -> Unit)? = null) {
+    onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -93,6 +93,8 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             }
         }
         "Lager" -> {
+            if (onOpenStorageCapacity != null) OutlinedButton({ onOpenStorageCapacity(null) },
+                Modifier.testTag("stock_open_capacity")) { Text("Lagerorte & Kapazität prüfen") }
             LocationEditor(blocked, operationId, model)
             if (state.locations.isNotEmpty() && state.catalog.isNotEmpty()) ReceiptEditor(state, blocked, operationId, model)
             else Hint("Für einen Zugang zuerst ein Produkt im Katalog und einen bestätigten Lagerort anlegen.", Sage)
@@ -122,7 +124,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
         "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) {
             if (onOpenPurchases != null) onOpenPurchases() else mode = "Käufe"
         }
-        "Küche" -> KitchenEditor(state, blocked, operationId, model)
+        "Küche" -> KitchenEditor(state, blocked, operationId, model, onOpenStorageCapacity)
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
             Hint("Hier stehen die letzten 30 Bewegungen. Stornos ergänzen Gegenbewegungen; die ursprünglichen Ereignisse bleiben in der Datenbank. Kochen ist kein Verzehr.", Sage)

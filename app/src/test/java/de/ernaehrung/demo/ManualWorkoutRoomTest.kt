@@ -25,7 +25,7 @@ class ManualWorkoutRoomTest {
     private lateinit var name: String
     @Before fun setup() { name = "workout-${UUID.randomUUID()}.db"; reopen() }
     private fun reopen() { db = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-        .addMigrations(FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13).build(); store = FoodStore(db) { at } }
+        .addMigrations(FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14).build(); store = FoodStore(db) { at } }
     @After fun close() { db.close(); context.deleteDatabase(name) }
     private fun input() = ManualWorkoutInput("Krafttraining", FitnessTimestampInput("2026-10-25", "02:30", "Europe/Berlin", "+02:00"),
         "45,5000", "0,000", effort = "7 / 10 selbst bewertet", sets = listOf(ManualWorkoutSetInput("Kniebeuge", "008", "40,0000"), ManualWorkoutSetInput("Unbekannter Satz")))

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -107,6 +108,7 @@ internal fun RecipeDraftImportPanel(
     var restrictionsText by remember { mutableStateOf("") }
     var reviewed by remember { mutableStateOf(false) }
     var preferenceForm by remember { mutableStateOf(RecipePreferenceForm()) }
+    var aiDiscardVersion by remember { mutableStateOf(0) }
     fun invalidate() { reviewed = false; onInvalidate() }
     fun invalidateGeneratedDraft() {
         // A new serving count or exclusion must not retain an old JSON
@@ -127,7 +129,7 @@ internal fun RecipeDraftImportPanel(
     }
     val labels = eligible.associate { it.id to "${it.name} · v${it.revision} · ${it.id}" }
 
-    Fold("JSON-Rezeptentwurf importieren und manuell prüfen") {
+    Fold("Rezeptvorschläge und JSON-Import") {
         if (!editingEnabled) {
             Text("Eine Rezeptbestätigung wird gerade verarbeitet. Änderungen erst nach Abschluss möglich.")
             return@Fold
@@ -142,91 +144,33 @@ internal fun RecipeDraftImportPanel(
         if (requestPreferences.isFailure) Text("Rezeptvorgaben prüfen: ${requestPreferences.exceptionOrNull()?.message}",
             Modifier.testTag("recipe_preferences_error"))
         Text("Nur lokale Vorschau. Modellangaben sind keine Produkt-, Mengen-, Zustands- oder Allergennachweise. Es wird nichts gebucht.")
-
-        Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
-        Column {
-            Button(
-                enabled = json.isNotBlank(),
-                modifier = Modifier.testTag("recipe_draft_encrypted_save"),
-                onClick = {
-                    try {
-                        checkpoint.save(json)
-                        error = "JSON verschlüsselt vorgemerkt (maximal 24 Stunden). Kein Prüfbeleg und keine Bestätigung."
-                    } catch (_: Exception) {
-                        error = "Verschlüsselte Speicherung nicht möglich. Kein unverschlüsselter Ersatz."
-                    }
-                }
-            ) { Text("JSON verschlüsselt merken") }
-            Button(
-                modifier = Modifier.testTag("recipe_draft_encrypted_restore"),
-                onClick = {
-                    val saved = checkpoint.load()
-                    if (saved == null) {
-                        error = "Kein gültiger verschlüsselter Entwurf vorhanden."
-                    } else {
-                        invalidate()
-                        json = saved
-                        imported = null
-                        versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                        allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""; reviewed = false
-                        error = "JSON wiederhergestellt. Alle Nachweise neu prüfen und erneut ausdrücklich bestätigen."
-                    }
-                }
-            ) { Text("Gemerkten JSON-Entwurf laden") }
-        }
-        Button(
-            onClick = {
-                invalidate()
-                json = ""
-                imported = null
-                error = null
-                versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
-                checkpoint.discard()
-                evidenceCheckpoint.discard()
-                onDiscardPending()
-            },
-            modifier = Modifier.testTag("recipe_draft_discard_pending")
-        ) { Text("Unbestätigten Rezeptvorgang verwerfen") }
         OutlinedTextField(
-            value = json,
+            value = offlinePortions,
             onValueChange = { next ->
-                // Reject oversized input without changing the current draft, revoking
-                // its pending review or deleting an explicitly saved checkpoint.
-                if (next.length > 262_144) {
-                    error = "JSON zu groß (maximal 262144 Zeichen)."
-                } else if (next != json) {
-                    checkpoint.discard()
-                    // Initial re-entry after process loss must not erase an opt-in
-                    // form for the same JSON. Subsequent edits revoke it.
-                    if (json.isNotBlank()) evidenceCheckpoint.discard()
-                    invalidate()
-                    imported = null
-                    error = null
-                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
-                    allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
-                    json = next
+                if (next.length <= 4 && next.all(Char::isDigit) &&
+                    next != offlinePortions) {
+                    invalidateGeneratedDraft()
+                    offlinePortions = next
                 }
             },
-            modifier = Modifier.fillMaxWidth().testTag("recipe_draft_json"),
-            label = { Text("recipe.draft v1 JSON einfügen") },
-            minLines = 3, maxLines = 6
+            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
+            label = { Text("Portionen für Rezeptvorschlag (1–1000)") },
+            singleLine = true
         )
-        Button(
-            onClick = {
-                invalidate()
-                imported = null
-                error = null
-                try {
-                    imported = RecipeDraftV1Import.read(json, emptyMap(), OffsetDateTime.now())
-                } catch (_: IllegalArgumentException) {
-                    error = "Ungültiger, veralteter oder nicht unterstützter Rezeptentwurf."
+        OutlinedTextField(
+            value = offlineRestrictionsText,
+            onValueChange = { next ->
+                if (next.length <= 512 && next != offlineRestrictionsText) {
+                    invalidateGeneratedDraft()
+                    offlineAllergenAbsent = emptySet()
+                    offlineAllergenVersions = emptyMap()
+                    offlineRestrictionsText = next
                 }
             },
-            enabled = json.isNotBlank(),
-            modifier = Modifier.testTag("recipe_draft_json_inspect")
-        ) { Text("JSON-Entwurf lokal prüfen") }
-        Text("Offline-Vorschlag: 27 deterministische Kombinationen und drei geprüfte Referenzvorlagen einschließlich Frühstück mit Millilitermengen. Bei geprüftem Room-Kontext werden nur ausdrücklich zugeordnete Produktversionen nach potenziellen Gramm-Mengen in Bestand und Einkaufsbedarf sortiert. Keine Allergen-, Abtropfgewichts- oder Garzustandsfreigabe; die spätere Einzelprüfung bleibt Pflicht. Angebote ohne Rechtequelle bleiben gesperrt.")
+            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_restrictions"),
+            label = { Text("Ausschlüsse vor dem Vorschlag (z. B. FOOD:tomato)") },
+            maxLines = 2
+        )
         fun contextChanged() {
             invalidate()
             onClearContext()
@@ -276,6 +220,108 @@ internal fun RecipeDraftImportPanel(
                 contextState.context?.gaps?.forEach { Text(it) }
             }
         }
+        key(aiDiscardVersion, recordedDigest) { RecipeAiExchangePanel(
+            catalog = eligible, portions = offlinePortions.toIntOrNull(),
+            restrictions = offlineRestrictionsText.split(",").map(String::trim).filter(String::isNotEmpty).toSet(),
+            preferences = requestPreferences.getOrNull(), flags = selectedFlags,
+            typedContext = if (selectedNeedsContext) boundContext else null,
+            editingEnabled = editingEnabled,
+            onResponse = { raw, inspected ->
+                checkpoint.discard()
+                evidenceCheckpoint.discard()
+                invalidate()
+                versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                allergenAnswers = emptyMap(); dietAnswers = emptyMap()
+                restrictionsText = offlineRestrictionsText
+                json = raw; imported = inspected; error = null
+            }
+        ) }
+
+        Text("Ohne ausdrückliche Aktion wird kein JSON gespeichert. Optional nur JSON für 24 Stunden verschlüsselt im privaten No-Backup-Speicher ablegen; Katalog-, Zustands- und Allergennachweise werden nie übernommen und müssen erneut geprüft werden.")
+        Column {
+            Button(
+                enabled = json.isNotBlank(),
+                modifier = Modifier.testTag("recipe_draft_encrypted_save"),
+                onClick = {
+                    try {
+                        checkpoint.save(json)
+                        error = "JSON verschlüsselt vorgemerkt (maximal 24 Stunden). Kein Prüfbeleg und keine Bestätigung."
+                    } catch (_: Exception) {
+                        error = "Verschlüsselte Speicherung nicht möglich. Kein unverschlüsselter Ersatz."
+                    }
+                }
+            ) { Text("JSON verschlüsselt merken") }
+            Button(
+                modifier = Modifier.testTag("recipe_draft_encrypted_restore"),
+                onClick = {
+                    val saved = checkpoint.load()
+                    if (saved == null) {
+                        error = "Kein gültiger verschlüsselter Entwurf vorhanden."
+                    } else {
+                        invalidate()
+                        json = saved
+                        imported = null
+                        versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                        allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""; reviewed = false
+                        error = "JSON wiederhergestellt. Alle Nachweise neu prüfen und erneut ausdrücklich bestätigen."
+                    }
+                }
+            ) { Text("Gemerkten JSON-Entwurf laden") }
+        }
+        Button(
+            onClick = {
+                invalidate()
+                json = ""
+                imported = null
+                error = null
+                versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
+                checkpoint.discard()
+                evidenceCheckpoint.discard()
+                onDiscardPending()
+                aiDiscardVersion++
+            },
+            modifier = Modifier.testTag("recipe_draft_discard_pending")
+        ) { Text("Unbestätigten Rezeptvorgang verwerfen") }
+        OutlinedTextField(
+            value = json,
+            onValueChange = { next ->
+                // Reject oversized input without changing the current draft, revoking
+                // its pending review or deleting an explicitly saved checkpoint.
+                if (next.length > 262_144) {
+                    error = "JSON zu groß (maximal 262144 Zeichen)."
+                } else if (next != json) {
+                    checkpoint.discard()
+                    // Initial re-entry after process loss must not erase an opt-in
+                    // form for the same JSON. Subsequent edits revoke it.
+                    if (json.isNotBlank()) evidenceCheckpoint.discard()
+                    invalidate()
+                    imported = null
+                    error = null
+                    versionIds = emptyMap(); bases = emptyMap(); states = emptyMap()
+                    allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
+                    json = next
+                }
+            },
+            modifier = Modifier.fillMaxWidth().testTag("recipe_draft_json"),
+            label = { Text("recipe.draft v1 JSON einfügen") },
+            minLines = 3, maxLines = 6
+        )
+        Button(
+            onClick = {
+                invalidate()
+                imported = null
+                error = null
+                try {
+                    imported = RecipeDraftV1Import.read(json, emptyMap(), OffsetDateTime.now())
+                } catch (_: IllegalArgumentException) {
+                    error = "Ungültiger, veralteter oder nicht unterstützter Rezeptentwurf."
+                }
+            },
+            enabled = json.isNotBlank(),
+            modifier = Modifier.testTag("recipe_draft_json_inspect")
+        ) { Text("JSON-Entwurf lokal prüfen") }
+        Text("Offline-Vorschlag: 27 deterministische Kombinationen und drei geprüfte Referenzvorlagen einschließlich Frühstück mit Millilitermengen. Bei geprüftem Room-Kontext werden nur ausdrücklich zugeordnete Produktversionen nach potenziellen Gramm-Mengen in Bestand und Einkaufsbedarf sortiert. Keine Allergen-, Abtropfgewichts- oder Garzustandsfreigabe; die spätere Einzelprüfung bleibt Pflicht. Angebote ohne Rechtequelle bleiben gesperrt.")
         if (selectedNeedsContext && !useOffers) {
             Text("Kontextauswahl: Mindestens drei passende Zutaten selbst einer aktuellen Katalogversion zuordnen. Keine automatische Gleichsetzung von FoodType und Produkt. Nur Gramm-Versionen werden verglichen.")
             RecipeOfflineDraftGenerator.ingredientTypes.forEach { ingredient ->
@@ -307,20 +353,6 @@ internal fun RecipeDraftImportPanel(
             }
         }
         rankingHint?.let { Text(it, Modifier.testTag("recipe_context_ranking_hint")) }
-        OutlinedTextField(
-            value = offlineRestrictionsText,
-            onValueChange = { next ->
-                if (next.length <= 512 && next != offlineRestrictionsText) {
-                    invalidateGeneratedDraft()
-                    offlineAllergenAbsent = emptySet()
-                    offlineAllergenVersions = emptyMap()
-                    offlineRestrictionsText = next
-                }
-            },
-            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_restrictions"),
-            label = { Text("Ausschlüsse vor dem Vorschlag (z. B. FOOD:tomato)") },
-            maxLines = 2
-        )
         Text("Lebensmittel-Ausschlüsse filtern nur Vorschläge. Bei Allergenen ohne unabhängig bestätigte Abwesenheit wird kein Vorschlag erzeugt. DIET:VEGAN oder andere Ernährungsformen sind erst nach unabhängiger Einzelprüfung jeder Produktversion freigegeben; der Vorschlag garantiert keine Eignung.")
         if (offlineAllergens.isNotEmpty()) {
             Fold("Allergennachweise für Offline-Vorschläge") {
@@ -370,19 +402,6 @@ internal fun RecipeDraftImportPanel(
                 }
             }
         }
-        OutlinedTextField(
-            value = offlinePortions,
-            onValueChange = { next ->
-                if (next.length <= 4 && next.all(Char::isDigit) &&
-                    next != offlinePortions) {
-                    invalidateGeneratedDraft()
-                    offlinePortions = next
-                }
-            },
-            modifier = Modifier.fillMaxWidth().testTag("recipe_offline_portions"),
-            label = { Text("Portionen für Offline-Vorschlag (1–1000)") },
-            singleLine = true
-        )
         Button(
             enabled = requestPreferences.isSuccess && (offlinePortions.toIntOrNull() ?: 0) in 1..1000 &&
                 (!selectedNeedsContext || (boundContext != null && !useOffers &&

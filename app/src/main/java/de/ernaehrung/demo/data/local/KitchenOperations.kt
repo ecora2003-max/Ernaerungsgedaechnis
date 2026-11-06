@@ -15,7 +15,7 @@ data class RecipeInput(val name: String, val yieldPortions: Long, val ingredient
 data class ProductionInput(val recipeVersionId: String, val actualPortions: Long, val allocations: List<Allocation>,
     val locationId: String, val date: String, val storageChecked: Boolean, val storageNote: String,
     val release: ReleaseStatus = ReleaseStatus.UNCHECKED, val deviationNote: String? = null,
-    val bestBefore: String? = null, val useBy: String? = null)
+    val bestBefore: String? = null, val useBy: String? = null, val capacityEvidence: ProductionCapacityEvidence? = null)
 
 internal class KitchenOperations(private val db: FoodDatabase, private val now: () -> Long) {
     private val dao = db.foodDao()
@@ -87,9 +87,11 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         require(input.allocations.isNotEmpty()) { "Tatsächlich verwendete Chargen fehlen." }
         require(input.allocations.map { it.batchId }.distinct().size == input.allocations.size) { "Charge doppelt zugeordnet." }
         input.allocations.forEach { Amounts.positive(it.amount) }
-        val hash = fingerprint("PRODUCTION", input.recipeVersionId, input.actualPortions, input.locationId, input.date,
+        val legacyHash = fingerprint("PRODUCTION", input.recipeVersionId, input.actualPortions, input.locationId, input.date,
             input.storageChecked, input.storageNote, input.release, input.deviationNote, input.bestBefore, input.useBy,
             input.allocations.sortedBy { it.batchId }.map { listOf(it.batchId, it.amount) })
+        val hash = input.capacityEvidence?.let { fingerprint("PRODUCTION_LOCATION_CAPACITY_V1", legacyHash,
+            it.reviewId, it.addedOuterVolumeMl, it.physicallyChecked) } ?: legacyHash
         replay(dao, key, hash)?.let { return@withTransaction it }
         // Capture one physical time for date authorization and every ledger row.
         // A moving clock must not split one confirmed production across Berlin days.
@@ -106,6 +108,8 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         val ingredients = dao.ingredients(recipe.id)
         require(ingredients.isNotEmpty()) { "Rezept enthält keine Zutaten." }
         requireNotNull(dao.location(input.locationId)) { "Lagerort nicht gefunden." }.also { require(it.confirmed) { "Lagerort ist nicht als vorhanden bestätigt." } }
+        val capacity = StorageCapacityOperations(db, now)
+        val capacityBasis = input.capacityEvidence?.let { capacity.requireProductionBasis(input.locationId, it) }
         val actualByVersion = mutableMapOf<String, Long>()
         for (allocation in input.allocations) {
             val batch = requireNotNull(dao.batch(allocation.batchId)) { "Zutatencharge nicht gefunden." }
@@ -145,6 +149,7 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         dao.insertBatch(BatchEntity(outputBatch, outputVersion, input.locationId, key, input.date, input.bestBefore, input.useBy,
             release = input.release, safetyNote = input.storageNote, recipeVersionId = recipe.id))
         dao.insertProduction(ProductionEntity(key, recipe.id, outputBatch, input.actualPortions, input.date, input.storageNote, input.deviationNote))
+        if (capacityBasis != null) capacity.recordProduction(key, capacityBasis, requireNotNull(input.capacityEvidence), recordedAt)
         for (allocation in input.allocations) {
             available(dao, allocation.batchId, allocation.amount, input.date, true)
             dao.insertMovement(StockMovementEntity(id(), allocation.batchId, key, -allocation.amount,

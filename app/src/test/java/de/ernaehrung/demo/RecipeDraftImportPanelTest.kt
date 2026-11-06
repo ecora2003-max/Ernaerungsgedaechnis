@@ -64,7 +64,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput("{draft}")
         rule.onNodeWithTag("recipe_draft_discard_pending").performScrollTo().performClick()
         rule.runOnIdle {
@@ -96,7 +96,7 @@ class RecipeDraftImportPanelTest {
             }
         }
         rule.runOnUiThread { render() }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput("{draft}")
         rule.runOnIdle { assertEquals(null, checkpoint.saved) }
         rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
@@ -104,7 +104,7 @@ class RecipeDraftImportPanelTest {
 
         // A fresh composition must not restore or confirm anything automatically.
         rule.runOnUiThread { epoch++; render() }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_encrypted_restore").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_json").assertTextContains("{draft}")
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
@@ -132,7 +132,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput("{draft}")
         rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
         val before = invalidations
@@ -163,9 +163,9 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput("{invalid")
-        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_import_error").assertExists()
         rule.onNodeWithTag("recipe_draft_manual_review").assertDoesNotExist()
         rule.runOnIdle { assertEquals(0, reviews) }
@@ -194,16 +194,16 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
-        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
         rule.onNodeWithTag("recipe_draft_restrictions").performTextInput("ALLERGEN:SOY")
         rule.onNodeWithTag("recipe_draft_restrictions").assertTextContains("ALLERGEN:SOY")
         // A changed JSON draft cannot inherit manually entered exclusions from
         // the previous draft, even when the new JSON is still schema-valid.
         rule.onNodeWithTag("recipe_draft_json").performTextInput(" ")
-        rule.onNodeWithTag("recipe_draft_json_inspect").performClick()
+        rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_restrictions").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         rule.onNodeWithTag("recipe_draft_manual_review_checkbox").performScrollTo().performClick()
@@ -246,7 +246,7 @@ class RecipeDraftImportPanelTest {
             }
         }
         rule.runOnUiThread { render() }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
         rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_restrictions").performTextInput("ALLERGEN:SOY")
@@ -257,7 +257,7 @@ class RecipeDraftImportPanelTest {
         }
 
         rule.runOnUiThread { epoch++; render() }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_draft_json").performTextInput(json)
         rule.onNodeWithTag("recipe_draft_json_inspect").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_evidence_restore").performScrollTo().performClick()
@@ -286,7 +286,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_context_stock").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().assertIsNotEnabled()
         rule.onNodeWithTag("recipe_context_refresh").performScrollTo().performClick()
@@ -315,7 +315,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_json").assertExists()
         rule.onNodeWithText("Entwurfs-ID:", substring = true).assertExists()
@@ -360,7 +360,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_context_stock").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_context_mapping_reviewed").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().assertIsNotEnabled()
@@ -379,7 +379,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
             .performTextInput("FOOD:dry-rice")
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
@@ -410,7 +410,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
         rule.onNodeWithTag("recipe_draft_manual_review").assertExists()
         rule.onNodeWithTag("recipe_draft_encrypted_save").performScrollTo().performClick()
@@ -453,7 +453,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
             .performTextInput("ALLERGEN:SOY")
         rule.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
@@ -495,7 +495,7 @@ class RecipeDraftImportPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen").performClick()
+        rule.onNodeWithText("Rezeptvorschläge und JSON-Import").performClick()
         rule.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
             .performTextReplacement("ALLERGEN:SOY, DIET:vegan")
         rule.onNodeWithText("Allergennachweise für Offline-Vorschläge")
@@ -579,7 +579,7 @@ class RecipeDraftImportPanelTest {
         } } }
         fun tap(text: String) = rule.onNodeWithText(text).performScrollTo().performClick()
         fun field(tag: String, text: String) = rule.onNodeWithTag(tag).performScrollTo().performTextReplacement(text)
-        tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+        tap("Rezeptvorschläge und JSON-Import")
         tap("Vorgaben für den Rezeptvorschlag")
         rule.onNodeWithTag("recipe_pref_meal_Frühstück").performScrollTo().performClick()
         field("recipe_pref_minutes", "10")

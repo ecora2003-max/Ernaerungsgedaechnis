@@ -109,6 +109,7 @@ internal fun IdPicker(label: String, items: List<Pair<String, String>>, selected
 internal fun operationLabel(kind: String): String = when (kind) {
     "RECEIPT" -> "Zugang"; "CONSUMPTION" -> "Verzehr"; "TRANSFER" -> "Umlagerung"
     "WASTE" -> "Entsorgung"; "STOCK_COUNT" -> "Istzählung"; "PRODUCTION" -> "Herstellung"; "REVERSAL" -> "Storno"
+    "STORAGE_CAPACITY_CHECK_V1" -> "Physische Lagerkapazität geprüft"
     else -> kind
 }
 internal fun movementLabel(kind: MovementKind): String = when (kind) {
