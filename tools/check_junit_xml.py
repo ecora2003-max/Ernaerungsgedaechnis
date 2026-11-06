@@ -37,8 +37,8 @@ print(f"JUNIT_XML: files={len(files)} tests={counts['tests']} "
       f"skipped={counts['skipped']} migrations={migration_tests}")
 if counts["tests"] < 239:
     raise SystemExit("FAIL: unexpected regression in host JVM test count (<239)")
-if migration_tests < 9:
-    raise SystemExit("FAIL: missing synthetic 1..9 -> Room 10 migration tests")
+if migration_tests < 10:
+    raise SystemExit("FAIL: missing synthetic 1..10 -> Room 11 migration tests")
 if any(counts[key] for key in ("failures", "errors", "skipped")):
     raise SystemExit("FAIL: JVM tests failed, errored, or were skipped")
 print("JUNIT_XML_PASS: fresh host JVM and Room migration evidence")
