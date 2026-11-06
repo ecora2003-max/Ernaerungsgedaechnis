@@ -41,7 +41,7 @@ private fun rememberFitnessModel(): FitnessViewModel {
 
 @Composable
 internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
-    onOpenBodyHistory: (() -> Unit)? = null) {
+    onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -133,6 +133,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
         val visible = cache?.records.orEmpty().filter { it.visible }
         Text("Gespeicherte Trainings: ${visible.count { it.kind == FitnessRecordKind.WORKOUT.name }} · Schrittintervalle: ${visible.count { it.kind == FitnessRecordKind.STEPS.name }}",
             Modifier.testTag("fitness_record_counts"))
+        nutritionContent?.invoke()
         visible.take(shown).forEach { row ->
             OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall: ${row.steps} Schritte"
