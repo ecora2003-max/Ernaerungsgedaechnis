@@ -3,6 +3,7 @@ package de.ernaehrung.demo.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.ernaehrung.demo.data.fitness.BodyMeasurementInput
+import de.ernaehrung.demo.data.fitness.LegacyBodyField
 import de.ernaehrung.demo.data.local.*
 import java.util.UUID
 import kotlinx.coroutines.*
@@ -15,47 +16,62 @@ internal data class BodyMeasurementUiState(val history: BodyMeasurementHistory? 
 /** Drafts remain in the UI process. Only its opaque operation key is restored;
  * committed results are reread from Room before any possible repeat action.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class BodyMeasurementViewModel(private val store: FoodStore) : ViewModel() {
     private val mutable = MutableStateFlow(BodyMeasurementUiState())
     val state = mutable.asStateFlow()
     private var action: Job? = null
+    private var observer: Job? = null
+    private val historyRefresh = MutableStateFlow(0L)
     init {
         viewModelScope.launch {
-            store.bodyMeasurementHistory().catch {
-                mutable.update { it.copy(readError = true, message = "Körpermesshistorie konnte nicht gelesen werden.") }
+            historyRefresh.flatMapLatest {
+                store.bodyMeasurementHistory().catch {
+                    mutable.update { it.copy(readError = true, message = "Körpermesshistorie konnte nicht gelesen werden.") }
+                }
             }.collect { rows -> mutable.update { it.copy(history = rows, readError = false) } }
         }
     }
+    fun retryHistory() { historyRefresh.value += 1L }
     fun openOperation(key: String) {
         if (state.value.key == key && (state.value.keyChecked || state.value.busy)) return
         action?.cancel()
+        observer?.cancel()
         mutable.update { it.copy(key = key, keyChecked = false, run = null, busy = true, message = null) }
         action = viewModelScope.launch {
             try {
-                val run = withContext(Dispatchers.IO) { store.bodyMeasurementRun(key) }
+                val run = withContext(Dispatchers.IO) { store.beginBodyMeasurement(key) }
                 if (state.value.key == key) mutable.update { it.copy(run = run, keyChecked = true, busy = false,
                     message = if (run?.kind == "SAVE") "Diese Messversion wurde bereits gespeichert."
-                        else if (run != null) "Dieser Vorgang ist abgeschlossen. Für eine neue Messung neu beginnen." else null) }
+                        else if (run.kind != "OPEN") "Dieser Vorgang ist abgeschlossen. Für eine neue Messung neu beginnen." else null) }
+                observer = viewModelScope.launch {
+                    store.watchBodyMeasurementRun(key).catch {
+                        if (state.value.key == key) mutable.update { it.copy(keyChecked = false, message = "Vorgangsstatus erneut prüfen.") }
+                    }.collect { current ->
+                        if (state.value.key == key) mutable.update { it.copy(run = current, keyChecked = current != null) }
+                    }
+                }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
-                if (state.value.key == key) mutable.update { it.copy(busy = false, readError = true,
+                if (state.value.key == key) mutable.update { it.copy(busy = false,
                     message = "Vorgangsstatus nicht lesbar. Nochmals öffnen, bevor du speicherst.") }
             }
         }
     }
-    fun save(key: String, input: BodyMeasurementInput, expectedPreviousId: String?, confirmed: Boolean) {
-        if (state.value.key != key || !state.value.keyChecked || state.value.busy || state.value.run != null || state.value.readError) return
+    fun save(key: String, input: BodyMeasurementInput, expectedPreviousId: String?, confirmed: Boolean,
+        legacyId: String? = null, legacyField: LegacyBodyField? = null) {
+        if (state.value.key != key || !state.value.keyChecked || state.value.busy || state.value.run?.kind != "OPEN" || state.value.readError) return
         mutable.update { it.copy(busy = true, message = null) }
         action = viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { store.saveBodyMeasurement(key, input, expectedPreviousId, confirmed) }
+                withContext(Dispatchers.IO) { store.saveBodyMeasurement(key, input, expectedPreviousId, confirmed, legacyId, legacyField) }
                 val run = withContext(Dispatchers.IO) { store.bodyMeasurementRun(key) }
-                mutable.update { it.copy(run = run, message = "Messversion lokal gespeichert.") }
+                if (state.value.key == key) mutable.update { it.copy(run = run, message = "Messversion lokal gespeichert.") }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {
-                mutable.update { it.copy(message = if (failure is IllegalArgumentException) failure.message
+                if (state.value.key == key) mutable.update { it.copy(keyChecked = false, message = if (failure is IllegalArgumentException) failure.message
                     else "Messung konnte nicht gespeichert werden. Mit demselben Vorgang erneut prüfen.") }
-            } finally { mutable.update { it.copy(busy = false) } }
+            } finally { if (state.value.key == key) mutable.update { it.copy(busy = false) } }
         }
     }
     fun purge(confirmed: Boolean) {

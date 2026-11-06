@@ -24,7 +24,7 @@ class BodyMeasurementRoomTest {
     private lateinit var store: FoodStore
     private val at = Instant.parse("2026-11-05T14:00:00Z").toEpochMilli()
     private fun open() = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-        .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11).build()
+        .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
     @Before fun setup() {
         context = ApplicationProvider.getApplicationContext(); name = "synthetic-body-${UUID.randomUUID()}.db"
         db = open(); store = FoodStore(db) { at }
