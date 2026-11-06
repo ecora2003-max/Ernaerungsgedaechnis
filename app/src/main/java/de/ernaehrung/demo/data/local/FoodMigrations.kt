@@ -4,6 +4,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Link explicitly corrected scalar legacy fields; never infer values or local dates. */
+    val MIGRATION_11_12 = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE body_measurement_versions ADD COLUMN legacyOriginId TEXT REFERENCES body_measurements(id) ON UPDATE NO ACTION ON DELETE RESTRICT")
+            db.execSQL("ALTER TABLE body_measurement_versions ADD COLUMN legacyField TEXT")
+            db.execSQL("CREATE UNIQUE INDEX index_body_measurement_versions_legacyOriginId_legacyField ON body_measurement_versions (legacyOriginId,legacyField)")
+        }
+    }
+
     /** Additive manual training versions; all prior food/body/health rows stay unchanged. */
     val MIGRATION_10_11 = object : Migration(10, 11) {
         override fun migrate(db: SupportSQLiteDatabase) {

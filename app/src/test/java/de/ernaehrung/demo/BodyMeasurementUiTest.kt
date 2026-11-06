@@ -29,6 +29,7 @@ class BodyMeasurementUiTest {
     }
     private fun tap(id: String) {
         waitTag(id)
+        rule.waitUntil(25_000) { rule.waitForIdle(); runCatching { tag(id).assertIsEnabled(); true }.getOrDefault(false) }
         if (id.startsWith("workspace_tab_")) tag(id).performClick() else tag(id).performScrollTo().performClick()
     }
     private fun field(id: String, value: String) {
@@ -43,6 +44,8 @@ class BodyMeasurementUiTest {
         val db = FoodDatabase.localSandbox(rule.activity.applicationContext)
         assertTrue(db.bodyDao().versions().isEmpty()); assertTrue(db.bodyDao().legacy().isEmpty())
         val store = FoodStore(db)
+        db.openHelper.writableDatabase.execSQL("INSERT INTO body_measurements(id,measuredAt,weightKg,method,source,quality,excludedFromTrend,recordedAt) VALUES('body-legacy-ui',1,74.0,'Frühere Methode','USER','UNKNOWN',0,1)")
+        val legacyOriginal = db.bodyDao().legacy().single()
         val before = db.foodDao().operationCount()
         tap("workspace_tab_MORE"); tap("workspace_go_BODY")
         waitTag("body_save"); tag("body_save").assertIsNotEnabled()
@@ -86,6 +89,16 @@ class BodyMeasurementUiTest {
         tag("body_version_${first.id}").performScrollTo().assertTextContains("73,14", substring = true)
         assertEquals(first.id, store.saveBodyMeasurement(first.runId, first.input(), null, true))
         assertEquals(2, db.bodyDao().versions().size); assertEquals(before, db.foodDao().operationCount())
+        tap("body_legacy_choose_body-legacy-ui"); tap("body_legacy_field_body-legacy-ui_WEIGHT")
+        tag("body_input_date").performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+        field("body_input_date", "2026-10-25"); field("body_input_value", "75,5000")
+        field("body_input_reason", "Eigenes Messdatum und Gewicht geprüft")
+        tap("body_confirm"); tap("body_save"); waitTag("body_saved")
+        val legacyCurrent = db.bodyDao().versions().single { it.legacyOriginId == "body-legacy-ui" }
+        assertEquals("75.5", legacyCurrent.decimalValue); assertNull(legacyCurrent.utc)
+        assertEquals(legacyOriginal, db.bodyDao().legacy().single())
+        tap("body_history_${legacyCurrent.id}"); waitTag("body_legacy_original_body-legacy-ui")
+        tag("body_legacy_original_body-legacy-ui").performScrollTo().assert(hasAnyDescendant(hasText("Gewicht: 74.0 kg", substring = true)))
         val healthBefore = db.healthDao().history("com.sec.android.app.shealth")
         val authBefore = db.healthDao().state("com.sec.android.app.shealth")
         tap("workspace_tab_MORE"); tap("workspace_go_FITNESS")

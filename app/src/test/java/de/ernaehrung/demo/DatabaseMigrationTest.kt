@@ -33,6 +33,8 @@ class DatabaseMigrationTest {
 
     @Test fun upgradeFromPublishedV10PreservesAll41TablesAndBodyReplayPrivacyMarkers() = upgradeFromPublishedVersion(10)
 
+    @Test fun upgradeFromPublishedV11PreservesAll44TablesIncludingSavedOpenAndRetiredTrainingIntents() = upgradeFromPublishedVersion(11)
+
     private fun upgradeFromPublishedVersion(fromVersion: Int) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val name = "migration-${UUID.randomUUID()}.db"
@@ -73,17 +75,18 @@ class DatabaseMigrationTest {
                 if (fromVersion >= 8) seedV8(old)
                 if (fromVersion >= 9) seedV9(old)
                 if (fromVersion >= 10) seedV10(old)
+                if (fromVersion >= 11) seedV11(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; else -> 41 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; else -> 44 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v11.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v12.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(11, sql.version)
+            assertEquals(12, sql.version)
             assertEquals("No new paid price is inferred during migration", if (fromVersion < 8) 0 else 1, upgraded.foodDao().allPaidPrices().size)
             assertEquals(if (fromVersion >= 9) 1 else 0, upgraded.healthDao().history("com.sec.android.app.shealth").size)
             if (fromVersion < 9) assertNull(upgraded.healthDao().state("com.sec.android.app.shealth"))
@@ -93,8 +96,17 @@ class DatabaseMigrationTest {
                 assertEquals("health-migration-sync", upgraded.healthDao().state("com.sec.android.app.shealth")!!.lastSuccessRunId)
             }
             assertEquals(if (fromVersion >= 10) 1 else 0, upgraded.bodyDao().versions().size)
-            assertTrue(upgraded.manualWorkoutDao().versions().isEmpty())
-            assertTrue(upgraded.manualWorkoutDao().sets().isEmpty())
+            assertEquals(if (fromVersion >= 11) 1 else 0, upgraded.manualWorkoutDao().versions().size)
+            assertEquals(if (fromVersion >= 11) 1 else 0, upgraded.manualWorkoutDao().sets().size)
+            if (fromVersion >= 11) {
+                val training = upgraded.manualWorkoutDao().versions().single()
+                val trainingStore = FoodStore(upgraded) { 1_800_000_000_000L }
+                assertEquals(training.id, trainingStore.saveManualWorkout(training.runId,
+                    training.input(upgraded.manualWorkoutDao().sets(), true), null, "training", true))
+                assertEquals("OPEN", trainingStore.beginManualWorkout("workout-v11-open").kind)
+                trainingStore.purgeManualWorkouts("workout-v11-purge", true)
+                assertEquals(training, upgraded.manualWorkoutDao().versions().single())
+            }
             if (fromVersion >= 10) {
                 val bodyStore = FoodStore(upgraded) { 1_800_000_000_000L }
                 val original = de.ernaehrung.demo.data.fitness.BodyMeasurementInput(
@@ -161,7 +173,7 @@ class DatabaseMigrationTest {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
             assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
@@ -183,11 +195,23 @@ class DatabaseMigrationTest {
         } finally { upgraded?.close(); context.deleteDatabase(name) }
     }
 
+    private fun seedV11(db: SQLiteDatabase) {
+        val hash = WriteRules.fingerprint("MANUAL_WORKOUT_V1", "Krafttraining", "2026-10-25", null, null, null,
+            "45,5000", "0,000", null, "Selbst eingeschätzt", null, null, null,
+            listOf(listOf("Kniebeuge", "008", "40,0000", null, null)), "Datum selbst geprüft", null, "training")
+        db.execSQL("INSERT INTO manual_workout_runs(id,kind,fingerprint,resultId,recordedAt) VALUES('workout-v11-save','SAVE',?,'workout-v11-version',1)", arrayOf(hash))
+        db.execSQL("INSERT INTO manual_workout_runs(id,kind,fingerprint,resultId,recordedAt) VALUES('workout-v11-open','OPEN','',NULL,0),('workout-v11-purge','PURGE','',NULL,0)")
+        db.execSQL("""INSERT INTO manual_workout_versions(id,seriesId,revision,previousId,legacyOriginId,runId,
+            sport,localDate,timePrecision,rawDurationMinutes,durationMinutes,rawDistanceMetres,distanceMetres,
+            effort,source,quality,correctionReason) VALUES('workout-v11-version','workout-v11-version',1,NULL,
+            'training','workout-v11-save','Krafttraining','2026-10-25','DATE_ONLY','45,5000','45.5','0,000','0',
+            'Selbst eingeschätzt','MANUAL','USER_REPORTED','Datum selbst geprüft')""")
+        db.execSQL("""INSERT INTO manual_workout_sets(id,versionId,position,exercise,rawRepetitions,repetitions,
+            rawLoadKg,loadKg) VALUES('workout-v11-set','workout-v11-version',0,'Kniebeuge','008',8,'40,0000','40')""")
+    }
+
     private fun seedV10(db: SQLiteDatabase) {
-        val hash = WriteRules.fingerprint("BODY_MANUAL_V1", de.ernaehrung.demo.data.fitness.BodyMetric.WEIGHT,
-            "73,0400", "2026-10-25", null, null, null, null, null, null, null,
-            de.ernaehrung.demo.data.fitness.BodyMethod.UNKNOWN, null, null,
-            de.ernaehrung.demo.data.fitness.BodyQuality.UNKNOWN, false, null, null)
+        val hash = "4154720f01a02f1e100d88ecee4248695133e10560738401ef03f352a972537d"
         db.execSQL("INSERT INTO body_measurement_runs(id,kind,fingerprint,resultId,recordedAt) VALUES('body-v10-save','SAVE',?,'body-v10-original',1)", arrayOf(hash))
         db.execSQL("INSERT INTO body_measurement_runs(id,kind,fingerprint,resultId,recordedAt) VALUES('body-v10-purge','PURGE','',NULL,0)")
         db.execSQL("""INSERT INTO body_measurement_versions(id,seriesId,revision,previousId,runId,metric,

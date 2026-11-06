@@ -17,6 +17,13 @@ internal enum class BodyQuality(val label: String) {
     DEVICE_ESTIMATE("Geräteschätzung"), USER_ESTIMATE("Eigene Schätzung")
 }
 
+/** Exact named columns of the published multi-value legacy observation. */
+internal enum class LegacyBodyField(val metric: BodyMetric, val customName: String? = null, val unit: String) {
+    WEIGHT(BodyMetric.WEIGHT, unit = "kg"), WAIST(BodyMetric.WAIST, unit = "cm"),
+    BODY_FAT(BodyMetric.BODY_FAT, unit = "%"), MUSCLE_MASS(BodyMetric.MUSCLE_MASS, unit = "kg"),
+    WATER(BodyMetric.OTHER, "Körperwasseranteil", "%")
+}
+
 /** Original input is retained alongside exact decimal/temporal normalization.
  * One metric per observation prevents inventing same-time sibling values.
  */

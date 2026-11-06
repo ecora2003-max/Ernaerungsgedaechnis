@@ -100,7 +100,7 @@ class FitnessImportOnDeviceTest {
             waitTag("fitness_daily_steps")
             compose.onNodeWithTag("fitness_daily_steps").performScrollTo().assertTextContains("321", substring = true)
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11).build()
+                .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
             try {
                 assertEquals(2, reopened.healthDao().latest(origin).count { it.visible })
                 assertEquals(false, reopened.healthDao().state(origin)?.enabled)

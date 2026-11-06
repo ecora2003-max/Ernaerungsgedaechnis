@@ -219,7 +219,7 @@ internal interface FoodDao {
     ReceiptStockBookingEntity::class, ExpenseStatusEntity::class, AliasDecisionEntity::class,
     ReceiptScanEntity::class, ReceiptScanResolutionEntity::class, PaidPriceObservationEntity::class,
     HealthImportStateEntity::class, HealthImportRunEntity::class, HealthRecordVersionEntity::class, BodyMeasurementRunEntity::class, BodyMeasurementVersionEntity::class,
-    ManualWorkoutRunEntity::class, ManualWorkoutVersionEntity::class, ManualWorkoutSetEntity::class], version = 11, exportSchema = true)
+    ManualWorkoutRunEntity::class, ManualWorkoutVersionEntity::class, ManualWorkoutSetEntity::class], version = 12, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -233,7 +233,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

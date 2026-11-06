@@ -35,7 +35,7 @@ Stand 06.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EX
 
 ## 4. Room-Bestands-, Kosten- und Datenschutzschutz
 
-- [ ] Synthetische bestandsgefüllte Migrationspfade jeder veröffentlichten Version 1 bis 10 → aktuelles Room 11 sowie Fremdschlüssel prüfen. Alle vorhandenen Lebensmittel-, Privatpreis-, Plan-, Körper- und Health-Importhistorien einschließlich Null/0 und Retry-Schlüsseln erhalten; neue Tabellen beginnen ohne erfundene Altdaten.
+- [ ] Synthetische bestandsgefüllte Migrationspfade jeder veröffentlichten Version 1 bis 11 → aktuelles Room 12 sowie Fremdschlüssel prüfen. Alle vorhandenen Lebensmittel-, Privatpreis-, Plan-, Körper- und Health-Importhistorien einschließlich Null/0 und Retry-Schlüsseln erhalten; neue Tabellen beginnen ohne erfundene Altdaten.
 - [ ] Alte IDs, Produkt-/Rezeptversionen, Chargen, Beleg-/Zahlungs-/Reversal-/Preis-/Planereignisse unverändert erhalten; keine `fallbackToDestructiveMigration`, keine Datenbanklöschung als Workaround. Für neue Felder eine versionierte Schemaexportdatei und explizite Migration.
 - [ ] Tests ausschließlich mit synthetischen Daten/Sandbox; kein produktiver Google-Sheets-Import oder Geräte-/Benutzerdatenexport ohne separate ausdrückliche Freigabe.
 - [ ] Kernfunktionen kostenlos, offlinefähig und ohne Cloudpflicht; fehlende Daten/Quellen/LLM müssen korrekt deaktivierte Funktionen bzw. nachvollziehbar unvollständige Ergebnisse liefern.

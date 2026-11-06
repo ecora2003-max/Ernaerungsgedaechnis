@@ -45,6 +45,7 @@ class BodyMeasurementOnDeviceTest {
     }
     private fun tap(tag: String) {
         finishEditing(); waitTag(tag)
+        compose.waitUntil(25_000) { runCatching { compose.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false) }
         val node = compose.onNodeWithTag(tag)
         if (tag.startsWith("workspace_tab_")) node.performClick() else node.performScrollTo().performClick()
     }
@@ -68,6 +69,8 @@ class BodyMeasurementOnDeviceTest {
         val mealsBefore = db.foodDao().activeConsumptionCount()
         val healthBefore = db.healthDao().history("com.sec.android.app.shealth")
         try {
+            db.openHelper.writableDatabase.execSQL("INSERT INTO body_measurements(id,measuredAt,weightKg,method,source,quality,excludedFromTrend,recordedAt) VALUES(?,1,74.0,'Frühere Methode','USER','UNKNOWN',0,1)", arrayOf("$token-legacy"))
+            val legacyOriginal = db.bodyDao().legacy().single()
             tap("workspace_tab_MORE"); tap("workspace_go_BODY")
             waitTag("body_save"); compose.onNodeWithTag("body_save").assertIsNotEnabled()
             field("body_input_value", "73,0400")
@@ -109,15 +112,26 @@ class BodyMeasurementOnDeviceTest {
             compose.onNodeWithTag("body_version_${first.id}").performScrollTo()
                 .assertTextContains("73,14", substring = true)
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11).build()
+                .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12).build()
             try {
-                assertEquals(11, reopened.openHelper.readableDatabase.version)
+                assertEquals(12, reopened.openHelper.readableDatabase.version)
                 assertEquals(first, reopened.bodyDao().version(first.id))
                 assertEquals(first.id, FoodStore(reopened).saveBodyMeasurement(first.runId, first.input(), null, true))
                 assertEquals(2, reopened.bodyDao().versions().size)
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
             } finally { reopened.close() }
             compose.activityRule.scenario.recreate(); waitTag("body_saved")
+            tap("body_legacy_choose_$token-legacy"); tap("body_legacy_field_${token}-legacy_WEIGHT")
+            compose.onNodeWithTag("body_input_date").performScrollTo().assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+            field("body_input_date", "2026-10-25"); field("body_input_value", "75,5000")
+            field("body_input_reason", "Eigenes Messdatum und Gewicht geprüft")
+            tap("body_confirm"); tap("body_save"); waitTag("body_saved")
+            val legacyCurrent = db.bodyDao().versions().single { it.legacyOriginId == "$token-legacy" }
+            assertEquals("75.5", legacyCurrent.decimalValue); assertNull(legacyCurrent.utc)
+            assertEquals(legacyOriginal, db.bodyDao().legacy().single())
+            tap("body_history_${legacyCurrent.id}"); waitTag("body_legacy_original_$token-legacy")
+            compose.onNodeWithTag("body_legacy_original_$token-legacy").performScrollTo()
+                .assert(hasAnyDescendant(hasText("Gewicht: 74.0 kg", substring = true)))
             val authBeforeOverview = db.healthDao().state("com.sec.android.app.shealth")
             tap("workspace_tab_MORE"); tap("workspace_go_FITNESS")
             waitTag("fitness_body_value_${current.id}")
