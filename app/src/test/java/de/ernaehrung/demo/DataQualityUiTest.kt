@@ -58,7 +58,7 @@ class DataQualityUiTest {
         val identity = db.foodDao().version(old)!!.productId
         store.consume("$token-meal", ConsumptionInput(old, day, "Synthetisch tatsächlich erfasst", 100_000), true)
         store.setDayStatus("$token-day", day, DayStatus.COMPLETE, store.dayNutrition(day).snapshot, true)
-        val scan = store.saveReceiptScan("$token-scan", "TESTMARKT\n19.06.2019\nWARE 1,00\nSUMME 1,00", "MANUAL_TEXT")
+        val scan = store.saveReceiptScan("$token-scan", "QUALITAETSTEST\n19.06.2019\nWARE 1,00\nSUMME 1,00", "MANUAL_TEXT")
         val authBefore = db.healthDao().state("com.sec.android.app.shealth")
         val healthBefore = db.healthDao().history("com.sec.android.app.shealth")
         val bodyBefore = db.bodyDao().versions()
