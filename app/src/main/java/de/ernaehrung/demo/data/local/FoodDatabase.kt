@@ -152,6 +152,11 @@ internal interface FoodDao {
     @Query("SELECT COUNT(*) FROM consumption_events") suspend fun consumptionCount(): Int
     @Query("SELECT COUNT(*) FROM operations") suspend fun operationCount(): Int
     @Query("SELECT * FROM diary_days WHERE date = :date") suspend fun day(date: String): DiaryDayEntity?
+    @Query("SELECT date FROM diary_days UNION SELECT c.date FROM consumption_events c LEFT JOIN operation_reversals r ON r.originalOperationId = c.operationId WHERE r.originalOperationId IS NULL ORDER BY date DESC")
+    suspend fun knownNutritionDates(): List<String>
+    @Query("SELECT * FROM storage_locations ORDER BY name, id") suspend fun allLocations(): List<StorageLocationEntity>
+    @Query("SELECT * FROM recipe_versions r WHERE r.revision = (SELECT MAX(revision) FROM recipe_versions WHERE recipeId = r.recipeId) ORDER BY r.id")
+    suspend fun currentRecipes(): List<RecipeVersionEntity>
     @Query("SELECT * FROM recipe_ingredients WHERE recipeVersionId = :id ORDER BY position") suspend fun ingredients(id: String): List<RecipeIngredientEntity>
 
     @Query("""SELECT v.*, (SELECT COALESCE(SUM(m.delta), 0) FROM stock_movements m

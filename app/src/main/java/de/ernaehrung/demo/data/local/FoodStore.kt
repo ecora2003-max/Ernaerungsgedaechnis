@@ -63,6 +63,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val body = BodyMeasurementOperations(db, now)
     private val trainingJournal = TrainingJournalReader(db)
     internal fun trainingJournal() = trainingJournal.observe()
+    private val dataQuality = DataQualityReader(db, now)
+    internal fun dataQuality() = dataQuality.observe()
     private val manualWorkouts = ManualWorkoutOperations(db, now)
     internal suspend fun manualWorkoutRun(key: String) = manualWorkouts.run(key)
     internal suspend fun beginManualWorkout(key: String) = manualWorkouts.begin(key)
@@ -731,7 +733,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
 
     /** No inventory is created by remembering a product or adding a version. */
     suspend fun rememberProduct(operationId: String, input: ProductInput, productId: String? = null,
-        reason: String = "Manuell erfasst"): String = db.withTransaction {
+        reason: String = "Manuell erfasst", expectedVersionId: String? = null): String = db.withTransaction {
         validate(input)
         require(reason.isNotBlank()) { "Änderungsgrund fehlt." }
         val legacyFingerprint = fingerprint("PRODUCT", listOf(input.name, input.brand, input.unit, input.packageAmount,
@@ -739,9 +741,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
             input.source, input.quality, input.sourceDetail), productId, reason)
         // Existing 0.2/0.3 product retry keys remain valid when no additional nutrients were supplied.
         val nutrientsFingerprint = if (input.extras().all { it == null }) legacyFingerprint else fingerprint("PRODUCT_NUTRIENTS", legacyFingerprint, input.extras())
-        val fingerprint = input.metadata?.let { fingerprint("PRODUCT_METADATA_1", nutrientsFingerprint, it.barcode, it.category, it.ingredients, it.allergens) } ?: nutrientsFingerprint
+        val metadataFingerprint = input.metadata?.let { fingerprint("PRODUCT_METADATA_1", nutrientsFingerprint, it.barcode, it.category, it.ingredients, it.allergens) } ?: nutrientsFingerprint
+        // Existing retry fingerprints remain byte-for-byte unchanged. Interactive
+        // corrections bind a separate versioned action to the reviewed predecessor.
+        val fingerprint = expectedVersionId?.let { fingerprint("PRODUCT_EXPECTED_VERSION_1", metadataFingerprint, it) } ?: metadataFingerprint
         replay(operationId, fingerprint)?.let { return@withTransaction it }
         val previous = productId?.let { requireNotNull(dao.latestVersion(it)) { "Produkt nicht gefunden." } }
+        require(expectedVersionId == null || previous?.id == expectedVersionId) { "Produktfassung inzwischen geändert. Aktuelle Fassung erneut auswählen und prüfen." }
         require(previous == null || previous.baseUnit == input.unit) { "Basiseinheit einer Produktidentität darf nicht geändert werden." }
         // One confirmed product revision is one physical event. Keep its creation,
         // version and operation timestamps identical even across clock changes.

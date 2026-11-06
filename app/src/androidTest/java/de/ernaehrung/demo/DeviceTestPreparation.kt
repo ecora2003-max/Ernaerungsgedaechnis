@@ -3,13 +3,52 @@ package de.ernaehrung.demo
 import android.app.KeyguardManager
 import android.content.Context
 import android.os.SystemClock
+import android.os.Build
+import android.view.WindowInsets
+import android.view.inputmethod.InputMethodManager
 import android.util.Log
+import androidx.compose.ui.test.junit4.AndroidComposeTestRule
+import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+
+/** Native IME show/hide requests can finish after a Compose text replacement.
+ * Repeat only the idempotent hide request, never a user gesture or booking.
+ * Continue only after actual WindowInsets reports the keyboard gone.
+ */
+internal fun finishDeviceTextEditing(
+    compose: AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>,
+    clearComposeFocus: () -> Unit = {}
+) {
+    val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    compose.waitForIdle()
+    device.waitForIdle(1_500L)
+    var lastHide = 0L
+    fun hide() {
+        compose.runOnUiThread {
+            clearComposeFocus()
+            val window = compose.activity.window
+            window.currentFocus?.clearFocus()
+            if (Build.VERSION.SDK_INT >= 30) window.insetsController?.hide(WindowInsets.Type.ime())
+            (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                .hideSoftInputFromWindow(window.decorView.windowToken, 0)
+        }
+        lastHide = SystemClock.uptimeMillis()
+    }
+    hide()
+    compose.waitUntil(10_000) {
+        val visible = Build.VERSION.SDK_INT >= 30 && compose.activity.window.decorView.rootWindowInsets
+            ?.isVisible(WindowInsets.Type.ime()) == true
+        if (visible && SystemClock.uptimeMillis() - lastHide >= 250L) hide()
+        !visible
+    }
+    compose.waitForIdle()
+    device.waitForIdle(1_500L)
+}
 
 /** CI's ephemeral emulator is provisioned with PIN 2468. Never forge a credential
  * result or remove its secure lock: the subsequent auth-bound Keystore tests

@@ -305,26 +305,7 @@ class RecipeDeviceCredentialUiTest {
         var database = open()
         var models = ViewModelStore()
         var appFocus: FocusManager? = null
-        fun finishEditing() {
-            // The IME is an external window: Compose idleness alone does not
-            // mean that its resize animation has finished. End the text edit
-            // before scrolling and tapping a review choice on the real screen.
-            compose.runOnUiThread {
-                appFocus?.clearFocus(force = true)
-                val window = compose.activity.window
-                (compose.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                    .hideSoftInputFromWindow(window.decorView.windowToken, 0)
-            }
-            compose.waitUntil(5_000) {
-                Build.VERSION.SDK_INT < 30 || compose.activity.window.decorView.rootWindowInsets
-                    ?.isVisible(WindowInsets.Type.ime()) != true
-            }
-            compose.waitForIdle()
-            // Native IME/window work can outlive Compose idleness and dismiss a
-            // popup opened during the old editor's hide animation.
-            val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            device.waitForIdle(1_500L)
-        }
+        fun finishEditing() = finishDeviceTextEditing(compose) { appFocus?.clearFocus(force = true) }
         fun tap(label: String) {
             finishEditing()
             compose.waitUntil(25_000) {

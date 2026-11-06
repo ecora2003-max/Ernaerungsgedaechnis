@@ -60,3 +60,11 @@ Quelle: [Verbindlicher Zielauftrag #253](https://github.com/ecora2003-max/Ernaer
 - [ ] **E – Nachweise/Privacy:** genaue Host-/Vertrags-SHAs, Befehle/Run-URLs, Umgebung und Pass/Fail/Skip; JVM, echte Android- und physische Watch-Tests getrennt. Synthetische Daten in CI, keine Gesundheitsrohwerte/Secrets in GitHub/Logs, kein ungefragter Export. Alle historischen Migrationspfade, Neustart, Offline, Permission-Revocation, History-/Background-Grenzen, DST, Replay und Quellenwechsel prüfen. Ein fehlendes Uhrfeld bleibt unbekannt.
 
 SDK-Fallback, optionale Herzfrequenz-/Schlaf-/BIA-Berechtigungen, genaue Krafttrainingsdetailtiefe und Statistik-/TDEE-/Exportschema bleiben [O]. Der minimale primäre Quellweg ist zu prüfen, bevor weitergehende Felder als tatsächlich verfügbar dargestellt werden.
+
+## 7. Datenqualität und echte Korrekturanschlüsse – Produktplan §22.4
+
+- [ ] Datenqualitätsansicht im Standard-Arbeitsbereich liest tatsächliche lokale Daten konsistent; keine festen Demofunde, Providerabfragen oder Ist-Buchungen durch Anzeige/Navigation. Leseausfall erlaubt keine Vollständigkeitsbehauptung; Retry und Wiederaufnahme lesen neu.
+- [ ] Aktuelle Produktfassungen, aktive Aliasentscheidungen inklusive Händler-/GTIN-/Versionsscope, offene Bonentwürfe/Belegangaben, positiver aktiver Lagerbestand mit ungeklärter Haltbarkeit, belegte Ernährungstage und aktuelle Rezeptmengen/-einheiten prüfen. Historische Quellen/Versionen erhalten, stornierte/aufgebrauchte Bestände und zurückgenommene Aliase nicht als aktuell behandeln.
+- [ ] Bekannte Null, fehlende Werte, Teilwissen und Konflikte unterscheiden. Neue Produktfassungen ändern frühere Verzehre nicht; ausdrücklich vollständige Tage können Nährwertlücken behalten. Fehlende Tage nicht erfinden; Nichtwaren nicht zu Lebensmitteln umdeuten.
+- [ ] Korrekturaktion führt in die tatsächliche passende Seite bzw. denselben Ernährungstag. Produktkorrektur bindet erwartete Vorversion atomar, Replay bleibt stabil und veraltete Eingabe überschreibt keine neuere Fassung. Kein automatisches Heilen, Umrechnen oder Sicherheitsfreigeben.
+- [ ] Tatsächlicher MainActivity-/Room- und Android-Fall mit Korrektur, Neustart/SQLite-Reopen, getrennt belegter Netzfreiheit sowie unveränderter übriger Lebensmittel-/Health-/Body-/Trainingshistorie. Kein Gesamt-App-/Watch-Abschluss daraus.
