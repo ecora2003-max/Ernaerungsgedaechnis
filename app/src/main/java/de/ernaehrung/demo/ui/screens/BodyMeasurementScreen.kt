@@ -19,7 +19,7 @@ import java.time.*
 import java.util.UUID
 
 @Composable
-private fun rememberBodyMeasurementModel(): BodyMeasurementViewModel {
+internal fun rememberBodyMeasurementModel(): BodyMeasurementViewModel {
     val context = LocalContext.current.applicationContext
     val factory = remember(context) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -32,7 +32,7 @@ private fun rememberBodyMeasurementModel(): BodyMeasurementViewModel {
  * operation key, import consent, provider read or nutrition/stock write.
  */
 @Composable
-internal fun BodyMeasurementSummary(onOpen: () -> Unit,
+internal fun BodyMeasurementSummary(onOpen: () -> Unit, onOpenHistory: (() -> Unit)? = null,
     model: BodyMeasurementViewModel = rememberBodyMeasurementModel()) {
     val state by model.state.collectAsStateWithLifecycle()
     val history = state.history
@@ -60,6 +60,9 @@ internal fun BodyMeasurementSummary(onOpen: () -> Unit,
             }
             Text("Diese Werte bleiben lokal und benötigen keine Health-Connect-Rechte. Es werden keine Ernährungsziele berechnet oder geändert.")
             OutlinedButton(onOpen, Modifier.testTag("fitness_open_body")) { Text("Körpermessungen erfassen und Verlauf öffnen") }
+            onOpenHistory?.let { open ->
+                OutlinedButton(open, Modifier.testTag("fitness_open_body_raw")) { Text("Rohwerte im Zeitraum ansehen") }
+            }
         }
     }
 }
@@ -140,7 +143,7 @@ internal fun BodyMeasurementScreen(model: BodyMeasurementViewModel = rememberBod
 }
 
 @Composable
-private fun BodyMeasurementDetails(row: BodyMeasurementVersionEntity, tag: String = "body_value_${row.id}") {
+internal fun BodyMeasurementDetails(row: BodyMeasurementVersionEntity, tag: String = "body_value_${row.id}") {
     Text("${row.name ?: BodyMetric.valueOf(row.metric).label}: ${row.rawValue ?: "Unbekannt"} ${row.unit} · Version ${row.revision}", Modifier.testTag(tag),
         style = MaterialTheme.typography.titleSmall)
     Text("${row.localDate} · ${row.localTime ?: "Uhrzeit unbekannt"} · Zeitzone: ${row.zoneId ?: "Unbekannt"}")

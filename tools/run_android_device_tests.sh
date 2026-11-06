@@ -18,7 +18,7 @@ if [[ "$device_test_result" -ne 0 ]]; then
   timeout 20s adb exec-out screencap -p > app/build/outputs/device-diagnostics/screen.png
   # Capture external system surfaces at their failure boundary; later tests
   # can replace them before the final workflow screenshot is taken.
-  for diagnostic_name in picker camera-cancel camera-capture recipe-flow credential-flow shopping-flow plan-flow fitness-flow body-flow health-api-flow production-fefo-flow diagnostic-self-check; do
+  for diagnostic_name in picker camera-cancel camera-capture recipe-flow credential-flow shopping-flow plan-flow fitness-flow body-flow body-raw-history health-api-flow production-fefo-flow diagnostic-self-check; do
     for diagnostic_format in xml png; do
       diagnostic_output="app/build/outputs/device-diagnostics/$diagnostic_name.$diagnostic_format"
       if timeout 20s adb pull "/sdcard/Download/eg-synthetic-test-diagnostics/$diagnostic_name.$diagnostic_format" \

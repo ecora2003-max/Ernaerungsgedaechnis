@@ -40,7 +40,8 @@ private fun rememberFitnessModel(): FitnessViewModel {
 }
 
 @Composable
-internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null) {
+internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
+    onOpenBodyHistory: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -68,7 +69,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
     Column(Modifier.fillMaxWidth().testTag("fitness_screen"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Fitness · Samsung Health", style = MaterialTheme.typography.headlineSmall)
         onOpenBody?.let { open ->
-            BodyMeasurementSummary(open)
+            BodyMeasurementSummary(open, onOpenBodyHistory)
         }
         Text("Galaxy Watch 4 synchronisiert zunächst mit Samsung Health auf dem Smartphone. Dort müssen Schritte und Training für Health Connect freigegeben sein. Die Übernahme kann verzögert sein.")
         Text(when (state.availability) {
