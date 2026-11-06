@@ -61,6 +61,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val recognitionReader = RecognitionReader(db)
     private val recognitionWriter = RecognitionOperations(db, now)
     private val body = BodyMeasurementOperations(db, now)
+    private val trainingJournal = TrainingJournalReader(db)
+    internal fun trainingJournal() = trainingJournal.observe()
     internal fun bodyMeasurementHistory() = body.observe()
     internal suspend fun bodyMeasurementRun(key: String) = body.run(key)
     internal suspend fun saveBodyMeasurement(key: String, input: de.ernaehrung.demo.data.fitness.BodyMeasurementInput,

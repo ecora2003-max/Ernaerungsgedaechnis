@@ -24,12 +24,13 @@ import de.ernaehrung.demo.ui.screens.FitnessScreen
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
+import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG -> STOCK
@@ -93,6 +94,7 @@ fun LocalWorkspaceApp() {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
+                            onOpenTraining = { go(WorkspacePage.TRAINING) },
                             onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
                                 FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
                             })
@@ -100,10 +102,12 @@ fun LocalWorkspaceApp() {
                         BodyMeasurementScreen()
                     } else if (page == WorkspacePage.BODY_RAW) {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
+                    } else if (page == WorkspacePage.TRAINING) {
+                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) })
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }

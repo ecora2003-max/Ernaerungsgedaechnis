@@ -2,10 +2,17 @@ package de.ernaehrung.demo.ui
 
 import androidx.health.connect.client.records.ExerciseSessionRecord as Exercise
 import androidx.health.connect.client.records.metadata.Device
+import androidx.health.connect.client.records.metadata.Metadata
 import java.math.BigDecimal
 
 /** Labels for the pinned public HC SDK. No inferred sport, energy or Watch model. */
 internal object FitnessPresentation {
+    fun recordingMethod(method: Int): String = when (method) {
+        Metadata.RECORDING_METHOD_MANUAL_ENTRY -> "In der Quelle manuell erfasst"
+        Metadata.RECORDING_METHOD_ACTIVELY_RECORDED -> "In der Quelle aktiv aufgezeichnet"
+        Metadata.RECORDING_METHOD_AUTOMATICALLY_RECORDED -> "In der Quelle automatisch aufgezeichnet"
+        else -> "Aufzeichnungsmethode unbekannt"
+    }
     fun duration(millis: Long): String {
         require(millis >= 0L)
         val minutes = millis / 60_000L
