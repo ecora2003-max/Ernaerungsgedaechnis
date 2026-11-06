@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- This APK is installed only by instrumentation on disposable emulators.
+         No synthetic receiver/provider is present in the shipping application. -->
+    <application>
+        <activity android:name="de.ernaehrung.demo.SyntheticRecipeAiReceiver"
+            android:exported="true" android:label="Synthetische Rezept-KI">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <provider android:name="de.ernaehrung.demo.SyntheticRecipeAiCapture"
+            android:authorities="${applicationId}.recipe-ai-synthetic" android:exported="true" />
+    </application>
+</manifest>

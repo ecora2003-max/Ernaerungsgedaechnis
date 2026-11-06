@@ -1,0 +1,18 @@
+# Freie Rezeptwünsche mit einer KI bearbeiten
+
+Der vereinbarte Weg aus Produktplan §21 ist ein bewusster JSON-Austausch. Die App benötigt dafür keinen API-Schlüssel und kein Pflichtabo. Die gewählte KI-App kann eigene Zugangsbedingungen haben. Ohne Teilen gibt es keine Übertragung und keine Modellanfrage. Der lokale Offline-Generator bleibt unabhängig davon verfügbar; seine festen Kombinationen sind kein Sprachmodell.
+
+1. **Mehr → Rezepte & Küche → Rezeptvorschläge und JSON-Import** öffnen. Portionen, Ausschlüsse und bei Bedarf Rezeptvorgaben einstellen.
+2. Optional den eigenen lokalen Bestand/Einkaufsbedarf auswählen und **Aktuellen lokalen Kontext prüfen** drücken. Angebote sind für den KI-Export gesperrt: eine Anzeigefreigabe ist keine Weitergabefreigabe.
+3. **Rezept mit ChatGPT oder anderer KI entwerfen** öffnen und einen freien Rezeptwunsch eingeben. Optional einzelne Produktversionen hinzufügen. Die Auswahl ist zunächst leer; der übrige Katalog wird nicht angehängt.
+4. **KI-Anfrage lokal vorbereiten** drücken und den vollständigen angezeigten Text prüfen. Bei gewähltem Kontext verlassen nur Zeilen der ausgewählten Produktversionen die App. Nicht übermittelte Daten bleiben unbekannt. Bons, private Preisgeschichte, Gesundheitskopie und Zugangsdaten werden nicht angehängt. Selbst eingegebene Wünsche und Ausschlüsse können persönliche Angaben enthalten.
+5. Die Weitergabe ausdrücklich freigeben und **Anfrage mit KI-App teilen** drücken. Android öffnet seine App-Auswahl. Die App-Auswahl allein bestätigt keine Übertragung und keine erzeugte Antwort; die Anfrage in der gewählten KI-App gegebenenfalls noch absenden.
+6. Von der KI ausschließlich das angeforderte Antwort-JSON ohne Markdown liefern lassen. **Antwort-JSON der KI einfügen** und **KI-Antwort lokal prüfen** drücken, oder eine selbst gespeicherte UTF-8-JSON-Datei über **KI-Antwortdatei auswählen** öffnen. Abbruch übernimmt nichts und erlaubt einen erneuten Versuch.
+7. Die eingelesene Vorschau anschließend Zutat für Zutat unabhängig prüfen: aktuelle Produktversion, Menge/Einheit/Basis, RAW-/COOKED-Zustand, Lebensmittel-Ausschlüsse, Allergene und Ernährungsformen. Modellangaben sind keine Nachweise. Der vorhandene Prüf- und Gerätebestätigungsweg bleibt erforderlich.
+8. Rezept speichern, Herstellung und tatsächlicher Verzehr bleiben getrennte ausdrückliche Aktionen. Eine Anfrage oder KI-Antwort bucht nichts.
+
+Änderungen an Wunsch, Auswahl, Vorgaben oder gebundenem Kontext widerrufen die bisherige Exportfreigabe. **Unbestätigten Rezeptvorgang verwerfen** löscht auch Anfrage und Freigabe. Nach Neustart/Prozessverlust neu beginnen; Anfrage, Auswahl, Antwortformular und Exportfreigabe werden nicht automatisch wiederhergestellt. Die bestehende optionale verschlüsselte JSON-Vormerkung ist eine andere ausdrückliche Aktion und übernimmt keine Prüfbelege oder Freigabe.
+
+Antworten müssen zum aktuellen Anfragebezug gehören und den gepinnten `recipe.draft`-Vertrag `1.0.0-draft` erfüllen. Die App prüft Anfragenummer, Zeitbezug, Portionen und Kontextflags sowie die bestehenden Frische-, Größen- und Inhaltsgrenzen. Dateien sind auf 262144 Byte begrenzt; fehlerhaftes UTF-8 wird nicht still ersetzt. Unbekannte Nährwerte bleiben unbekannt, bestätigte Ist-Buchungen darf kein Entwurf behaupten.
+
+Automatisierte Tests verwenden einen klar benannten synthetischen Android-Empfänger und eine synthetische Antwortdatei. Das belegt den tatsächlichen Systemaustausch und die Sicherheitsgrenzen; es ist kein Nachweis einer echten Modellantwort oder einer vollständig abgenommenen Rezept-KI.

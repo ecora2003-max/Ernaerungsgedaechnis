@@ -381,7 +381,7 @@ class RecipeDeviceCredentialUiTest {
             }
             var model = mount(store)
             val baseline = database.foodDao().operationCount()
-            tap("JSON-Rezeptentwurf importieren und manuell prüfen")
+            tap("Rezeptvorschläge und JSON-Import")
             tap("Vorgaben für den Rezeptvorschlag")
             tag("recipe_pref_meal_Hauptmahlzeit")
             compose.onNodeWithTag("recipe_pref_minutes").performScrollTo().performTextReplacement("35")

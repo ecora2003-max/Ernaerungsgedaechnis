@@ -79,7 +79,7 @@ class RecipeOnDeviceEndToEndTest {
                 }
             }
         }
-        compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
+        compose.onNodeWithText("Rezeptvorschläge und JSON-Import")
             .performClick()
         compose.onNodeWithTag("recipe_offline_generate").performScrollTo().performClick()
         compose.onNodeWithText("Entwurf:", substring = true).assertExists()
@@ -266,7 +266,7 @@ class RecipeOnDeviceEndToEndTest {
                     }
                 }
             }
-            compose.onNodeWithText("JSON-Rezeptentwurf importieren und manuell prüfen")
+            compose.onNodeWithText("Rezeptvorschläge und JSON-Import")
                 .performClick()
             compose.onNodeWithTag("recipe_offline_restrictions").performScrollTo()
                 .performTextReplacement("FOOD:dry-rice")
