@@ -61,7 +61,7 @@ class BackupOnDeviceTest {
         compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("backup_result") and hasText(value, substring = true)).fetchSemanticsNodes().size == 1 }
         compose.onNodeWithTag("backup_result").performScrollTo().assertTextContains(value, substring = true)
     }
-    private fun saveDocument(name: String, model: BackupViewModel) {
+    private fun awaitDocumentPicker(model: BackupViewModel): UiDevice {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         val documentPackages = setOf("com.google.android.documentsui", "com.android.documentsui")
         // Encryption completes off the UI thread, then a Compose LaunchedEffect
@@ -72,9 +72,13 @@ class BackupOnDeviceTest {
             model.state.value.error != null || device.currentPackageName in documentPackages
         }
         assertNull("Backup preparation failed", model.state.value.error)
+        assertTrue(device.currentPackageName in documentPackages)
+        return device
+    }
+    private fun saveDocument(name: String, model: BackupViewModel) {
+        val device = awaitDocumentPicker(model)
         val editor = device.wait(Until.findObject(By.res("android:id/title").clazz("android.widget.EditText")), 15_000L)
         assertNotNull("Real DocumentsUI filename editor required; backup preparation busy=${model.state.value.busy}, error=${model.state.value.error}", editor)
-        assertTrue(device.currentPackageName in documentPackages)
         requireNotNull(editor).text = name
         device.waitForIdle(1_500L)
         val save = device.wait(Until.findObject(By.res("android:id/button1").enabled(true)), 15_000L)
@@ -156,8 +160,27 @@ class BackupOnDeviceTest {
             assertEquals(sourceCount, source.foodDao().operationCount())
             val sourceModel = model(store)
             mount(sourceModel, "source")
+            // Real native cancellation must not select or read a document.
+            tap("backup_choose_file")
+            val device = awaitDocumentPicker(sourceModel)
+            device.pressBack()
+            compose.waitUntil(25_000) { device.currentPackageName == target.packageName }
+            waitTag("backup_fixture_source")
+            compose.onNodeWithTag("backup_file_selected").assertDoesNotExist()
+            assertNull(sourceModel.state.value.preview)
+            assertEquals(sourceCount, source.foodDao().operationCount())
             text("Gesundheits- und Fitnesshistorie ausdrücklich einschließen")
             input("backup_export_password", password); input("backup_export_repeat", password)
+            text("Diesen genauen Datenumfang verschlüsselt in einer von mir gewählten Datei speichern")
+            tap("backup_export")
+            awaitDocumentPicker(sourceModel).pressBack()
+            result("Speichern abgebrochen")
+            assertNull(written.get())
+            assertEquals(sourceCount, source.foodDao().operationCount())
+            compose.onNodeWithTag("backup_export").performScrollTo().assertIsNotEnabled()
+            // No old password/confirmation authorizes this fresh export.
+            input("backup_export_password", password); input("backup_export_repeat", password)
+            compose.onNodeWithTag("backup_export").performScrollTo().assertIsNotEnabled()
             text("Diesen genauen Datenumfang verschlüsselt in einer von mir gewählten Datei speichern")
             tap("backup_export"); saveDocument(fileName, sourceModel)
             result("Verschlüsselte Sicherung gespeichert")

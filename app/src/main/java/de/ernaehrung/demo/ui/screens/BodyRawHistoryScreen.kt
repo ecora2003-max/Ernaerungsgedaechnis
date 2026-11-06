@@ -53,6 +53,7 @@ internal fun BodyRawHistoryScreen(onOpenEditor: () -> Unit,
                     Text("${series.measure.name ?: series.measure.metric.label} · ${series.measure.unit}",
                         style = MaterialTheme.typography.titleMedium)
                     Text("${series.points.count { it.input.rawValue != null }} bekannte Werte · ${series.points.count { it.input.rawValue == null }} unbekannte Werte · ${series.points.count { it.input.excludedFromTrend }} für spätere Trends ausgeschlossen")
+                    BodyRawScatter(series, window.start, window.end)
                     series.daysWithoutKnownValue?.let { missing ->
                         Text("${missing.size} Kalendertage ohne erfassten bekannten Wert. Dies ist keine Bewertung der Messqualität.",
                             Modifier.testTag("body_raw_gaps_${series.measure.metric.name}_${series.measure.name.orEmpty()}"))
