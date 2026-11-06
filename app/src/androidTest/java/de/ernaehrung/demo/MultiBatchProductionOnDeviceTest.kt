@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 class MultiBatchProductionOnDeviceTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
     @Before fun unlockFixture() = prepareUnlockedTestDevice()
-    private fun finishEditing() = finishDeviceTextEditing(compose)
+    private fun finishEditing() = finishDeviceTextEditing(rule)
     private fun waitTag(tag: String) = rule.waitUntil(25_000) {
         rule.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1
     }
