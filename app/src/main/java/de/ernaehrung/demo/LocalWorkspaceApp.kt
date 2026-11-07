@@ -105,7 +105,7 @@ fun LocalWorkspaceApp() {
                             onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter,
                             onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) },
                             onOpenStorageCapacity = { selectedStorageLocation = it; go(WorkspacePage.STORAGE_CAPACITY) },
-                            recognitionModeState = recognitionMode)
+                            recognitionModeState = recognitionMode,onOpenPlanning = { go(WorkspacePage.PLAN) })
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()

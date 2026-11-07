@@ -4,6 +4,20 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** A new empty library preference history, preserving every existing recipe and food fact. */
+    val MIGRATION_16_17 = object : Migration(16,17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS recipe_favorites (id TEXT NOT NULL,recipeId TEXT NOT NULL,
+                recipeVersionId TEXT NOT NULL,revision INTEGER NOT NULL,previousId TEXT,status TEXT NOT NULL,
+                payloadHash TEXT NOT NULL,recordedAt INTEGER NOT NULL,zoneId TEXT NOT NULL,PRIMARY KEY(id),
+                FOREIGN KEY(recipeId) REFERENCES recipes(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(recipeVersionId) REFERENCES recipe_versions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(previousId) REFERENCES recipe_favorites(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_recipe_favorites_recipeId_revision ON recipe_favorites(recipeId,revision)")
+            db.execSQL("CREATE INDEX index_recipe_favorites_recipeVersionId ON recipe_favorites(recipeVersionId)")
+            db.execSQL("CREATE INDEX index_recipe_favorites_previousId ON recipe_favorites(previousId)")
+        }
+    }
     /** Empty private exclusion history. All existing facts and intent keys remain exact. */
     val MIGRATION_15_16 = object : Migration(15, 16) {
         override fun migrate(db: SupportSQLiteDatabase) {

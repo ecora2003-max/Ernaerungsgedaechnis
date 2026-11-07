@@ -66,7 +66,7 @@ class BackupRoomTest {
 
     @Test fun fullEncryptedRestorePreservesOriginalIdsNullZeroDecimalsReviewsAndHistoryButDoesNotEnableAProvider() = runBlocking {
         val before = source.foodDao().operationCount()
-        val archive = capture(); assertEquals(50, archive.tables.size)
+        val archive = capture(); assertEquals(51, archive.tables.size)
         assertEquals(FoodBackupStore.TABLES, archive.tables.map { it.name }.toSet())
         assertEquals(before, source.foodDao().operationCount())
         val bytes = BackupArchiveCodec.encode(archive)

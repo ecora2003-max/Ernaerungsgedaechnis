@@ -129,7 +129,24 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
     var source by rememberSaveable { mutableStateOf("Vorhandener Artikel") }
     var error by remember { mutableStateOf<String?>(null) }
     var carry by rememberSaveable { mutableStateOf(false) }
-    Fold("Plan anlegen oder überarbeiten") {
+    val handoff by model.recipePlanHandoffState.collectAsStateWithLifecycle()
+    // Capture before consuming the one-shot intent. Recomposition cannot
+    // reapply it over subsequent user edits or a fresh operation.
+    val prefill = remember(operationId) { handoff.request }
+    LaunchedEffect(prefill?.requestId) {
+        if (prefill != null) {
+            previousId = ""; draft = emptyList(); editedAmounts = emptyMap(); carry = false; reason = ""
+            title = prefill.name; amount = ""; label = ""; reference = ""
+            kind = PlanKind.PREPARATION.name
+            error = if (state.recipes.any { it.id == prefill.recipeVersionId }) {
+                reference = prefill.recipeVersionId; null
+            } else "Übergebene Rezeptfassung inzwischen geändert. Aktuelle Fassung bewusst auswählen."
+            model.consumeRecipePlanDraft(prefill.requestId)
+        }
+    }
+    Fold("Plan anlegen oder überarbeiten",openRequest = prefill?.requestId) {
+        if (prefill != null) Text("Rezeptauswahl übernommen. Noch kein Plan gespeichert. Geplanten Termin und Portionen selbst eingeben; dies bucht weder Zutaten noch Herstellung oder Verzehr.",
+            Modifier.testTag("recipe_plan_prefill_notice"))
         IdPicker("Plan bearbeiten", listOf("" to "Neuer Plan") + report.plans.map {
             it.version.id to "${it.version.title ?: "Übernommener Plan"} · v${it.version.revision} · ${it.version.status}"
         }, previousId) { id ->
@@ -139,7 +156,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
             end = record?.version?.endsOn ?: AppCalendar.today().plusDays(6).toString()
             reason = ""; draft = record?.entries?.map(PlanEntryInput::from).orEmpty(); error = null; carry = false; editedAmounts = emptyMap()
         }
-        Field("Plantitel", title, { title = it })
+        Field("Plantitel", title, { title = it },modifier = Modifier.testTag("plan_title_input"))
         Field("Planbeginn JJJJ-MM-TT", start, { start = it })
         Field("Planende JJJJ-MM-TT", end, { end = it })
         Text("Ein Zeitraum bis 56 Tage. Die Ansichten teilen diese Einträge, ohne zusätzliche Wochen- oder Monatsmengen.")
@@ -158,7 +175,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
             }
         }
         Section("Eintrag zum Entwurf hinzufügen")
-        Field("Geplanter Termin JJJJ-MM-TT", date, { date = it })
+        Field("Geplanter Termin JJJJ-MM-TT", date, { date = it },modifier = Modifier.testTag("plan_entry_date_input"))
         Field("Bezeichnung im Plan · optional", label, { label = it })
         IdPicker("Art des Planeintrags", PlanKind.entries.map { it.name to planKindLabel(it) }, kind) { value ->
             kind = value; reference = ""
@@ -177,7 +194,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
         }
         IdPicker("Planbezug", options, reference) { reference = it }
         val unit = if (entryKind == PlanKind.PREPARATION || fromPreparation) BaseUnit.PORTION else state.versions.find { it.id == reference }?.baseUnit
-        Field("Geplante Menge · ${unit?.label ?: "Basiseinheit"} · leer bei unbekannt", amount, { amount = it })
+        Field("Geplante Menge · ${unit?.label ?: "Basiseinheit"} · leer bei unbekannt", amount, { amount = it },modifier = Modifier.testTag("plan_entry_amount_input"))
         SaveButton("Zum Planentwurf hinzufügen", blocked || reference.isEmpty() || unit == null) {
             runCatching {
                 val parsed = amount.takeIf { it.isNotBlank() }?.let(Amounts::parse)
@@ -190,7 +207,7 @@ private fun PlanEditor(state: LocalDataState, report: PlanningReport, blocked: B
         }
         Text("Der Formularentwurf ist noch nicht gespeichert. Beim Verlassen dieses Bereichs kann er verloren gehen.")
         error?.let { Hint(it) }
-        Field("Änderungsgrund des Plans", reason, { reason = it })
+        Field("Änderungsgrund des Plans", reason, { reason = it },modifier = Modifier.testTag("plan_change_reason_input"))
         if (previousId.isNotEmpty()) Check("Bestehende Ist-Zuordnungen bei Termin- oder Mengenänderung bewusst übernehmen", carry) { carry = it }
         SaveButton("Planversion lokal speichern", blocked) {
             val name = title; val first = start; val last = end; val items = draft.toList(); val changes = editedAmounts.toMap()

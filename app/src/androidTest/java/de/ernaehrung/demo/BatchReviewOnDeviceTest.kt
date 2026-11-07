@@ -117,7 +117,7 @@ class BatchReviewOnDeviceTest {
             assertEquals(healthBefore, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(authBefore, db.healthDao().state("com.sec.android.app.shealth"))
             assertEquals(mealsBefore, dao.activeConsumptionCount())
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16).build()
+                .addMigrations(FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17).build()
             try {
                 assertEquals(original, reopened.foodDao().originalBatch(batch))
                 assertEquals(dao.batch(batch), reopened.foodDao().batch(batch))

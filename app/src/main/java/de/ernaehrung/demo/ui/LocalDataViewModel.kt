@@ -78,6 +78,34 @@ class LocalDataViewModel internal constructor(
             .onStart { emit(StorageCapacityUiState()) }.catch { emit(StorageCapacityUiState(readError = true)) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0), StorageCapacityUiState())
     internal fun retryStorageCapacity() { storageCapacityRefresh.value += 1L }
+    private val recipeFavoriteRefresh = MutableStateFlow(0L)
+    internal val recipeFavoriteState: StateFlow<RecipeFavoriteUiState> = recipeFavoriteRefresh.flatMapLatest {
+        store.watchRecipeFavorites().map { RecipeFavoriteUiState(it) }
+            .onStart { emit(RecipeFavoriteUiState()) }
+            .catch { emit(RecipeFavoriteUiState(readError = true)) }
+    }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0),RecipeFavoriteUiState())
+    private val recipeFavoriteSaving = MutableStateFlow(RecipeFavoriteSaveState())
+    internal val recipeFavoriteSaveState = recipeFavoriteSaving.asStateFlow()
+    private var recipeFavoritePending: Pair<RecipeFavoriteInput,String>? = null
+    internal fun retryRecipeFavorites() { recipeFavoriteRefresh.value += 1L }
+    internal fun setRecipeFavorite(input: RecipeFavoriteInput) {
+        if (recipeFavoriteSaving.value.busy || recipeFavoriteState.value.readError || recipeFavoriteState.value.snapshot == null) return
+        val key = recipeFavoritePending?.takeIf { it.first == input }?.second ?: java.util.UUID.randomUUID().toString()
+        recipeFavoritePending = input to key
+        recipeFavoriteSaving.value = RecipeFavoriteSaveState(busy = true)
+        viewModelScope.launch {
+            try {
+                store.setRecipeFavorite(key,input,true)
+                recipeFavoritePending = null
+                recipeFavoriteSaving.value = RecipeFavoriteSaveState(message = if (input.favorite) "Favorit lokal gespeichert." else "Favorit lokal entfernt.")
+            } catch (cancelled: java.util.concurrent.CancellationException) { throw cancelled }
+            catch (failure: RuntimeException) {
+                recipeFavoriteSaving.value = RecipeFavoriteSaveState(error = failure.message ?: "Favorit konnte nicht geändert werden. Aktuellen Stand erneut prüfen.")
+            } finally {
+                if (recipeFavoriteSaving.value.busy) recipeFavoriteSaving.value = recipeFavoriteSaving.value.copy(busy = false)
+            }
+        }
+    }
     val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
         .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())
@@ -321,15 +349,48 @@ class LocalDataViewModel internal constructor(
     // This is a durable Room consent key, not cryptographic human identity proof.
     private var pendingReviewedSave: PendingRecipeDraft? = null
     private val productionPrefill = MutableStateFlow<ProductionPrefillUiState?>(null)
+    private var productionPrefillSequence = 0
     internal val productionPrefillState = productionPrefill.asStateFlow()
 
     /** UI handoff only: never books a production or consumes stock. */
     internal fun prepareProductionForSavedRecipe(recipeVersionId: String) {
         if (recipeVersionId.isNotBlank() &&
             recipeDraftConsent.value.savedRecipeVersionId == recipeVersionId) {
-            productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
-                (productionPrefill.value?.requestSequence ?: 0) + 1)
+            // This exact version was already persisted by the separately
+            // validated save, even before the general library is collected.
+            publishProductionPrefill(recipeVersionId)
         }
+    }
+
+    /** A library selection only opens the actual-amount form; no allocation or confirmation is supplied. */
+    internal fun prepareProductionForRecipe(recipeVersionId: String) {
+        val current = state.value
+        if (!current.loading && current.error == null && current.recipes.any { it.id == recipeVersionId }) {
+            publishProductionPrefill(recipeVersionId)
+        }
+    }
+    private fun publishProductionPrefill(recipeVersionId: String) {
+        productionPrefillSequence = Math.incrementExact(productionPrefillSequence)
+        productionPrefill.value = ProductionPrefillUiState(recipeVersionId,productionPrefillSequence)
+    }
+    /** A consumed UI selection must not reopen/reset a later form after recreation. */
+    internal fun consumeProductionPrefill(requestSequence: Int) {
+        if (productionPrefill.value?.requestSequence == requestSequence) productionPrefill.value = null
+    }
+    private val recipePlanHandoff = MutableStateFlow(RecipePlanHandoffUiState())
+    internal val recipePlanHandoffState = recipePlanHandoff.asStateFlow()
+    internal fun prepareRecipePlanDraft(recipeVersionId: String): Boolean {
+        val current = state.value
+        val recipe = current.recipes.singleOrNull { it.id == recipeVersionId }
+        if (current.loading || current.error != null || recipe == null || saveState.value.busy || saveState.value.succeeded) {
+            recipePlanHandoff.value = RecipePlanHandoffUiState(error = "Rezeptfassung oder Vorgang nicht bereit. Aktuellen Stand prüfen und gegebenenfalls einen neuen Vorgang beginnen.")
+            return false
+        }
+        recipePlanHandoff.value = RecipePlanHandoffUiState(RecipePlanPrefill(java.util.UUID.randomUUID().toString(),recipe.id,recipe.name))
+        return true
+    }
+    internal fun consumeRecipePlanDraft(requestId: String) {
+        if (recipePlanHandoff.value.request?.requestId == requestId) recipePlanHandoff.value = RecipePlanHandoffUiState()
     }
     private var recipeSaveJob: kotlinx.coroutines.Job? = null
     private var recipePreviewJob: kotlinx.coroutines.Job? = null

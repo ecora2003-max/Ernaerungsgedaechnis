@@ -78,6 +78,10 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val backups = FoodBackupStore(db, now)
     private val nutritionGoals = NutritionGoalOperations(db, now)
     private val personalRestrictions = PersonalRestrictionOperations(db, now)
+    private val recipeFavorites = RecipeFavoriteOperations(db, now)
+    internal fun watchRecipeFavorites() = recipeFavorites.watch()
+    internal suspend fun readRecipeFavorites() = db.withTransaction { recipeFavorites.snapshot() }
+    internal suspend fun setRecipeFavorite(key: String,input: RecipeFavoriteInput,confirmed: Boolean) = recipeFavorites.save(key,input,confirmed)
     internal fun watchPersonalRestrictions() = personalRestrictions.watch()
     internal suspend fun readPersonalRestrictions() = db.withTransaction { personalRestrictions.snapshot() }
     internal suspend fun proposePersonalRestrictions(key: String, input: PersonalRestrictionInput, requested: Boolean) =
@@ -770,7 +774,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun waste(key: String, input: WasteInput, confirmed: Boolean) = stock.waste(key, input, confirmed)
     suspend fun correctStock(key: String, input: StockCountInput, confirmed: Boolean) = stock.correctStock(key, input, confirmed)
     suspend fun reverse(key: String, input: ReversalInput, confirmed: Boolean) = stock.reverse(key, input, confirmed)
-    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String? = null, reason: String = "Erste Fassung") = kitchen.saveRecipe(key, input, recipeId, reason)
+    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String? = null, reason: String = "Erste Fassung",
+        expectedVersionId: String? = null) = kitchen.saveRecipe(key, input, recipeId, reason, expectedVersionId = expectedVersionId)
     suspend fun produce(key: String, input: ProductionInput, confirmed: Boolean) = kitchen.produce(key, input, confirmed)
     fun catalog() = dao.observeCatalog()
     fun batches() = dao.observeBatches()
