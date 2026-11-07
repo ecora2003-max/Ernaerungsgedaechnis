@@ -1,15 +1,20 @@
-# Nährwertrechnung und lokale Ernährung (0.4)
+# Nährwertrechnung und tatsächliche lokale Ernährung
 
 ## Bedienung
 
-Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen. Unter **Ernährung** Datum im Format JJJJ-MM-TT wählen und „Tag anzeigen“ drücken. Es erscheinen nur aktive tatsächliche Verzehre dieses Tages, keine geplanten Mahlzeiten, Zugänge, Entsorgungen oder bloßen Kochvorgänge.
+Unter **Mehr → Ernährung** Datum im Format JJJJ-MM-TT wählen und **Tag anzeigen** drücken. Es erscheinen nur aktive tatsächliche Verzehre dieses Tages, keine geplanten Mahlzeiten, Zugänge, Entsorgungen oder bloßen Kochvorgänge. Entwicklungsversion weiterhin nur mit Testdaten verwenden.
 
-„Tatsächlichen Verzehr erfassen“ bietet zwei Wege:
+**Tatsächlichen Verzehr erfassen** bietet drei Wege:
 
 - **Ohne Lagerbezug:** konkrete Artikelversion wählen, Mahlzeit beschreiben und bekannte Menge eintragen oder bei Unklarheit leer lassen. Beispielsweise unterwegs gegessen; es entsteht keine Lagerbewegung.
 - **Aus Charge:** vorhandene Charge wählen und genaue gegessene Menge eintragen. Freigabe, Verbrauchsdatum und ausreichender Bestand werden geprüft. Bei Fertigportionen wird nur deren Bestand entnommen, keine erneute Rohwarenentnahme.
+- **Bestand nach FEFO:** konkrete Artikelversion und gegessene Menge wählen, vorgeschlagene geeignete Chargen prüfen und erst dann bestätigen. Fehlmengen oder ungeeignete Chargen geben keine Buchung frei; die endgültige FoodStore-Transaktion prüft den aktuellen Bestand nochmals atomar.
 
 Tatsächlichen Verzehr ausdrücklich bestätigen. Nach erfolgreichem Speichern vor einer weiteren Buchung oben „Neuen Vorgang beginnen“ wählen. Daten und Tagesbilanz aktualisieren sich. Ein fehlerhafter Eintrag lässt sich direkt stornieren; die Historie bleibt erhalten. Für eine Korrektur anschließend den richtigen neuen Verzehr erfassen.
+
+Beim Anwenden eines anderen Tages bleiben die noch ungespeicherten Verzehrfelder erhalten. Die Zustimmung gilt für genau den gewählten Tag und wird zurückgesetzt. Während dessen Tagesbilanz noch nicht lesbar ist, bleibt Buchen gesperrt. Ein bloß bearbeiteter, noch nicht angewendeter Datumstext ändert den Buchungstag nicht; maßgeblich ist das im offenen Verzehrformular ausdrücklich angezeigte Datum.
+
+Ein Neuaufbau der App-Ansicht erhält die noch ungespeicherten Eingaben, übernimmt aber keine Zustimmung zum Verzehr. Ein noch offener Tagesabschluss wird verworfen und muss frisch geöffnet und bestätigt werden. Bereits gespeicherte Verzehre und Tagesbestätigungen bleiben erhalten; ein vollständiger Tag mit fehlenden Mengen/Nährwerten oder ohne berechenbaren Verzehr erhält dadurch keine erfundenen Kalorien-Nullwerte.
 
 Im Katalog sind Energie, Protein, Fett, Kohlenhydrate und Ballaststoffe direkt bearbeitbar. Unter „Weitere Produktnährstoffe“ liegen Zucker, gesättigte Fette, Salz und Mikronährstoffe mit ihren jeweiligen g-/mg-/µg-Einheiten. Die Mengenbasis steht über den Feldern. Leer bedeutet unbekannt; eingegebene 0 ist eine bekannte Null. Änderungen erzeugen neue Artikelversionen. Bestehende Verzehre und Chargen behalten ihre bisherigen Versionen.
 

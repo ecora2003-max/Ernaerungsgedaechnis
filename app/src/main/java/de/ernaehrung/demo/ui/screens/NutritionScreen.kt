@@ -23,64 +23,69 @@ internal fun NutritionScreen(state: LocalDataState, blocked: Boolean, operationI
     val daily by model.daily.collectAsStateWithLifecycle()
     var draftDate by rememberSaveable { mutableStateOf(requested) }
     Heading("Deine lokale Ernährung", "Nur tatsächlich erfasster Verzehr zählt.")
-    Field("Tag JJJJ-MM-TT", draftDate, { draftDate = it })
+    Field("Tag JJJJ-MM-TT", draftDate, { draftDate = it },modifier = Modifier.testTag("nutrition_day_input"))
     Action("Tag anzeigen", true) { model.showDay(draftDate) }
     daily.error?.let { Hint(it) }
-    val report = daily.report
-    if (report == null || daily.date != requested) {
+    val report = daily.report?.takeIf { daily.date == requested }
+    if (report == null) {
         if (daily.error == null) CircularProgressIndicator()
-        return
     }
-    Panel(color = Sage) {
-        Section(report.date, "Tageserfassung und Nährwertabdeckung sind getrennte Angaben.")
-        Text(dayStatusLabel(report.status), Modifier.testTag("day_status"))
-        Text("${report.meals.size} aktive Verzehre", Modifier.testTag("active_meal_count"))
-        if (report.meals.isEmpty()) Text("Keine Verzehre gespeichert. Es werden keine fehlenden Angaben als Kalorien-Nullwerte ausgegeben.")
-        else NutrientLines(report.totals, "day")
-    }
-    if (report.meals.isNotEmpty()) {
-        Fold("Weitere Tagesnährwerte & Datenqualität") { NutrientLines(report.totals, "day_extra", extra = true); QualityNotes(report.totals) }
-    }
-    PersonalNutritionGoalSummary(report)
-    DayConfirmation(report, blocked, operationId, model)
-    LocalMealEditor(state, report.date, blocked, operationId, model)
-    Section("Tatsächlich erfasst", "Fehlerhafte Einträge stornieren und anschließend korrekt neu erfassen.")
-    var reverseId by rememberSaveable { mutableStateOf<String?>(null) }
-    report.meals.forEach { meal -> key(meal.event.id) {
-        Panel(Modifier.testTag("meal_${meal.event.id}")) {
-            Section(meal.event.meal, "${meal.productName} · Version ${meal.revision ?: "unbekannt"}")
-            KV("Menge", meal.event.amount?.let { "${Amounts.format(it)} ${meal.unit.label}" } ?: "Unbekannt")
-            meal.event.note?.takeIf { it.isNotBlank() }?.let { Text(it) }
-            NutrientLines(meal.nutrition, "meal_${meal.event.id}")
-            Action("Eintrag stornieren", true, "storno_meal_${meal.event.id}") { reverseId = meal.event.operationId }
+    if (report != null) {
+        Panel(Modifier.testTag("nutrition_applied_day_${report.date}"),color = Sage) {
+            Section(report.date, "Tageserfassung und Nährwertabdeckung sind getrennte Angaben.")
+            Text(dayStatusLabel(report.status), Modifier.testTag("day_status"))
+            Text("${report.meals.size} aktive Verzehre", Modifier.testTag("active_meal_count"))
+            if (report.meals.isEmpty()) Text("Keine Verzehre gespeichert. Es werden keine fehlenden Angaben als Kalorien-Nullwerte ausgegeben.")
+            else NutrientLines(report.totals, "day")
         }
-    } }
-    reverseId?.let { original ->
-        var reason by rememberSaveable(original) { mutableStateOf("") }
-        var date by rememberSaveable(original) { mutableStateOf(AppCalendar.today().toString()) }
-        AlertDialog(onDismissRequest = { reverseId = null }, modifier = Modifier.testTag("nutrition_storno_dialog"),
-            title = { Text("Verzehr stornieren") }, text = { Column(Modifier.heightIn(max = (LocalConfiguration.current.screenHeightDp * .5f).dp).verticalScroll(rememberScrollState())) {
-                Text("Verzehr aus der aktiven Bilanz entfernen und zugehörige Entnahmen gemeinsam zurückbuchen. Die Historie bleibt erhalten.")
-                Field("Stornodatum JJJJ-MM-TT", date, { date = it }); Field("Stornogrund", reason, { reason = it })
-            } }, confirmButton = { TextButton(enabled = !blocked && reason.isNotBlank(), onClick = {
-                val note = reason; val day = date; reverseId = null
-                model.save(operationId) { reverse(operationId, ReversalInput(original, day, note), true) }
-            }, modifier = Modifier.testTag("confirm_meal_storno")) { Text("Storno bestätigen") } },
-            dismissButton = { TextButton({ reverseId = null }) { Text("Abbrechen") } })
+        if (report.meals.isNotEmpty()) {
+            Fold("Weitere Tagesnährwerte & Datenqualität") { NutrientLines(report.totals, "day_extra", extra = true); QualityNotes(report.totals) }
+        }
+        PersonalNutritionGoalSummary(report)
+        DayConfirmation(report, blocked, operationId, model)
+    }
+    // Keep unconfirmed entry fields mounted while the new day's Room read is
+    // pending. Approval belongs to the requested day and never to a saved form.
+    LocalMealEditor(state, requested, blocked || report == null, operationId, model)
+    if (report != null) {
+        Section("Tatsächlich erfasst", "Fehlerhafte Einträge stornieren und anschließend korrekt neu erfassen.")
+        var reverseId by rememberSaveable { mutableStateOf<String?>(null) }
+        report.meals.forEach { meal -> key(meal.event.id) {
+            Panel(Modifier.testTag("meal_${meal.event.id}")) {
+                Section(meal.event.meal, "${meal.productName} · Version ${meal.revision ?: "unbekannt"}")
+                KV("Menge", meal.event.amount?.let { "${Amounts.format(it)} ${meal.unit.label}" } ?: "Unbekannt")
+                meal.event.note?.takeIf { it.isNotBlank() }?.let { Text(it) }
+                NutrientLines(meal.nutrition, "meal_${meal.event.id}")
+                Action("Eintrag stornieren", true, "storno_meal_${meal.event.id}") { reverseId = meal.event.operationId }
+            }
+        } }
+        reverseId?.let { original ->
+            var reason by rememberSaveable(original) { mutableStateOf("") }
+            var date by rememberSaveable(original) { mutableStateOf(AppCalendar.today().toString()) }
+            AlertDialog(onDismissRequest = { reverseId = null }, modifier = Modifier.testTag("nutrition_storno_dialog"),
+                title = { Text("Verzehr stornieren") }, text = { Column(Modifier.heightIn(max = (LocalConfiguration.current.screenHeightDp * .5f).dp).verticalScroll(rememberScrollState())) {
+                    Text("Verzehr aus der aktiven Bilanz entfernen und zugehörige Entnahmen gemeinsam zurückbuchen. Die Historie bleibt erhalten.")
+                    Field("Stornodatum JJJJ-MM-TT", date, { date = it }); Field("Stornogrund", reason, { reason = it })
+                } }, confirmButton = { TextButton(enabled = !blocked && reason.isNotBlank(), onClick = {
+                    val note = reason; val day = date; reverseId = null
+                    model.save(operationId) { reverse(operationId, ReversalInput(original, day, note), true) }
+                }, modifier = Modifier.testTag("confirm_meal_storno")) { Text("Storno bestätigen") } },
+                dismissButton = { TextButton({ reverseId = null }) { Text("Abbrechen") } })
+        }
     }
 }
 
 @Composable
 private fun DayConfirmation(report: DayNutrition, blocked: Boolean, key: String, model: LocalDataViewModel) {
-    var token by rememberSaveable { mutableStateOf<String?>(null) }
-    var target by rememberSaveable { mutableStateOf(DayStatus.COMPLETE.name) }
-    var date by rememberSaveable { mutableStateOf(report.date) }
+    var token by remember(key,report.date) { mutableStateOf<String?>(null) }
+    var target by remember(key,report.date) { mutableStateOf(DayStatus.COMPLETE.name) }
+    var date by remember(key,report.date) { mutableStateOf(report.date) }
     val complete = report.status == DayStatus.COMPLETE
     SaveButton(if (complete) "Tag wieder öffnen" else "Erfassung als vollständig bestätigen", blocked) {
         token = report.snapshot; date = report.date; target = if (complete) DayStatus.OPEN.name else DayStatus.COMPLETE.name
     }
     token?.let { snapshot ->
-        var accepted by rememberSaveable(snapshot) { mutableStateOf(false) }
+        var accepted by remember(snapshot) { mutableStateOf(false) }
         AlertDialog(onDismissRequest = { token = null }, modifier = Modifier.testTag("day_status_dialog"),
             title = { Text(if (target == DayStatus.COMPLETE.name) "Tageserfassung bestätigen" else "Tag wieder öffnen") },
             text = { Column(Modifier.heightIn(max = (LocalConfiguration.current.screenHeightDp * .5f).dp).verticalScroll(rememberScrollState())) {
@@ -101,7 +106,7 @@ private fun LocalMealEditor(state: LocalDataState, date: String, blocked: Boolea
     var name by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var note by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
+    var confirmed by remember(key,date) { mutableStateOf(false) }
     Fold("Tatsächlichen Verzehr erfassen") {
         WrappingChoices(listOf("Ohne Lagerbezug", "Aus Charge", "Bestand nach FEFO"), mode, "meal_source_") {
             mode = it; confirmed = false
