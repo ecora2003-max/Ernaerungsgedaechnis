@@ -1,5 +1,6 @@
 package de.ernaehrung.demo
 
+import android.net.ConnectivityManager
 import android.os.SystemClock
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -35,6 +36,8 @@ class SystemCameraOnDeviceTest {
     }
     private fun temporaryNames(): Set<String> = File(target.cacheDir, "recognition")
         .listFiles().orEmpty().mapTo(mutableSetOf()) { it.name }
+    private fun requireActualOffline() = assertNull("Actual default network must be absent, independently of radio settings",
+        target.getSystemService(ConnectivityManager::class.java).activeNetwork)
 
     private fun openCamera(): UiObject2 {
         compose.onNodeWithTag("workspace_tab_SCAN").performClick()
@@ -67,6 +70,7 @@ class SystemCameraOnDeviceTest {
     }
 
     @Test fun realCameraCancellationDeletesOnlyItsTemporaryImageAndBooksNothing() = runBlocking {
+        requireActualOffline()
         val db = FoodDatabase.localSandbox(target)
         val operations = db.foodDao().operationCount()
         val before = temporaryNames()
@@ -81,11 +85,13 @@ class SystemCameraOnDeviceTest {
             assertEquals(before, temporaryNames())
             assertEquals(operations, db.foodDao().operationCount())
             compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
+            requireActualOffline()
         } catch (failure: Throwable) { diagnose("cancel", failure) }
         Unit // JUnit4 requires a void method, not SemanticsNodeInteraction.
     }
 
     @Test fun realCameraCaptureThenActivityRecreationAndOcrOrUnreadableFallbackNeverBooks() = runBlocking {
+        requireActualOffline()
         val db = FoodDatabase.localSandbox(target)
         val operations = db.foodDao().operationCount()
         val purchases = db.foodDao().purchases().size
@@ -126,6 +132,7 @@ class SystemCameraOnDeviceTest {
             assertEquals(meals, db.foodDao().activeConsumptionCount())
             assertEquals(batches, db.foodDao().planningBatches().size)
             compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
+            requireActualOffline()
         } catch (failure: Throwable) { diagnose("capture", failure) }
         Unit
     }

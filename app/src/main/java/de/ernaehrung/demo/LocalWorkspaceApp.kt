@@ -59,7 +59,7 @@ fun LocalWorkspaceApp() {
     val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route } ?: WorkspacePage.HOME
     var demo by rememberSaveable { mutableStateOf(false) }
     var catalogFilter by rememberSaveable { mutableStateOf("") }
-    var recognitionMode by rememberSaveable { mutableStateOf("Barcode & Produkt") }
+    val recognitionMode = rememberSaveable { mutableStateOf("Barcode & Produkt") }
     var selectedBatch by rememberSaveable { mutableStateOf("") }
     var selectedStorageLocation by rememberSaveable { mutableStateOf<String?>(null) }
     if (demo) {
@@ -101,10 +101,11 @@ fun LocalWorkspaceApp() {
                     if (page.section != null) {
                         if (page == WorkspacePage.NUTRITION) Action("Persönliche Zielbereiche verwalten", true,
                             "nutrition_open_goals") { go(WorkspacePage.NUTRITION_GOALS) }
-                        LocalDataContent(model, page.section, initialRecognitionMode = recognitionMode, showSectionNavigation = false,
+                        LocalDataContent(model, page.section, initialRecognitionMode = recognitionMode.value, showSectionNavigation = false,
                             onOpenPurchases = { go(WorkspacePage.PURCHASES) }, initialCatalogQuery = catalogFilter,
                             onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) },
-                            onOpenStorageCapacity = { selectedStorageLocation = it; go(WorkspacePage.STORAGE_CAPACITY) })
+                            onOpenStorageCapacity = { selectedStorageLocation = it; go(WorkspacePage.STORAGE_CAPACITY) },
+                            recognitionModeState = recognitionMode)
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
@@ -133,10 +134,10 @@ fun LocalWorkspaceApp() {
                         DataQualityScreen { issue ->
                             when (issue.target) {
                                 DataQualityTarget.CATALOG -> { catalogFilter = issue.argument.orEmpty(); go(WorkspacePage.CATALOG) }
-                                DataQualityTarget.ALIASES -> { recognitionMode = "Aliase"; go(WorkspacePage.SCAN) }
+                                DataQualityTarget.ALIASES -> { recognitionMode.value = "Aliase"; go(WorkspacePage.SCAN) }
                                 DataQualityTarget.SCAN -> {
                                     issue.argument?.let(model::showReceiptReview)
-                                    recognitionMode = "Bon & OCR"; go(WorkspacePage.SCAN)
+                                    recognitionMode.value = "Bon & OCR"; go(WorkspacePage.SCAN)
                                 }
                                 DataQualityTarget.PURCHASES -> go(WorkspacePage.PURCHASES)
                                 DataQualityTarget.STOCK -> {

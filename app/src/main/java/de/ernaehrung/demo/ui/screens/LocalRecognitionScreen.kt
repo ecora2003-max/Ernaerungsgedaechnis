@@ -18,13 +18,12 @@ import de.ernaehrung.demo.ui.*
 
 @Composable
 internal fun LocalRecognitionScreen(data: LocalDataState, blocked: Boolean, operationId: String,
-    model: LocalDataViewModel, initialMode: String, onShowPurchases: () -> Unit = {}) {
+    model: LocalDataViewModel, mode: String, onModeChange: (String) -> Unit, onShowPurchases: () -> Unit = {}) {
     val ui by model.recognition.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
-    var mode by rememberSaveable { mutableStateOf(initialMode) }
     Heading("Erkennung", "Barcode · Produktquelle · Bonfoto · Aliase")
     Hint("Lokale Testdaten. Ein Scan liefert Vorschläge. Produkt speichern, Zahlung bestätigen und Lagerzugang buchen bleiben eigene Schritte.", Sage)
-    WrappingChoices(listOf("Barcode & Produkt", "Bon & OCR", "Aliase"), mode, "recognition_mode_") { mode = it }
+    WrappingChoices(listOf("Barcode & Produkt", "Bon & OCR", "Aliase"), mode, "recognition_mode_",onModeChange)
     ui.error?.let { Hint(it) }
     val recognition = ui.data
     if (recognition == null) { if (ui.error == null) CircularProgressIndicator(); return }
