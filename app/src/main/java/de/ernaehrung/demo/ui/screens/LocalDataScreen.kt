@@ -109,22 +109,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             LocationEditor(blocked, operationId, model)
             if (state.locations.isNotEmpty() && state.catalog.isNotEmpty()) ReceiptEditor(state, blocked, operationId, model)
             else Hint("Für einen Zugang zuerst ein Produkt im Katalog und einen bestätigten Lagerort anlegen.", Sage)
-            state.batches.forEach { row ->
-                Panel {
-                    Section(row.productName, row.locationName)
-                    KV("Physisch vorhanden", "${Amounts.format(row.stockAmount)} ${row.unit.label}")
-                    KV("Verwendungsstatus", when (row.batch.release) {
-                        ReleaseStatus.UNCHECKED -> "Ungeklärt · keine automatische Freigabe"
-                        ReleaseStatus.BLOCKED -> "Gesperrt"
-                        ReleaseStatus.RELEASED -> "Vom Nutzer für diesen Test freigegeben"
-                    })
-                    KV("MHD", row.batch.bestBefore ?: "Unbekannt")
-                    KV("Verbrauchsdatum", row.batch.useBy ?: "Unbekannt")
-                    Text("Charge: ${row.batch.id}", style = MaterialTheme.typography.labelSmall)
-                    onOpenBatchReview?.let { open -> Action("Chargenangaben prüfen", true, "stock_review_${row.batch.id}") { open(row.batch.id) } }
-                    if (row.originReversed) Badge("Herkunft storniert · nur Historie", Amber)
-                }
-            }
+            StockOverviewScreen(state,onOpenBatchReview)
             if (state.batches.any { it.stockAmount > 0 }) ConsumptionEditor(state, blocked, operationId, model)
             StockEventEditor(state, blocked, operationId, model)
         }
@@ -292,11 +277,11 @@ internal fun ConsumptionEditor(state: LocalDataState, busy: Boolean, operationId
     var batchId by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var day by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
+    val batches = eligibleConsumptionBatches(state.batches, preparedOnly)
+    val batch = batches.find { it.batch.id == batchId }
+    var confirmed by remember(operationId,batch?.batch,batch?.stockAmount,batch?.originReversed) { mutableStateOf(false) }
     Fold(if (preparedOnly) "Fertigportionen separat verzehren" else "Testverzehr aus einer Charge") {
-        val batches = eligibleConsumptionBatches(state.batches, preparedOnly)
         if (preparedOnly) Text("Nur tatsächlich hergestellte und ausdrücklich freigegebene Fertigportionen. Herstellung allein ist kein Verzehr.")
-        val batch = batches.find { it.batch.id == batchId }
         Picker("Charge", batches.map { "${it.productName} · ${it.batch.id}" }, batch?.productName ?: "Bitte wählen") { label ->
             batchId = batches.first { label.endsWith(it.batch.id) }.batch.id
             confirmed = false
