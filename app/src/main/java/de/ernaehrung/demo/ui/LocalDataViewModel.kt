@@ -195,6 +195,26 @@ class LocalDataViewModel internal constructor(
         val last = runCatching { java.time.LocalDate.parse(first).plusDays(days - 1).toString() }.getOrDefault(first)
         shoppingQuery.value = ShoppingScope(first, last, purchase.trim(), budgetId) to shoppingQuery.value.second + 1
     }
+    internal fun appliedShoppingScope() = shoppingQuery.value.first
+    private val shoppingNavigationMessage = MutableStateFlow<String?>(null)
+    internal val shoppingNavigationError = shoppingNavigationMessage.asStateFlow()
+    /** Only changes the read scope. Purchase day and budget remain the user's
+     * previously applied choices; no plan, list mark, price or actual is saved.
+     */
+    internal fun prepareShoppingForPlanning(start: String,end: String): Boolean {
+        val visible = planning.value
+        val report = visible.report
+        val days = runCatching { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.parse(start),java.time.LocalDate.parse(end)) + 1L }.getOrNull()
+        if (visible.error != null || report == null || report.startsOn != start || report.endsOn != end ||
+            planRange.value != (start to end) || days !in listOf(1L,7L,56L)) {
+            shoppingNavigationMessage.value = "Planungszeitraum geändert oder noch nicht lesbar. Aktuelle Ansicht abwarten und erneut öffnen."
+            return false
+        }
+        val previous = shoppingQuery.value
+        shoppingQuery.value = previous.first.copy(startsOn = start,endsOn = end) to previous.second + 1L
+        shoppingNavigationMessage.value = null
+        return true
+    }
     private val historicalPaidResult = MutableStateFlow(HistoricalPaidUiState())
     val historicalPaid = historicalPaidResult.asStateFlow()
     private var historicalPaidJob: kotlinx.coroutines.Job? = null

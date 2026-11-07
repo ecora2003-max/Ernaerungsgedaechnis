@@ -49,7 +49,8 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
     showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
     onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null,
-    recognitionModeState: MutableState<String>? = null,onOpenPlanning: (() -> Unit)? = null) {
+    recognitionModeState: MutableState<String>? = null,onOpenPlanning: (() -> Unit)? = null,
+    onOpenShopping: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -128,7 +129,11 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             StockEventEditor(state, blocked, operationId, model)
         }
         "Ernährung" -> NutritionScreen(state, blocked, operationId, model)
-        "Planung" -> LocalPlanningScreen(state, blocked, operationId, model, onOpenStorageCapacity)
+        "Planung" -> LocalPlanningScreen(state, blocked, operationId, model, onOpenStorageCapacity) { first,last ->
+            if (model.prepareShoppingForPlanning(first,last)) {
+                if (onOpenShopping != null) onOpenShopping() else mode = "Einkauf"
+            }
+        }
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
         "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, recognitionMode.value,

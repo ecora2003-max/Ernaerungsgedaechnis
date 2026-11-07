@@ -181,6 +181,34 @@ class PlanExecutionOnDeviceTest {
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
             } finally { reopened.close() }
             assertEquals(operationsBefore + 3, dao.operationCount())
+            // A second real UI plan places additional demand outside seven
+            // days. Opening shopping must carry the applied 56-day view.
+            tap("Neuen Vorgang beginnen")
+            tap("Plan anlegen oder überarbeiten")
+            field("Plantitel", "$fixture-future")
+            field("Planende JJJJ-MM-TT",day.plusDays(55).toString())
+            field("Geplanter Termin JJJJ-MM-TT",day.plusDays(30).toString())
+            choose("Planbezug",version)
+            field("Geplante Menge · g · leer bei unbekannt","300")
+            tap("Zum Planentwurf hinzufügen")
+            field("Änderungsgrund des Plans","Weiteren Bedarf im Achtwochenzeitraum bewusst geplant")
+            tap("Planversion lokal speichern")
+            compose.waitUntil(25_000) { runBlocking { dao.allPlannedEntries().any { it.productVersionId == version && it.date == day.plusDays(30).toString() } } }
+            compose.onNodeWithTag("plan_horizon_56 Tage").performScrollTo().performClick()
+            tap("Planungszeitraum anzeigen")
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("planning_applied_scope") and hasText(day.plusDays(55).toString(),substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("shopping_$version").performScrollTo().assertTextContains("400 g",substring = true)
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            compose.onNodeWithTag("plan_open_shopping").performScrollTo().performClick()
+            waitTag("workspace_page_SHOPPING")
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("shopping_applied_scope") and hasText(day.plusDays(55).toString(),substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("shopping_horizon_56 Tage").assertIsSelected()
+            compose.onNodeWithTag("shopping_need_$version").performScrollTo().assertTextContains("400 g",substring = true)
+            compose.activityRule.scenario.recreate(); waitTag("workspace_page_SHOPPING")
+            waitTag("shopping_applied_scope")
+            compose.onNodeWithTag("shopping_applied_scope").assertTextContains(day.plusDays(55).toString(),substring = true)
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            assertEquals(mealsBefore,dao.activeConsumptionCount()); assertEquals(stockBefore,dao.planningBatches())
             assertNull(connectivity.activeNetwork)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("plan-flow")

@@ -153,3 +153,9 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 - [ ] Room 16→17 ergänzt nur leere Favoritentabelle; alle 50 alten Entitäten/Sicht und 16 befüllte Migrationspfade prüfen. Exakte Altarchive 13/14/15/16, ursprüngliche Digests/No-op-/Purge-Schutz erhalten; typisierte, aber falsch verknüpfte Favoriten müssen die gesamte Wiederherstellung zurückrollen. Tatsächlichen Android-Filter-/Favoriten-/Entfernungs-/Neustart-/SQLite-/Offlinefall auf exaktem Head ausführen.
 
 - [ ] Gespeicherte genaue Rezeptfassung ohne Buchung in einen neuen Zubereitungsplanentwurf übergeben. Termin/Portionen ausdrücklich eingeben, Eintrag hinzufügen und Plan separat speichern; frühere Pläne erhalten. Bedarf/Fehlmenge aus derselben Rechnung sichtbar, ausschließlich eine Plan-Metadatenoperation, keine Zutaten-/Herstellungs-/Verzehrbuchung. Einmaliger RAM-Intent ohne erneute Anwendung über Nutzeränderungen/Neustart; echte Standard-Android-/Neustart-/SQLite-/Offlinekette belegen.
+
+## 16. Angewendete Planung → derselbe Einkaufszeitraum
+
+- [ ] Direkter Standard-App-Übergang übernimmt genau den angezeigten 1-/7-/56-Tage-Zeitraum; neue noch nicht angewendete Textfelder ändern ihn nicht. Geänderter/noch nicht lesbarer Bericht kann keinen veralteten Übergang freigeben.
+- [ ] Zuletzt angewendeten Einkaufstag und gewähltes Budget erhalten; keine neue Preis-/Rechtefreigabe, automatische Budgetkorrektur oder Auffüllung unbekannter Kosten. Sichtbare Bedarfs-, Datums-, Zeitraum- und Budgetfelder entsprechen der tatsächlichen Einkaufsabfrage.
+- [ ] Tatsächliche Fehlmengen außerhalb der ersten Woche erscheinen im 56-Tage-Einkauf. Auswahl/Navigation/Neustart schreiben keine zusätzliche Planung, Markierung, Preis-/Kauf-/Bestands-/Verzehrdaten. Standard-UI, vorhandene Preis-/Budgetregressionen und tatsächlichen Android-/Offline-/Neustartfall auf exaktem Head belegen; Schema/v1 bleiben gleich.

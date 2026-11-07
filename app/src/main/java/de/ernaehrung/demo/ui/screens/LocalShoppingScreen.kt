@@ -31,15 +31,17 @@ internal fun shoppingCandidateBudgetAfter(report: ShoppingReport, item: Shopping
 internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
     val ui by model.shopping.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
-    var start by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
-    var purchase by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
-    var horizon by rememberSaveable { mutableStateOf("7 Tage") }
-    var budget by rememberSaveable { mutableStateOf("") }
+    val applied = remember(model) { model.appliedShoppingScope() }
+    val days = runCatching { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.parse(applied.startsOn),java.time.LocalDate.parse(applied.endsOn)) + 1L }.getOrNull()
+    var start by rememberSaveable { mutableStateOf(applied.startsOn) }
+    var purchase by rememberSaveable { mutableStateOf(applied.purchaseOn) }
+    var horizon by rememberSaveable { mutableStateOf(when (days) { 1L -> "1 Tag"; 56L -> "56 Tage"; else -> "7 Tage" }) }
+    var budget by rememberSaveable { mutableStateOf(applied.budgetId.orEmpty()) }
     Heading("Einkaufsvorschläge", "Offener Restbedarf · Packungen · Preisangaben")
     Hint("Diese Liste plant einen Einkauf. Auswahl und Abhaken buchen weder Kauf, Ausgabe noch Zugang. Abgehakte Positionen bleiben in Bedarf und Kostenschätzung enthalten.", Sage)
-    Field("Bedarf ab JJJJ-MM-TT", start, { start = it })
+    Field("Bedarf ab JJJJ-MM-TT", start, { start = it },modifier = Modifier.testTag("shopping_start_input"))
     WrappingChoices(listOf("1 Tag", "7 Tage", "56 Tage"), horizon, "shopping_horizon_") { horizon = it }
-    Field("Geplanter Einkaufstag JJJJ-MM-TT", purchase, { purchase = it })
+    Field("Geplanter Einkaufstag JJJJ-MM-TT", purchase, { purchase = it },modifier = Modifier.testTag("shopping_purchase_input"))
     val report = ui.report
     val budgets = report?.budgets.orEmpty()
     val superseded = budgets.mapNotNull { it.supersedesId }.toSet()
@@ -51,7 +53,7 @@ internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operati
     }
     ui.error?.let { Hint(it) }
     if (report == null) { if (ui.error == null) CircularProgressIndicator(); return }
-    Text("Angezeigt: Bedarf ${report.scope.startsOn}–${report.scope.endsOn}, Einkauf ${report.scope.purchaseOn}, Bestandsstand ${report.asOf}")
+    Text("Angezeigt: Bedarf ${report.scope.startsOn}–${report.scope.endsOn}, Einkauf ${report.scope.purchaseOn}, Bestandsstand ${report.asOf}",Modifier.testTag("shopping_applied_scope"))
     androidx.compose.runtime.key(operationId) {
         ShoppingPriceEditor(data, rememberUpdatedState(report), guard, operation, model)
         ShoppingBudgetEditor(rememberUpdatedState(report), guard, operation, model)
@@ -87,7 +89,7 @@ private fun ShoppingItem(line: ShoppingLine, report: ShoppingReport, blocked: St
     Panel {
         val item = current.value
         Section(item.need.name, "${item.firstNeededOn ?: "Termin ungeklärt"} bis ${item.lastNeededOn ?: "Termin ungeklärt"}")
-        Text("Bekannte Fehlmenge: ${Amounts.format(item.need.knownMissing)} ${item.need.unit.label}${if (item.need.unknownRequirements > 0) " + weitere Menge ungeklärt" else ""}")
+        Text("Bekannte Fehlmenge: ${Amounts.format(item.need.knownMissing)} ${item.need.unit.label}${if (item.need.unknownRequirements > 0) " + weitere Menge ungeklärt" else ""}",Modifier.testTag("shopping_need_${item.need.versionId}"))
         Text(if (item.checked) "Gespeichert: auf Liste abgehakt · kein Kauf" else "Gespeichert: nicht abgehakt", Modifier.testTag("shopping_checked_${item.need.versionId}"))
         if (item.staleCheck) Hint("Frühere Markierung ist nach Datenänderung veraltet. Mengen und Preis erneut prüfen.")
         val paidHistory by model.historicalPaid.collectAsStateWithLifecycle()
