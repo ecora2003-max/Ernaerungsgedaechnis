@@ -168,9 +168,11 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 
 ## 17. Rezeptzeiten und Aufbewahrungshinweise – Produktplan §10.1/10.2
 
-- [ ] Bestehende nullable Minuten-/Hinweis-/Quellenfelder in manueller Rezeptbearbeitung, Bibliothek und tatsächlicher Herstellungsmaske anschließen. Ganze Minuten für den Ansatz, unbekannt getrennt von 0; negative oder widersprüchliche bekannte Zeiten ohne Teilversion abweisen. Keine automatische Haltbarkeits-/Allergen-/Lagerfreigabe.
-- [ ] Exakte Vorgängerfassung/CAS, eigene neue Version und historische Quellen-/Hinweistexte erhalten; erfolgreiche alte Retries bleiben historisch stabil. Bestehende manuelle/v1-Digests ohne neue Zeitwerte unverändert, keine erfundene v1-Erweiterung oder neue Schema-/Backupversion. Vorhandene Sicherung erhält alle Werte und Identitäten verlustfrei.
-- [ ] Echte Standard-UI-Korrektur, gehaltene ungespeicherte Eingaben nach Activity-Neuerstellung, Sichtbarkeit derselben Daten vor Herstellung, alte/neue Versionswerte, SQLite-Reopen und tatsächliche Netzfreiheit auf exaktem Head belegen; zusätzliche Rezeptversion erzeugt keine Lebensmittel-, Plan- oder Verzehrbuchung.
+- [x] Bestehende nullable Minuten-/Hinweis-/Quellenfelder in manueller Rezeptbearbeitung, Bibliothek und tatsächlicher Herstellungsmaske anschließen. Ganze Minuten für den Ansatz, unbekannt getrennt von 0; negative oder widersprüchliche bekannte Zeiten ohne Teilversion abweisen. Keine automatische Haltbarkeits-/Allergen-/Lagerfreigabe.
+- [x] Exakte Vorgängerfassung/CAS, eigene neue Version und historische Quellen-/Hinweistexte erhalten; erfolgreiche alte Retries bleiben historisch stabil. Bestehende manuelle/v1-Digests ohne neue Zeitwerte unverändert, keine erfundene v1-Erweiterung oder neue Schema-/Backupversion. Vorhandene Sicherung erhält alle Werte und Identitäten verlustfrei.
+- [x] Echte Standard-UI-Korrektur, gehaltene ungespeicherte Eingaben nach Activity-Neuerstellung, Sichtbarkeit derselben Daten vor Herstellung, alte/neue Versionswerte, SQLite-Reopen und tatsächliche Netzfreiheit auf exaktem Head belegen; zusätzliche Rezeptversion erzeugt keine Lebensmittel-, Plan- oder Verzehrbuchung.
+
+**Beleg:** #280 auf Main `1c2d8aa6e2040e6bad9c0ca5b7f33795e12597da`, exakt `87bd4bb0651b4bdec26e7d0248a32498e05b291f`: originale [803 JVM/16 Migrationen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42386270285) und [35/35 tatsächliche API35-Fälle](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42386270316), 0 Fehler/Skips PASS; erweiterter tatsächlicher Rezeptkorrektur-/Hinweis-/Herstellungsansicht-/Kochplan-/SQLite-/Offlinefall **28,776 s**. Keine neue Schema-/v1-Version oder echte Modell-/Gesamt-App-Abnahme daraus.
 
 ## 18. Tatsächlichen Verzehr und Tagesabschluss an den gewählten Tag binden
 
