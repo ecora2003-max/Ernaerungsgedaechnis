@@ -55,7 +55,8 @@ internal object SignedRecipeTestProof {
     fun issue(model: LocalDataViewModel, digest: String): RecipeActionProof? {
         val key = model.recipeDraftConsentState.value.operationKey ?: return null
         val nonce = model.beginRecipeDraftCredentialAction(digest) ?: return null
-        return sign(requireNotNull(stores[model]), key, digest, nonce)
+        val scopeDigest = model.recipeDraftConsentState.value.review?.actionScopeDigest ?: return null
+        return sign(requireNotNull(stores[model]), key, scopeDigest, nonce)
     }
 }
 
@@ -74,7 +75,7 @@ internal suspend fun FoodStore.recordSignedRecipeTestConsent(
     context: Gate.Context<*, *, *>? = null,
     trustedContextSnapshotAt: OffsetDateTime? = null
 ): String {
-    val proof = expected.approvalBasisDigest?.takeIf { confirmed }?.let {
+    val proof = expected.actionScopeDigest?.takeIf { confirmed }?.let {
         SignedRecipeTestProof.issue(this, key, it)
     }
     return recordReviewedRecipeDraftV1Consent(key, json, request, confirmations,

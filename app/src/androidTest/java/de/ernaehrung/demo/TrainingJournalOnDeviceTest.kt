@@ -97,7 +97,7 @@ class TrainingJournalOnDeviceTest {
             waitTag("training_missing_count")
             compose.onNodeWithTag("training_imported_count").performScrollTo().assertTextEquals("1 in der lokalen Kopie sichtbare Trainings")
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15).build()
+                .addMigrations(FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16).build()
             try {
                 val reread = FoodStore(reopened).trainingJournal().first()
                 assertEquals(legacyBefore, reread.legacy); assertEquals(setsBefore, reread.sets)

@@ -69,7 +69,8 @@ data class PhotoUiState(val busy: Boolean = false, val codes: List<String> = emp
 class LocalDataViewModel internal constructor(
     private val store: FoodStore,
     private val productLookup: ProductLookupGateway = OpenFoodFactsClient(),
-    private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore
+    private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore,
+    private val personalIntentCacheInvalidator: () -> Unit = {}
 ) : ViewModel() {
     internal val storageCapacity: StateFlow<StorageCapacityUiState> = store.watchStorageCapacity()
         .map { StorageCapacityUiState(it) }.catch { emit(StorageCapacityUiState(readError = true)) }
@@ -331,6 +332,57 @@ class LocalDataViewModel internal constructor(
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
     private var recipeConsentJob: kotlinx.coroutines.Job? = null
 
+    private val personalSource = MutableStateFlow(PersonalRestrictionUiState())
+    internal val personalRestrictionState = personalSource.asStateFlow()
+    private var personalRevisionFloor = 0
+    private var personalSourceSeen = false
+    private var personalBinding: String? = null
+    private val personalRefresh = MutableStateFlow(0L)
+    init {
+        viewModelScope.launch {
+            personalRefresh.flatMapLatest {
+                store.watchPersonalRestrictions().map { PersonalRestrictionUiState(it) }
+                    .onStart { emit(PersonalRestrictionUiState()) }
+                    .catch { emit(PersonalRestrictionUiState(readError = true)) }
+            }.collect { state ->
+                if (state.snapshot != null) acceptPersonalSource(state.snapshot)
+                else {
+                    if (state.readError) invalidatePersonalRecipeIntent()
+                    personalSource.value = state
+                }
+            }
+        }
+    }
+    private fun invalidatePersonalRecipeIntent(clearCache: Boolean = false) {
+        // In-flight transactions finish atomically. Dropping their UI/session
+        // references prevents a late callback from restoring erased profile data.
+        recipePreviewJob?.cancel()
+        pendingRecipeDraft = null; pendingReviewedSave = null
+        productionPrefill.value = null
+        recipeDraftConsent.value = RecipeDraftConsentUiState()
+        runCatching { pendingKeyStore.discard() }
+        if (clearCache) runCatching { personalIntentCacheInvalidator() }
+    }
+    private fun acceptPersonalSource(data: PersonalRestrictionSnapshot) {
+        val revision = data.latest?.revision ?: 0
+        if (revision < personalRevisionFloor) return // Never replay a pre-purge Room emission.
+        personalRevisionFloor = revision
+        if (personalSourceSeen && data.binding != personalBinding) invalidatePersonalRecipeIntent(clearCache = true)
+        personalSourceSeen = true; personalBinding = data.binding
+        personalSource.value = PersonalRestrictionUiState(data)
+    }
+    internal fun retryPersonalRestrictions() {
+        personalRefresh.value += 1L
+    }
+    internal fun personalRestrictionEditor() = PersonalRestrictionViewModel(store) { kind, outcome ->
+        if (kind != PersonalRestrictionRules.PROPOSE) {
+            personalRevisionFloor = maxOf(personalRevisionFloor, outcome.revision)
+            invalidatePersonalRecipeIntent(clearCache = true)
+            personalSource.value = PersonalRestrictionUiState()
+            retryPersonalRestrictions()
+        }
+    }
+
     /** A changed import or independent evidence selection invalidates a previous preview.
      * An already committed consent remains in the durable ledger and cannot be undone here.
      */
@@ -404,7 +456,7 @@ class LocalDataViewModel internal constructor(
                 if (ready && recordedKey == null) {
                     // Only an opaque key survives process death. The new UI session
                     // must still require a fresh, independent explicit gesture.
-                    val digest = requireNotNull(review.approvalBasisDigest)
+                    val digest = requireNotNull(review.actionScopeDigest)
                     var key = pendingKeyStore.resumeOrCreate(digest)
                     // A crash may leave a 24h pending key even though its Room
                     // consent was committed and has since expired (5 min).
@@ -430,7 +482,7 @@ class LocalDataViewModel internal constructor(
                         reviewedStates.toMap(), review, selectedContext, selectedAt, previewNutrition)
                     // A durable Room checkpoint wins over a stale pending-key file.
                     runCatching {
-                        pendingKeyStore.finish(requireNotNull(review.approvalBasisDigest), recordedKey)
+                        pendingKeyStore.finish(requireNotNull(review.actionScopeDigest), recordedKey)
                     }
                 }
                 recipeDraftConsent.value = RecipeDraftConsentUiState(review = review,
@@ -455,7 +507,7 @@ class LocalDataViewModel internal constructor(
             recipeDraftConsent.value.recordedDigest != null ||
             session.review.approvalBasisDigest != digest) return null
         return runCatching {
-            store.beginRecipeDraftCredentialAction(session.operationKey, digest)
+            store.beginRecipeDraftCredentialAction(session.operationKey, requireNotNull(session.review.actionScopeDigest))
         }.getOrNull()
     }
 
@@ -482,7 +534,7 @@ class LocalDataViewModel internal constructor(
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 // Room is authoritative. Cleanup failure cannot turn a committed
                 // consent into a false UI failure or trigger an automatic retry.
-                runCatching { pendingKeyStore.finish(recorded, session.operationKey) }
+                runCatching { pendingKeyStore.finish(requireNotNull(session.review.actionScopeDigest), session.operationKey) }
                 if (pendingRecipeDraft === session) {
                     pendingRecipeDraft = null
                     pendingReviewedSave = session

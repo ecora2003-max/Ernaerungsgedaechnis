@@ -77,6 +77,15 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         storageCapacity.save(key, input, confirmed)
     private val backups = FoodBackupStore(db, now)
     private val nutritionGoals = NutritionGoalOperations(db, now)
+    private val personalRestrictions = PersonalRestrictionOperations(db, now)
+    internal fun watchPersonalRestrictions() = personalRestrictions.watch()
+    internal suspend fun readPersonalRestrictions() = db.withTransaction { personalRestrictions.snapshot() }
+    internal suspend fun proposePersonalRestrictions(key: String, input: PersonalRestrictionInput, requested: Boolean) =
+        personalRestrictions.propose(key,input,requested)
+    internal suspend fun confirmPersonalRestrictions(key: String, proposalId: String, binding: String, confirmed: Boolean) =
+        personalRestrictions.confirm(key,proposalId,binding,confirmed)
+    internal suspend fun erasePersonalRestrictions(key: String, reviewedToken: String, confirmed: Boolean) =
+        personalRestrictions.erase(key,reviewedToken,confirmed)
     internal fun watchNutritionGoals() = nutritionGoals.watch()
     internal suspend fun readNutritionGoals() = db.withTransaction { nutritionGoals.snapshot() }
     internal suspend fun proposeNutritionGoals(key: String, input: NutritionGoalDraftInput, saveRequested: Boolean) =
@@ -218,18 +227,20 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             expectedPreview.input == current.input &&
             expectedPreview.approvalBasisDigest != null &&
-            expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
+            expectedPreview.approvalBasisDigest == current.approvalBasisDigest &&
+            expectedPreview.personalRestrictionsBinding == current.personalRestrictionsBinding) {
             "Bestätigung bezieht sich nicht auf die aktuelle geprüfte Rezeptvorschau."
         }
         val digest = requireNotNull(current.approvalBasisDigest)
+        val actionDigest = requireNotNull(current.actionScopeDigest)
         require(actionProof != null &&
-            recipeActionNonceGate.consume(actionProof, key, digest, actionAt) &&
-            actionProofVerifier.verify(actionProof, key, digest, actionAt)) {
+            recipeActionNonceGate.consume(actionProof, key, actionDigest, actionAt) &&
+            actionProofVerifier.verify(actionProof, key, actionDigest, actionAt)) {
             "Gerätegebundene Rezeptaktion fehlt, ist ungültig oder abgelaufen."
         }
         val consentKind = "RECIPE_DRAFT_ATTESTED_CONSENT_V1"
         val consentKey = recipeDraftConsentKey(key)
-        val hash = recipeDraftConsentFingerprint(key, digest)
+        val hash = recipeDraftConsentFingerprint(key, digest, current.personalRestrictionsBinding)
         val previous = dao.operation(consentKey)
         // The opaque save key shares the global operation namespace. A product,
         // purchase or other operation using that key must never be promoted to
@@ -275,6 +286,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         // Room snapshot. A concurrent write must not change key ownership
         // between selecting a checkpoint and checking its availability.
         return db.withTransaction {
+            val profileBinding = personalRestrictions.snapshot().binding
             val checkedAt = now()
             if (checkedAt < 0L) return@withTransaction null
             // The newest still-valid explicit action wins. Older checkpoints
@@ -289,7 +301,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                         recipeDraftSaveOperationCompatible(existingSaveOperation, operation.recordedAt, checkedAt) &&
                         operation.recordedAt in 0L..checkedAt &&
                         checkedAt - operation.recordedAt <= recipeDraftConsentTtlMs &&
-                        operation.fingerprint == recipeDraftConsentFingerprint(key, digest)
+                        operation.fingerprint == recipeDraftConsentFingerprint(key, digest, profileBinding)
                 }
             }?.id?.substring(prefix.length)
         }
@@ -350,8 +362,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
 
     private fun recipeDraftConsentKey(key: String) = "RECIPE_DRAFT_CONSENT_V1:$key"
 
-    private fun recipeDraftConsentFingerprint(key: String, digest: String) =
-        WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
+    private fun recipeDraftConsentFingerprint(key: String, digest: String, profileBinding: String? = null) =
+        if (profileBinding == null) WriteRules.fingerprint("RECIPE_DRAFT_CONSENT_V1", key, digest)
+        else WriteRules.fingerprint("PERSONAL_RESTRICTIONS_RECIPE_CONSENT_V1", key, digest, profileBinding)
 
     /** Always re-read current catalog and revalidate the exact previously reviewed input
      * inside the same transaction as the new recipe write. An AI draft, stale preview,
@@ -385,7 +398,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
                 de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.READY_FOR_EXPLICIT_SAVE &&
             expectedPreview.input == current.input &&
             expectedPreview.approvalBasisDigest != null &&
-            expectedPreview.approvalBasisDigest == current.approvalBasisDigest) {
+            expectedPreview.approvalBasisDigest == current.approvalBasisDigest &&
+            expectedPreview.personalRestrictionsBinding == current.personalRestrictionsBinding) {
             "Rezeptentwurf, Freigabebasis oder Produktbelege verändert; aktuelle Vorschau erneut bestätigen."
         }
         // The confirmation must have been recorded by a separate host action
@@ -395,7 +409,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         require(consent != null &&
             consent.kind == "RECIPE_DRAFT_ATTESTED_CONSENT_V1" &&
             consent.resultId == digest &&
-            consent.fingerprint == recipeDraftConsentFingerprint(key, digest) &&
+            consent.fingerprint == recipeDraftConsentFingerprint(key, digest, current.personalRestrictionsBinding) &&
             consent.recordedAt in 0L..saveAt) {
             "Keine passende dauerhaft gespeicherte Rezeptbestätigung vorhanden."
         }
@@ -462,8 +476,13 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         val facts = de.ernaehrung.demo.data.integration.RecipeCatalogEvidence.resolve(
             lines, catalog, confirmations, trustedNow,
             draftCreatedAtMillis = imported?.createdAt?.toInstant()?.toEpochMilli())
+        val profile = personalRestrictions.snapshot()
         val review = de.ernaehrung.demo.data.integration.RecipeDraftV1Import.review(
             json, request, facts, reviewedStates, clock, context, trustedContextSnapshotAt, catalog)
+            .copy(personalRestrictionsBinding = profile.binding)
+        if (!request.confirmedRestrictions.containsAll(profile.tokens)) return review.copy(
+            status = de.ernaehrung.demo.data.integration.RecipeDraftHostGate.Status.BLOCKED,
+            blockers = review.blockers + "CONFIRMED_PERSONAL_RESTRICTIONS_MISSING", input = null, approvalBasisDigest = null)
         // Producer clock skew is tolerated for read-only preview only. A host
         // confirmation or recipe write must never predate the draft it approves.
         if (requireNonFutureDraft &&

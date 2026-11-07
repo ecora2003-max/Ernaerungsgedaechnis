@@ -107,8 +107,15 @@ internal object RecipeDraftHostGate {
         /** Host-issued preview binding; null for generic, blocked or unbound reviews. */
         val approvalBasisDigest: String? = null,
         /** Independent upstream findings remain review information, never consent. */
-        val referenceReport: RecipeReferenceV1.Report? = null
-    )
+        val referenceReport: RecipeReferenceV1.Report? = null,
+        /** Independently read local profile identity; never supplied by v1 JSON. */
+        val personalRestrictionsBinding: String? = null
+    ) {
+        /** Private device-action envelope, separate from the external v1 digest. */
+        val actionScopeDigest get() = approvalBasisDigest?.takeIf { it.matches(Regex("[0-9a-f]{64}")) }?.let {
+            de.ernaehrung.demo.data.local.PersonalRestrictionRules.actionDigest(it, personalRestrictionsBinding)
+        }
+    }
 
     /**
      * Shared host-token syntax for manual evidence acquisition and final review.

@@ -29,12 +29,13 @@ import de.ernaehrung.demo.ui.screens.DataQualityScreen
 import de.ernaehrung.demo.ui.screens.BatchReviewScreen
 import de.ernaehrung.demo.ui.screens.BackupScreen
 import de.ernaehrung.demo.ui.screens.StorageCapacityScreen
+import de.ernaehrung.demo.ui.screens.PersonalRestrictionScreen
 import de.ernaehrung.demo.ui.screens.NutritionGoalScreen
 import de.ernaehrung.demo.data.local.DataQualityTarget
 
 private enum class WorkspacePage(val title: String, val section: String? = null) {
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
-    PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"),
+    PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"), PERSONAL_RESTRICTIONS("Persönliche Ausschlüsse"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"),
     PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
@@ -124,6 +125,8 @@ fun LocalWorkspaceApp() {
                         BackupScreen()
                     } else if (page == WorkspacePage.STORAGE_CAPACITY) {
                         StorageCapacityScreen(selectedStorageLocation, onCreateLocation = { go(WorkspacePage.STOCK) })
+                    } else if (page == WorkspacePage.PERSONAL_RESTRICTIONS) {
+                        PersonalRestrictionScreen(model)
                     } else if (page == WorkspacePage.NUTRITION_GOALS) {
                         NutritionGoalScreen()
                     } else if (page == WorkspacePage.QUALITY) {
@@ -149,7 +152,7 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.NUTRITION_GOALS, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.NUTRITION_GOALS, WorkspacePage.PERSONAL_RESTRICTIONS, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") { go(target) }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }

@@ -33,7 +33,11 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = LocalDataViewModel(
             FoodStore(FoodDatabase.localSandbox(context)),
-            pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context)
+            pendingKeyStore = PrivateRecipeDraftPendingKeyStore(context),
+            personalIntentCacheInvalidator = {
+                PrivateRecipeDraftEncryptedImportCheckpoint(context).discard()
+                PrivateRecipeDraftEncryptedEvidenceCheckpoint(context).discard()
+            }
         ) as T
     } }
     val model: LocalDataViewModel = viewModel(factory = factory)

@@ -4,6 +4,20 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Empty private exclusion history. All existing facts and intent keys remain exact. */
+    val MIGRATION_15_16 = object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS personal_restrictions (id TEXT NOT NULL,revision INTEGER NOT NULL,
+                previousId TEXT,operationId TEXT NOT NULL,kind TEXT NOT NULL,status TEXT NOT NULL,proposalId TEXT,
+                rawText TEXT,reason TEXT,zoneId TEXT,payloadHash TEXT,recordedAt INTEGER NOT NULL,PRIMARY KEY(id),
+                FOREIGN KEY(previousId) REFERENCES personal_restrictions(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(proposalId) REFERENCES personal_restrictions(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_personal_restrictions_revision ON personal_restrictions(revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_personal_restrictions_operationId ON personal_restrictions(operationId)")
+            db.execSQL("CREATE INDEX index_personal_restrictions_previousId ON personal_restrictions(previousId)")
+            db.execSQL("CREATE INDEX index_personal_restrictions_proposalId ON personal_restrictions(proposalId)")
+        }
+    }
     /** Empty private goal intent/history only; no suggested defaults become personal targets. */
     val MIGRATION_14_15 = object : Migration(14, 15) {
         override fun migrate(db: SupportSQLiteDatabase) {

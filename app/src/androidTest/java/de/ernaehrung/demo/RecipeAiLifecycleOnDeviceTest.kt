@@ -85,6 +85,11 @@ class RecipeAiLifecycleOnDeviceTest {
         val dao = db.foodDao()
         val store = FoodStore(db)
         val id = UUID.randomUUID().toString()
+        val profileProposal = requireNotNull(store.proposePersonalRestrictions("$id-profile-proposal",PersonalRestrictionInput(
+            store.readPersonalRestrictions().latest?.id,"","synthetic-device: explicit empty profile for device-scope proof"),true).versionId)
+        val profileVersion = requireNotNull(store.confirmPersonalRestrictions("$id-profile-confirm",profileProposal,
+            store.readPersonalRestrictions().versionBinding(profileProposal),true).versionId)
+        assertNotNull("Real device approval must bind a confirmed profile identity",store.readPersonalRestrictions().binding)
         val day = AppCalendar.today().toString()
         val food = "ai-device-ingredient"
         val title = "Synthetisches KI-Gericht $id"
@@ -183,6 +188,11 @@ class RecipeAiLifecycleOnDeviceTest {
             assertNull("Network absence persists through chooser, credentials and restart", connectivity.activeNetwork)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("recipe-ai-lifecycle-flow"); throw failure
-        } finally { resolver.call(capture, "clear", null, null) }
+        } finally {
+            try {
+                val profile = store.readPersonalRestrictions()
+                if (profile.active?.id == profileVersion) store.erasePersonalRestrictions("$id-profile-cleanup",profile.token,true)
+            } finally { resolver.call(capture, "clear", null, null) }
+        }
     }
 }
