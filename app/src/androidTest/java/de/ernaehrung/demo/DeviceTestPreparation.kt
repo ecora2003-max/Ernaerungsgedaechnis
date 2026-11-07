@@ -2,6 +2,7 @@ package de.ernaehrung.demo
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.SystemClock
 import android.os.Build
 import android.view.WindowInsets
@@ -12,6 +13,7 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -75,9 +77,11 @@ internal fun prepareUnlockedTestDevice() {
         device.waitForIdle()
         Log.w("EG_DEVICE_TEST", "Closed the CI Pixel Launcher ANR before the app test")
     }
-    device.executeShellCommand("cmd connectivity airplane-mode enable")
-    device.executeShellCommand("svc wifi disable")
-    device.executeShellCommand("svc data disable")
+    if (Build.VERSION.SDK_INT >= 30) {
+        device.executeShellCommand("cmd connectivity airplane-mode enable")
+        device.executeShellCommand("svc wifi disable")
+        device.executeShellCommand("svc data disable")
+    }
     Log.i("EG_DEVICE_TEST", "before: keyguard=${keyguard.isKeyguardLocked}, foreground=${device.currentPackageName}")
     if (!device.isScreenOn) device.wakeUp()
     if (keyguard.isKeyguardLocked) {
@@ -98,6 +102,7 @@ internal fun prepareUnlockedTestDevice() {
         // authenticated. No PIN editor is needed once the actual lock is gone.
         if (!keyguard.isKeyguardLocked) {
             device.waitForIdle()
+            if (Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
             return
         }
         assertNotNull("CI test device remained locked without an accessible PIN editor", editor)
@@ -126,5 +131,46 @@ internal fun prepareUnlockedTestDevice() {
         assertFalse("CI fixture PIN did not unlock the device", keyguard.isKeyguardLocked)
     }
     device.waitForIdle()
+    if (Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
     Log.i("EG_DEVICE_TEST", "after: keyguard=${keyguard.isKeyguardLocked}, foreground=${device.currentPackageName}")
+}
+
+/** API 26 denies the protected broadcast and its svc Java process exits 137.
+ * Use ordinary real Settings gestures, without root or fabricating connectivity.
+ */
+private fun prepareApi26OfflineDevice(device: UiDevice,target: Context) {
+    val connectivity = target.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    if (connectivity.activeNetwork == null) return
+    try {
+        device.executeShellCommand("am start -a android.settings.AIRPLANE_MODE_SETTINGS")
+        val title = device.wait(Until.findObject(By.pkg("com.android.settings").text("Airplane mode")),10_000L)
+        assertNotNull("Actual API26 airplane-mode preference unavailable",title)
+        fun airplaneSwitch(): UiObject2? {
+            var row = device.findObject(By.pkg("com.android.settings").text("Airplane mode"))
+            repeat(3) {
+                val toggle = row?.findObject(By.checkable(true))
+                if (toggle != null) return toggle
+                row = row?.parent
+            }
+            return null
+        }
+        val airplane = airplaneSwitch()
+        assertNotNull("Actual API26 airplane-mode switch unavailable",airplane)
+        if (airplane?.isChecked == false) requireNotNull(title).click()
+        val airplaneDeadline = SystemClock.uptimeMillis() + 10_000L
+        while (airplaneSwitch()?.isChecked != true && SystemClock.uptimeMillis() < airplaneDeadline) SystemClock.sleep(100L)
+        assertTrue("Actual API26 airplane-mode switch did not enable",airplaneSwitch()?.isChecked == true)
+        // Android permits Wi-Fi while airplane mode is on. Inspect and disable
+        // its actual switch separately rather than treating the icon as proof.
+        device.executeShellCommand("am start -a android.settings.WIFI_SETTINGS")
+        val wifi = device.wait(Until.findObject(By.pkg("com.android.settings").clazz("android.widget.Switch")),10_000L)
+        assertNotNull("Actual API26 Wi-Fi switch unavailable",wifi)
+        if (wifi?.isChecked == true) wifi.click()
+        val deadline = SystemClock.uptimeMillis() + 10_000L
+        while (connectivity.activeNetwork != null && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(100L)
+        org.junit.Assert.assertNull("API26 still has an actual active network",connectivity.activeNetwork)
+        device.pressBack(); device.pressBack(); device.waitForIdle()
+    } catch (failure: Throwable) {
+        captureDeviceFailureEvidence("api26-network"); throw failure
+    }
 }

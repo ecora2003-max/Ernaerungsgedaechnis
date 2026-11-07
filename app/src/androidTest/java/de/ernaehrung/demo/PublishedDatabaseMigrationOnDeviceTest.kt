@@ -8,11 +8,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 
 /** A real platform-SQLite upgrade; all records belong to disposable synthetic files. */
 @RunWith(AndroidJUnit4::class)
 class PublishedDatabaseMigrationOnDeviceTest {
+    @Before fun prepareDevice() = prepareUnlockedTestDevice()
     @Test fun publishedV14AndV16UpgradePreserveEveryOldRowAndReplayKeyThenSupportNewConfirmedActions() {
         assertTrue("Synthetic migration fixtures require a disposable emulator",
             Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))

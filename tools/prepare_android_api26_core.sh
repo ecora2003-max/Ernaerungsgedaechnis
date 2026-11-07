@@ -34,9 +34,6 @@ timeout 20s adb -s "$device_serial" shell settings put system screen_off_timeout
 timeout 20s adb -s "$device_serial" shell svc power stayon true
 timeout 20s adb -s "$device_serial" shell input keyevent KEYCODE_WAKEUP
 timeout 20s adb -s "$device_serial" shell wm dismiss-keyguard
-timeout 20s adb -s "$device_serial" shell settings put global airplane_mode_on 1
-# API 26 denies AIRPLANE_MODE broadcasts from shell. Do not suppress that error
-# or grant root: disable both transports, then assert actual network absence
-# independently inside every selected instrumentation scenario.
-timeout 20s adb -s "$device_serial" shell svc wifi disable
-timeout 20s adb -s "$device_serial" shell svc data disable
+# On this API-26 image svc wifi is killed (137) before applying the change.
+# Instrumentation uses the actual Settings switches instead, before each test;
+# every selected scenario independently asserts actual network absence.
