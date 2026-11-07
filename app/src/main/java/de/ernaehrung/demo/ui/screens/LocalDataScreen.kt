@@ -122,7 +122,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             StockEventEditor(state, blocked, operationId, model)
         }
         "Ernährung" -> NutritionScreen(state, blocked, operationId, model)
-        "Planung" -> LocalPlanningScreen(state, blocked, operationId, model)
+        "Planung" -> LocalPlanningScreen(state, blocked, operationId, model, onOpenStorageCapacity)
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
         "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) {

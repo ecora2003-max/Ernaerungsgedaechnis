@@ -69,6 +69,9 @@ class PlanExecutionOnDeviceTest {
         val secondMeal = "$fixture-meal-two"
         for (key in listOf(firstMeal, secondMeal)) store.consume(key,
             ConsumptionInput(version, day.toString(), key, 50_000L, emptyList()), true)
+        val capacityLocation = store.addLocation("$fixture-capacity-location","Geräteplanung Gefrierraum $fixture",true)
+        store.reviewStorageCapacity("$fixture-capacity",StorageCapacityInput(capacityLocation,null,5000,1000,"-18,0040",
+            "Synthetischer physischer Prüfstand für Planung"),true)
         val mealsBefore = dao.activeConsumptionCount()
         val stockBefore = dao.planningBatches()
         val nutritionBefore = store.dayNutrition(day.toString())
@@ -110,6 +113,16 @@ class PlanExecutionOnDeviceTest {
             assertEquals(operationsBefore + 1, dao.operationCount())
             assertEquals(mealsBefore, dao.activeConsumptionCount())
             tap("Plan-Nährwerte aus gespeicherten Verzehrpositionen")
+            tap("Lagerraum für die Planung")
+            waitTag("plan_storage_${capacityLocation}_free")
+            compose.onNodeWithTag("plan_storage_${capacityLocation}_free").performScrollTo().assertTextContains("4000 ml",substring = true)
+            compose.onNodeWithTag("plan_storage_${capacityLocation}_temperature").assertTextContains("-18,0040",substring = true)
+            compose.onNodeWithTag("plan_storage_open_$capacityLocation").performScrollTo().performClick()
+            waitTag("workspace_page_STORAGE_CAPACITY"); waitTag("storage_capacity_free")
+            compose.onNodeWithTag("storage_capacity_free").assertTextContains("4000 ml",substring = true)
+            compose.onNodeWithTag("workspace_back").performClick(); waitTag("workspace_page_PLAN")
+            assertEquals(operationsBefore + 1,dao.operationCount())
+            assertEquals(mealsBefore,dao.activeConsumptionCount())
             waitTag("shopping_$version")
             compose.onNodeWithTag("shopping_$version").performScrollTo().assertTextContains("200 g", substring = true)
             tap("Neuen Vorgang beginnen")

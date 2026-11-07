@@ -11,7 +11,8 @@ import de.ernaehrung.demo.ui.*
 import java.util.UUID
 
 @Composable
-internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
+internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel,
+    onOpenStorageCapacity: ((String?) -> Unit)? = null) {
     // The history may be opened after a save/reset. Deferred content must read the current guard/key.
     val currentBlocked = rememberUpdatedState(blocked)
     val currentOperation = rememberUpdatedState(operationId)
@@ -33,6 +34,7 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
     }
     Text("${report.startsOn} bis ${report.endsOn} · Bestandsstand ${report.asOf}")
     PlanNutritionPreview(report.startsOn, report.endsOn)
+    PlanStorageCapacityPreview(model,onOpenStorageCapacity)
     Hint("Berechnet wird der noch offene Bedarf. Bereits gebuchten Verzehr oder Herstellung ausdrücklich dem Plan zuordnen. Das bucht nichts erneut. Vergangene offene Termine werden nicht mit heutigem Bestand rückgerechnet.")
     val currentReport = rememberUpdatedState(report)
     androidx.compose.runtime.key(operationId) {
