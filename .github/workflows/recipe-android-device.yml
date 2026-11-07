@@ -16,6 +16,7 @@ on:
       - 'app/build.gradle.kts'
       - '.github/workflows/recipe-android-device.yml'
       - 'tools/run_android_device_tests.sh'
+      - 'tools/prepare_android_api26_core.sh'
 permissions:
   contents: read
 concurrency:
@@ -127,7 +128,7 @@ jobs:
       - name: Execute actual API 26 core UI and persistent Room flows offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
-          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest
+          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest,de.ernaehrung.demo.StockEventsOnDeviceTest
           EG_ANDROID_TEST_TIMEOUT: 10m
         with:
           api-level: 26
@@ -138,21 +139,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
             chmod +x gradlew
-            adb shell locksettings set-pin 2468
-            adb shell settings put system screen_off_timeout 1800000
-            adb shell svc power stayon true
-            adb shell input keyevent KEYCODE_WAKEUP
-            adb shell wm dismiss-keyguard
-            adb shell settings put global airplane_mode_on 1
-            # API 26 denies the protected AIRPLANE_MODE broadcast to adb shell.
-            # Disable both transports directly; every selected test independently
-            # asserts ConnectivityManager.activeNetwork == null before and after.
-            adb shell svc wifi disable
-            adb shell svc data disable
-            mkdir -p app/build/outputs/device-diagnostics
-            adb shell getprop ro.build.version.sdk > app/build/outputs/device-diagnostics/api26-platform.txt
+            bash tools/prepare_android_api26_core.sh
             bash tools/run_android_device_tests.sh
-      - name: Verify actual API and all four original device test results
+      - name: Verify actual API and all five original device test results
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -161,14 +150,14 @@ jobs:
           reports = list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))
           assert reports, 'No original instrumentation XML'
           suites = [ET.parse(path).getroot() for path in reports]
-          assert sum(int(s.get('tests', '0')) for s in suites) == 4
+          assert sum(int(s.get('tests', '0')) for s in suites) == 5
           assert all(int(s.get(field, '0')) == 0 for s in suites for field in ('failures', 'errors', 'skipped'))
           classes = {t.get('classname') for s in suites for t in s.findall('testcase')}
           expected = {'de.ernaehrung.demo.' + name for name in (
               'PlanExecutionOnDeviceTest', 'NutritionDayConfirmationOnDeviceTest', 'StockOverviewOnDeviceTest',
-              'PublishedDatabaseMigrationOnDeviceTest')}
+              'PublishedDatabaseMigrationOnDeviceTest', 'StockEventsOnDeviceTest')}
           assert classes == expected, (classes, expected)
-          print('ANDROID_API26_CORE_PASS: actual SDK 26; 4/4; 0 failures/errors/skips')
+          print('ANDROID_API26_CORE_PASS: actual SDK 26; 5/5; 0 failures/errors/skips')
           PY
       - name: Upload original API 26 evidence only
         if: ${{ always() }}
