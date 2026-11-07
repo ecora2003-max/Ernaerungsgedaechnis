@@ -134,7 +134,11 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
                 if (onOpenShopping != null) onOpenShopping() else mode = "Einkauf"
             }
         }
-        "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
+        "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model) { line,scope ->
+            if (model.preparePurchaseForShopping(line.need.versionId,scope,line.snapshot)) {
+                if (onOpenPurchases != null) onOpenPurchases() else mode = "Käufe"
+            }
+        }
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
         "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, recognitionMode.value,
             onModeChange = { recognitionMode.value = it }) {

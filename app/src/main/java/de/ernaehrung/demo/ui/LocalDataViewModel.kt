@@ -215,6 +215,27 @@ class LocalDataViewModel internal constructor(
         shoppingNavigationMessage.value = null
         return true
     }
+    private val shoppingPurchaseHandoff = MutableStateFlow(ShoppingPurchaseHandoffUiState())
+    internal val shoppingPurchaseHandoffState = shoppingPurchaseHandoff.asStateFlow()
+    internal fun preparePurchaseForShopping(versionId: String,scope: ShoppingScope,snapshot: String): Boolean {
+        val visible = shopping.value
+        val report = visible.report
+        val item = report?.items?.singleOrNull { it.need.versionId == versionId && it.snapshot == snapshot }
+        val current = state.value
+        if (visible.error != null || report == null || report.scope != scope || shoppingQuery.value.first != scope ||
+            current.loading || current.error != null || item == null || current.versions.none { it.id == versionId } ||
+            saveState.value.busy || saveState.value.succeeded) {
+            shoppingPurchaseHandoff.value = ShoppingPurchaseHandoffUiState(error = "Einkaufsposition oder Vorgang nicht bereit. Aktuelle Liste prüfen und gegebenenfalls einen neuen Vorgang beginnen.")
+            return false
+        }
+        shoppingPurchaseHandoff.value = ShoppingPurchaseHandoffUiState(ShoppingPurchasePrefill(
+            java.util.UUID.randomUUID().toString(),versionId,item.need.name))
+        return true
+    }
+    internal fun consumeShoppingPurchase(requestId: String) {
+        if (shoppingPurchaseHandoff.value.request?.requestId == requestId)
+            shoppingPurchaseHandoff.value = ShoppingPurchaseHandoffUiState()
+    }
     private val historicalPaidResult = MutableStateFlow(HistoricalPaidUiState())
     val historicalPaid = historicalPaidResult.asStateFlow()
     private var historicalPaidJob: kotlinx.coroutines.Job? = null

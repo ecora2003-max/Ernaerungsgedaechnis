@@ -28,7 +28,8 @@ internal fun shoppingCandidateBudgetAfter(report: ShoppingReport, item: Shopping
 }
 
 @Composable
-internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel) {
+internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel,
+    onOpenPurchase: ((ShoppingLine,ShoppingScope) -> Unit)? = null) {
     val ui by model.shopping.collectAsStateWithLifecycle()
     val guard = rememberUpdatedState(blocked); val operation = rememberUpdatedState(operationId)
     val applied = remember(model) { model.appliedShoppingScope() }
@@ -52,6 +53,8 @@ internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operati
         model.showShopping(start, when (horizon) { "1 Tag" -> 1L; "56 Tage" -> 56L; else -> 7L }, purchase, budget.takeIf(String::isNotEmpty))
     }
     ui.error?.let { Hint(it) }
+    val purchaseHandoff by model.shoppingPurchaseHandoffState.collectAsStateWithLifecycle()
+    purchaseHandoff.error?.let { Hint(it) }
     if (report == null) { if (ui.error == null) CircularProgressIndicator(); return }
     Text("Angezeigt: Bedarf ${report.scope.startsOn}–${report.scope.endsOn}, Einkauf ${report.scope.purchaseOn}, Bestandsstand ${report.asOf}",Modifier.testTag("shopping_applied_scope"))
     androidx.compose.runtime.key(operationId) {
@@ -74,14 +77,15 @@ internal fun LocalShoppingScreen(data: LocalDataState, blocked: Boolean, operati
     if (report.items.isEmpty()) Text("Keine aktuelle Produktfehlmenge in diesem Ausschnitt. Das bestätigt keine vollständig geplante Ernährung.")
     report.items.forEach { line ->
         androidx.compose.runtime.key(operationId, line.need.versionId, report.scope) {
-            ShoppingItem(line, report, guard, operation, model)
+            ShoppingItem(line, report, guard, operation, model,onOpenPurchase)
         }
     }
     Hint("Vor einem Kauf Haltbarkeit bis zum Bedarfstermin, tatsächlichen Lagerplatz und Überschüsse prüfen. Große Packungen sind nicht automatisch wirtschaftlicher. Keine automatische Bestellung, keine erfundene Umrechnung.", Sage)
 }
 
 @Composable
-private fun ShoppingItem(line: ShoppingLine, report: ShoppingReport, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
+private fun ShoppingItem(line: ShoppingLine, report: ShoppingReport, blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel,
+    onOpenPurchase: ((ShoppingLine,ShoppingScope) -> Unit)?) {
     val scope = report.scope
     var selected by rememberSaveable(line.snapshot) { mutableStateOf(line.offer?.id.orEmpty()) }
     var checked by rememberSaveable(line.snapshot) { mutableStateOf(line.checked) }
@@ -90,6 +94,8 @@ private fun ShoppingItem(line: ShoppingLine, report: ShoppingReport, blocked: St
         val item = current.value
         Section(item.need.name, "${item.firstNeededOn ?: "Termin ungeklärt"} bis ${item.lastNeededOn ?: "Termin ungeklärt"}")
         Text("Bekannte Fehlmenge: ${Amounts.format(item.need.knownMissing)} ${item.need.unit.label}${if (item.need.unknownRequirements > 0) " + weitere Menge ungeklärt" else ""}",Modifier.testTag("shopping_need_${item.need.versionId}"))
+        if (onOpenPurchase != null) Action("Neuen bezahlten Einkauf mit diesem Artikel erfassen",!blocked.value,
+            "shopping_record_purchase_${item.need.versionId}") { onOpenPurchase(item,scope) }
         Text(if (item.checked) "Gespeichert: auf Liste abgehakt · kein Kauf" else "Gespeichert: nicht abgehakt", Modifier.testTag("shopping_checked_${item.need.versionId}"))
         if (item.staleCheck) Hint("Frühere Markierung ist nach Datenänderung veraltet. Mengen und Preis erneut prüfen.")
         val paidHistory by model.historicalPaid.collectAsStateWithLifecycle()
