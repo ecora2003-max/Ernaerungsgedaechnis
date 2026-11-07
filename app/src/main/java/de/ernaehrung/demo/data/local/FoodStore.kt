@@ -770,7 +770,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun waste(key: String, input: WasteInput, confirmed: Boolean) = stock.waste(key, input, confirmed)
     suspend fun correctStock(key: String, input: StockCountInput, confirmed: Boolean) = stock.correctStock(key, input, confirmed)
     suspend fun reverse(key: String, input: ReversalInput, confirmed: Boolean) = stock.reverse(key, input, confirmed)
-    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String? = null, reason: String = "Erste Fassung") = kitchen.saveRecipe(key, input, recipeId, reason)
+    suspend fun saveRecipe(key: String, input: RecipeInput, recipeId: String? = null, reason: String = "Erste Fassung",
+        expectedVersionId: String? = null) = kitchen.saveRecipe(key, input, recipeId, reason, expectedVersionId = expectedVersionId)
     suspend fun produce(key: String, input: ProductionInput, confirmed: Boolean) = kitchen.produce(key, input, confirmed)
     fun catalog() = dao.observeCatalog()
     fun batches() = dao.observeBatches()

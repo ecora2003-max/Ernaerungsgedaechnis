@@ -96,44 +96,43 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     if (eligibleConsumptionBatches(state.batches, preparedOnly = true).isNotEmpty()) {
         ConsumptionEditor(state, blocked, key, model, preparedOnly = true)
     }
-    state.recipes.forEach { recipe -> Panel {
-        Section(recipe.name, "Version ${recipe.revision} · ${Amounts.format(recipe.yieldPortions)} Soll-Portionen")
-        state.ingredients.filter { it.ingredient.recipeVersionId == recipe.id }.forEach { item ->
-            KV(item.productName, item.ingredient.amount?.let { "${Amounts.format(it)} ${item.ingredient.unit.label}" } ?: "Menge unbekannt")
-        }
-        if (recipe.steps.isNotBlank()) Text(recipe.steps)
-        Fold("Nährwerte pro Rezeptportion · Vorschau") {
-            val calculated by remember(model, recipe.id) { model.recipeNutrition(recipe.id) }.collectAsStateWithLifecycle()
-            calculated.error?.let { Hint(it) }
-            calculated.report?.let { nutrition ->
-                NutrientLines(nutrition, "recipe_${recipe.id}"); QualityNotes(nutrition)
-                Text("Soll-Rezept, keine tatsächliche Mahlzeit. Ein realer Ansatz kann andere Mengen und Ausbeuten haben.")
-            } ?: if (calculated.error == null) CircularProgressIndicator() else Unit
-        }
-    } }
+    RecipeLibrary(state,blocked,model)
 }
 
 @Composable
 private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
     var recipeId by rememberSaveable { mutableStateOf("") }
+    var expectedVersionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var mealPrep by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var portions by rememberSaveable { mutableStateOf("") }
     var steps by rememberSaveable { mutableStateOf("") }
     var reason by rememberSaveable { mutableStateOf("") }
     var versions by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
+    fun loadRecipe(chosen: String) {
+        recipeId = chosen
+        val previous = state.recipes.find { it.recipeId == chosen }
+        expectedVersionId = previous?.id
+        mealPrep = previous?.mealPrep ?: false
+        name = previous?.name.orEmpty(); portions = previous?.yieldPortions?.let(Amounts::format).orEmpty()
+        steps = previous?.steps.orEmpty(); reason = ""
+        val items = state.ingredients.filter { it.ingredient.recipeVersionId == previous?.id }
+        versions = ArrayList(items.map { it.ingredient.productVersionId }.ifEmpty { listOf("") })
+        quantities = ArrayList(items.map { it.ingredient.amount?.let(Amounts::format).orEmpty() }.ifEmpty { listOf("") })
+    }
+    val stale = recipeId.isNotEmpty() && (expectedVersionId == null ||
+        state.recipes.find { it.recipeId == recipeId }?.id != expectedVersionId)
     Fold("Rezept speichern / neue Version") {
-        IdPicker("Rezept bearbeiten", listOf("" to "Neues Rezept") + state.recipes.map { it.recipeId to "${it.name} · v${it.revision}" }, recipeId) { chosen ->
-            recipeId = chosen
-            val previous = state.recipes.find { it.recipeId == chosen }
-            name = previous?.name.orEmpty(); portions = previous?.yieldPortions?.let(Amounts::format).orEmpty()
-            steps = previous?.steps.orEmpty(); reason = ""
-            val items = state.ingredients.filter { it.ingredient.recipeVersionId == previous?.id }
-            versions = ArrayList(items.map { it.ingredient.productVersionId }.ifEmpty { listOf("") })
-            quantities = ArrayList(items.map { it.ingredient.amount?.let(Amounts::format).orEmpty() }.ifEmpty { listOf("") })
+        IdPicker("Rezept bearbeiten", listOf("" to "Neues Rezept") + state.recipes.map { it.recipeId to "${it.name} · v${it.revision}" }, recipeId,::loadRecipe)
+        if (stale) {
+            Hint("Rezeptfassung inzwischen geändert. Aktuelle Fassung neu laden; offene Änderungen werden dabei verworfen.")
+            OutlinedButton({ loadRecipe(recipeId) },Modifier.testTag("recipe_editor_reload")) { Text("Aktuelle Rezeptfassung neu laden") }
         }
-        Field("Rezeptname", name, { name = it })
+        Field("Rezeptname", name, { name = it }, modifier = Modifier.testTag("recipe_editor_name"))
         Field("Soll-Portionen des ganzen Rezepts", portions, { portions = it })
+        Check("Als Meal-Prep-Rezept kennzeichnen",mealPrep) { mealPrep = it }
+        Text("Die Kennzeichnung ist keine Prüfung von Haltbarkeit, Lagerraum oder Eignung zum Einfrieren.")
         Text("Zutaten für den gesamten Ansatz. Leere Mengen bleiben unbekannt.")
         versions.indices.forEach { position ->
             val product = state.versions.find { it.id == versions[position] }
@@ -148,13 +147,14 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
         Action("Weitere Rezeptzutat", true) { versions = ArrayList(versions).apply { add("") }; quantities = ArrayList(quantities).apply { add("") } }
         OutlinedTextField(steps, { steps = it }, Modifier.fillMaxWidth(), label = { Text("Zubereitungsschritte") }, minLines = 3)
         Field("Änderungsgrund des Rezepts", reason, { reason = it })
-        SaveButton("Rezept lokal speichern", blocked) {
+        SaveButton("Rezept lokal speichern", blocked || stale) {
             val recipeName = name; val yield = portions; val description = steps; val change = reason
+            val prepFlag = mealPrep; val expected = expectedVersionId
             val ingredients = versions.zip(quantities).toList(); val identity = recipeId.takeIf { it.isNotEmpty() }
             val previous = state.recipes.find { it.recipeId == identity }
             model.save(key) { saveRecipe(key, RecipeInput(recipeName, Amounts.parse(yield),
                 ingredients.map { (id, text) -> RecipeItemInput(id, text.takeIf { it.isNotBlank() }?.let(Amounts::parse)) },
-                description, previous?.storageInstructions, previous?.safetySource), identity, change) }
+                description, previous?.storageInstructions, previous?.safetySource,mealPrep = prepFlag), identity, change,expectedVersionId = expected) }
         }
     }
 }

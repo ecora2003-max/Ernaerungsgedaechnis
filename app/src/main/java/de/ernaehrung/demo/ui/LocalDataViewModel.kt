@@ -327,9 +327,22 @@ class LocalDataViewModel internal constructor(
     internal fun prepareProductionForSavedRecipe(recipeVersionId: String) {
         if (recipeVersionId.isNotBlank() &&
             recipeDraftConsent.value.savedRecipeVersionId == recipeVersionId) {
-            productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
-                (productionPrefill.value?.requestSequence ?: 0) + 1)
+            // This exact version was already persisted by the separately
+            // validated save, even before the general library is collected.
+            publishProductionPrefill(recipeVersionId)
         }
+    }
+
+    /** A library selection only opens the actual-amount form; no allocation or confirmation is supplied. */
+    internal fun prepareProductionForRecipe(recipeVersionId: String) {
+        val current = state.value
+        if (!current.loading && current.error == null && current.recipes.any { it.id == recipeVersionId }) {
+            publishProductionPrefill(recipeVersionId)
+        }
+    }
+    private fun publishProductionPrefill(recipeVersionId: String) {
+        productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
+            (productionPrefill.value?.requestSequence ?: 0) + 1)
     }
     private var recipeSaveJob: kotlinx.coroutines.Job? = null
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
