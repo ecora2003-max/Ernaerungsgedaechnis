@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.room.Room
@@ -181,6 +183,84 @@ class PlanExecutionOnDeviceTest {
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
             } finally { reopened.close() }
             assertEquals(operationsBefore + 3, dao.operationCount())
+            // A second real UI plan places additional demand outside seven
+            // days. Opening shopping must carry the applied 56-day view.
+            tap("Neuen Vorgang beginnen")
+            tap("Plan anlegen oder überarbeiten")
+            field("Plantitel", "$fixture-future")
+            field("Planende JJJJ-MM-TT",day.plusDays(55).toString())
+            field("Geplanter Termin JJJJ-MM-TT",day.plusDays(30).toString())
+            choose("Planbezug",version)
+            field("Geplante Menge · g · leer bei unbekannt","300")
+            tap("Zum Planentwurf hinzufügen")
+            field("Änderungsgrund des Plans","Weiteren Bedarf im Achtwochenzeitraum bewusst geplant")
+            tap("Planversion lokal speichern")
+            compose.waitUntil(25_000) { runBlocking { dao.allPlannedEntries().any { it.productVersionId == version && it.date == day.plusDays(30).toString() } } }
+            compose.onNodeWithTag("plan_horizon_56 Tage").performScrollTo().performClick()
+            tap("Planungszeitraum anzeigen")
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("planning_applied_scope") and hasText(day.plusDays(55).toString(),substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("shopping_$version").performScrollTo().assertTextContains("400 g",substring = true)
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            compose.onNodeWithTag("plan_open_shopping").performScrollTo().performClick()
+            waitTag("workspace_page_SHOPPING")
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("shopping_applied_scope") and hasText(day.plusDays(55).toString(),substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("shopping_horizon_56 Tage").assertIsSelected()
+            compose.onNodeWithTag("shopping_need_$version").performScrollTo().assertTextContains("400 g",substring = true)
+            compose.activityRule.scenario.recreate(); waitTag("workspace_page_SHOPPING")
+            waitTag("shopping_applied_scope")
+            compose.onNodeWithTag("shopping_applied_scope").assertTextContains(day.plusDays(55).toString(),substring = true)
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            assertEquals(mealsBefore,dao.activeConsumptionCount()); assertEquals(stockBefore,dao.planningBatches())
+            // A list item opens an interpreted line only. Even an actual zero
+            // payment requires a new gesture after Activity recreation.
+            tap("Neuen Vorgang beginnen")
+            finishEditing()
+            compose.onNodeWithTag("shopping_record_purchase_$version").performScrollTo().performClick()
+            waitTag("workspace_page_PURCHASES"); waitTag("purchase_paid_input")
+            for (tag in listOf("purchase_merchant_input","purchase_date_input","purchase_paid_input","purchase_original_0","purchase_price_0")) {
+                compose.onNodeWithTag(tag,useUnmergedTree = true).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText,AnnotatedString("")))
+            }
+            compose.onNodeWithTag("Produktversion Belegposition 1").assertTextContains(version.take(8),substring = true)
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            val actualMerchant = "$fixture-Markt"
+            val actualReason = "Eigenen tatsächlichen Einkauf am Gerät geprüft"
+            field("Händler · optional",actualMerchant)
+            field("Tatsächliches Kaufdatum JJJJ-MM-TT · optional",day.toString())
+            field("Tatsächlich bezahlt in EUR · optional","0,00")
+            field("Grund / Herkunft der Kauferfassung",actualReason)
+            val paidConsent = "Tatsächlich bezahlten Einkauf mit diesen Angaben bestätigen · noch kein Lagerzugang"
+            tap(paidConsent); compose.onNodeWithText(paidConsent).assertIsOn()
+            compose.activityRule.scenario.recreate(); waitTag("workspace_page_PURCHASES")
+            compose.onNodeWithTag("purchase_paid_input").assertDoesNotExist()
+            tap("Bezahlten Einkauf erfassen"); waitTag("purchase_paid_input")
+            compose.onNodeWithTag("purchase_paid_input",useUnmergedTree = true)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText,AnnotatedString("0,00")))
+            compose.onNodeWithText(paidConsent).assertIsOff()
+            tap("Bezahlten Einkauf speichern")
+            compose.waitUntil(25_000) { compose.onAllNodesWithText("Tatsächlichen Vorgang ausdrücklich bestätigen.",substring = true).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(operationsBefore + 4,dao.operationCount())
+            tap(paidConsent); tap("Bezahlten Einkauf speichern")
+            compose.waitUntil(25_000) { runBlocking { dao.receipts().any { it.merchant == actualMerchant } } }
+            val receipt = dao.receipts().single { it.merchant == actualMerchant }
+            assertEquals(0L,receipt.totalCents); assertEquals(day.toString(),receipt.purchasedOn)
+            val receiptLine = dao.receiptLines(receipt.id).single()
+            assertEquals(version,receiptLine.versionId); assertEquals("Geräteplanung Reis",receiptLine.interpretedName)
+            assertNull(receiptLine.originalText); assertNull(receiptLine.amount); assertNull(receiptLine.unit); assertNull(receiptLine.totalCents)
+            val payment = requireNotNull(dao.purchaseForReceipt(receipt.id))
+            compose.activityRule.scenario.recreate(); waitTag("workspace_page_PURCHASES")
+            val paidReopened = Room.databaseBuilder(target,FoodDatabase::class.java,FoodDatabase.TEST_DATABASE_NAME).build()
+            try {
+                val restored = FoodStore(paidReopened)
+                assertEquals(receipt,paidReopened.foodDao().receipt(receipt.id))
+                assertEquals(receiptLine,paidReopened.foodDao().receiptLines(receipt.id).single())
+                assertEquals(receipt.id,restored.savePurchase(payment.operationId,PurchaseInput(actualMerchant,day.toString(),0L,
+                    listOf(PurchaseLineInput(interpretedName = "Geräteplanung Reis",versionId = version)),actualReason),true))
+                assertEquals(operationsBefore + 5,paidReopened.foodDao().operationCount())
+                paidReopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0,it.count) }
+            } finally { paidReopened.close() }
+            assertEquals(operationsBefore + 5,dao.operationCount())
+            assertEquals(mealsBefore,dao.activeConsumptionCount()); assertEquals(stockBefore,dao.planningBatches())
+            assertEquals(nutritionBefore,store.dayNutrition(day.toString()))
             assertNull(connectivity.activeNetwork)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("plan-flow")

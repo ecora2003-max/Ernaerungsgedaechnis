@@ -52,17 +52,32 @@ private fun PurchaseEditor(versions: List<ProductVersionEntity>, blocked: State<
     var prices by rememberSaveable { mutableStateOf(listOf("")) }
     var versionIds by rememberSaveable { mutableStateOf(listOf("")) }
     var reason by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
-    Fold("Bezahlten Einkauf erfassen") {
-        Field("Händler · optional", merchant, { merchant = it; confirmed = false })
-        Field("Tatsächliches Kaufdatum JJJJ-MM-TT · optional", date, { date = it; confirmed = false })
-        Field("Tatsächlich bezahlt in EUR · optional", total, { total = it; confirmed = false })
+    var confirmed by remember { mutableStateOf(false) }
+    var draftOperationId by rememberSaveable { mutableStateOf(operation.value) }
+    var appliedRequestId by remember { mutableStateOf<String?>(null) }
+    val handoff by model.shoppingPurchaseHandoffState.collectAsStateWithLifecycle()
+    val request = handoff.request
+    LaunchedEffect(request?.requestId) {
+        if (request != null && versions.any { it.id == request.versionId }) {
+            merchant = ""; date = ""; total = ""; reason = ""
+            originals = listOf(""); names = listOf(request.name); prices = listOf(""); versionIds = listOf(request.versionId)
+            confirmed = false
+            draftOperationId = request.requestId
+            appliedRequestId = request.requestId
+            model.consumeShoppingPurchase(request.requestId)
+        }
+    }
+    Fold("Bezahlten Einkauf erfassen",openRequest = appliedRequestId) {
+        Text("Übernommene Artikel sind eigene Zuordnungsvorschläge. Tatsächliche Angaben selbst prüfen; geplante Mengen, Preise, Händler und Einkaufstage werden nicht als Kaufdaten übernommen.")
+        Field("Händler · optional", merchant, { merchant = it; confirmed = false },modifier = Modifier.testTag("purchase_merchant_input"))
+        Field("Tatsächliches Kaufdatum JJJJ-MM-TT · optional", date, { date = it; confirmed = false },modifier = Modifier.testTag("purchase_date_input"))
+        Field("Tatsächlich bezahlt in EUR · optional", total, { total = it; confirmed = false },modifier = Modifier.testTag("purchase_paid_input"))
         Text("Betrag für diesen Ausgabenbereich eingeben. Nicht aus Positionspreisen oder geschätzten Einkaufskosten ableiten.")
         originals.indices.forEach { index ->
             Text("Belegposition ${index + 1}")
-            Field("Originalbontext ${index + 1} · nur wenn lesbar", originals[index], { text -> originals = originals.toMutableList().apply { this[index] = text }; confirmed = false })
-            Field("Eigene Bezeichnung ${index + 1} · optional", names[index], { text -> names = names.toMutableList().apply { this[index] = text }; confirmed = false })
-            Field("Positionsbetrag ${index + 1} in EUR · optional", prices[index], { text -> prices = prices.toMutableList().apply { this[index] = text }; confirmed = false })
+            Field("Originalbontext ${index + 1} · nur wenn lesbar", originals[index], { text -> originals = originals.toMutableList().apply { this[index] = text }; confirmed = false },modifier = Modifier.testTag("purchase_original_$index"))
+            Field("Eigene Bezeichnung ${index + 1} · optional", names[index], { text -> names = names.toMutableList().apply { this[index] = text }; confirmed = false },modifier = Modifier.testTag("purchase_name_$index"))
+            Field("Positionsbetrag ${index + 1} in EUR · optional", prices[index], { text -> prices = prices.toMutableList().apply { this[index] = text }; confirmed = false },modifier = Modifier.testTag("purchase_price_$index"))
             IdPicker("Produktversion Belegposition ${index + 1}",
                 listOf("" to "Produktversion noch ungeklärt") + versions.map {
                     it.id to "${it.name} · v${it.revision} · ${it.id.take(8)}"
@@ -75,10 +90,10 @@ private fun PurchaseEditor(versions: List<ProductVersionEntity>, blocked: State<
             if (originals.size < 200) { originals = originals + ""; names = names + ""; prices = prices + ""; versionIds = versionIds + ""; confirmed = false }
         }
         Text("Leere Positionsfelder erzeugen keine Position. Produkt, nutzbare Menge und Lagerort können später geklärt werden.")
-        Field("Grund / Herkunft der Kauferfassung", reason, { reason = it; confirmed = false })
+        Field("Grund / Herkunft der Kauferfassung", reason, { reason = it; confirmed = false },modifier = Modifier.testTag("purchase_reason_input"))
         Check("Tatsächlich bezahlten Einkauf mit diesen Angaben bestätigen · noch kein Lagerzugang", confirmed) { confirmed = it }
         SaveButton("Bezahlten Einkauf speichern", blocked.value) {
-            val key = operation.value; val accepted = confirmed
+            val key = draftOperationId; val accepted = confirmed
             val shop = merchant.trim().takeIf(String::isNotEmpty); val day = date.trim().takeIf(String::isNotEmpty)
             val paid = total; val why = reason; val raw = originals.toList(); val labels = names.toList(); val costs = prices.toList(); val chosenVersions = versionIds.toList()
             model.save(key) {

@@ -12,16 +12,17 @@ import java.util.UUID
 
 @Composable
 internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operationId: String, model: LocalDataViewModel,
-    onOpenStorageCapacity: ((String?) -> Unit)? = null) {
+    onOpenStorageCapacity: ((String?) -> Unit)? = null,onOpenShopping: ((String,String) -> Unit)? = null) {
     // The history may be opened after a save/reset. Deferred content must read the current guard/key.
     val currentBlocked = rememberUpdatedState(blocked)
     val currentOperation = rememberUpdatedState(operationId)
     val ui by model.planning.collectAsStateWithLifecycle()
+    val shoppingError by model.shoppingNavigationError.collectAsStateWithLifecycle()
     var starts by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var horizon by rememberSaveable { mutableStateOf("7 Tage") }
     Heading("Planung & Bedarf", "Gemeinsame Einträge für Tag, Woche und acht Wochen")
     Hint("Planen verändert keinen Bestand und zählt nicht zur Ernährung. Alle aktiven Pläne teilen sich rechnerisch denselben Vorrat. Neue Versionen ersetzen nur die bisherige Planung.", Sage)
-    Field("Ansicht ab JJJJ-MM-TT", starts, { starts = it })
+    Field("Ansicht ab JJJJ-MM-TT", starts, { starts = it },modifier = Modifier.testTag("planning_start_input"))
     WrappingChoices(listOf("1 Tag", "7 Tage", "56 Tage"), horizon, "plan_horizon_") { horizon = it }
     Action("Planungszeitraum anzeigen", true) {
         model.showPlanning(starts, when (horizon) { "1 Tag" -> 1L; "56 Tage" -> 56L; else -> 7L })
@@ -32,7 +33,10 @@ internal fun LocalPlanningScreen(state: LocalDataState, blocked: Boolean, operat
         if (ui.error == null) CircularProgressIndicator()
         return
     }
-    Text("${report.startsOn} bis ${report.endsOn} · Bestandsstand ${report.asOf}")
+    Text("${report.startsOn} bis ${report.endsOn} · Bestandsstand ${report.asOf}",Modifier.testTag("planning_applied_scope"))
+    if (onOpenShopping != null) OutlinedButton({ onOpenShopping(report.startsOn,report.endsOn) },
+        Modifier.testTag("plan_open_shopping")) { Text("Einkauf für ${report.startsOn} bis ${report.endsOn} öffnen") }
+    shoppingError?.let { Hint(it) }
     PlanNutritionPreview(report.startsOn, report.endsOn)
     PlanStorageCapacityPreview(model,onOpenStorageCapacity)
     Hint("Berechnet wird der noch offene Bedarf. Bereits gebuchten Verzehr oder Herstellung ausdrücklich dem Plan zuordnen. Das bucht nichts erneut. Vergangene offene Termine werden nicht mit heutigem Bestand rückgerechnet.")

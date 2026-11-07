@@ -2,7 +2,7 @@
 
 ## Einstieg und Bedienung
 
-Mehr → Lokale Testdaten & Sicherungen → Lokalen Testbereich öffnen → **Einkauf**. Weiterhin nur Testdaten. Die Haupt-Fachansichten außerhalb dieses Bereichs bleiben fiktive Beispiele.
+Unter **Mehr → Einkaufsvorschläge** öffnet die Standard-App den tatsächlichen lokalen Einkaufsbereich. Die zusätzliche Entwurfsansicht bleibt getrennt; Entwicklungsversion weiterhin nur mit Testdaten verwenden.
 
 Bedarfsausschnitt für einen, sieben oder 56 Tage, geplanten Einkaufstag und optional ein Budget wählen, anschließend „Einkaufsliste anzeigen“. Angezeigt werden die tatsächlich angewendeten Termine und der aktuelle Bestandsstand. Vergangene Einkäufe werden nicht aus heutigem Bestand rekonstruiert. Ein Einkauf nach dem ersten Bedarfstermin bleibt als Terminkonflikt sichtbar. Erneutes „anzeigen“ berechnet auch dieselben Filter frisch; vor Speichern werden Daten und Datum nochmals geprüft.
 
@@ -15,6 +15,10 @@ Für die Packungsrechnung muss die Menge genau einer ganzen Kaufpackung in g, ml
 Pro Listenposition eine Packungs-/Preisfassung bewusst wählen. Schon vor dem Speichern zeigt die Vorschau die Packungszahl, Kaufmenge, Überschuss und Kosten dieser Auswahl. Erst **Auswahl / Markierung speichern** übernimmt die Auswahl dauerhaft in die Gesamtsumme. Es wird kein Angebot automatisch gewählt, auch nicht die größere oder nominell günstigere Packung.
 
 Abhaken ist eine manuelle Listenmarkierung, kein bestätigter Kauf, keine bezahlte Ausgabe und kein Lagerzugang. Abgehakte Positionen bleiben sichtbar und in Bedarf/Kostenschätzung enthalten. Vor einer weiteren Schreibaktion oben **Neuen Vorgang beginnen** wählen. Eine andere Position abzuhaken verändert vorhandene gültige Markierungen nicht.
+
+**Neuen bezahlten Einkauf mit diesem Artikel erfassen** öffnet unter Käufe einen neuen, noch unbestätigten Entwurf mit genau der ausgewählten Artikelversion und ihrer eigenen Bezeichnung. Nur die aktuell lesbare Position im angewendeten Ausschnitt darf übergeben werden. Ein neuer Entwurf erhält einen eigenen Wiederholungsschlüssel. Es wird zunächst nichts gespeichert oder abgehakt.
+
+Originalbontext, tatsächlich bezahlter Betrag, Positionspreis, Händler und tatsächliches Kaufdatum bleiben leer. Geplante Termine, Packungszahlen, Fehlmengen und beobachtete Angebotspreise sind keine Kaufbelege. Angaben selbst prüfen und ergänzen, Kauf separat bestätigen und speichern; danach folgt der vorhandene getrennte Lagerzugang. Eine neue Katalogfassung ersetzt die ausgewählte historische Artikelversion nicht automatisch. Nach Activity-Neuerstellung bleiben bearbeitete Entwurfsfelder erhalten, die Auswahl wird nicht erneut angewendet und die Kaufbestätigung ist ausgeschaltet.
 
 ## Rechnung und Unsicherheit
 
