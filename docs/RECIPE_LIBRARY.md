@@ -1,6 +1,6 @@
 # Gespeicherte Rezepte wiederverwenden
 
-Unter **Mehr → Rezepte & Herstellung → Gespeichertes Rezeptgedächtnis** lassen sich die aktuellen eigenen Rezeptfassungen nach Namen und Zutaten durchsuchen. Mehrere Suchwörter können auf Titel und Zutaten verteilt sein. Historische Fassungen bleiben gespeichert, erscheinen aber nicht zusätzlich als aktuelles Rezept.
+Unter **Mehr → Rezepte & Küche → Gespeichertes Rezeptgedächtnis** lassen sich die aktuellen eigenen Rezeptfassungen nach Namen und Zutaten durchsuchen. Mehrere Suchwörter können auf Titel und Zutaten verteilt sein. Historische Fassungen bleiben gespeichert, erscheinen aber nicht zusätzlich als aktuelles Rezept.
 
 **Nur mit vollständig vorhandenen Zutaten** verwendet die genaue gespeicherte Artikelversion und die Mengen des gesamten Soll-Ansatzes. Derselbe FEFO-Kern wie in der tatsächlichen Herstellungsmaske prüft Chargenmenge, Freigabe, bestätigten Lagerort und zeitliche Nutzbarkeit. Neuere Artikelvarianten ersetzen alte Zutaten nicht automatisch. Fehlende Mengen oder Artikel, gesperrte/ungeeignete Chargen und Fehlmengen erfüllen den Filter nicht. Ihre Gründe bleiben unter allen Rezepten einsehbar. Verbrauch und Chargenänderungen aktualisieren die Liste aus dem lokalen Bestand.
 
