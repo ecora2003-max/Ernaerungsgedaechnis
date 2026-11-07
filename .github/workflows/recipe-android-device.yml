@@ -140,7 +140,7 @@ jobs:
       - name: Execute actual API 26 core UI and persistent Room flows offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
-          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest,de.ernaehrung.demo.StockEventsOnDeviceTest
+          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest,de.ernaehrung.demo.StockEventsOnDeviceTest,de.ernaehrung.demo.ActualEventApprovalOnDeviceTest
           EG_ANDROID_TEST_TIMEOUT: 10m
         with:
           api-level: 26
@@ -154,7 +154,7 @@ jobs:
             bash tools/prepare_android_api26_core.sh
             bash tools/run_android_device_tests.sh
             bash tools/run_android_process_restart.sh
-      - name: Verify actual API and all five original device test results
+      - name: Verify actual API and all seven original device test results
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -163,19 +163,19 @@ jobs:
           reports = list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))
           assert reports, 'No original instrumentation XML'
           suites = [ET.parse(path).getroot() for path in reports]
-          assert sum(int(s.get('tests', '0')) for s in suites) == 5
+          assert sum(int(s.get('tests', '0')) for s in suites) == 7
           assert all(int(s.get(field, '0')) == 0 for s in suites for field in ('failures', 'errors', 'skipped'))
           classes = {t.get('classname') for s in suites for t in s.findall('testcase')}
           expected = {'de.ernaehrung.demo.' + name for name in (
               'PlanExecutionOnDeviceTest', 'NutritionDayConfirmationOnDeviceTest', 'StockOverviewOnDeviceTest',
-              'PublishedDatabaseMigrationOnDeviceTest', 'StockEventsOnDeviceTest')}
+              'PublishedDatabaseMigrationOnDeviceTest', 'StockEventsOnDeviceTest', 'ActualEventApprovalOnDeviceTest')}
           assert classes == expected, (classes, expected)
           import json, subprocess
           proof = json.loads(Path('app/build/outputs/device-diagnostics/process-restart.json').read_text())
           assert proof['status'] == 'PASS' and proof['actualSdk'] == 26 and proof['forceStopObserved'] is True
           assert proof['sourceCommit'] == subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
           assert proof['mainPidBefore'] != proof['mainPidAfter'] and proof['seedPid'] != proof['readPid']
-          print('ANDROID_API26_CORE_PASS: actual SDK 26; 5/5; 0 failures/errors/skips')
+          print('ANDROID_API26_CORE_PASS: actual SDK 26; 7/7; 0 failures/errors/skips')
           PY
       - name: Upload original API 26 evidence only
         if: ${{ always() }}

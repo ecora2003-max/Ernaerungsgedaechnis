@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -163,9 +164,25 @@ private fun prepareApi26OfflineDevice(device: UiDevice,target: Context) {
         // Android permits Wi-Fi while airplane mode is on. Inspect and disable
         // its actual switch separately rather than treating the icon as proof.
         device.executeShellCommand("am start -a android.settings.WIFI_SETTINGS")
-        val wifi = device.wait(Until.findObject(By.pkg("com.android.settings").clazz("android.widget.Switch")),10_000L)
-        assertNotNull("Actual API26 Wi-Fi switch unavailable",wifi)
-        if (wifi?.isChecked == true) wifi.click()
+        // The previous airplane preference also exposes android.widget.Switch.
+        // Wait for Wi-Fi's own SwitchBar resource, not that departing screen.
+        val wifiSelector = By.res("com.android.settings","switch_widget")
+        fun wifiState(): Boolean? = try { device.findObject(wifiSelector)?.isChecked }
+            catch (_: StaleObjectException) { null } // Retry the read, never an app booking or a blind toggle.
+        val wifiDeadline = SystemClock.uptimeMillis() + 10_000L
+        var wifiChecked = wifiState()
+        while (wifiChecked == null && SystemClock.uptimeMillis() < wifiDeadline) {
+            SystemClock.sleep(100L); wifiChecked = wifiState()
+        }
+        assertNotNull("Actual API26 Wi-Fi SwitchBar unavailable",wifiChecked)
+        if (wifiChecked == true) {
+            requireNotNull(device.findObject(wifiSelector)).click()
+        }
+        wifiChecked = wifiState()
+        while (wifiChecked != false && SystemClock.uptimeMillis() < wifiDeadline) {
+            SystemClock.sleep(100L); wifiChecked = wifiState()
+        }
+        assertTrue("Actual API26 Wi-Fi switch did not disable",wifiChecked == false)
         val deadline = SystemClock.uptimeMillis() + 10_000L
         while (connectivity.activeNetwork != null && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(100L)
         org.junit.Assert.assertNull("API26 still has an actual active network",connectivity.activeNetwork)

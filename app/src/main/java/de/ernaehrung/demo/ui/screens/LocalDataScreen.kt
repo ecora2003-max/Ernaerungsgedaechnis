@@ -232,8 +232,10 @@ private fun ReceiptEditor(state: LocalDataState, busy: Boolean, operationId: Str
     var quantity by rememberSaveable { mutableStateOf("") }
     var acquired by rememberSaveable { mutableStateOf("") }
     var useBy by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
-    var released by rememberSaveable { mutableStateOf(false) }
+    val selectedVersion = state.versions.firstOrNull { it.id == versionId }
+    val selectedLocation = state.locations.firstOrNull { it.id == locationId }
+    var released by remember(operationId,versionId,locationId,quantity,acquired,useBy,selectedVersion,selectedLocation) { mutableStateOf(false) }
+    var confirmed by remember(operationId,versionId,locationId,quantity,acquired,useBy,selectedVersion,selectedLocation,released) { mutableStateOf(false) }
     Fold("Testzugang bestätigen") {
         val product = state.catalog.find { it.version.id == versionId }
         Picker("Produktversion", state.catalog.map { "${it.version.name} · ${it.version.id}" }, product?.version?.name ?: "Bitte wählen") { label -> versionId = state.catalog.first { label.endsWith(it.version.id) }.version.id }
