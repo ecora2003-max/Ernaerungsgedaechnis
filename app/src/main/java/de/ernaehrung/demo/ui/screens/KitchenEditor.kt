@@ -12,7 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
-    onOpenStorageCapacity: ((String?) -> Unit)? = null) {
+    onOpenStorageCapacity: ((String?) -> Unit)? = null,onPlanRecipe: ((String) -> Unit)? = null) {
     Heading("Rezepte & tatsächliche Herstellung", "Kochen ist kein Essen.")
     Hint("Rezept speichern erzeugt keinen Bestand. Erst die bestätigte Herstellung entnimmt Zutaten und legt eine neue Fertigportionencharge an. Portionsnährwerte werden aus tatsächlichen Zutaten und Ausbeuten berechnet; Datenlücken bleiben sichtbar.", Sage)
     RecipeEditor(state, blocked, key, model)
@@ -96,7 +96,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     if (eligibleConsumptionBatches(state.batches, preparedOnly = true).isNotEmpty()) {
         ConsumptionEditor(state, blocked, key, model, preparedOnly = true)
     }
-    RecipeLibrary(state,blocked,model)
+    RecipeLibrary(state,blocked,model,onPlanRecipe)
 }
 
 @Composable

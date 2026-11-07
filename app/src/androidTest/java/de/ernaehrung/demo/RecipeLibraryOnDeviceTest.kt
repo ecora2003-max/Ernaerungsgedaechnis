@@ -92,6 +92,26 @@ class RecipeLibraryOnDeviceTest {
             compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag(favoriteTag) and hasText("Als Favorit merken")).fetchSemanticsNodes().isNotEmpty() }
             tag("recipe_library_prepare_$current")
             compose.onNodeWithText("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen").assertIsOff()
+            tag("recipe_library_plan_$current")
+            waitTag("workspace_page_PLAN"); waitTag("recipe_plan_prefill_notice")
+            compose.onNodeWithTag("Art des Planeintrags").performScrollTo().assertTextContains("Zubereitung",substring = true)
+            compose.onNodeWithTag("Planbezug").assertTextContains("Aktueller Geräte-Reistopf",substring = true)
+            assertTrue(db.foodDao().allPlannedEntries().none { it.recipeVersionId == current })
+            assertEquals(before,db.foodDao().operationCount())
+            compose.onNodeWithTag("plan_entry_date_input",useUnmergedTree = true).performScrollTo().performTextReplacement(today.plusDays(1).toString())
+            compose.onNodeWithTag("plan_entry_amount_input",useUnmergedTree = true).performScrollTo().performTextReplacement("4")
+            tag("Zum Planentwurf hinzufügen")
+            assertTrue(db.foodDao().allPlannedEntries().none { it.recipeVersionId == current })
+            compose.onNodeWithTag("plan_change_reason_input",useUnmergedTree = true).performScrollTo().performTextReplacement("Eigenen Kochtermin ausdrücklich geplant")
+            tag("Planversion lokal speichern")
+            compose.waitUntil(25_000) { runBlocking { db.foodDao().allPlannedEntries().any { it.recipeVersionId == current } } }
+            val planned = db.foodDao().allPlannedEntries().single { it.recipeVersionId == current }
+            assertEquals(PlanKind.PREPARATION,planned.kind); assertEquals(4000L,planned.amount)
+            waitTag("shopping_$version")
+            compose.onNodeWithTag("shopping_$version").performScrollTo().assertTextContains("100 g",substring = true)
+            assertEquals(before + 1,db.foodDao().operationCount())
+            assertEquals(batches,db.foodDao().planningBatches()); assertEquals(meals,db.foodDao().activeConsumptionCount())
+            compose.activityRule.scenario.recreate(); waitTag("workspace_page_PLAN")
             val reopened = Room.databaseBuilder(target,FoodDatabase::class.java,FoodDatabase.TEST_DATABASE_NAME).build()
             try {
                 assertEquals(current,reopened.foodDao().latestRecipeVersion(identity)!!.id)
@@ -102,9 +122,10 @@ class RecipeLibraryOnDeviceTest {
                 val reopenedFavorites = FoodStore(reopened).readRecipeFavorites()
                 assertEquals(2,reopenedFavorites.history.size)
                 assertEquals("REMOVED",reopenedFavorites.latest.getValue(identity).status)
+                assertEquals(planned,reopened.foodDao().allPlannedEntries().single { it.recipeVersionId == current })
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0,it.count) }
             } finally { reopened.close() }
-            assertEquals(before,db.foodDao().operationCount()); assertEquals(batches,db.foodDao().planningBatches())
+            assertEquals(before + 1,db.foodDao().operationCount()); assertEquals(batches,db.foodDao().planningBatches())
             assertEquals(meals,db.foodDao().activeConsumptionCount()); assertNull(connectivity.activeNetwork)
         } catch (failure: Throwable) { captureDeviceFailureEvidence("recipe-library-flow"); throw failure }
     }

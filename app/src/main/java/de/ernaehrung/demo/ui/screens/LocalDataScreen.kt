@@ -49,7 +49,7 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
     showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
     onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null,
-    recognitionModeState: MutableState<String>? = null) {
+    recognitionModeState: MutableState<String>? = null,onOpenPlanning: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -135,7 +135,11 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             onModeChange = { recognitionMode.value = it }) {
             if (onOpenPurchases != null) onOpenPurchases() else mode = "Käufe"
         }
-        "Küche" -> KitchenEditor(state, blocked, operationId, model, onOpenStorageCapacity)
+        "Küche" -> KitchenEditor(state, blocked, operationId, model, onOpenStorageCapacity) { recipeVersionId ->
+            if (model.prepareRecipePlanDraft(recipeVersionId)) {
+                if (onOpenPlanning != null) onOpenPlanning() else mode = "Planung"
+            }
+        }
         "Chronik" -> {
             ReversalEditor(state, blocked, operationId, model)
             Hint("Hier stehen die letzten 30 Bewegungen. Stornos ergänzen Gegenbewegungen; die ursprünglichen Ereignisse bleiben in der Datenbank. Kochen ist kein Verzehr.", Sage)

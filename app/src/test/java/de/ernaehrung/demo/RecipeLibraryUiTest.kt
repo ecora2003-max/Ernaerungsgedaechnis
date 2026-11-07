@@ -84,5 +84,23 @@ class RecipeLibraryUiTest {
         compose.onNodeWithTag("recipe_favorite_$latest").assertTextContains("Favorit entfernen",substring = true)
         assertEquals(latest,db.foodDao().latestRecipeVersion(identity)!!.id)
         assertEquals(before + 2,db.foodDao().operationCount()); assertEquals(meals + 1,db.foodDao().activeConsumptionCount())
+        compose.onNodeWithTag("recipe_library_plan_$latest").performScrollTo().performClick()
+        waitTag("workspace_page_PLAN"); waitTag("recipe_plan_prefill_notice")
+        compose.onNodeWithTag("Art des Planeintrags").assertTextContains("Zubereitung",substring = true)
+        compose.onNodeWithTag("Planbezug").assertTextContains("Unabhängig geändertes Gericht",substring = true)
+        assertTrue(db.foodDao().allPlannedEntries().none { it.recipeVersionId == latest })
+        assertEquals(before + 2,db.foodDao().operationCount())
+        compose.onNodeWithTag("plan_entry_date_input",useUnmergedTree = true).performScrollTo().performTextReplacement(AppCalendar.today().plusDays(1).toString())
+        compose.onNodeWithTag("plan_entry_amount_input",useUnmergedTree = true).performScrollTo().performTextReplacement("4")
+        compose.onNodeWithTag("Zum Planentwurf hinzufügen").performScrollTo().performClick()
+        assertTrue(db.foodDao().allPlannedEntries().none { it.recipeVersionId == latest })
+        compose.onNodeWithTag("plan_change_reason_input",useUnmergedTree = true).performScrollTo().performTextReplacement("Eigenen Kochtermin bewusst geplant")
+        compose.onNodeWithTag("Planversion lokal speichern").performScrollTo().performClick()
+        compose.waitUntil(25_000) { runBlocking { db.foodDao().allPlannedEntries().any { it.recipeVersionId == latest } } }
+        val planned = db.foodDao().allPlannedEntries().single { it.recipeVersionId == latest }
+        assertEquals(PlanKind.PREPARATION,planned.kind); assertEquals(4000L,planned.amount)
+        compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("shopping_$version") and hasText("250 g",substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(before + 3,db.foodDao().operationCount())
+        assertEquals(meals + 1,db.foodDao().activeConsumptionCount()); assertEquals(150_000L,db.foodDao().balance(batch))
     }
 }

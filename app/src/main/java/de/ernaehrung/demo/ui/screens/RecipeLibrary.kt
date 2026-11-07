@@ -10,7 +10,7 @@ import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
 
 @Composable
-internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: LocalDataViewModel) {
+internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: LocalDataViewModel,onPlanRecipe: ((String) -> Unit)? = null) {
     Section("Gespeichertes Rezeptgedächtnis","Aktuelle Fassungen · offline durchsuchbar")
     var query by remember { mutableStateOf("") }
     var coveredOnly by remember { mutableStateOf(false) }
@@ -18,6 +18,7 @@ internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: Local
     var favoritesOnly by remember { mutableStateOf(false) }
     val favorites by model.recipeFavoriteState.collectAsStateWithLifecycle()
     val favoriteSave by model.recipeFavoriteSaveState.collectAsStateWithLifecycle()
+    val planHandoff by model.recipePlanHandoffState.collectAsStateWithLifecycle()
     val favoriteReady = favorites.snapshot != null && !favorites.readError
     val favoriteRecipeIds = favorites.snapshot?.recipeIds.orEmpty()
     val day = AppCalendar.today().toString()
@@ -41,6 +42,7 @@ internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: Local
     if (favoriteSave.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     favoriteSave.message?.let { Text(it,Modifier.testTag("recipe_favorite_saved")) }
     favoriteSave.error?.let { Hint(it) }
+    planHandoff.error?.let { Hint(it) }
     Text("Bestandsprüfung für den gesamten gespeicherten Ansatz am $day. Nur passende Artikelversionen und freigegebene, zeitlich nutzbare Chargen an bestätigten Lagerorten zählen. Keine Reservierung oder Prüfung von Allergenen, Kühlung und Behälterplatz. Vor der Herstellung erneut prüfen.")
     Text(if (favoritesOnly && !favoriteReady) "Favoritenanzahl unbekannt" else "${selected.size} von ${entries.size} Rezepten",
         Modifier.testTag("recipe_library_count"))
@@ -84,6 +86,8 @@ internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: Local
             }
             OutlinedButton({ model.prepareProductionForRecipe(recipe.id) },enabled = !blocked,
                 modifier = Modifier.testTag("recipe_library_prepare_${recipe.id}")) { Text("Herstellung dieser Rezeptfassung vorbereiten") }
+            if (onPlanRecipe != null) OutlinedButton({ onPlanRecipe(recipe.id) },enabled = !blocked,
+                modifier = Modifier.testTag("recipe_library_plan_${recipe.id}")) { Text("Neuen Kochplan mit dieser Fassung vorbereiten") }
         }
     }
 }

@@ -372,6 +372,21 @@ class LocalDataViewModel internal constructor(
         productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
             (productionPrefill.value?.requestSequence ?: 0) + 1)
     }
+    private val recipePlanHandoff = MutableStateFlow(RecipePlanHandoffUiState())
+    internal val recipePlanHandoffState = recipePlanHandoff.asStateFlow()
+    internal fun prepareRecipePlanDraft(recipeVersionId: String): Boolean {
+        val current = state.value
+        val recipe = current.recipes.singleOrNull { it.id == recipeVersionId }
+        if (current.loading || current.error != null || recipe == null || saveState.value.busy || saveState.value.succeeded) {
+            recipePlanHandoff.value = RecipePlanHandoffUiState(error = "Rezeptfassung oder Vorgang nicht bereit. Aktuellen Stand prüfen und gegebenenfalls einen neuen Vorgang beginnen.")
+            return false
+        }
+        recipePlanHandoff.value = RecipePlanHandoffUiState(RecipePlanPrefill(java.util.UUID.randomUUID().toString(),recipe.id,recipe.name))
+        return true
+    }
+    internal fun consumeRecipePlanDraft(requestId: String) {
+        if (recipePlanHandoff.value.request?.requestId == requestId) recipePlanHandoff.value = RecipePlanHandoffUiState()
+    }
     private var recipeSaveJob: kotlinx.coroutines.Job? = null
     private var recipePreviewJob: kotlinx.coroutines.Job? = null
     private var recipeConsentJob: kotlinx.coroutines.Job? = null
