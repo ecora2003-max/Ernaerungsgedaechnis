@@ -32,6 +32,11 @@ android {
     testOptions { unitTests.isIncludeAndroidResources=true }
     packaging { resources.excludes+="/META-INF/{AL2.0,LGPL2.1}" }
     sourceSets["test"].resources.srcDir("schemas")
+    // One synthetic migration fixture runs against both host and platform SQLite.
+    // Published schema assets are packaged only in the instrumentation APK.
+    sourceSets["test"].java.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].java.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].assets.srcDir("schemas")
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {

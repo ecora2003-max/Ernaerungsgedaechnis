@@ -19,12 +19,14 @@ internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: Stri
     var expected by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
-    var conditions by rememberSaveable { mutableStateOf(false) }
+    val batches = state.batches.filter { !it.originReversed }
+    val batch = batches.find { it.batch.id == selected }
+    // Fields can be restored; actual-event and destination-safety gestures
+    // belong only to this operation and the currently reviewed batch snapshot.
+    var conditions by remember(key,kind,selected,target,batch) { mutableStateOf(false) }
+    var confirmed by remember(key,kind,selected,target,quantity,expected,date,reason,conditions,batch) { mutableStateOf(false) }
     Fold("Umlagern, entsorgen oder zählen") {
         WrappingChoices(listOf("Umlagern", "Entsorgen", "Istzählung"), kind, "stock_action_") { kind = it; confirmed = false }
-        val batches = state.batches.filter { !it.originReversed }
-        val batch = batches.find { it.batch.id == selected }
         IdPicker("Quellcharge", batches.map { it.batch.id to "${it.productName} · ${it.locationName} · ${Amounts.format(it.stockAmount)} ${it.unit.label} · ${it.batch.id.take(8)}" }, selected) {
             selected = it; expected = batches.first { row -> row.batch.id == it }.stockAmount.toString(); confirmed = false
         }
