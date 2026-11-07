@@ -96,7 +96,7 @@ class StockEventsOnDeviceTest {
             tag("Neuen Vorgang beginnen")
             compose.onNodeWithTag("workspace_tab_MORE").performClick(); tag("workspace_go_HISTORY")
             text("Vorgang prüfen und stornieren")
-            tag("Ursprungsvorgang · letzte 30"); tag("choose_${count.operationId}")
+            tag("Ursprungsvorgang"); tag("choose_${count.operationId}")
             compose.waitUntil(25_000) { compose.onAllNodesWithText("Vorgesehene Gegenbuchungen").fetchSemanticsNodes().size == 1 }
             field("Stornogrund","Geräte-Zählfehler")
             val reverseApproval = "Diese vollständige Gegenbuchung ausdrücklich bestätigen"

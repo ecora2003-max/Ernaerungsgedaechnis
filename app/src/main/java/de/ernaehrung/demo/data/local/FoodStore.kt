@@ -763,13 +763,14 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
         date
     }
     fun operations() = dao.observeOperations()
+    private val stockHistory = StockHistoryReader(db)
+    internal fun watchStockHistory(query: StockHistoryQuery) = stockHistory.watch(query)
+    internal suspend fun readStockHistory(query: StockHistoryQuery) = stockHistory.read(query)
+    internal fun watchOperationDetails(id: String) = stockHistory.watchOperation(id)
     fun recipes() = dao.observeRecipes()
     fun recipeIngredients() = dao.observeIngredients()
     fun versions() = dao.observeVersions()
-    suspend fun operationDetails(key: String): OperationDetails = db.withTransaction {
-        OperationDetails(requireNotNull(dao.operation(key)) { "Vorgang nicht gefunden." }, dao.reversal(key),
-            dao.movementDetails(key), dao.consumptionForOperation(key))
-    }
+    suspend fun operationDetails(key: String): OperationDetails = stockHistory.details(key)
     suspend fun transfer(key: String, input: TransferInput, confirmed: Boolean) = stock.transfer(key, input, confirmed)
     suspend fun waste(key: String, input: WasteInput, confirmed: Boolean) = stock.waste(key, input, confirmed)
     suspend fun correctStock(key: String, input: StockCountInput, confirmed: Boolean) = stock.correctStock(key, input, confirmed)

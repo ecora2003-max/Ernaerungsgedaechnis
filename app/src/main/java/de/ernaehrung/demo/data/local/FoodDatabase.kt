@@ -223,6 +223,13 @@ internal interface FoodDao {
         JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
         ORDER BY m.recordedAt DESC, m.id DESC LIMIT 30""")
     fun observeMovements(): Flow<List<MovementRow>>
+    @Query("""SELECT o.* FROM operations o
+        WHERE o.kind IN ('RECEIPT', 'CONSUMPTION', 'TRANSFER', 'WASTE', 'STOCK_COUNT', 'PRODUCTION', 'REVERSAL')
+        AND (:batchId IS NULL OR EXISTS (SELECT 1 FROM stock_movements m WHERE m.operationId=o.id AND m.batchId=:batchId))
+        AND (:operationId IS NULL OR o.id=:operationId)
+        AND (:beforeAt IS NULL OR o.recordedAt<:beforeAt OR (o.recordedAt=:beforeAt AND o.id<:beforeId))
+        ORDER BY o.recordedAt DESC,o.id DESC LIMIT :limit""")
+    suspend fun historyOperations(batchId: String?, operationId: String?, beforeAt: Long?, beforeId: String?,limit: Int): List<OperationEntity>
     @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
         JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
         WHERE m.operationId = :id ORDER BY m.id""") suspend fun movementDetails(id: String): List<MovementRow>

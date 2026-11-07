@@ -1,0 +1,13 @@
+# Vollständige Lager- und Verzehrchronik
+
+Unter **Mehr → Chronik** tatsächliche Lager-/Verzehrvorgänge seitenweise lesen. **Lager → Buchungen dieser Charge** öffnet dieselbe Chronik bereits für die gewählte genaue Charge; auch leere oder stornierte Chargen bleiben historisch auffindbar.
+
+Die Auswahl **Charge der Chronik** und eine optionale genaue Vorgangskennung mit **Chronik anzeigen** anwenden. Die Anzeige benennt die tatsächlich angewendete Auswahl. Eine Seite enthält bis zu 25 Vorgänge. **Ältere Vorgänge** erreicht die folgende Seite, **Neueste Vorgänge** kehrt zum aktuellen Anfang zurück. Die Reihenfolge verwendet Erfassungszeit und vollständige stabile Kennung; gleiche Zeitstempel lassen keine Einträge aus und erzeugen keine doppelten Seiteneinträge. Jede Seite wird konsistent aus der aktuellen Datenbank gelesen. Später hinzugekommene neuere Vorgänge sind über **Neueste Vorgänge** erreichbar.
+
+**Bewegungsdetails** zeigt ursprüngliche Artikelbezeichnung und Einheit derselben Chargenversion, Richtung, Menge, Ort, Quelle, Grund, vollständige Bewegungs-/Vorgangs-/Chargenkennungen und gegebenenfalls den Bezug zur gegenläufigen Ursprungsbewegung. Speicherzeit, überliefertes Ereignisdatum und optionaler Ereigniszeitpunkt bleiben getrennt. Unbekannte alte Ereigniszeiten werden nicht aus dem Erfassungszeitpunkt erfunden. Die Anzeige konvertiert bekannte Zeitpunkte nachvollziehbar in Berliner Zeit einschließlich Zeitzonenoffset.
+
+**Vorgang zur Gegenbuchung prüfen** lädt die genaue ausgewählte Ursprungsversion in die vorhandene Stornomaske, auch außerhalb der früheren 30er-Auswahl. Die Vorschau liest Änderungen weiter aktuell nach. Eine Auswahl, ein Filter oder das Öffnen der Vorschau erzeugt keine Buchung. Erst gesonderte Bestätigung und **Vorgang stornieren** übergeben die Aktion an FoodStore. Änderungen an Vorgang, Eingaben oder Vorschau und Activity-Neuerstellung verlangen eine neue Zustimmung. FoodStore prüft Abhängigkeiten und Bestand erneut atomar; Fehler erzeugen keine Teilbuchung. Ursprüngliche Bewegungen bleiben erhalten, Gegenbewegungen nennen ihre genauen Ursprünge, wiederholte bestätigte Operationen bleiben idempotent.
+
+Die Chronik zeigt Lager- und Verzehrereignisse. Zahlungsbelege und private Bezahlpreishistorien stehen unter **Mehr → Bezahlte Käufe**. Persönliche Körper-/Gesundheitsdaten werden durch die Chronik weder exportiert noch geändert.
+
+Room 17 und der öffentliche Rezept-v1-Vertrag bleiben unverändert. Exakte Prüfstände und noch offene Gerätebelege stehen im [STATUS](STATUS.md).
