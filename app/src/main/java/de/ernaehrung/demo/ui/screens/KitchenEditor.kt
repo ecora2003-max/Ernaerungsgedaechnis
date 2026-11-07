@@ -107,6 +107,10 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
     var name by rememberSaveable { mutableStateOf("") }
     var portions by rememberSaveable { mutableStateOf("") }
     var steps by rememberSaveable { mutableStateOf("") }
+    var activeMinutes by rememberSaveable { mutableStateOf("") }
+    var totalMinutes by rememberSaveable { mutableStateOf("") }
+    var storageInstructions by rememberSaveable { mutableStateOf("") }
+    var safetySource by rememberSaveable { mutableStateOf("") }
     var reason by rememberSaveable { mutableStateOf("") }
     var versions by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
     var quantities by rememberSaveable { mutableStateOf<List<String>>(listOf("")) }
@@ -117,6 +121,9 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
         mealPrep = previous?.mealPrep ?: false
         name = previous?.name.orEmpty(); portions = previous?.yieldPortions?.let(Amounts::format).orEmpty()
         steps = previous?.steps.orEmpty(); reason = ""
+        activeMinutes = previous?.activeMinutes?.toString().orEmpty()
+        totalMinutes = previous?.totalMinutes?.toString().orEmpty()
+        storageInstructions = previous?.storageInstructions.orEmpty(); safetySource = previous?.safetySource.orEmpty()
         val items = state.ingredients.filter { it.ingredient.recipeVersionId == previous?.id }
         versions = ArrayList(items.map { it.ingredient.productVersionId }.ifEmpty { listOf("") })
         quantities = ArrayList(items.map { it.ingredient.amount?.let(Amounts::format).orEmpty() }.ifEmpty { listOf("") })
@@ -133,6 +140,9 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
         Field("Soll-Portionen des ganzen Rezepts", portions, { portions = it })
         Check("Als Meal-Prep-Rezept kennzeichnen",mealPrep) { mealPrep = it }
         Text("Die Kennzeichnung ist keine Prüfung von Haltbarkeit, Lagerraum oder Eignung zum Einfrieren.")
+        Text("Zeiten für den gesamten Rezeptansatz in ganzen Minuten. Leere Felder bleiben unbekannt; ausdrücklich 0 bleibt 0.")
+        Field("Aktive Zubereitungszeit in Minuten · optional",activeMinutes,{ activeMinutes = it },modifier = Modifier.testTag("recipe_editor_active_minutes"))
+        Field("Gesamte Zubereitungszeit in Minuten · optional",totalMinutes,{ totalMinutes = it },modifier = Modifier.testTag("recipe_editor_total_minutes"))
         Text("Zutaten für den gesamten Ansatz. Leere Mengen bleiben unbekannt.")
         versions.indices.forEach { position ->
             val product = state.versions.find { it.id == versions[position] }
@@ -146,15 +156,22 @@ private fun RecipeEditor(state: LocalDataState, blocked: Boolean, key: String, m
         }
         Action("Weitere Rezeptzutat", true) { versions = ArrayList(versions).apply { add("") }; quantities = ArrayList(quantities).apply { add("") } }
         OutlinedTextField(steps, { steps = it }, Modifier.fillMaxWidth(), label = { Text("Zubereitungsschritte") }, minLines = 3)
+        OutlinedTextField(storageInstructions,{ storageInstructions = it },Modifier.fillMaxWidth().testTag("recipe_editor_storage"),
+            label = { Text("Aufbewahrungshinweise des Rezepts · optional") },minLines = 2)
+        OutlinedTextField(safetySource,{ safetySource = it },Modifier.fillMaxWidth().testTag("recipe_editor_safety_source"),
+            label = { Text("Quelle der Aufbewahrungs- und Haltbarkeitshinweise · optional") },minLines = 2)
+        Text("Gespeicherte Hinweise sind keine aktuelle Freigabe von Lebensmitteln oder Lagerbedingungen. Fehlende Quelle bleibt unbekannt.")
         Field("Änderungsgrund des Rezepts", reason, { reason = it })
         SaveButton("Rezept lokal speichern", blocked || stale) {
             val recipeName = name; val yield = portions; val description = steps; val change = reason
             val prepFlag = mealPrep; val expected = expectedVersionId
+            val activeText = activeMinutes; val totalText = totalMinutes
+            val storageText = storageInstructions; val safetyText = safetySource
             val ingredients = versions.zip(quantities).toList(); val identity = recipeId.takeIf { it.isNotEmpty() }
-            val previous = state.recipes.find { it.recipeId == identity }
             model.save(key) { saveRecipe(key, RecipeInput(recipeName, Amounts.parse(yield),
                 ingredients.map { (id, text) -> RecipeItemInput(id, text.takeIf { it.isNotBlank() }?.let(Amounts::parse)) },
-                description, previous?.storageInstructions, previous?.safetySource,mealPrep = prepFlag), identity, change,expectedVersionId = expected) }
+                description,storageText.takeIf(String::isNotBlank),safetyText.takeIf(String::isNotBlank),mealPrep = prepFlag,
+                activeMinutes = optionalRecipeMinutes(activeText),totalMinutes = optionalRecipeMinutes(totalText)), identity, change,expectedVersionId = expected) }
         }
     }
 }
@@ -212,7 +229,10 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
             val count = state.ingredients.count { it.ingredient.recipeVersionId == chosen }.coerceAtLeast(1)
             batches = ArrayList(List(count) { "" }); quantities = ArrayList(List(count) { "" })
         }
-        recipe?.let { Text("Rezeptbezug: ${Amounts.format(it.yieldPortions)} Soll-Portionen. Tatsächliche Mengen und Ausbeute separat eintragen.") }
+        recipe?.let {
+            Text("Rezeptbezug: ${Amounts.format(it.yieldPortions)} Soll-Portionen. Tatsächliche Mengen und Ausbeute separat eintragen.")
+            RecipePreparationNotes(it,"production")
+        }
         Field("Tatsächlich hergestellte Portionen", portions, { portions = it; confirmed = false },modifier = Modifier.testTag("production_portions_input"))
         Field("Herstellungsdatum JJJJ-MM-TT", date, { date = it; confirmed = false })
         WrappingChoices(listOf("Chargen selbst eintragen", "Chargen nach FEFO vorschlagen"), allocationMode, "production_source_") {

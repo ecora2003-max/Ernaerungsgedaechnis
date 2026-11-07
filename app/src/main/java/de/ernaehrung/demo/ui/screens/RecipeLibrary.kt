@@ -76,6 +76,7 @@ internal fun RecipeLibrary(state: LocalDataState, blocked: Boolean, model: Local
                 }
             }
             if (recipe.steps.isNotBlank()) Fold("Zubereitung · ${recipe.name}") { Text(recipe.steps) }
+            RecipePreparationNotes(recipe,"library")
             Fold("Nährwerte pro Rezeptportion · Vorschau") {
                 val calculated by remember(model,recipe.id) { model.recipeNutrition(recipe.id) }.collectAsStateWithLifecycle()
                 calculated.error?.let { Hint(it) }
