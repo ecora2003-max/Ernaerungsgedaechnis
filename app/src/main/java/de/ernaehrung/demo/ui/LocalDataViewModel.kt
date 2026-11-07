@@ -349,6 +349,7 @@ class LocalDataViewModel internal constructor(
     // This is a durable Room consent key, not cryptographic human identity proof.
     private var pendingReviewedSave: PendingRecipeDraft? = null
     private val productionPrefill = MutableStateFlow<ProductionPrefillUiState?>(null)
+    private var productionPrefillSequence = 0
     internal val productionPrefillState = productionPrefill.asStateFlow()
 
     /** UI handoff only: never books a production or consumes stock. */
@@ -369,8 +370,12 @@ class LocalDataViewModel internal constructor(
         }
     }
     private fun publishProductionPrefill(recipeVersionId: String) {
-        productionPrefill.value = ProductionPrefillUiState(recipeVersionId,
-            (productionPrefill.value?.requestSequence ?: 0) + 1)
+        productionPrefillSequence = Math.incrementExact(productionPrefillSequence)
+        productionPrefill.value = ProductionPrefillUiState(recipeVersionId,productionPrefillSequence)
+    }
+    /** A consumed UI selection must not reopen/reset a later form after recreation. */
+    internal fun consumeProductionPrefill(requestSequence: Int) {
+        if (productionPrefill.value?.requestSequence == requestSequence) productionPrefill.value = null
     }
     private val recipePlanHandoff = MutableStateFlow(RecipePlanHandoffUiState())
     internal val recipePlanHandoffState = recipePlanHandoff.asStateFlow()
