@@ -19,10 +19,11 @@ internal object RecipeLibraryPreviews {
     }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.recipe.name })
 
     fun select(entries: List<RecipeLibraryEntry>, query: String, coveredOnly: Boolean,
-        mealPrepOnly: Boolean): List<RecipeLibraryEntry> {
+        mealPrepOnly: Boolean,favoritesOnly: Boolean = false,favoriteRecipeIds: Set<String> = emptySet()): List<RecipeLibraryEntry> {
         val words = query.trim().split(Regex("\\s+")).filter(String::isNotEmpty)
         return entries.filter { entry ->
             (!coveredOnly || entry.stock.complete) && (!mealPrepOnly || entry.recipe.mealPrep) &&
+                (!favoritesOnly || entry.recipe.recipeId in favoriteRecipeIds) &&
                 words.all { word -> (listOf(entry.recipe.name) + entry.ingredientNames).any { it.contains(word,ignoreCase = true) } }
         }
     }

@@ -19,7 +19,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             "body_measurements", "body_measurement_runs", "body_measurement_versions", "training_events", "training_sets",
             "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
-        internal val TABLES = setOf("alias_decisions",
+        internal val TABLES = setOf("alias_decisions", "recipe_favorites",
             "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "storage_capacity_reviews",
             "batch_reviews",
@@ -106,7 +106,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             val schema = schema(sql)
             require(original.applicationId == applicationId) { "Sicherung gehört zu einer anderen App-Variante." }
             // The approved digest/fingerprint above is ALWAYS the original file.
-            // Only this pinned, additive 13->14 bridge can add an empty table.
+            // Only pinned, additive schema bridges may add empty new domains.
             val archive = compatibleArchive(original, sql, schema)
             WriteRules.replay(dao, key, hash)?.let { return@withTransaction BackupRestoreResult(BackupRestoreStatus.ALREADY_PRESENT, digest, 0) }
             if (dao.backupRestoration(hash) != null)
@@ -167,21 +167,23 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         else {
             val goals = setOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values")
             val missing = when (original.databaseVersion) {
-                13 -> goals + setOf("storage_capacity_reviews", "personal_restrictions")
-                14 -> goals + "personal_restrictions"
-                15 -> setOf("personal_restrictions")
+                13 -> goals + setOf("storage_capacity_reviews", "personal_restrictions", "recipe_favorites")
+                14 -> goals + setOf("personal_restrictions", "recipe_favorites")
+                15 -> setOf("personal_restrictions", "recipe_favorites")
+                16 -> setOf("recipe_favorites")
                 else -> emptySet()
             }
             val pin = when (original.databaseVersion) {
                 13 -> "ddbdbf0fb475ae9d3a5c9a40b4284aa3"
                 14 -> "adf43266f88da0de1632891687871124"
                 15 -> "f0276403a772111cf77efeaf250b4b2b"
+                16 -> "e2d5d92fe1b98be4adaf09fc57288228"
                 else -> null
             }
-            require(sql.version == 16 && pin != null && original.identityHash == pin &&
+            require(sql.version == 17 && pin != null && original.identityHash == pin &&
                 original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            original.copy(databaseVersion = 16, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
+            original.copy(databaseVersion = 17, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
                 BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
             })
         }
@@ -247,5 +249,6 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             require(!it.moveToFirst()) { "Sicherung würde negative Bestände erhalten." } }
         NutritionGoalSnapshot(db.nutritionGoalDao().versions(), db.nutritionGoalDao().values())
         PersonalRestrictionSnapshot(db.personalRestrictionDao().history())
+        RecipeFavoriteOperations(db,now).snapshot()
     }
 }

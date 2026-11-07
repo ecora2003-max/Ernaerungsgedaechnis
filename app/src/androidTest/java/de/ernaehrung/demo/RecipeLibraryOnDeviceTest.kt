@@ -62,6 +62,14 @@ class RecipeLibraryOnDeviceTest {
             compose.onNodeWithTag("recipe_library_$old").assertDoesNotExist()
             compose.onNodeWithTag("recipe_library_$current").assertExists()
             compose.onNodeWithTag("recipe_library_$unknown").assertExists()
+            val favoriteTag = "recipe_favorite_$current"
+            compose.waitUntil(25_000) { runCatching { compose.onNodeWithTag(favoriteTag).assertIsEnabled(); true }.getOrDefault(false) }
+            tag(favoriteTag)
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag(favoriteTag) and hasText("Favorit entfernen")).fetchSemanticsNodes().isNotEmpty() }
+            text("Nur eigene Favoriten")
+            compose.onNodeWithTag("recipe_library_$unknown").assertDoesNotExist()
+            text("Nur eigene Favoriten")
+            assertEquals(1,store.readRecipeFavorites().history.size)
             text("Nur mit vollständig vorhandenen Zutaten")
             compose.onNodeWithTag("recipe_library_$unknown").assertDoesNotExist()
             text("Nur als Meal Prep gekennzeichnete Rezepte")
@@ -79,6 +87,9 @@ class RecipeLibraryOnDeviceTest {
             finishDeviceTextEditing(compose)
             compose.onNodeWithTag("recipe_library_$current").assertExists()
             compose.onNodeWithTag("recipe_library_$unknown").assertExists()
+            compose.onNodeWithTag(favoriteTag).assertTextContains("Favorit entfernen",substring = true)
+            tag(favoriteTag)
+            compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag(favoriteTag) and hasText("Als Favorit merken")).fetchSemanticsNodes().isNotEmpty() }
             tag("recipe_library_prepare_$current")
             compose.onNodeWithText("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen").assertIsOff()
             val reopened = Room.databaseBuilder(target,FoodDatabase::class.java,FoodDatabase.TEST_DATABASE_NAME).build()
@@ -88,6 +99,9 @@ class RecipeLibraryOnDeviceTest {
                 assertTrue(reopened.foodDao().recipeVersion(current)!!.mealPrep)
                 assertNull(reopened.foodDao().ingredients(unknown).single().amount)
                 assertEquals(300_000L,reopened.foodDao().balance(batch))
+                val reopenedFavorites = FoodStore(reopened).readRecipeFavorites()
+                assertEquals(2,reopenedFavorites.history.size)
+                assertEquals("REMOVED",reopenedFavorites.latest.getValue(identity).status)
                 reopened.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0,it.count) }
             } finally { reopened.close() }
             assertEquals(before,db.foodDao().operationCount()); assertEquals(batches,db.foodDao().planningBatches())

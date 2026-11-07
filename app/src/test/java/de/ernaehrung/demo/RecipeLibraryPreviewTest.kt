@@ -58,5 +58,7 @@ class RecipeLibraryPreviewTest {
         assertTrue(RecipeLibraryPreviews.select(entries,"",true,true).isEmpty())
         assertTrue(RecipeLibraryPreviews.select(entries,"unbekanntes Gericht",false,false).isEmpty())
         assertEquals(2,RecipeLibraryPreviews.select(entries,"",false,false).size)
+        assertEquals(recipe.id,RecipeLibraryPreviews.select(entries,"",false,false,true,setOf(recipe.recipeId)).single().recipe.id)
+        assertTrue(RecipeLibraryPreviews.select(entries,"",false,true,true,setOf(recipe.recipeId)).isEmpty())
     }
 }

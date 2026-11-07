@@ -10,4 +10,10 @@ Diese Mengenprüfung ist keine Aussage über Allergenfreiheit, geeignete Kühlun
 
 Beim Bearbeiten einer Rezeptidentität wird die ursprünglich geladene Fassung festgehalten. Eine zwischenzeitliche Änderung sperrt den offenen Save; **Aktuelle Rezeptfassung neu laden** verwirft den Entwurf bewusst und lädt die neue Grundlage. FoodStore prüft denselben Vorgänger nochmals atomar. Alte Fassungen und erfolgreich gespeicherte Retry-Ergebnisse bleiben erhalten; es gibt keine stille Überschreibung durch ein veraltetes Formular.
 
-Die Ansicht benötigt keinen externen Dienst und ändert keine Datenbank- oder v1-Vertragsversion. Favoriten und tatsächliche Modell-/Lieferdienst-/Watch-Nachweise sind damit nicht implementiert oder abgenommen.
+**Als Favorit merken / Favorit entfernen** speichert eine eigene lokale Präferenz. Sie gehört zur stabilen Rezeptidentität und bleibt beim Erstellen neuer Rezeptfassungen erhalten; die genaue beim Klick gezeigte Fassung wird in der Historie festgehalten. Jede neue Änderung bindet zusätzlich den zuletzt gelesenen Favoritenstand. Ein veralteter Klick wird zurückgewiesen; alte Wiederholungen dürfen eine spätere Entfernung oder erneute Auswahl nicht rückgängig machen. Favoriten ändern keine Rezeptfassung, Vorratsmenge oder Mahlzeit.
+
+**Nur eigene Favoriten** kombiniert sich mit Namen-/Zutatensuche, Mengenprüfung und Meal-Prep-Auswahl. Nach Neustart bleiben nur die gespeicherten Präferenzen erhalten; Suchtext und Filter beginnen neu. Bei Leseausfall ist der Favoritenstand unbekannt, und Änderungen sind gesperrt. Der Filter lässt sich weiterhin ausschalten, um andere eigene Rezepte zu verwenden.
+
+Room 16→17 ergänzt ausschließlich die zunächst leere Favoritenhistorie. Alle 50 bisherigen Tabellen und die Sicht bleiben unverändert. Lokale verschlüsselte Sicherungen enthalten die Präferenzen im normalen Rezept-/Lebensmittelumfang. Exakt bekannte ältere Room-13-/14-/15-/16-Archive erhalten nur leere neue Domänen; Originaldigests und Wiederholungsmarker bleiben bestehen. Erneute Wiederherstellung darf später entfernte Favoriten und gelöschte persönliche Vorgaben nicht wieder aktivieren.
+
+Die Ansicht benötigt keinen externen Dienst; der v1-Vertrag bleibt unverändert. Tatsächliche Modell-/Lieferdienst-/Watch-Nachweise bleiben getrennte Abnahmegates. Den exakten JVM-/Migrations-/Android-Belegstand führt [STATUS](STATUS.md).

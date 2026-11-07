@@ -50,6 +50,14 @@ class RecipeLibraryUiTest {
         compose.onNodeWithTag("recipe_library_$old").assertDoesNotExist()
         compose.onNodeWithTag("recipe_library_$current").assertExists()
         compose.onNodeWithTag("recipe_library_$unknown").assertExists()
+        val favorite = "recipe_favorite_$current"
+        compose.waitUntil(25_000) { runCatching { compose.onNodeWithTag(favorite).assertIsEnabled(); true }.getOrDefault(false) }
+        compose.onNodeWithTag(favorite).performScrollTo().performClick()
+        compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag(favorite) and hasText("Favorit entfernen")).fetchSemanticsNodes().isNotEmpty() }
+        tap("Nur eigene Favoriten")
+        compose.onNodeWithTag("recipe_library_$unknown").assertDoesNotExist()
+        tap("Nur eigene Favoriten")
+        assertEquals(1,store.readRecipeFavorites().history.size)
         tap("Nur mit vollständig vorhandenen Zutaten")
         compose.onNodeWithTag("recipe_library_$unknown").assertDoesNotExist()
         compose.onNodeWithTag("recipe_library_prepare_$current").performScrollTo().performClick()
@@ -73,6 +81,7 @@ class RecipeLibraryUiTest {
         compose.onNodeWithTag("recipe_editor_reload").performScrollTo().performClick()
         compose.onNodeWithTag("recipe_editor_name").assertTextContains("Unabhängig geändertes Gericht",substring = true)
         compose.onNodeWithText("Als Meal-Prep-Rezept kennzeichnen").assertIsOff()
+        compose.onNodeWithTag("recipe_favorite_$latest").assertTextContains("Favorit entfernen",substring = true)
         assertEquals(latest,db.foodDao().latestRecipeVersion(identity)!!.id)
         assertEquals(before + 2,db.foodDao().operationCount()); assertEquals(meals + 1,db.foodDao().activeConsumptionCount())
     }

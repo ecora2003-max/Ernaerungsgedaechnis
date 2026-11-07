@@ -106,7 +106,7 @@ class DataQualityOnDeviceTest {
             assertEquals(bodyBefore, db.bodyDao().versions())
             assertEquals(trainingBefore, db.manualWorkoutDao().versions())
             val reopened = Room.databaseBuilder(target, FoodDatabase::class.java, FoodDatabase.TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16).build()
+                .addMigrations(FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17).build()
             try {
                 assertEquals(fresh, reopened.foodDao().latestVersion(identity))
                 assertEquals(db.foodDao().version(old), reopened.foodDao().version(old))

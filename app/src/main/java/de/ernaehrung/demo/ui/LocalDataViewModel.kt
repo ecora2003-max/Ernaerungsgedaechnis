@@ -78,6 +78,34 @@ class LocalDataViewModel internal constructor(
             .onStart { emit(StorageCapacityUiState()) }.catch { emit(StorageCapacityUiState(readError = true)) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0), StorageCapacityUiState())
     internal fun retryStorageCapacity() { storageCapacityRefresh.value += 1L }
+    private val recipeFavoriteRefresh = MutableStateFlow(0L)
+    internal val recipeFavoriteState: StateFlow<RecipeFavoriteUiState> = recipeFavoriteRefresh.flatMapLatest {
+        store.watchRecipeFavorites().map { RecipeFavoriteUiState(it) }
+            .onStart { emit(RecipeFavoriteUiState()) }
+            .catch { emit(RecipeFavoriteUiState(readError = true)) }
+    }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0),RecipeFavoriteUiState())
+    private val recipeFavoriteSaving = MutableStateFlow(RecipeFavoriteSaveState())
+    internal val recipeFavoriteSaveState = recipeFavoriteSaving.asStateFlow()
+    private var recipeFavoritePending: Pair<RecipeFavoriteInput,String>? = null
+    internal fun retryRecipeFavorites() { recipeFavoriteRefresh.value += 1L }
+    internal fun setRecipeFavorite(input: RecipeFavoriteInput) {
+        if (recipeFavoriteSaving.value.busy || recipeFavoriteState.value.readError || recipeFavoriteState.value.snapshot == null) return
+        val key = recipeFavoritePending?.takeIf { it.first == input }?.second ?: java.util.UUID.randomUUID().toString()
+        recipeFavoritePending = input to key
+        recipeFavoriteSaving.value = RecipeFavoriteSaveState(busy = true)
+        viewModelScope.launch {
+            try {
+                store.setRecipeFavorite(key,input,true)
+                recipeFavoritePending = null
+                recipeFavoriteSaving.value = RecipeFavoriteSaveState(message = if (input.favorite) "Favorit lokal gespeichert." else "Favorit lokal entfernt.")
+            } catch (cancelled: java.util.concurrent.CancellationException) { throw cancelled }
+            catch (failure: RuntimeException) {
+                recipeFavoriteSaving.value = RecipeFavoriteSaveState(error = failure.message ?: "Favorit konnte nicht geändert werden. Aktuellen Stand erneut prüfen.")
+            } finally {
+                if (recipeFavoriteSaving.value.busy) recipeFavoriteSaving.value = recipeFavoriteSaving.value.copy(busy = false)
+            }
+        }
+    }
     val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
         .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())

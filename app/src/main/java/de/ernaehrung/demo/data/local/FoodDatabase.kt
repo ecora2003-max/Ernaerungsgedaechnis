@@ -231,7 +231,7 @@ internal interface FoodDao {
 // Room 2.7.2 clearAllTables uses a partial FK comparator (DatabaseWriter).
 // A deterministic child-before-parent order avoids its TimSort contract failure
 // and keeps generated deletion order consistent. Self-edges do not order entities.
-@Database(entities = [PersonalRestrictionEntity::class, NutritionGoalRunEntity::class, NutritionGoalVersionEntity::class, NutritionGoalValueEntity::class,
+@Database(entities = [RecipeFavoriteEntity::class, PersonalRestrictionEntity::class, NutritionGoalRunEntity::class, NutritionGoalVersionEntity::class, NutritionGoalValueEntity::class,
     StorageCapacityReviewEntity::class, BatchReviewEntity::class,
     StockMovementEntity::class,
     RecipeIngredientEntity::class,
@@ -277,7 +277,7 @@ internal interface FoodDao {
     ProductEntity::class,
     RecipeEntity::class,
     PlanSeriesEntity::class],
-    views = [CurrentBatchView::class], version = 16, exportSchema = true)
+    views = [CurrentBatchView::class], version = 17, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
@@ -287,6 +287,7 @@ abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun storageCapacityDao(): StorageCapacityDao
     internal abstract fun nutritionGoalDao(): NutritionGoalDao
     internal abstract fun personalRestrictionDao(): PersonalRestrictionDao
+    internal abstract fun recipeFavoriteDao(): RecipeFavoriteDao
 
     companion object {
         // Separate from future production storage and from immutable UI fixtures. Never seed personal data.
@@ -294,7 +295,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }
