@@ -13,7 +13,9 @@ data class RecipeItemInput(val versionId: String, val amount: Long?, val note: S
 data class RecipeInput(val name: String, val yieldPortions: Long, val ingredients: List<RecipeItemInput>,
     val steps: String, val storageInstructions: String? = null, val safetySource: String? = null,
     /** Null retains the original manual/import API's meal-prep flag and retry digest. */
-    val mealPrep: Boolean? = null)
+    val mealPrep: Boolean? = null,
+    /** Whole minutes supplied by the user; null is unknown, zero is explicit. */
+    val activeMinutes: Int? = null,val totalMinutes: Int? = null)
 data class ProductionInput(val recipeVersionId: String, val actualPortions: Long, val allocations: List<Allocation>,
     val locationId: String, val date: String, val storageChecked: Boolean, val storageNote: String,
     val release: ReleaseStatus = ReleaseStatus.UNCHECKED, val deviationNote: String? = null,
@@ -32,6 +34,11 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
     ): String = db.withTransaction {
         require(input.name.isNotBlank() && reason.isNotBlank()) { "Rezeptname und Änderungsgrund fehlen." }
         Amounts.positive(input.yieldPortions)
+        require(input.activeMinutes == null || input.activeMinutes >= 0) { "Aktive Zubereitungszeit darf nicht negativ sein." }
+        require(input.totalMinutes == null || input.totalMinutes >= 0) { "Gesamte Zubereitungszeit darf nicht negativ sein." }
+        require(input.activeMinutes == null || input.totalMinutes == null || input.activeMinutes <= input.totalMinutes) {
+            "Gesamte Zubereitungszeit muss mindestens die aktive Zeit umfassen."
+        }
         require(input.ingredients.isNotEmpty()) { "Mindestens eine Zutat angeben." }
         require(input.ingredients.map { it.versionId }.distinct().size == input.ingredients.size) { "Gleiche Artikelversion nur einmal als Zutat angeben." }
         input.ingredients.forEach { it.amount?.let(Amounts::positive) }
@@ -42,9 +49,11 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         // reviewed draft/host-evidence digest, even when the RecipeInput is identical.
         val metadataHash = if (input.mealPrep == null) recipeHash else
             fingerprint("RECIPE_MEAL_PREP_V1",recipeHash,input.mealPrep)
-        val currentHash = if (expectedVersionId == null) metadataHash else {
+        val timedHash = if (input.activeMinutes == null && input.totalMinutes == null) metadataHash else
+            fingerprint("RECIPE_PREPARATION_MINUTES_V1",metadataHash,input.activeMinutes,input.totalMinutes)
+        val currentHash = if (expectedVersionId == null) timedHash else {
             require(recipeId != null && expectedVersionId.isNotBlank()) { "Konkrete Vorgängerfassung für die Rezeptkorrektur fehlt." }
-            fingerprint("RECIPE_EXPECTED_VERSION_V1",metadataHash,expectedVersionId)
+            fingerprint("RECIPE_EXPECTED_VERSION_V1",timedHash,expectedVersionId)
         }
         val hash = if (approvalBasisDigest == null) currentHash else {
             require(approvalBasisDigest.matches(Regex("[0-9a-f]{64}"))) {
@@ -85,7 +94,7 @@ internal class KitchenOperations(private val db: FoodDatabase, private val now: 
         val version = id()
         if (previous == null) dao.insertRecipe(RecipeEntity(identity, recordedAt))
         dao.insertRecipeVersion(RecipeVersionEntity(version, identity, (previous?.revision ?: 0) + 1, input.name.trim(),
-            input.yieldPortions, null, input.steps, null, null, input.mealPrep ?: true, input.storageInstructions, input.safetySource, Quality.UNKNOWN, recordedAt, reason))
+            input.yieldPortions, null, input.steps, input.activeMinutes, input.totalMinutes, input.mealPrep ?: true, input.storageInstructions, input.safetySource, Quality.UNKNOWN, recordedAt, reason))
         resolvedIngredients.forEachIndexed { position, (ingredient, product) ->
             dao.insertIngredient(RecipeIngredientEntity(version, position, product.id, ingredient.amount, product.baseUnit, ingredient.note))
         }

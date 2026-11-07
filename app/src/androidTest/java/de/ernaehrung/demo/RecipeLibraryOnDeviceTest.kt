@@ -47,21 +47,38 @@ class RecipeLibraryOnDeviceTest {
         val input = RecipeInput("Geräte-Reistopf $token",2000,listOf(RecipeItemInput(version,200_000L)),"Garen",mealPrep = false)
         val old = store.saveRecipe("$token-r1",input)
         val identity = db.foodDao().recipeVersion(old)!!.recipeId
-        val current = store.saveRecipe("$token-r2",input.copy(name = "Aktueller Geräte-Reistopf $token",mealPrep = true),
+        var current = store.saveRecipe("$token-r2",input.copy(name = "Aktueller Geräte-Reistopf $token",mealPrep = true),
             identity,"Fassung vor Ort geprüft",expectedVersionId = old)
+        val beforeMetadata = db.foodDao().recipeVersion(current)!!
         val unknown = store.saveRecipe("$token-unknown",input.copy(name = "Ungeklärter Geräte-Reistopf $token",
             ingredients = listOf(RecipeItemInput(version,null))))
-        val before = db.foodDao().operationCount()
+        var before = db.foodDao().operationCount()
         val batches = db.foodDao().planningBatches()
         val meals = db.foodDao().activeConsumptionCount()
         try {
             compose.onNodeWithTag("workspace_tab_MORE").performClick(); tag("workspace_go_KITCHEN")
             waitTag("recipe_library_search")
+            text("Rezept speichern / neue Version")
+            tag("Rezept bearbeiten"); tag("choose_$identity")
+            compose.onNodeWithTag("recipe_editor_active_minutes",useUnmergedTree = true).performScrollTo().performTextReplacement("0")
+            compose.onNodeWithTag("recipe_editor_total_minutes",useUnmergedTree = true).performScrollTo().performTextReplacement("20")
+            compose.onNodeWithTag("recipe_editor_storage",useUnmergedTree = true).performScrollTo().performTextReplacement("Eigene Gerätehinweise\nBedingungen tatsächlich prüfen")
+            compose.onNodeWithTag("recipe_editor_safety_source",useUnmergedTree = true).performScrollTo().performTextReplacement("Eigene Quellenangabe $token")
+            compose.onNodeWithText("Änderungsgrund des Rezepts").performScrollTo().performTextReplacement("Zubereitung und Aufbewahrung bewusst ergänzt")
+            tag("Rezept lokal speichern")
+            compose.waitUntil(25_000) { runBlocking { db.foodDao().latestRecipeVersion(identity)?.id != current } }
+            current = db.foodDao().latestRecipeVersion(identity)!!.id
+            assertEquals(before + 1,db.foodDao().operationCount()); before += 1
+            assertEquals(beforeMetadata,db.foodDao().recipeVersion(beforeMetadata.id))
+            tag("Neuen Vorgang beginnen"); text("Rezept speichern / neue Version")
             compose.onNodeWithTag("recipe_library_search").performScrollTo().performTextReplacement(token)
             finishDeviceTextEditing(compose)
             compose.onNodeWithTag("recipe_library_$old").assertDoesNotExist()
             compose.onNodeWithTag("recipe_library_$current").assertExists()
             compose.onNodeWithTag("recipe_library_$unknown").assertExists()
+            text("Zeiten und Aufbewahrung · Aktueller Geräte-Reistopf $token")
+            compose.onNodeWithTag("recipe_preparation_library_$current").assertTextContains("Aktive Zeit: 0 min · Gesamtzeit: 20 min",substring = true)
+            compose.onNodeWithTag("recipe_safety_source_library_$current").assertTextContains("Eigene Quellenangabe $token",substring = true)
             val favoriteTag = "recipe_favorite_$current"
             compose.waitUntil(25_000) { runCatching { compose.onNodeWithTag(favoriteTag).assertIsEnabled(); true }.getOrDefault(false) }
             tag(favoriteTag)
@@ -76,6 +93,8 @@ class RecipeLibraryOnDeviceTest {
             tag("recipe_library_prepare_$current")
             waitTag("Rezept für Herstellung")
             compose.onNodeWithTag("Rezept für Herstellung").performScrollTo().assertTextContains("Aktueller Geräte-Reistopf",substring = true)
+            text("Gespeicherte Rezeptangaben vor der Herstellung prüfen")
+            compose.onNodeWithTag("recipe_storage_production_$current").assertTextContains("Bedingungen tatsächlich prüfen",substring = true)
             compose.onNodeWithText("Tatsächlich gekocht · alle Entnahmen und Portionen gemeinsam buchen").assertIsOff()
             assertEquals(before,db.foodDao().operationCount()); assertEquals(batches,db.foodDao().planningBatches())
             compose.activityRule.scenario.recreate()
@@ -117,6 +136,11 @@ class RecipeLibraryOnDeviceTest {
                 assertEquals(current,reopened.foodDao().latestRecipeVersion(identity)!!.id)
                 assertFalse(reopened.foodDao().recipeVersion(old)!!.mealPrep)
                 assertTrue(reopened.foodDao().recipeVersion(current)!!.mealPrep)
+                assertEquals(beforeMetadata,reopened.foodDao().recipeVersion(beforeMetadata.id))
+                assertEquals(0,reopened.foodDao().recipeVersion(current)!!.activeMinutes)
+                assertEquals(20,reopened.foodDao().recipeVersion(current)!!.totalMinutes)
+                assertEquals("Eigene Gerätehinweise\nBedingungen tatsächlich prüfen",reopened.foodDao().recipeVersion(current)!!.storageInstructions)
+                assertEquals("Eigene Quellenangabe $token",reopened.foodDao().recipeVersion(current)!!.safetySource)
                 assertNull(reopened.foodDao().ingredients(unknown).single().amount)
                 assertEquals(300_000L,reopened.foodDao().balance(batch))
                 val reopenedFavorites = FoodStore(reopened).readRecipeFavorites()
