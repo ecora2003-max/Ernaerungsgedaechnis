@@ -72,9 +72,12 @@ class LocalDataViewModel internal constructor(
     private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore,
     private val personalIntentCacheInvalidator: () -> Unit = {}
 ) : ViewModel() {
-    internal val storageCapacity: StateFlow<StorageCapacityUiState> = store.watchStorageCapacity()
-        .map { StorageCapacityUiState(it) }.catch { emit(StorageCapacityUiState(readError = true)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StorageCapacityUiState())
+    private val storageCapacityRefresh = MutableStateFlow(0L)
+    internal val storageCapacity: StateFlow<StorageCapacityUiState> = storageCapacityRefresh.flatMapLatest {
+        store.watchStorageCapacity().map { StorageCapacityUiState(it) }
+            .onStart { emit(StorageCapacityUiState()) }.catch { emit(StorageCapacityUiState(readError = true)) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0), StorageCapacityUiState())
+    internal fun retryStorageCapacity() { storageCapacityRefresh.value += 1L }
     val recognition: StateFlow<RecognitionUiState> = store.watchRecognition().map { RecognitionUiState(it) }
         .catch { emit(RecognitionUiState(error = "Erkennungsdaten konnten nicht gelesen werden: ${it.message}")) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecognitionUiState())

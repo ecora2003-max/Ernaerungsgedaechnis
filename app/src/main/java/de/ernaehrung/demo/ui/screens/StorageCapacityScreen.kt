@@ -107,7 +107,7 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
 }
 
 @Composable
-private fun CapacityFacts(row: StorageCapacityReviewEntity, snapshot: StorageCapacitySnapshot, prefix: String) {
+internal fun CapacityFacts(row: StorageCapacityReviewEntity, snapshot: StorageCapacitySnapshot, prefix: String) {
     val free = StorageCapacityRules.trustedFree(row, snapshot.history, snapshot.reversedOperationIds)
     Text("Nutzbare Gesamtkapazität: ${row.totalMl?.let { "$it ml" } ?: "unbekannt"}", Modifier.testTag("${prefix}total"))
     Text("Belegtes Behälter-Außenvolumen: ${row.occupiedMl?.let { "$it ml" } ?: "unbekannt"}", Modifier.testTag("${prefix}occupied"))

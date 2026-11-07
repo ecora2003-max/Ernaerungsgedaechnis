@@ -24,12 +24,19 @@ class RecognitionLifecycleTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
         val owner = ViewModelStore()
+        var modelJob: Job? = null
         try {
             val model = ViewModelProvider(owner, object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>) = LocalDataViewModel(FoodStore(db), gateway) as T
             })[LocalDataViewModel::class.java]
+            modelJob = model.viewModelScope.coroutineContext[Job]
             block(model, db)
-        } finally { owner.clear(); db.close(); Dispatchers.resetMain() }
+        } finally {
+            owner.clear()
+            // clear cancels without joining. Drain this fixture's actual model
+            // children, including Room continuations, before replacing Main.
+            withContext(NonCancellable) { modelJob?.join(); db.close(); Dispatchers.resetMain() }
+        }
     }
     @Test fun olderUncooperativeLookupCannotOverwriteNewBarcodeOrClearedResult() = runBlocking {
         withModel(ProductLookupGateway { code ->
