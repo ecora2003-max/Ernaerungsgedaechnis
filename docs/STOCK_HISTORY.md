@@ -11,3 +11,5 @@ Die Auswahl **Charge der Chronik** und eine optionale genaue Vorgangskennung mit
 Die Chronik zeigt Lager- und Verzehrereignisse. Zahlungsbelege und private Bezahlpreishistorien stehen unter **Mehr → Bezahlte Käufe**. Persönliche Körper-/Gesundheitsdaten werden durch die Chronik weder exportiert noch geändert.
 
 Room 17 und der öffentliche Rezept-v1-Vertrag bleiben unverändert. Exakte Prüfstände und noch offene Gerätebelege stehen im [STATUS](STATUS.md).
+
+Für die tatsächliche Prozesspersistenz ergänzt die Geräte-CI die normale JUnit-Suite um zwei ausdrücklich aufgerufene Phasen. Dazwischen beendet sie den normalen App-Prozess mit `am force-stop`, beobachtet seine Abwesenheit und startet ihn mit neuer PID. Die zweite Phase prüft bestätigte synthetische Lager-/Verzehrdaten und Retries in einem neuen Prozess. Das ist ein gesonderter Datenpersistenzbeleg; die Phasen erhöhen keine JUnit-Fallzahl. Originale Ausgaben, Source-SHA, SDK und APK-Hashes bleiben im Diagnoseartefakt. Aktueller Ausführungsstand im STATUS.
