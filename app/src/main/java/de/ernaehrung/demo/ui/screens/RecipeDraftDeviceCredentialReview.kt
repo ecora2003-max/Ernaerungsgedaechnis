@@ -28,7 +28,8 @@ internal data class RecipeCredentialChallenge(
     val resetVersion: Int,
     val issuedAtElapsedRealtimeMs: Long,
     val operationKey: String? = null,
-    val nonce: String? = null
+    val nonce: String? = null,
+    val actionScopeDigest: String? = null
 )
 
 internal object RecipeCredentialResultGate {
@@ -61,7 +62,8 @@ internal object RecipeCredentialResultGate {
         review.input != null &&
         review.input == challenge.reviewedInput &&
         review.approvalBasisDigest == challenge.digest &&
-        Regex("[0-9a-f]{64}").matches(challenge.digest)
+        Regex("[0-9a-f]{64}").matches(challenge.digest) &&
+        (challenge.actionScopeDigest ?: challenge.digest) == review.actionScopeDigest
 }
 
 /**
@@ -108,7 +110,7 @@ internal fun RecipeDraftDeviceCredentialReview(
             latestResetVersion, latestEnabled, stillSecure,
             operationKey = latestOperationKey)
         val proof = if (accepted && completed?.operationKey != null && completed.nonce != null)
-            AndroidRecipeActionProof.sign(completed.operationKey, completed.digest,
+            AndroidRecipeActionProof.sign(completed.operationKey, completed.actionScopeDigest ?: completed.digest,
                 completed.nonce, System.currentTimeMillis()) else null
         if (accepted && proof != null) {
             error = null
@@ -135,7 +137,7 @@ internal fun RecipeDraftDeviceCredentialReview(
             latestRequestNonce(digest) else null
         val candidate = if (renderedSession != null && review.input != null && nonce != null) {
             RecipeCredentialChallenge(digest, renderedSession, review.input, resetVersion,
-                SystemClock.elapsedRealtime(), operationKey, nonce)
+                SystemClock.elapsedRealtime(), operationKey, nonce, review.actionScopeDigest)
         } else null
         if (intent == null || candidate == null || operationKey == null ||
             !AndroidRecipeActionProof.ensureKey() ||

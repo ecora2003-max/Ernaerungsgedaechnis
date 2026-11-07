@@ -15,12 +15,12 @@ internal data class BackupRestoreResult(val status: BackupRestoreStatus, val dig
 internal class FoodBackupStore(private val db: FoodDatabase, private val now: () -> Long) {
     companion object {
         internal val FITNESS_TABLES = setOf("health_import_state", "health_import_runs", "health_source_record_versions",
-            "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
+            "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "body_measurements", "body_measurement_runs", "body_measurement_versions", "training_events", "training_sets",
             "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
         internal val TABLES = setOf("alias_decisions",
-            "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
+            "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "storage_capacity_reviews",
             "batch_reviews",
             "batches",
@@ -167,19 +167,21 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         else {
             val goals = setOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values")
             val missing = when (original.databaseVersion) {
-                13 -> goals + "storage_capacity_reviews"
-                14 -> goals
+                13 -> goals + setOf("storage_capacity_reviews", "personal_restrictions")
+                14 -> goals + "personal_restrictions"
+                15 -> setOf("personal_restrictions")
                 else -> emptySet()
             }
             val pin = when (original.databaseVersion) {
                 13 -> "ddbdbf0fb475ae9d3a5c9a40b4284aa3"
                 14 -> "adf43266f88da0de1632891687871124"
+                15 -> "f0276403a772111cf77efeaf250b4b2b"
                 else -> null
             }
-            require(sql.version == 15 && pin != null && original.identityHash == pin &&
+            require(sql.version == 16 && pin != null && original.identityHash == pin &&
                 original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            original.copy(databaseVersion = 15, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
+            original.copy(databaseVersion = 16, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
                 BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
             })
         }
@@ -244,5 +246,6 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         sql.query("SELECT batchId FROM stock_movements GROUP BY batchId HAVING SUM(delta)<0").use {
             require(!it.moveToFirst()) { "Sicherung würde negative Bestände erhalten." } }
         NutritionGoalSnapshot(db.nutritionGoalDao().versions(), db.nutritionGoalDao().values())
+        PersonalRestrictionSnapshot(db.personalRestrictionDao().history())
     }
 }

@@ -19,9 +19,21 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     val draftConsent by model.recipeDraftConsentState.collectAsStateWithLifecycle()
     val recipeContext by model.recipeContextState.collectAsStateWithLifecycle()
     val productionPrefill by model.productionPrefillState.collectAsStateWithLifecycle()
+    val personal by model.personalRestrictionState.collectAsStateWithLifecycle()
+    val personalReady = personal.snapshot != null && !personal.readError
+    if (personalReady) {
+        Text(if (personal.snapshot!!.tokens.isEmpty()) "Keine eigenen bestätigten Rezeptausschlüsse. Das ist kein Nachweis von Allergenfreiheit."
+            else "Eigene bestätigte Rezeptvorgaben: ${personal.snapshot!!.tokens.sorted().joinToString(", ")}", Modifier.testTag("recipe_personal_restrictions"))
+    } else if (personal.readError) {
+        Hint("Eigene Vorgaben gerade nicht lesbar. Vor einer neuen Rezeptprüfung erneut lesen.")
+        OutlinedButton(model::retryPersonalRestrictions) { Text("Eigene Vorgaben neu lesen") }
+    }
     RecipeDraftImportPanel(
         catalog = state.versions,
-        editingEnabled = !draftConsent.busy,
+        editingEnabled = !draftConsent.busy && personalReady,
+        personalRestrictions = personal.snapshot?.tokens.orEmpty(),
+        personalRestrictionsBinding = personal.snapshot?.binding,
+        personalRestrictionsReady = personalReady,
         recordedDigest = draftConsent.recordedDigest,
         contextState = recipeContext,
         onRequestContext = model::requestRecipeDraftContext,
@@ -34,7 +46,7 @@ internal fun KitchenEditor(state: LocalDataState, blocked: Boolean, key: String,
     )
     // This panel appears only after a separately host-reviewed draft was supplied
     // to the ViewModel. No untrusted generator output can activate it on its own.
-    if (draftConsent.review != null || draftConsent.error != null) {
+    if (personalReady && (draftConsent.review != null || draftConsent.error != null)) {
         Panel {
             draftConsent.previewNutrition?.let { nutrition ->
                 Section("Nährwerte der geprüften Vorschau", "Je Soll-Portion aus den zugeordneten Produktversionen")

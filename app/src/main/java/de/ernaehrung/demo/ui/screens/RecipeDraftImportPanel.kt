@@ -50,6 +50,9 @@ import java.util.UUID
 internal fun RecipeDraftImportPanel(
     catalog: List<ProductVersionEntity>,
     editingEnabled: Boolean = true,
+    personalRestrictions: Set<String> = emptySet(),
+    personalRestrictionsBinding: String? = null,
+    personalRestrictionsReady: Boolean = true,
     recordedDigest: String? = null,
     contextState: RecipeDraftContextUiState = RecipeDraftContextUiState(),
     onRequestContext: (Gate.Flags) -> Unit = {},
@@ -89,7 +92,8 @@ internal fun RecipeDraftImportPanel(
     var rankingReviewed by remember { mutableStateOf(false) }
     var rankingHint by remember { mutableStateOf<String?>(null) }
     val selectedFlags = Gate.Flags(useStock, useShopping, useOffers)
-    val offlineAllergens = offlineRestrictionsText.split(",").map { it.trim() }
+    val effectiveOfflineRestrictions = offlineRestrictionsText.split(",").map(String::trim).filter(String::isNotEmpty).toSet() + personalRestrictions
+    val offlineAllergens = effectiveOfflineRestrictions
         .filter { it.startsWith("ALLERGEN:") && Gate.isSupportedRestriction(it) }
         .map { it.removePrefix("ALLERGEN:") }.distinct()
     val selectedNeedsContext = useStock || useShopping || useOffers
@@ -123,6 +127,17 @@ internal fun RecipeDraftImportPanel(
         allergenAnswers = emptyMap(); dietAnswers = emptyMap(); restrictionsText = ""
         rankingHint = null
         error = null
+    }
+    var personalSourceSeen by remember { mutableStateOf(false) }
+    var lastPersonalBinding by remember { mutableStateOf(personalRestrictionsBinding) }
+    LaunchedEffect(personalRestrictionsReady, personalRestrictionsBinding) {
+        if (personalRestrictionsReady) {
+            if (personalSourceSeen && lastPersonalBinding != personalRestrictionsBinding) {
+                invalidateGeneratedDraft()
+                aiDiscardVersion++
+            }
+            personalSourceSeen = true; lastPersonalBinding = personalRestrictionsBinding
+        }
     }
     val eligible = catalog.filter {
         it.source != Source.DEMO && it.quality in setOf(Quality.CONFIRMED, Quality.SOURCED)
@@ -222,7 +237,7 @@ internal fun RecipeDraftImportPanel(
         }
         key(aiDiscardVersion, recordedDigest) { RecipeAiExchangePanel(
             catalog = eligible, portions = offlinePortions.toIntOrNull(),
-            restrictions = offlineRestrictionsText.split(",").map(String::trim).filter(String::isNotEmpty).toSet(),
+            restrictions = effectiveOfflineRestrictions,
             preferences = requestPreferences.getOrNull(), flags = selectedFlags,
             typedContext = if (selectedNeedsContext) boundContext else null,
             editingEnabled = editingEnabled,
@@ -413,8 +428,7 @@ internal fun RecipeDraftImportPanel(
                     val snapshotAt = boundContext?.contentBinding?.snapshotAt?.let {
                         OffsetDateTime.ofInstant(it, ZoneOffset.UTC)
                     }
-                    val requestedRestrictions = offlineRestrictionsText.split(",")
-                        .map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                    val requestedRestrictions = effectiveOfflineRestrictions
                     require(requestedRestrictions.all(Gate::isSupportedRestriction)) {
                         "unsupported offline restriction"
                     }
@@ -491,7 +505,7 @@ internal fun RecipeDraftImportPanel(
                 singleLine = false, maxLines = 2
             )
             val restrictions = restrictionsText.split(",").map { it.trim() }
-                .filter { it.isNotEmpty() }.toSet()
+                .filter { it.isNotEmpty() }.toSet() + personalRestrictions
             val allergens = restrictions.filter { it.startsWith("ALLERGEN:") && it.length > 9 }
                 .map { it.removePrefix("ALLERGEN:") }.toSet()
             val diets = restrictions.filter { it.startsWith("DIET:") }
