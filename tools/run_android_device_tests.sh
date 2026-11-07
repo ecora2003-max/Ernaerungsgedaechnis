@@ -7,9 +7,10 @@ device_test_args=()
 if [[ -n "${EG_ANDROID_TEST_CLASS:-}" ]]; then
   device_test_args+=("-Pandroid.testInstrumentationRunnerArguments.class=${EG_ANDROID_TEST_CLASS}")
 fi
-# Leave time to collect real evidence before the workflow's 35-minute limit,
-# even when an instrumentation/shell failure leaves Gradle waiting indefinitely.
-timeout --signal=TERM --kill-after=30s 20m ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest "${device_test_args[@]}"
+# Leave time to collect real evidence before the workflow's job limit, even
+# when instrumentation leaves Gradle waiting. The separate minSdk core smoke
+# selects its shorter timeout; the established full API 35 default stays 20m.
+timeout --signal=TERM --kill-after=30s "${EG_ANDROID_TEST_TIMEOUT:-20m}" ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest "${device_test_args[@]}"
 device_test_result=$?
 if [[ "$device_test_result" -ne 0 ]]; then
   mkdir -p app/build/outputs/device-diagnostics

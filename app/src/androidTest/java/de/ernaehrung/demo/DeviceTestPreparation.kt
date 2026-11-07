@@ -15,6 +15,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 
 /** Native IME show/hide requests can finish after a Compose text replacement.
  * Repeat only the idempotent hide request, never a user gesture or booking.
@@ -55,6 +56,10 @@ internal fun finishDeviceTextEditing(
  * must still use Android's real credential Activity and real signatures.
  */
 internal fun prepareUnlockedTestDevice() {
+    // @Before executes before each test's own fixture guard. Refuse a physical
+    // phone before touching its lock screen or typing the synthetic CI PIN.
+    assertTrue("Synthetic CI preparation requires a disposable emulator",
+        Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val target = instrumentation.targetContext
     val keyguard = target.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
