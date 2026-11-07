@@ -48,12 +48,18 @@ internal fun rememberLocalDataViewModel(): LocalDataViewModel {
 @Composable
 fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalog", initialRecognitionMode: String = "Barcode & Produkt",
     showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
-    onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null) {
+    onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null,
+    recognitionModeState: MutableState<String>? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
     var catalogQuery by rememberSaveable(initialCatalogQuery) { mutableStateOf(initialCatalogQuery) }
     var operationId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    // Navigation state belongs above loading/error returns and outside the
+    // disposable recognition editor. The primary workspace supplies its one
+    // Activity-restored owner; the design tour keeps the same lifetime here.
+    val localRecognitionMode = rememberSaveable { mutableStateOf(initialRecognitionMode) }
+    val recognitionMode = recognitionModeState ?: localRecognitionMode
     val blocked = save.busy || save.succeeded
 
     Heading(if (showSectionNavigation) "Lokaler Testbereich" else mode, "Produkte und tatsächliche Ereignisse lokal speichern")
@@ -125,7 +131,8 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
         "Planung" -> LocalPlanningScreen(state, blocked, operationId, model, onOpenStorageCapacity)
         "Einkauf" -> LocalShoppingScreen(state, blocked, operationId, model)
         "Käufe" -> LocalPurchaseScreen(state, blocked, operationId, model)
-        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, initialRecognitionMode) {
+        "Erkennung" -> LocalRecognitionScreen(state, blocked, operationId, model, recognitionMode.value,
+            onModeChange = { recognitionMode.value = it }) {
             if (onOpenPurchases != null) onOpenPurchases() else mode = "Käufe"
         }
         "Küche" -> KitchenEditor(state, blocked, operationId, model, onOpenStorageCapacity)
