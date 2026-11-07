@@ -185,6 +185,7 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     val freeCapacity = if (currentCapacity == null || capacityData == null) null
         else StorageCapacityRules.trustedFree(currentCapacity, capacityData.history, capacityData.reversedOperationIds)
     val parsedOuterVolume = outerVolume.trim().toLongOrNull()?.takeIf { it >= 0L }
+    var appliedPrefillSequence by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(useCapacity, location, currentCapacity?.id, capacityState.readError, capacityData?.reversedOperationIds) {
         capacityBasis = if (useCapacity) currentCapacity?.id else null
         capacityConfirmed = false
@@ -198,9 +199,11 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
             quantities = ArrayList(List(count) { "" })
             portions = ""; location = ""; storageNote = ""; deviation = ""; useBy = ""
             checked = false; released = false; confirmed = false
+            appliedPrefillSequence = preselected.requestSequence
+            model.consumeProductionPrefill(preselected.requestSequence)
         }
     }
-    Fold("Tatsächliche Herstellung buchen", openRequest = preselected?.requestSequence?.toString()) {
+    Fold("Tatsächliche Herstellung buchen", openRequest = appliedPrefillSequence?.toString()) {
         val recipe = state.recipes.find { it.id == selected }
         val ingredients = state.ingredients.filter { it.ingredient.recipeVersionId == selected }
         val versions = ingredients.map { it.ingredient.productVersionId }.toSet()
@@ -210,7 +213,7 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
             batches = ArrayList(List(count) { "" }); quantities = ArrayList(List(count) { "" })
         }
         recipe?.let { Text("Rezeptbezug: ${Amounts.format(it.yieldPortions)} Soll-Portionen. Tatsächliche Mengen und Ausbeute separat eintragen.") }
-        Field("Tatsächlich hergestellte Portionen", portions, { portions = it; confirmed = false })
+        Field("Tatsächlich hergestellte Portionen", portions, { portions = it; confirmed = false },modifier = Modifier.testTag("production_portions_input"))
         Field("Herstellungsdatum JJJJ-MM-TT", date, { date = it; confirmed = false })
         WrappingChoices(listOf("Chargen selbst eintragen", "Chargen nach FEFO vorschlagen"), allocationMode, "production_source_") {
             allocationMode = it; confirmed = false
@@ -280,7 +283,7 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
             if (freeCapacity != null && parsedOuterVolume != null && parsedOuterVolume > freeCapacity)
                 Text("Zusätzliche Behälter überschreiten den bestätigten freien Platz.")
         } else Text("Keine rechnerische Kapazitätsbindung gewählt. Tatsächlich verfügbaren Platz, Behälter und geeignete Bedingungen selbst prüfen und beschreiben; unbekannter Platz wird nicht als frei berechnet.")
-        Field("Geprüfte Lagerbedingungen und Platz beschreiben", storageNote, { storageNote = it; confirmed = false })
+        Field("Geprüfte Lagerbedingungen und Platz beschreiben", storageNote, { storageNote = it; confirmed = false },modifier = Modifier.testTag("production_storage_note_input"))
         Field("Abweichungen von Rezeptmengen oder Ausbeute · falls nötig", deviation, { deviation = it; confirmed = false })
         Field("Verbrauchsdatum der Portionen · optional", useBy, { useBy = it; confirmed = false })
         Check("Fertigportionen für diesen Test ausdrücklich freigeben", released) { released = it; confirmed = false }
