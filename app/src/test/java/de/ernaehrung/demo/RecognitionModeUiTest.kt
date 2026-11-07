@@ -35,14 +35,20 @@ class RecognitionModeUiTest {
     private val models = ViewModelStore()
     private var db: FoodDatabase? = null
     @After fun close() { models.clear(); db?.close() }
+    private fun waitReceiptReady() = compose.waitUntil(25_000) {
+        compose.onAllNodesWithText("Bontext manuell eingeben / einfügen").fetchSemanticsNodes().size == 1
+    }
     @Test fun defaultWorkspaceRestoresTheChosenReceiptModeAndItsManualFallbackAfterActivityRecreation() {
         compose.onNodeWithTag("workspace_tab_SCAN").performClick()
         compose.waitUntil(25_000) { compose.onAllNodesWithTag("recognition_mode_Bon & OCR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("recognition_mode_Bon & OCR").performScrollTo().performClick()
+        compose.onNodeWithTag("recognition_mode_Bon & OCR").assertIsSelected()
+        waitReceiptReady()
         compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
         compose.activityRule.scenario.recreate()
         compose.waitUntil(25_000) { compose.onAllNodesWithTag("recognition_mode_Bon & OCR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("recognition_mode_Bon & OCR").assertIsSelected()
+        waitReceiptReady()
         compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
     }
     @Test fun receiptModeAndManualFallbackSurviveDisposalOfTheRecognitionEditorWithoutCreatingAnyFacts() = runBlocking {
@@ -56,10 +62,16 @@ class RecognitionModeUiTest {
         } } }
         compose.waitUntil(25_000) { compose.onAllNodesWithTag("recognition_mode_Bon & OCR").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("recognition_mode_Bon & OCR").performScrollTo().performClick()
+        compose.onNodeWithTag("recognition_mode_Bon & OCR").assertIsSelected()
+        // The mode selector is composed before this independent Room source.
+        // Do not confuse its first asynchronous read with a missing fallback.
+        waitReceiptReady()
         compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
         compose.onNodeWithTag("local_section_Katalog").performScrollTo().performClick()
         compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertDoesNotExist()
         compose.onNodeWithTag("local_section_Erkennung").performScrollTo().performClick()
+        compose.onNodeWithTag("recognition_mode_Bon & OCR").assertIsSelected()
+        waitReceiptReady()
         compose.onNodeWithText("Bontext manuell eingeben / einfügen").assertExists()
         compose.onNodeWithTag("recognition_mode_Bon & OCR").assertIsSelected()
         assertEquals(0,database.foodDao().operationCount())
