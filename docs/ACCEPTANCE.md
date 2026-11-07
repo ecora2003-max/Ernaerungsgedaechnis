@@ -176,9 +176,11 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 
 ## 18. Tatsächlichen Verzehr und Tagesabschluss an den gewählten Tag binden
 
-- [ ] Angewendeter Tagwechsel hält noch ungespeicherte Verzehrfelder über die asynchrone Tageslesephase, entzieht aber die Zustimmung. Bis zum passenden lesbaren Bericht bleibt Buchen gesperrt; ungeprüfte Datumstexte sind keine neue Buchungsgrundlage. Neue ViewModel-Quelle und angezeigter Tag bleiben konsistent.
-- [ ] Activity-Neuerstellung übernimmt keine Verzehrzustimmung und keinen noch offenen Tagesabschluss. Frische Zustimmung schreibt genau ein Ereignis für den tatsächlich gewählten Tag; gleichschlüssiger FoodStore-Retry erzeugt keine Dublette. Gesonderter Tagesabschluss zählt nur als Metadatum, fehlende Nährwerte bleiben unbekannt und ursprüngliche Tage unverändert.
-- [ ] Standard-MainActivity-Regression, echte Android-Bedienung/IME, Activity- und ViewModel-Neuerstellung, unabhängiges SQLite-Reopen, tatsächliche Netzfreiheit und unveränderte übrige Vorrats-/Körper-/Gesundheitsdaten auf exaktem Head prüfen. Keine Schema-/v1-Änderung oder behaupteter vollständiger Prozesskill aus bloßer Activity-Neuerstellung.
+- [x] Angewendeter Tagwechsel hält noch ungespeicherte Verzehrfelder über die asynchrone Tageslesephase, entzieht aber die Zustimmung. Bis zum passenden lesbaren Bericht bleibt Buchen gesperrt; ungeprüfte Datumstexte sind keine neue Buchungsgrundlage. Neue ViewModel-Quelle und angezeigter Tag bleiben konsistent.
+- [x] Activity-Neuerstellung übernimmt keine Verzehrzustimmung und keinen noch offenen Tagesabschluss. Frische Zustimmung schreibt genau ein Ereignis für den tatsächlich gewählten Tag; gleichschlüssiger FoodStore-Retry erzeugt keine Dublette. Gesonderter Tagesabschluss zählt nur als Metadatum, fehlende Nährwerte bleiben unbekannt und ursprüngliche Tage unverändert.
+- [x] Standard-MainActivity-Regression, echte Android-Bedienung/IME, Activity- und ViewModel-Neuerstellung, unabhängiges SQLite-Reopen, tatsächliche Netzfreiheit und unveränderte übrige Vorrats-/Körper-/Gesundheitsdaten auf exaktem Head prüfen. Keine Schema-/v1-Änderung oder behaupteter vollständiger Prozesskill aus bloßer Activity-Neuerstellung.
+
+**Beleg:** #281 auf Main `57812385f82bef79b1568447ad1f69a0c8a1a323`, exakt `6c446fcafa72c0855822d3f7145697886d2062be`: originale [806 JVM/16 Migrationen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42388448193) und [36/36 tatsächliche API35-Fälle](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42388448117), 0 Fehler/Skips PASS; neue tatsächliche Ernährungs-/Tagwechsel-/Zustimmungs-/Owner-/SQLite-/Offlinekette **18,489 s**. Owner-/Activity-Neuerstellung ausdrücklich kein vollständiger Prozesskill. Keine neue Schema-/v1-Version oder Gesamt-App-Abnahme.
 
 ## 19. Versionierte Lagerübersicht und frische Chargenentnahme – Produktplan §6.1/6.5
 
