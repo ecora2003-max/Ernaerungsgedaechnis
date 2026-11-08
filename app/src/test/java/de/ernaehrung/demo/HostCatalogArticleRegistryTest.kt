@@ -3,6 +3,7 @@ package de.ernaehrung.demo
 import de.ernaehrung.demo.data.integration.HostCatalogArticleRegistry
 import de.ernaehrung.demo.data.integration.ShoppingComparabilityKernel
 import de.ernaehrung.demo.data.integration.ShoppingUnitRateKernel
+import de.ernaehrung.demo.data.local.Amounts
 import de.ernaehrung.demo.data.local.BaseUnit
 import de.ernaehrung.demo.data.local.ProductVersionEntity
 import de.ernaehrung.demo.data.local.Quality
@@ -25,7 +26,7 @@ class HostCatalogArticleRegistryTest {
         id = id, productId = "p1", revision = revision,
         name = "Reis", brand = "Brand", category = "Lebensmittel",
         barcode = "12345678", baseUnit = BaseUnit.GRAM,
-        packageAmount = 500L, nutritionBasis = 1000L,
+        packageAmount = Amounts.parse("500"), nutritionBasis = Amounts.parse("100"),
         energyKcal = null, proteinGrams = null, fatGrams = null, carbsGrams = null,
         source = source, sourceDetail = null, quality = quality,
         recordedAt = recorded, changeReason = "synthetic test"
@@ -80,11 +81,11 @@ class HostCatalogArticleRegistryTest {
         // Catalog version v1 describes 500 g per pack. A separately reviewed
         // 1000 g claim for the same version must not silently change its size.
         assertTrue(registry().isConfirmed("v1", article, false, asOf))
-        assertFalse(registry(versions = listOf(version().copy(packageAmount = 1000L)))
+        assertFalse(registry(versions = listOf(version().copy(packageAmount = Amounts.parse("1000"))))
             .isConfirmed("v1", article, false, asOf))
         assertFalse(registry(versions = listOf(version().copy(packageAmount = 0L)))
             .isConfirmed("v1", article, false, asOf))
-        assertFalse(registry(versions = listOf(version().copy(packageAmount = -500L)))
+        assertFalse(registry(versions = listOf(version().copy(packageAmount = -500_000L)))
             .isConfirmed("v1", article, false, asOf))
 
         // An unknown catalog package size is not fabricated as zero; an
@@ -99,9 +100,20 @@ class HostCatalogArticleRegistryTest {
         assertTrue(registry(evidence = confirmed(item = twoPacks))
             .isConfirmed("v1", twoPacks, false, asOf))
         assertFalse(registry(
-            versions = listOf(version().copy(packageAmount = 1000L)),
+            versions = listOf(version().copy(packageAmount = Amounts.parse("1000"))),
             evidence = confirmed(item = twoPacks)
         ).isConfirmed("v1", twoPacks, false, asOf))
+    }
+
+    @Test fun fractionalCatalogPacksCannotBePromotedByThousandfoldUnitConfusionOrRounding() {
+        // These are the exact values entered by the actual catalog editor,
+        // not whole-gram stand-ins for Room's milliunit package field.
+        val tiny = version().copy(packageAmount = Amounts.parse("0.5"))
+        assertFalse(registry(versions = listOf(tiny)).isConfirmed("v1", article, false, asOf))
+        val rounded = article.copy(quantity = ShoppingUnitRateKernel.Quantity(1, "g", "NET", 1, true))
+        assertFalse(registry(listOf(tiny), confirmed(item = rounded)).isConfirmed("v1", rounded, false, asOf))
+        val huge = article.copy(quantity = ShoppingUnitRateKernel.Quantity(Long.MAX_VALUE, "g", "NET", 1, true))
+        assertFalse(registry(evidence = confirmed(item = huge)).isConfirmed("v1", huge, false, asOf))
     }
 
     @Test fun latestKnownRevisionIsHistoricalAndAmbiguityFailsClosed() {

@@ -15,10 +15,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import de.ernaehrung.demo.data.local.FoodDatabase
+import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.data.integration.*
-import de.ernaehrung.demo.data.local.AppCalendar
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.LiveOffersViewModel
 import de.ernaehrung.demo.ui.screens.LiveOffersScreen
@@ -115,11 +114,21 @@ class LiveOffersOnDeviceTest {
             assertFalse(File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText().contains(token.access))
         } finally { store.clear() }
     }
-    @Test fun authorizedSyntheticHttpPricesRenderUnknownSourceQuantitiesAndUseSeparateReviewedCatalogPackagesForComparisonWithoutBooking(): Unit = runBlocking {
+    @Test fun authorizedSyntheticHttpPricesUseRealFoodStoreCatalogMilliunitsAndSeparateReviewsForComparisonWithoutBooking(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
-        val operations = dao.operationCount(); val movements = dao.stockMovementSnapshotRows(); val prices = dao.allPaidPrices()
         val day = AppCalendar.today(); val id = "synthetic-ui-${UUID.randomUUID()}"
+        // Use the actual catalog editor/FoodStore quantity convention. The old
+        // lambda-only registry concealed a 1000x whole-unit/milliunit mismatch.
+        val catalog = mapOf("a" to "500", "b" to "1000").mapValues { (sku, pack) ->
+            val version = FoodStore(db).rememberProduct("$id-catalog-$sku", ProductInput(
+                "Synthetic independently reviewed $sku", packageAmount = Amounts.parse(pack),
+                source = Source.USER, quality = Quality.CONFIRMED))
+            requireNotNull(dao.version(version))
+        }
+        assertEquals(500_000L, catalog.getValue("a").packageAmount)
+        assertEquals(1_000_000L, catalog.getValue("b").packageAmount)
+        val operations = dao.operationCount(); val movements = dao.stockMovementSnapshotRows(); val prices = dao.allPaidPrices()
         val selection = LiveOfferScope(LiveRetailer.LIDL, "DE123", null, null, day)
         val endpoint = URI("https://offers.example.test/selected-store")
         val grant = LiveSourceGrant(id, LiveRetailer.LIDL, "synthetic-independent-host-fixture", day, day,
@@ -134,11 +143,17 @@ class LiveOffersOnDeviceTest {
         val runtime = LiveOfferRuntime(mapOf(LiveRetailer.LIDL to source), LivePermissionRegistry { if (it == selection) grant else null },
             PrivateOfferSettings.forApp(context))
         val reviewed = mapOf("a" to 500L, "b" to 1000L).mapValues { (sku, amount) ->
-            LiveArticleReview("synthetic-version-$sku", ShoppingComparabilityKernel.Article("synthetic-reviewed-food",
+            LiveArticleReview(catalog.getValue(sku).id, ShoppingComparabilityKernel.Article("synthetic-reviewed-food",
                 quantity = ShoppingUnitRateKernel.Quantity(amount, "g", "NET", 1, true)), null, true, true, true)
         }
+        val confirmedAt = Instant.now().toEpochMilli()
+        val confirmations = reviewed.map { (sku, review) ->
+            val version = catalog.getValue(sku)
+            version.id to HostCatalogArticleRegistry.ConfirmedArticle(version.id, version.revision,
+                version.recordedAt, confirmedAt, review.article, review.organic)
+        }.toMap()
         val comparison = LiveOfferComparison(LiveArticleReviewRegistry { offer, _, _ -> reviewed[offer.sourceProductId] },
-            ShoppingPriceComparisonGate.ConfirmedArticleRegistry { version, article, _, _ -> reviewed.values.any { it.productVersionId == version && it.article == article } },
+            HostCatalogArticleRegistry(dao.allVersions(), confirmations),
             sourceStillPermitted = { scope, offer -> runtime.policy(scope)?.sourceId == offer.sourceId })
         val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
         try {

@@ -76,8 +76,12 @@ internal class HostCatalogArticleRegistry(
         // per-pack amount must not contradict a known versioned package size.
         // Unknown package size remains unknown; no quantity is invented.
         val knownPackageAmount = version.packageAmount
+        // Room uses milliunits; the pinned shopping v1 uses whole g/ml PER
+        // pack. Compare only an exact conversion, never rounded division or
+        // an aggregate multiplied by packageCount. No public contract change.
         if (knownPackageAmount != null &&
-            (knownPackageAmount <= 0 || article.quantity?.amount != knownPackageAmount))
+            (knownPackageAmount <= 0 || knownPackageAmount % 1000L != 0L ||
+                article.quantity?.amount != knownPackageAmount / 1000L))
             return false
         // Piece/package conversions are not derivable from the host base unit.
         val expectedUnit = when (version.baseUnit) {
