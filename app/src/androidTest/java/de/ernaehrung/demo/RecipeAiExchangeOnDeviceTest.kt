@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.Bundle
 import android.provider.MediaStore
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -44,7 +45,8 @@ class RecipeAiExchangeOnDeviceTest {
         var file = device.wait(Until.findObject(By.text(name)), 5_000L)
         if (file == null) {
             requireNotNull(device.findObject(By.desc("Show roots"))).click()
-            requireNotNull(device.wait(Until.findObject(By.text("Downloads")), 10_000L)).click()
+            val root = if (Build.VERSION.SDK_INT >= 29) "Downloads" else SyntheticRecipeDocuments.TITLE
+            requireNotNull(device.wait(Until.findObject(By.text(root)), 10_000L)).click()
             file = device.wait(Until.findObject(By.text(name)), 15_000L)
         }
         assertNotNull("Actual user-selected JSON document must exist", file)
@@ -92,13 +94,19 @@ class RecipeAiExchangeOnDeviceTest {
                     "foodTypeId" to "synthetic-novel-food", "label" to "Synthetische Zutat",
                     "quantity" to mapOf("amount" to 160, "unit" to "g", "basis" to "NET", "confirmed" to false),
                     "sourceStatus" to "UNKNOWN")))))
-            document = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
+            if (Build.VERSION.SDK_INT >= 29) {
+              document = requireNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, fileName); put(MediaStore.Downloads.MIME_TYPE, "application/json")
                 put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }))
             requireNotNull(resolver.openOutputStream(document)).use { it.write(raw.toByteArray(Charsets.UTF_8)) }
             resolver.update(document, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
+            } else {
+                // Same real ACTION_OPEN_DOCUMENT contract, on a real local
+                // DocumentsProvider. No broad storage rights or injected URI.
+                resolver.call(capture, "stage_document", fileName, Bundle().apply { putString("raw", raw) })
+            }
             // A real cancellation must release the pending request for a retry,
             // without manufacturing a URI result or losing the prepared request.
             tap("recipe_ai_open_document")
@@ -133,7 +141,8 @@ class RecipeAiExchangeOnDeviceTest {
             captureDeviceFailureEvidence("recipe-ai-flow")
             throw failure
         } finally {
-            document?.let { resolver.delete(it, null, null) }
+            if (Build.VERSION.SDK_INT >= 29) document?.let { resolver.delete(it, null, null) }
+            else resolver.call(capture, "clear_document", fileName, null)
             resolver.call(capture, "clear", null, null)
         }
     }

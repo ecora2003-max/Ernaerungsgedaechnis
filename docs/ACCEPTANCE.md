@@ -225,7 +225,7 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 
 **Beleg für §§22–24:** #284 auf Main `fdebde07cc795b6c855861725ca1d238d48be330`, exakt `6c83fec15a549631f1d38064f87a839152cca677`: originale [817 JVM/16 Migrationen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42423436974), [42/42 API35 und tatsächliche SDK26/7 von 7 Kernfälle](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42423436984), 0 Fehler/Skips PASS. Zusätzlich beide echten sourcegebundenen Prozessbelege mit beobachteter PID-Abwesenheit und unterschiedlichen normalen App-/Instrumentation-PIDs PASS. Ursprüngliche ZIP/SHA/XML und Phasenausgaben unabhängig geprüft; keine Zählung der Phasen als JUnit-Fälle. Begrenzte synthetische Kernabnahme, kein physischer Watch-/realer LLM-/Liveanbieter- oder vollständiger Gesamt-App-Beleg.
 
-## 25. Frei verwaltbare Lagerorte mit nachvollziehbarem Status – Produktplan §6.2
+## 26. Frei verwaltbare Lagerorte mit nachvollziehbarem Status – Produktplan §6.2
 
 - [ ] Standard-App: geplanter Ort → eigene Namens-/Statusprüfung → ausdrücklich bestätigter vorhandener Ort mit derselben Lager-ID → getrennte physische Kapazitätsprüfung. Ursprüngliche Angaben, Gründe, Quellen, Prüffassungen und bestehende Chargen bleiben erhalten; Anzeige oder Ortsprüfung buchen keine Lebensmittel.
 - [ ] Aktuelle Ortsfassung wird gemeinsam in Zugang, Bonbuchung, Umlagerung, Herstellung, Lager, FEFO, Planung, Einkauf und Datenqualität gelesen. Frühere Bestands-Rezeptkontexte verwenden nur damals vorhandene Ortsprüfungen; gleiche Fakten in neuer Prüfung invalidieren aktuelle alte Bestandsevidenz.

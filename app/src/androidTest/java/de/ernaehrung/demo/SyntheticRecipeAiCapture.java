@@ -25,6 +25,11 @@ public final class SyntheticRecipeAiCapture extends ContentProvider {
         Bundle result = new Bundle();
         if ("peek".equals(method)) result.putString("prompt", prompt);
         else if ("clear".equals(method)) prompt = null;
+        else if ("stage_document".equals(method)) {
+            try { SyntheticRecipeDocuments.stage(own, arg, extras == null ? null : extras.getString("raw")); }
+            catch (java.io.IOException failure) { throw new IllegalStateException("Cannot stage synthetic document", failure); }
+        }
+        else if ("clear_document".equals(method)) SyntheticRecipeDocuments.clear(own, arg);
         else throw new IllegalArgumentException("Unsupported synthetic test method");
         return result;
     }
