@@ -5,3 +5,4 @@ dependencyResolutionManagement {
 }
 rootProject.name="ErnaehrungsgedaechtnisDemo"
 include(":app")
+include(":nano-runtime")

@@ -1,0 +1,38 @@
+# Direkte Rezeptgenerierung mit Gemini
+
+Stand 08.11.2026; P1 nach technisch geprüftem P0-Anschluss #288. Reale Händler-/Knuspr-Daten sind weiter extern blockiert, siehe [LIVE_OFFERS](LIVE_OFFERS.md). **Vorbereitete Integration, keine abgeschlossene Modell-/Gesamt-App-Abnahme.**
+
+## Bedienung und gemeinsame Prüfung
+
+Rezepte & Küche → Rezeptvorschläge und JSON-Import → Rezept mit ChatGPT oder anderer KI entwerfen. Wunsch, Portionen, Ausschlüsse und ausdrücklich ausgewählte Produktversionen prüfen. Unter **Direktes Rezeptmodell** einen der drei Modi wählen, Verfügbarkeit prüfen und dieselbe angezeigte KI-Anfrage lokal vorbereiten. Danach **Mit ausgewähltem Modell direkt generieren**. Kein Modell wird beim Öffnen automatisch kontaktiert oder heruntergeladen.
+
+Jede Antwort läuft unverändert durch `RecipeAiExchange.inspectResponse` und den bestehenden gepinnten v1-Import: aktueller Anfragebezug, Zeit, Portionen, Kontextflags, Schema und danach unabhängige Zutaten-/Produktversions-/Allergen-/Mengen-/RAW-/COOKED-Prüfung. Unbekannte Nährwerte und Identitäten bleiben unbekannt. Kein Reparieren von falscher Vertragsversion, JSON, IDs oder Mengen. Vorschau → authentifiziert bestätigtes Rezept → separat bestätigte Herstellung → nochmals separat bestätigter Verzehr bleiben die bestehenden FoodStore-Grenzen. Modellausgabe und Freigabe einer Übertragung sind keine Buchungsnachweise.
+
+Mode-/Schlüssel-/Modell-/Kontextänderung oder Neustart invalidieren vorbereitete Anfrage bzw. frühere Übertragungsfreigabe. Spätes Ergebnis einer alten Anfrage wird verworfen. Modellwahl bleibt privat erhalten; Wunsch, Antwort und Zustimmung werden nicht in SavedState oder Sicherungen geschrieben. Der bisherige manuelle Android-Teilen-/JSON-/SAF-Pfad und der unabhängige Offlinegenerator bleiben verfügbar. Nicht freigegebene externe Angebote werden auch hier nicht an ein Modell übermittelt.
+
+## Zwei getrennte lokale Modi
+
+- **Nano 4 Fast:** offizieller `ModelReleaseStage.PREVIEW`/`ModelPreference.FAST`-Client. Verfügbarkeitsprüfung und tatsächlich gemeldeter BaseModelName müssen zur Version4 passen; Stable/Nano3 wird nicht als Nano4 etikettiert. Preview-Freigabe und passendes Gerät können nötig sein.
+- **Nano 3:** eigener Stable/FULL-Client. Ein Stable-Client garantiert keine feste Version; nur eine tatsächlich nachgewiesene Version3 wird freigegeben. Unbekannter oder anderer Name bleibt sichtbar und gesperrt.
+- Eigenständige sichtbare Zustände: noch nicht geprüft, nicht verfügbar, herunterladbar, laufender Download, bereit, Version abweichend, Fehler. Download erst nach eigener Geste; ein bereits gestarteter AICore-Systemdownload kann nach Ende der Beobachtung weiterlaufen.
+- Vor jeder Inferenz erneut Status und Modellidentität prüfen, tatsächlichen Tokenbedarf gegen SDK-Limit abgleichen, nur eine begrenzte vollständige Antwort akzeptieren und Modellidentität danach erneut prüfen. Kein automatischer Retry, Warmup, anderes lokales Modell oder Cloudfallback. Zu große Auswahl reduzieren statt heimlich Daten abzuschneiden.
+
+## Optionale Gemini Cloud API
+
+Eigener nutzerseitig eingegebener Schlüssel, ausdrücklich optional. Kein eingebetteter gemeinsamer Key und kein neuer kostenpflichtiger Pflichtdienst. Ein authentifizierter Serverproxy ist für Veröffentlichung vorzuziehen; ein mobiler BYOK-Client schützt keinen Schlüssel gegen eine kompromittierte App/ein kompromittiertes Gerät. Speicherung appprivat mit AndroidKeyStore/AES-GCM/AtomicFile in `noBackupFilesDir`; Schlüssel nie in UI-Zustand, URL, Logs, Git oder FoodStore-Backup. Konfiguration kann ohne Löschen der Lebensmittelhistorie verworfen werden.
+
+**Offizielle Gemini-Modellliste prüfen** sendet ausschließlich den Schlüssel im Header und liest echte vom API-Endpunkt gelieferte `generateContent`-fähige Gemini-IDs. Keine geratenen Modellnamen. Modell ausdrücklich auswählen; vor Inferenz noch einmal tatsächlich prüfen. Angezeigter Auftragsbezug bindet Mode, Modell, private Konfigurationsrevision, aktuelle Anfrage und Datenfreigabe. Jede Generierung braucht eine neue Geste für genau den angezeigten Text und mögliche Google-Kosten; Ausgabetokenlimit ist kein Geldlimit. Keine automatische Cloudübertragung nach Neustart, Fehler oder fehlendem lokalen Modell.
+
+Nur ausgewählter Wunsch und freigegebener eigener strukturierter Kontext verlassen das Gerät. Keine angehängten Bons, fremden Angebotsdaten, Preise, Health-/Körper-/Trainingshistorien oder Zugangsdaten. Verfügbare Angebotsrechte würden nicht automatisch einen LLM-Export erlauben. Ausschließlich finale Textantwort mit vollständigem Abschluss wird an den v1-Import gegeben; Gedanken-/Signaturmetadaten werden nicht als Rezept verarbeitet, Tools/Funktionsaufrufe nicht ausgeführt. Angeforderte ID und vom Anbieter gemeldete Antwortversion bleiben getrennt nachvollziehbar. Quota-/Zugriffs-/Format-/Timeoutfehler führen nicht zu versteckten Wiederholungen.
+
+## SDK und Build-Kompatibilität
+
+Offizielles ML Kit `com.google.mlkit:genai-prompt:1.0.0-beta4`, AAR-SHA256 `675192b6ba91334ddbfb8cc429a8afb94cba370d927d7dba79525818b7186f6d`, minSdk26. Echte Java-API im kleinen `nano-runtime`-Modul, ohne Reflexion oder Modellattrappe. SDK2.3-Kotlinmetadaten bleiben hinter dieser Java-ABI; bestehende Kotlin-/Compose-/KSP2.0-Compiler behalten ihre passende Compile-Standardbibliothek, die vom SDK benötigte neuere Runtime wird ausdrücklich nicht heruntergestuft. Vollständige Regression ist dafür erforderlich. Kein `-Xskip-metadata-version-check`.
+
+AGP8.13.2 enthält den für Kotlin2.3-Klassen passenden R8 8.13.19; Gradle8.13 ist mit offizieller SHA gepinnt. Auch Lint muss SDK-Metadaten vollständig verarbeiten; ein erfolgreiches Build mit Metadatenfehlern wird nicht als bestandene Prüfung behandelt. Keine neue Datenbank-/v1-Version und keine destruktive Migration.
+
+Primärquellen: [Direct Model Access](https://developers.google.com/ml-kit/genai/prompt/android/get-started), [Modellauswahl](https://developers.google.com/ml-kit/genai/prompt/android/select-model), [AICore Preview](https://developers.google.com/ml-kit/genai/aicore-dev-preview), [Gemini-Modelle](https://ai.google.dev/api/models), [Generierungs-API](https://ai.google.dev/api/generate-content), [Schlüsselschutz](https://ai.google.dev/gemini-api/docs/api-key), [AGP8.13.2-Kompatibilität](https://developer.android.com/build/releases/agp-8-13-0-release-notes).
+
+## Noch offene Abnahme
+
+Gemeinsame lokale technische Regression859/859 JVM/17 Migrationen/0 Fehler/Skips und beide Lints/Kotlin-/Java-Testkompilierung positiv (letzter Lauf5m05); neue exakte CI vor Integration noch erforderlich, genaue Belege im STATUS. Neue reale Emulatorfälle prüfen Bedienung, echte SDK-Verfügbarkeit ohne heruntergeladenes Modell, privaten Keystore, frische Zustimmung, unveränderte FoodStore-Daten und Neustart. **Diese sind keine echten Modellantworten.** Zwingend separat offen: tatsächlich erzeugtes gültiges Rezept von Nano4Fast und Nano3 mit gemeldeter Identität auf kompatiblem Gerät, echte genehmigte Cloudantwort, Quellen-/Allergen-/FoodStore-Abnahme und tatsächlich getrennt belegte Netzfreiheit der lokalen Inferenz. Kein Modell oder Gesamtmodul bei diesen offenen Gates INTEGRATED.

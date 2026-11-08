@@ -14,6 +14,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import de.ernaehrung.demo.ui.DirectRecipeAiViewModel
 import de.ernaehrung.demo.data.integration.RecipeAiDocuments
 import de.ernaehrung.demo.data.integration.RecipeAiExchange
 import de.ernaehrung.demo.data.integration.RecipeDraftV1Import
@@ -41,6 +46,12 @@ internal fun RecipeAiExchangePanel(
 ) {
     val androidContext = LocalContext.current
     val scope = rememberCoroutineScope()
+    val directFactory = remember(androidContext.applicationContext) { object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            DirectRecipeAiViewModel(androidContext.applicationContext) as T
+    } }
+    val directModel = viewModel<DirectRecipeAiViewModel>(key = "direct-recipe-ai", factory = directFactory)
+    val directState by directModel.state.collectAsStateWithLifecycle()
     var wish by remember { mutableStateOf("") }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val selected = catalog.filter { it.id in selectedIds }.sortedBy { it.id }
@@ -52,8 +63,8 @@ internal fun RecipeAiExchangePanel(
         "Portionen, Vorgaben und aktuelle Produktversionen prüfen."
     }) }
     val inputKey = inputResult.getOrNull()
-    var prepared by remember(inputKey, editingEnabled) { mutableStateOf<RecipeAiExchange.Prepared?>(null) }
-    var approved by remember(inputKey, editingEnabled) { mutableStateOf(false) }
+    var prepared by remember(inputKey, editingEnabled, directState.binding) { mutableStateOf<RecipeAiExchange.Prepared?>(null) }
+    var approved by remember(inputKey, editingEnabled, directState.binding) { mutableStateOf(false) }
     var reply by remember(inputKey) { mutableStateOf("") }
     var error by remember(inputKey) { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -66,6 +77,23 @@ internal fun RecipeAiExchangePanel(
         val inspected = RecipeAiExchange.inspectResponse(request, key, raw, OffsetDateTime.now())
         latestResponse(raw, inspected)
         error = "Antwort lokal eingelesen. Jede Zutat jetzt unabhängig prüfen; es wurde nichts gespeichert oder gebucht."
+    }
+    DisposableEffect(inputKey, editingEnabled, directState.binding) {
+        onDispose { directModel.cancelRequest() }
+    }
+    LaunchedEffect(directState.completed?.id) {
+        directState.completed?.let { completion ->
+            val current = latestPrepared; val key = latestKey
+            if (latestEnabled && current?.requestId == completion.requestId && key == completion.inputBinding &&
+                directModel.state.value.binding == completion.configurationBinding) {
+                try {
+                    accept(completion.reply.text, current, key)
+                    reply = completion.reply.text
+                    error = "Direkte Antwort von ${completion.reply.verifiedModel} lokal eingelesen. Jede Zutat unabhängig prüfen; nichts gespeichert oder gebucht."
+                } catch (_: Exception) { error = "Modellantwort passt nicht zum aktuellen v1-Auftrag. Keine Übernahme; keine Mengen, IDs oder Nährwerte automatisch repariert." }
+            }
+            directModel.consume()
+        }
     }
     val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val requested = pendingDocumentId
@@ -91,7 +119,7 @@ internal fun RecipeAiExchangePanel(
         }
     }
     Fold("Rezept mit ChatGPT oder anderer KI entwerfen") {
-        Text("Freier Rezeptwunsch statt fester Vorlage. Die App bereitet eine JSON-Anfrage vor, die du gezielt mit einer KI-App deiner Wahl teilen kannst. Kein API-Schlüssel und kein kostenpflichtiger Pflichtdienst. Ohne Teilen wird nichts übertragen. Der Offline-Generator bleibt weiter unten verfügbar.")
+        Text("Freier Rezeptwunsch statt fester Vorlage: direkt mit einer gewählten Gemini-Variante generieren oder die vorbereitete Anfrage gezielt mit einer KI-App teilen. Nano arbeitet auf dem Gerät; Cloud bleibt ausdrücklich optional. Kein kostenpflichtiger Pflichtdienst oder automatisches Cloud-Ausweichen. Der Offline-Generator bleibt weiter unten verfügbar.")
         Text("Portionen, Ausschlüsse und Vorgaben oben einstellen. Anfragen und Antworten bleiben hier nur im Arbeitsspeicher; nach Neustart oder Prozessverlust neu beginnen.")
         OutlinedTextField(wish, { if (it.length <= 2_000 && !busy) wish = it },
             enabled = editingEnabled && !busy, modifier = Modifier.fillMaxWidth().testTag("recipe_ai_wish"),
@@ -114,6 +142,7 @@ internal fun RecipeAiExchangePanel(
         if (selected.size != selectedIds.size) Button(onClick = { selectedIds = emptySet() }, enabled = !busy) {
             Text("Veraltete Produktauswahl entfernen")
         }
+        DirectRecipeAiControls(directModel, directState, prepared, inputKey, editingEnabled && !busy)
         Button(enabled = editingEnabled && !busy && inputKey != null,
             modifier = Modifier.testTag("recipe_ai_prepare"), onClick = {
                 try {
@@ -124,7 +153,7 @@ internal fun RecipeAiExchangePanel(
         if (wish.isNotBlank() && inputResult.isFailure) Text(inputResult.exceptionOrNull()?.message ?: "Vorgaben prüfen.",
             Modifier.testTag("recipe_ai_request_error"))
         prepared?.let { request ->
-            Text("Genau dieser Text wird beim Teilen übergeben. Rezeptwunsch und Ausschlüsse können persönliche Angaben enthalten. Die gewählte KI-App verarbeitet sie nach ihren eigenen Bedingungen. Deine Freigabe gilt nur für diese Anfrage und ist keine Rezept- oder Kaufbestätigung.")
+            Text("Genau dieser Text wird bei direkter Generierung oder beim Teilen übergeben. Rezeptwunsch und Ausschlüsse können persönliche Angaben enthalten. Für Cloud und Teilen gelten jeweils eigene ausdrückliche Freigaben. Keine Freigabe ist eine Rezept- oder Kaufbestätigung.")
             OutlinedTextField(request.prompt, {}, readOnly = true,
                 modifier = Modifier.fillMaxWidth().testTag("recipe_ai_prompt"), label = { Text("Anfrage vor dem Teilen prüfen") },
                 minLines = 4, maxLines = 10)
