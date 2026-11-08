@@ -40,6 +40,7 @@ android {
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
+    implementation(project(":nano-runtime"))
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")
@@ -71,6 +72,16 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+}
+// ML Kit beta4 needs the newer stdlib at RUNTIME. The SDK lives behind the
+// Java-only nano-runtime API so the existing Kotlin/Compose/KSP 2.0 compiler
+// retains its matching compile ABI, without skipping metadata checks or
+// downgrading the SDK runtime. Verified in an isolated compile/package probe;
+// the complete application regression must also pass with the new runtime.
+configurations.matching { it.name.endsWith("CompileClasspath") }.configureEach {
+    resolutionStrategy.force("org.jetbrains.kotlin:kotlin-stdlib:2.0.21",
+        "org.jetbrains.kotlin:kotlin-stdlib-common:2.0.21",
+        "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.0.21", "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.21")
 }
 tasks.withType<Test>().configureEach {
     maxHeapSize="2g"

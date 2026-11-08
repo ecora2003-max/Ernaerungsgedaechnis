@@ -11,6 +11,7 @@ import android.util.AtomicFile
 import androidx.test.runner.AndroidJUnitRunner
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
+import de.ernaehrung.demo.data.ai.*
 import java.net.URI
 import java.time.Instant
 import java.time.LocalDate
@@ -73,6 +74,9 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                         "${targetContext.packageName}://knuspr-oauth", refreshAt)
                     check(login.stage(login.beginAttempt(), pending)); login.claim(proof)
                     check(login.finish(proof, KnusprToken("synthetic-access-$proof", null, null, key, authServer)))
+                    val gemini = PrivateGeminiSettings.forApp(targetContext)
+                    gemini.saveKey("synthetic-key-$proof"); gemini.mode(DirectRecipeMode.CLOUD)
+                    gemini.model("models/gemini-synthetic-fixture")
                     val data = JSONObject().put("proof",proof).put("source",source).put("package",targetContext.packageName)
                         .put("pid",Process.myPid()).put("sdk",Build.VERSION.SDK_INT).put("schema",db.openHelper.readableDatabase.version)
                         .put("date",date).put("first",first).put("second",second).put("location",location)
@@ -102,6 +106,10 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     check(LiveOfferRuntime(emptyMap(), journal = offerSettings).refresh(requireNotNull(offerSettings.selection()).scope,
                         automatic = true).status == LiveRefreshStatus.BLOCKED)
                     login.clear(); offerSettings.clearSelection()
+                    val gemini = PrivateGeminiSettings.forApp(targetContext)
+                    check(gemini.read().let { it.key == "synthetic-key-$proof" && it.mode == DirectRecipeMode.CLOUD &&
+                        it.model == "models/gemini-synthetic-fixture" })
+                    gemini.clear()
                     val date = data.getString("date"); val first = data.getString("first"); val second = data.getString("second")
                     val location = data.getString("location"); val batch = data.getString("batch"); val meal = data.getString("meal")
                     check(dao.balance(batch) == 65_000L && requireNotNull(dao.batch(batch)).versionId == first)
