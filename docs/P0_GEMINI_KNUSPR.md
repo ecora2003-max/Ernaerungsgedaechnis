@@ -1,16 +1,30 @@
-# P0: direkte generative Rezept-KI (3 auswählbare Modi) und Knuspr-Liveangebote
+# P0: Automatische Supermarktangebote – danach P1: vollständige generative Rezept-KI
 
-Stand: 08.11.2026 – verbindliche, **sofort vorzuziehende Nutzerpriorität**. [GitHub-Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286) enthält die fachliche Vorgabe. Diese Priorität ersetzt frühere Ausführungsreihenfolgen, nicht die bestehenden Daten-, Datenschutz-, Quellen- und Testregeln.
+Stand 08.11.2026. **Jüngste Nutzerentscheidung hat Vorrang vor allen älteren Arbeitsreihenfolgen.** [Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286). Bestehende Datenschutz-, Rechte-, Datenintegritäts- und Testgrenzen werden nicht gelockert.
 
-## Reihenfolge
+## Verbindliche Reihenfolge
 
-1. Laufenden funktionalen PR (#285 bei dieser Anweisung) sauber fertigstellen oder nachvollziehbar sichern. Keine ungesicherten Änderungen verwerfen und keinen parallelen schreibenden Codex-Integrator starten.
-2. **P0-A: generative KI vollständig innerhalb der App** – echte Modellauswahl **Gemini Nano 4 Fast**, **Gemini Nano 3** und **Gemini Cloud**. Ein bloßes Android-Teilen, externer Chat, JSON-Import oder deterministischer Offlinegenerator ist **keine** Erfüllung.
-3. **P0-B: automatisch aktualisierte Knuspr-Produkte, Preise und Angebote** über die belegte offizielle MCP-Schnittstelle mit Nutzer-OAuth, gezielt für Einkaufsliste, Produktsuche und Preisvergleich.
-4. **Picnic vorläufig nachrangig.** Vorbereitungen in [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik) ausschließlich lesen. Scheitern Authentifizierung, API-Nutzung oder Rechtefreigabe, **DEFERRED/BLOCKED** dokumentieren und nicht daran hängen bleiben. Picnic bleibt längerfristiges Ziel, ist **kein Blocker des aktuellen P0-Meilensteins**. Die acht bisherigen Supermarktketten bleiben im Gesamtauftrag.
-5. Vor sonstigen neuen Lager-/UI-Detailfunktionen die zwei P0-Vertikalschnitte funktional umsetzen und exakte CI-/Gerätenachweise abnehmen. Offen gebliebene Hardware-/Datenzugänge klar als offen markieren und unabhängig fertigstellbare Teile trotzdem implementieren.
+1. **Sicher übergeben:** Laufenden PR #285 geordnet abschließen oder seinen Arbeitsstand unverlierbar sichern. Keine konkurrierenden Schreibsitzungen.
+2. **P0 zuerst – automatische Liveangebote und Preislisten in der App** für die bisherigen **acht Händler** (Aldi Nord, Aldi Süd, Lidl, REWE, Penny, Kaufland, Netto Marken-Discount, EDEKA) **sowie Knuspr**. Nutzernahe End-to-End-Funktion aus verfügbaren und freigegebenen Quellen: Abruf/Aktualisierung → korrekte Quelle, Region/Filiale bzw. Liefergebiet und Gültigkeit → Produktsuche/Angebotsansicht → Einkaufslisten-/Preisvergleich. Bereits vorhandene EG-Preisdaten-, Produktdaten- und Einkaufsintelligenz-Verträge nutzen, mit den bestehenden Händler-/Rechte-/Anzeigegates. Einzelne nachweislich blockierte Quellen als BLOCKED markieren und andere Anbieter weiter integrieren. Nicht an fehlender Freigabe, bei Login oder an einem API-Fehler dauerhaft hängen bleiben. Vor P0-Funktionsabnahme keine neuen unabhängigen Rezept-KI-Features implementieren.
+3. **Picnic vorläufig zurückstellen:** Dokumentierte Kandidaten in [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik) nur lesen. Bei technischer oder vertraglicher Blockade DEFERRED, kein Hindernis für P0. Langfristiges Ziel bleibt bestehen.
+4. **P1 erst danach – vollständige generative KI direkt in der Rezept-UI**, drei **vom Nutzer auswählbare** Modi: Gemini Nano 4 Fast (lokal), Gemini Nano 3 (lokal), Gemini Cloud (Gemini API). Externer Android-Teilen-/JSON-Import oder deterministischer Generator reicht nicht. Modelle und API-Sicherheit separat abnehmen.
+5. Andere unabhängige Lager-/Fitness-/UI-Detailthemen bis Abschluss der priorisierten Funktionen nachrangig; nur echte sicherheitskritische Fehler oder notwendige blockierende Korrekturen vorziehen.
 
-## P0-A – drei auswählbare Modelle
+## P0 – acht klassische Supermarktketten
+
+- Die **automatische Erfassung und Anzeige tatsächlicher Angebote** der acht Ketten ist Produktziel. Bereits bekannte Quellen, Händlerfähigkeits-/`APP_DISPLAY`-Nachweise, Filial-/Zeitraumkontext und Referenzmodule nutzen. Kein aus einem Prospekt- oder lokalen Fixture abgeleiteter angeblicher Livepreis; Angebots- und reguläre Preise trennen. Geplante nächste Wochen nur anzeigen, wenn konkreter Gültigkeitszeitraum belegt ist.
+- Die Android-Oberfläche muss Filialauswahl bzw. Standortkontext, Angebotsliste, Artikelvergleich (€/kg, €/l, Packung/Menge/Pfand soweit bekannt), tatsächliche Preis-/Quellzeitpunkte und sichtbaren Fehler-/Offline-/Abdeckungsstatus enthalten. Aktualisierung nutzerseitig auslösbar und im technisch/rechtlich erlaubten Umfang automatisch nachladbar. Bei fehlenden Daten `unbekannt` statt Null oder erfundener Händlerabdeckung.
+- **Nur berechtigt lesbare/anzeigbare Daten aktivieren.** Bereits abgeschlossene Rechte-/Architekturbewertungen nicht ohne sachlichen Defekt erneut als Zeitschleife bearbeiten; fehlende konkrete Freigabe weiterhin deutlich markieren und unabhängige andere Händler implementieren.
+
+## P0 – Knuspr mit Livepreisen und Liveangeboten
+
+- Offizieller Knuspr-MCP-Server `https://mcp.knuspr.de/mcp`, offizieller dokumentierter OAuth-Flow. **Nach echtem autorisiertem Login** `tools/list` ausführen und tatsächlich vorhandene Schemas für Suche, Preis, Aktionsangebote, Lieferbarkeit und ggf. Warenkorb bestimmen. Keine Toolnamen oder Online-Livefähigkeit fingieren. Quelle und technische Recherche: [`piknik/docs/KNUSPR-API.md`](https://github.com/ecora2003-max/piknik/blob/main/docs/KNUSPR-API.md).
+- Nur autorisierte, gezielte Abrufe; aktuelle Preise in Integer-Cents, Grundpreise nur bei belegter Basis, Packungsgröße/Produktidentität, Liefergebiet, tatsächliche Gültigkeit, Personalisiertheit, Zeitstempel/Quelle und unbekannte Werte sichtbar halten. Aktualisierung auf Anforderung und gemäß verifiziert erlaubtem Rhythmus; keine pauschale Katalogspiegelung oder vorgetäuschte Aktualität.
+- Aktuelle Einkaufsliste, Vergleich und Angebotsansicht der Android-App tatsächlich anbinden. Online-Liefergebiet und Lieferfenster **nicht** mit stationären Filialen verwechseln. Zunächst read-only; mutierender Warenkorb, Checkout und Zahlung nur nach separater ausdrücklicher Freigabe und nur bei real nachgewiesener API-Funktion.
+- Bekannte Cloudflare-1010-Blockade der Codex-Umgebung weder umgehen noch wiederholt ausreizen. Bei solcher Sperre UI/Adapter und deterministische Tests vorbereiten, echten Live-Login/Read-only-Test auf autorisiertem Gerät vorsehen, diesen Teil `BLOCKED/LIVE_UNVERIFIED` ausweisen, aber an Nano und unabhängiger Appfunktionalität weiterarbeiten. Zugangs-/Lizenz-/Anzeige-/Speichergates (ADR-014/016, `APP_DISPLAY`) bleiben verbindlich.
+- Keine vorgetäuschten Preise, Freigaben, Zahlungen oder Händlereignisse; Tokens nur geschützt, nie in Git oder Telemetrie.
+
+## P1 – drei auswählbare Modelle (erst nach Angebotsintegration)
 
 - **Gemini Nano 4 Fast, lokal/on-device:** Google ML Kit GenAI Prompt API / AICore mit dokumentiertem Direct Model Access (`ModelReleaseStage.PREVIEW`, `ModelPreference.FAST`, soweit die aktuelle offizielle SDK-Version diese Konfiguration unterstützt). Nutzerbezeichnung „Nano 4 Flash“ meint **Nano 4 Fast**, nicht eine erfundene Flash-API. Modell-/AICore-Verfügbarkeit und tatsächlich geladenen Modellnamen zur Laufzeit prüfen. Preview-Freigabe/Download kann erforderlich sein. Fehlende Verfügbarkeit **sichtbar** melden; nicht unbemerkt auf anderes Modell umstellen.
 - **Gemini Nano 3, lokal/on-device:** eigener sichtbarer Auswahlpunkt über die offiziell unterstützte Stable-/Default-Modellkonfiguration, tatsächliche Modellidentität prüfen. Eine SDK-Konfiguration garantiert nicht automatisch die Modellversion; Nano 3 nicht anbieten oder als erfolgreich getestet markieren, wenn kein passendes Modell nachgewiesen wurde. AICore/ML Kit, Status und unterstützte Hardware prüfen.
@@ -20,20 +34,14 @@ Stand: 08.11.2026 – verbindliche, **sofort vorzuziehende Nutzerpriorität**. [
 - Offline-Kombinatorik und manuelles Teilen/JSON bleiben als Ersatzfunktionen erhalten, dürfen nicht als bestandener Nano-/Cloud-Integrationstest gelten. Besondere Fälle: Modell-/Tokenlimit, JSON-Formatfehler, Timeout, Fehler, AICore-Aktualisierung, fehlende Downloadfreigabe, Wechsel Nano↔Cloud, Neustart, Offline, Datenschutz, unbekannte Felder.
 - Technische Primärquellen: https://developers.google.com/ml-kit/genai/prompt/android/get-started ; https://developers.google.com/ml-kit/genai/prompt/android/select-model ; https://ai.google.dev/gemini-api/docs/models ; https://ai.google.dev/gemini-api/docs/api-key . Schnittstellen/Release-Stände vor Implementierung aktuell verifizieren; experimentelle Google-SDK-Abhängigkeiten nicht ohne Kompatibilitätsprüfung unbemerkt zum Pflicht-Build machen.
 
-## P0-B – Knuspr mit Livepreisen und Liveangeboten
+## Abnahme nach Prioritätsstufen
 
-- Offizieller Knuspr-MCP-Server `https://mcp.knuspr.de/mcp`, offizieller dokumentierter OAuth-Flow. **Nach echtem autorisiertem Login** `tools/list` ausführen und tatsächlich vorhandene Schemas für Suche, Preis, Aktionsangebote, Lieferbarkeit und ggf. Warenkorb bestimmen. Keine Toolnamen oder Online-Livefähigkeit fingieren. Quelle und technische Recherche: [`piknik/docs/KNUSPR-API.md`](https://github.com/ecora2003-max/piknik/blob/main/docs/KNUSPR-API.md).
-- Nur autorisierte, gezielte Abrufe; aktuelle Preise in Integer-Cents, Grundpreise nur bei belegter Basis, Packungsgröße/Produktidentität, Liefergebiet, tatsächliche Gültigkeit, Personalisiertheit, Zeitstempel/Quelle und unbekannte Werte sichtbar halten. Aktualisierung auf Anforderung und gemäß verifiziert erlaubtem Rhythmus; keine pauschale Katalogspiegelung oder vorgetäuschte Aktualität.
-- Aktuelle Einkaufsliste, Vergleich und Angebotsansicht der Android-App tatsächlich anbinden. Online-Liefergebiet und Lieferfenster **nicht** mit stationären Filialen verwechseln. Zunächst read-only; mutierender Warenkorb, Checkout und Zahlung nur nach separater ausdrücklicher Freigabe und nur bei real nachgewiesener API-Funktion.
-- Bekannte Cloudflare-1010-Blockade der Codex-Umgebung weder umgehen noch wiederholt ausreizen. Bei solcher Sperre UI/Adapter und deterministische Tests vorbereiten, echten Live-Login/Read-only-Test auf autorisiertem Gerät vorsehen, diesen Teil `BLOCKED/LIVE_UNVERIFIED` ausweisen, aber an Nano und unabhängiger Appfunktionalität weiterarbeiten. Zugangs-/Lizenz-/Anzeige-/Speichergates (ADR-014/016, `APP_DISPLAY`) bleiben verbindlich.
-- Keine vorgetäuschten Preise, Freigaben, Zahlungen oder Händlereignisse; Tokens nur geschützt, nie in Git oder Telemetrie.
-
-## Abnahme
-
-- [ ] Drei klar unterscheidbare Modus-Optionen in der echten Rezept-UI mit realistischer Verfügbarkeitsanzeige, sauberer Auswahl, Neustart, Offline/Fehler und nachvollziehbarer Antwortverwendung.
+- [ ] **P0 zuerst:** sichtbare automatische Angebote / aktuelle Preise für alle tatsächlich autorisierten erreichbaren der acht klassischen Händler mit korrekten Filial-/Gültigkeits-/Quellenhinweisen; kein Fake-Live-Ergebnis aus Fixtures. Providerweise PASS/BLOCKED begründen.
+- [ ] **P0 Einkauf:** Produkt-/Preis-/Grundpreisvergleich aus echten autorisierten Abfragen, Einkaufsliste und Anbieterfilter, Refresh, Netzwerk-/Offline-/Fehlerfälle und Android-Gerätenachweis.
+- [ ] Nach P0: Drei klar unterscheidbare Modus-Optionen in der echten Rezept-UI mit realistischer Verfügbarkeitsanzeige, sauberer Auswahl, Neustart, Offline/Fehler und nachvollziehbarer Antwortverwendung.
 - [ ] **Nano 4 Fast**: tatsächliche lokale Modellantwort auf kompatiblem Gerät separat dokumentiert; falls nicht verfügbar, genaues Blockergate und stattdessen weitere Modi umsetzen.
 - [ ] **Nano 3**: tatsächliche lokale Modellantwort mit belegter Modellidentität getrennt nachgewiesen; keine stillschweigende Substitution durch andere Nano-Variante.
 - [ ] **Gemini Cloud**: tatsächliche Gemini-API-Antwort mit gültiger Modell-ID, Geheimnisschutz, ausdrücklichem Kontext-Consent, Kosten-/Fehlerbehandlung und einheitlichem Validierungsweg; ohne Cloudkonfiguration keine automatische Übertragung.
-- [ ] **Knuspr**: autorisierter realer OAuth-/MCP-Tools-/Read-only-Angebots-/Preis-/Liefergebiets-Test, danach tatsächlich aktualisierte Angebots- und Einkaufsliste. Wenn externe Blockade: Teiltest/Fixture klar vom Live-Ergebnis trennen.
+- [ ] **P0 Knuspr**: autorisierter realer OAuth-/MCP-Tools-/Read-only-Angebots-/Preis-/Liefergebiets-Test, danach tatsächlich aktualisierte Angebots- und Einkaufsliste. Wenn externe Blockade: Teiltest/Fixture klar vom Live-Ergebnis trennen.
 - [ ] Bestehende A1/B1-, FoodStore-, Datenschutz-/Schreib- und Android-Geräte-/Room-/Migrationsregression bleiben erfolgreich. Exakte Code-/Test-SHAs mit Pass/Fail/Skip nachweisen; Emulator-/Mockgrün nicht als realen Modell- oder Händlernachweis ausgeben.
 - [ ] Picnic als nachrangig/DEFERRED bei belegter Blockade protokolliert, ohne diesen P0-Meilenstein zu verhindern.
