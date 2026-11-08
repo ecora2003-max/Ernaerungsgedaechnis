@@ -10,6 +10,10 @@ import android.os.Process
 import android.util.AtomicFile
 import androidx.test.runner.AndroidJUnitRunner
 import de.ernaehrung.demo.data.local.*
+import de.ernaehrung.demo.data.offers.*
+import java.net.URI
+import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.File
@@ -58,10 +62,22 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     val meal = store.consume("$key-eat",ConsumptionInput(first,date,"Synthetic restart meal",10_000L,
                         listOf(Allocation(batch,10_000L))),true)
                     check(dao.balance(batch) == 65_000L)
+                    val offerSettings = PrivateOfferSettings.forApp(targetContext)
+                    val refreshAt = Instant.now().toEpochMilli()
+                    offerSettings.record(key, OfferRefreshAttempt(Instant.ofEpochMilli(refreshAt), true))
+                    offerSettings.select(LiveOfferScope(LiveRetailer.KNUSPR, null, null, key, LocalDate.parse(date)), true)
+                    val login = PrivateKnusprStore.forApp(targetContext)
+                    val issuer = URI("https://login.example.test")
+                    val authServer = KnusprAuthorizationServer(issuer, issuer.resolve("/authorize"), issuer.resolve("/token"), null, emptyList())
+                    val pending = KnusprPendingAuthorization(authServer, key, proof, "synthetic-verifier-$proof",
+                        "${targetContext.packageName}://knuspr-oauth", refreshAt)
+                    check(login.stage(login.beginAttempt(), pending)); login.claim(proof)
+                    check(login.finish(proof, KnusprToken("synthetic-access-$proof", null, null, key, authServer)))
                     val data = JSONObject().put("proof",proof).put("source",source).put("package",targetContext.packageName)
                         .put("pid",Process.myPid()).put("sdk",Build.VERSION.SDK_INT).put("schema",db.openHelper.readableDatabase.version)
                         .put("date",date).put("first",first).put("second",second).put("location",location)
                         .put("batch",batch).put("meal",meal).put("operations",dao.operationCount()).put("meals",dao.activeConsumptionCount())
+                        .put("offerRefreshAt",refreshAt)
                     val output = journal.startWrite()
                     try { output.write(data.toString().toByteArray(Charsets.UTF_8)); journal.finishWrite(output) }
                     catch (failure: Throwable) { journal.failWrite(output); throw failure }
@@ -73,6 +89,19 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     check(data.getString("package") == targetContext.packageName && data.getInt("sdk") == Build.VERSION.SDK_INT)
                     check(data.getInt("pid") != Process.myPid()) { "This is not a new process" }
                     check(data.getInt("schema") == db.openHelper.readableDatabase.version)
+                    val offerSettings = PrivateOfferSettings.forApp(targetContext)
+                    check(offerSettings.last(key) == OfferRefreshAttempt(Instant.ofEpochMilli(data.getLong("offerRefreshAt")), true))
+                    check(offerSettings.selection()?.let { it.automatic && it.scope.deliveryAreaId == key && it.scope.storeId == null } == true)
+                    val login = PrivateKnusprStore.forApp(targetContext)
+                    check(login.read().token?.let { it.access == "synthetic-access-$proof" && it.clientId == key } == true)
+                    check(login.read().pending == null && login.read().completing == null)
+                    try { login.claim(proof); error("Completed OAuth nonce replay accepted after process restart") }
+                    catch (_: IllegalArgumentException) { }
+                    // Default-deny production sources cannot be activated by
+                    // restored selection, automatic preference or a login token.
+                    check(LiveOfferRuntime(emptyMap(), journal = offerSettings).refresh(requireNotNull(offerSettings.selection()).scope,
+                        automatic = true).status == LiveRefreshStatus.BLOCKED)
+                    login.clear(); offerSettings.clearSelection()
                     val date = data.getString("date"); val first = data.getString("first"); val second = data.getString("second")
                     val location = data.getString("location"); val batch = data.getString("batch"); val meal = data.getString("meal")
                     check(dao.balance(batch) == 65_000L && requireNotNull(dao.batch(batch)).versionId == first)
