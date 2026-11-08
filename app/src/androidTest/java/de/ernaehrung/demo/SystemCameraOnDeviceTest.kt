@@ -46,6 +46,26 @@ class SystemCameraOnDeviceTest {
         val deadline = SystemClock.uptimeMillis() + 30_000L
         while (SystemClock.uptimeMillis() < deadline) {
             control("shutter_button", "shutter_button_touch_area")?.let { return it }
+            // Observed API26 AOSP first-use screen: checked location tagging
+            // plus NEXT, rather than the later camera's "No thanks" prompt.
+            // Explicitly decline and verify the real checkbox before advancing.
+            if (device.currentPackageName == "com.android.camera2" &&
+                device.hasObject(By.text("Remember photo locations?"))) {
+                val selector = By.pkg("com.android.camera2").checkable(true)
+                val choices = device.findObjects(selector)
+                assertEquals("Actual first-use location choice must be unambiguous", 1, choices.size)
+                if (choices.single().isChecked) choices.single().click()
+                val checkDeadline = SystemClock.uptimeMillis() + 3_000L
+                var checked = device.findObjects(selector).singleOrNull()?.isChecked
+                while (checked != false && SystemClock.uptimeMillis() < checkDeadline) {
+                    SystemClock.sleep(100L); checked = device.findObjects(selector).singleOrNull()?.isChecked
+                }
+                assertEquals("Location tagging must be declined before NEXT", false, checked)
+                requireNotNull(device.findObject(By.pkg("com.android.camera2").text(Pattern.compile("(?i)^next$")))) {
+                    "Actual location-wizard NEXT button missing"
+                }.click()
+                continue
+            }
             // Camera permissions belong to the external camera app; our app
             // still has neither CAMERA nor broad gallery permissions.
             val allow = control("permission_allow_foreground_only_button", "permission_allow_button")
