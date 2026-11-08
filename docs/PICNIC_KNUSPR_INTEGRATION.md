@@ -1,6 +1,6 @@
 # Verbindliche Zusatzintegration: Picnic und Knuspr (DE)
 
-Stand: 06.11.2026. **Nutzerauftrag:** Beide Online-Lebensmittelhändler **Picnic und Knuspr** sollen zusätzlich zu den bisher geplanten Supermarktketten in die Android-App „Ernährungsgedächtnis“ integriert werden. **Keiner der beiden Anbieter ist optional oder durch den jeweils anderen ersetzbar.** Dieses Ziel gehört zur Gesamt-App-Abnahme; fehlende externe Fähigkeiten dürfen die bestehenden Offline-/Einkaufsfunktionen nicht blockieren.
+Stand: 08.11.2026. **Nutzerauftrag:** Beide Online-Lebensmittelhändler **Picnic und Knuspr** gehören zusätzlich zu den bisher geplanten Supermarktketten zum langfristigen Umfang. **Aktuelle Priorisierung vom 08.11.: Knuspr-Liveangebote jetzt als P0 integrieren; Picnic bei technischen/API-/Rechteblockaden vorläufig zurückstellen und nicht als Blocker dieses P0-Meilensteins behandeln.** Picnic bleibt späteres Ziel. [Aktueller P0-Auftrag](P0_GEMINI_KNUSPR.md). Fehlende externe Fähigkeiten dürfen die bestehenden Offline-/Einkaufsfunktionen nicht blockieren.
 
 ## Verbindliche Referenz und belegter Iststand
 
@@ -25,7 +25,7 @@ Stand: 06.11.2026. **Nutzerauftrag:** Beide Online-Lebensmittelhändler **Picnic
 
 ## Nachweis vor einer Fertigmeldung
 
-- [ ] Picnic- und Knuspr-Adapter getrennt implementiert; aktuelle Schnittstellen und verwendete Capability/Tool-Schemas dokumentiert.
+- [ ] **Knuspr jetzt P0:** offiziellen OAuth-MCP-Read-only-Adapter für reale Angebote, Preise und Einkaufsliste funktionsfähig machen und separat abnehmen. Picnic-Adapter nachrangig; bei belegter Blockade als DEFERRED kennzeichnen. Getrennte Schnittstellen und verwendete Capability-/Tool-Schemas dokumentieren.
 - [ ] Für **jeden** Anbieter Nutzeranmeldung, Read-only-Suche, Preis/Angebot/Verfügbarkeit und Einkaufsliste→Artikelauswahl im echten Android-UI getrennt geprüft; Offline, Fehler, Ablauf, Widerruf und Neustart getestet.
 - [ ] Grundpreis/Gebinde/Region/Gültigkeit/Personalisierung, Dubletten/Mehrdeutigkeit und unbekannte Felder mit Tests abgesichert.
 - [ ] Warenkorbmutationen ausschließlich nach expliziter Zustimmung getestet; Checkout/Handoff separat freigegeben oder als echte Providergrenze dokumentiert. Keine Testbestellung ohne gesonderte Nutzeranweisung.
