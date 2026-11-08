@@ -10,6 +10,8 @@ Stand: 07.11.2026. **Flexible Ziel- und Nachweismatrix**, keine Phasenreihenfolg
 
 ## Aktive funktionale Priorität
 
+**Vorrangige neue Nutzerentscheidung 08.11.2026:** [P0 direkt integrierte Gemini-Nano-4-Fast-/Nano-3-/Gemini-Cloud-Auswahl und Knuspr-Liveangebote](P0_GEMINI_KNUSPR.md). Nach sicherer Sicherung/Fertigstellung der offenen Arbeit direkt diese Funktionen bauen und nachweislich prüfen, nicht weitere unabhängige Lager-/UI-Details vorziehen. Picnic darf bei API-/Rechte-/Zugangsblockade vorläufig als **DEFERRED** markiert werden; Knuspr und die drei KI-Modi bleiben aktuelle Ziele. Keine behauptete Liveverbindung oder echte Modellantwort aus synthetischen Fixtures.
+
 Exklusiver Codex-Einzelentwickler gemäß [AGENTS](../AGENTS.md) und [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md); A/B/III/IV bleiben pausiert. Einkauf A1 und Rezept B1 zuerst vollständig anschließen und tatsächlich abnehmen, anschließend weitere Gesamt-App-Ziele einschließlich Fitness. Die frühere parallele A/B-Rollen- und Acht-Phasen-Steuerung gilt nicht. Keine alleinige Bestandsaufnahme, Prozentfreigabe oder Gerätebehauptung aus Kompiliergrün.
 
 ## Ziel- und Nachweismatrix
