@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.testTag
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collect
 
 @Composable
 internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
@@ -57,24 +58,31 @@ internal fun StockEventEditor(state: LocalDataState, blocked: Boolean, key: Stri
 }
 
 @Composable
-internal fun ReversalEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel) {
+internal fun ReversalEditor(state: LocalDataState, blocked: Boolean, key: String, model: LocalDataViewModel,
+    reviewRequest: OperationReviewRequest? = null) {
     var selected by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf(AppCalendar.today().toString()) }
     var reason by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
-    var details by remember { mutableStateOf<OperationDetails?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val reversal = state.operations.find { it.operation.id == selected }?.reversedBy
-    LaunchedEffect(selected, reversal) {
-        details = null; error = null; confirmed = false
-        if (selected.isNotEmpty()) try { details = model.operationDetails(selected) }
+    val preview by produceState<Pair<OperationDetails?,String?>>(null to null,selected,key) {
+        value = null to null
+        if (selected.isNotEmpty()) try { model.watchOperationDetails(selected).collect { value = it to null } }
         catch (cancel: CancellationException) { throw cancel }
-        catch (failure: Exception) { error = failure.message ?: "Vorschau konnte nicht geladen werden." }
+        catch (failure: Exception) { value = null to (failure.message ?: "Vorschau konnte nicht geladen werden.") }
     }
-    Fold("Vorgang prüfen und stornieren") {
+    val details = preview.first?.takeIf { it.operation.id == selected }
+    var confirmed by remember(key,selected,date,reason,details) { mutableStateOf(false) }
+    LaunchedEffect(reviewRequest?.requestKey) {
+        reviewRequest?.let { selected = it.operationId; confirmed = false }
+    }
+    Fold("Vorgang prüfen und stornieren",openRequest = reviewRequest?.requestKey) {
         val options = state.operations.filter { it.operation.kind != "REVERSAL" && it.reversedBy == null }
-        IdPicker("Ursprungsvorgang · letzte 30", options.map { it.operation.id to "${operationLabel(it.operation.kind)} · ${it.operation.id.take(8)}" }, selected) { selected = it }
-        error?.let { Hint(it) }
+            .map { it.operation.id to "${operationLabel(it.operation.kind)} · ${it.operation.id}" }.toMutableList()
+        details?.takeIf { selected.isNotEmpty() && options.none { option -> option.first == selected } }?.let {
+            options.add(selected to "${operationLabel(it.operation.kind)} · $selected")
+        }
+        IdPicker("Ursprungsvorgang", options, selected) { selected = it }
+        if (selected.isNotEmpty()) Text("Ausgewählter Ursprungsvorgang: $selected",Modifier.testTag("reversal_selected_operation"))
+        preview.second?.let { Hint(it) }
         details?.let { preview ->
             Section("Vorgesehene Gegenbuchungen", operationLabel(preview.operation.kind))
             if (preview.reversal != null) Hint("Dieser Vorgang ist bereits storniert.")

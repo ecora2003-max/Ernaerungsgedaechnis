@@ -50,7 +50,8 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
     showSectionNavigation: Boolean = true, onOpenPurchases: (() -> Unit)? = null, initialCatalogQuery: String = "",
     onOpenBatchReview: ((String) -> Unit)? = null, onOpenStorageCapacity: ((String?) -> Unit)? = null,
     recognitionModeState: MutableState<String>? = null,onOpenPlanning: (() -> Unit)? = null,
-    onOpenShopping: (() -> Unit)? = null) {
+    onOpenShopping: (() -> Unit)? = null,onOpenStockHistory: ((String) -> Unit)? = null,
+    initialHistoryBatchId: String? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val save by model.saveState.collectAsStateWithLifecycle()
     var mode by rememberSaveable { mutableStateOf(initialSection) }
@@ -109,7 +110,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
             LocationEditor(blocked, operationId, model)
             if (state.locations.isNotEmpty() && state.catalog.isNotEmpty()) ReceiptEditor(state, blocked, operationId, model)
             else Hint("Für einen Zugang zuerst ein Produkt im Katalog und einen bestätigten Lagerort anlegen.", Sage)
-            StockOverviewScreen(state,onOpenBatchReview)
+            StockOverviewScreen(state,onOpenBatchReview,onOpenStockHistory)
             if (state.batches.any { it.stockAmount > 0 }) ConsumptionEditor(state, blocked, operationId, model)
             StockEventEditor(state, blocked, operationId, model)
         }
@@ -134,18 +135,7 @@ fun LocalDataContent(model: LocalDataViewModel, initialSection: String = "Katalo
                 if (onOpenPlanning != null) onOpenPlanning() else mode = "Planung"
             }
         }
-        "Chronik" -> {
-            ReversalEditor(state, blocked, operationId, model)
-            Hint("Hier stehen die letzten 30 Bewegungen. Stornos ergänzen Gegenbewegungen; die ursprünglichen Ereignisse bleiben in der Datenbank. Kochen ist kein Verzehr.", Sage)
-            if (state.movements.isEmpty()) Text("Noch keine Bestandsbewegungen.")
-            state.movements.forEach { row -> Panel {
-                Section(row.productName, movementLabel(row.movement.kind))
-                KV("Menge", "${Amounts.format(row.movement.delta)} ${row.unit.label}")
-                KV("Ereignisdatum", row.movement.occurredOn ?: "Nicht gesondert erfasst · Altbestand")
-                Text("Vorgang: ${row.movement.operationId}\nCharge: ${row.movement.batchId}", style = MaterialTheme.typography.labelSmall)
-                Text(row.movement.reason)
-            } }
-        }
+        "Chronik" -> StockHistoryScreen(state,blocked,operationId,model,initialHistoryBatchId)
     }
 }
 
@@ -242,8 +232,10 @@ private fun ReceiptEditor(state: LocalDataState, busy: Boolean, operationId: Str
     var quantity by rememberSaveable { mutableStateOf("") }
     var acquired by rememberSaveable { mutableStateOf("") }
     var useBy by rememberSaveable { mutableStateOf("") }
-    var confirmed by rememberSaveable { mutableStateOf(false) }
-    var released by rememberSaveable { mutableStateOf(false) }
+    val selectedVersion = state.versions.firstOrNull { it.id == versionId }
+    val selectedLocation = state.locations.firstOrNull { it.id == locationId }
+    var released by remember(operationId,versionId,locationId,quantity,acquired,useBy,selectedVersion,selectedLocation) { mutableStateOf(false) }
+    var confirmed by remember(operationId,versionId,locationId,quantity,acquired,useBy,selectedVersion,selectedLocation,released) { mutableStateOf(false) }
     Fold("Testzugang bestätigen") {
         val product = state.catalog.find { it.version.id == versionId }
         Picker("Produktversion", state.catalog.map { "${it.version.name} · ${it.version.id}" }, product?.version?.name ?: "Bitte wählen") { label -> versionId = state.catalog.first { label.endsWith(it.version.id) }.version.id }

@@ -19,6 +19,8 @@ data class LocalDataState(val loading: Boolean = true, val catalog: List<Catalog
     val recipes: List<RecipeVersionEntity> = emptyList(), val ingredients: List<IngredientRow> = emptyList(),
     val versions: List<ProductVersionEntity> = emptyList(), val operations: List<OperationRow> = emptyList())
 data class SaveState(val busy: Boolean = false, val message: String? = null, val succeeded: Boolean = false)
+internal data class StockHistoryUiState(val query: StockHistoryQuery = StockHistoryQuery(),
+    val report: StockHistoryPage? = null, val loading: Boolean = true, val error: String? = null)
 data class DayUiState(val date: String, val report: DayNutrition? = null, val error: String? = null)
 data class RecipeNutritionUiState(val report: NutritionResult? = null, val error: String? = null)
 data class PlanningUiState(val report: PlanningReport? = null, val error: String? = null)
@@ -72,6 +74,14 @@ class LocalDataViewModel internal constructor(
     private val pendingKeyStore: RecipeDraftPendingKeyStore = EphemeralRecipeDraftPendingKeyStore,
     private val personalIntentCacheInvalidator: () -> Unit = {}
 ) : ViewModel() {
+    private val stockHistoryQuery = MutableStateFlow(StockHistoryQuery() to 0L)
+    internal val stockHistory = stockHistoryQuery.flatMapLatest { (query, _) ->
+        store.watchStockHistory(query).map { StockHistoryUiState(query,it,false) }
+            .onStart { emit(StockHistoryUiState(query)) }
+            .catch { emit(StockHistoryUiState(query,loading = false,error = "Chronik konnte nicht gelesen werden. Erneut anzeigen.")) }
+    }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000,replayExpirationMillis = 0),StockHistoryUiState())
+    internal fun showStockHistory(query: StockHistoryQuery) { stockHistoryQuery.value = query to stockHistoryQuery.value.second + 1L }
+    internal fun watchOperationDetails(id: String) = store.watchOperationDetails(id)
     private val storageCapacityRefresh = MutableStateFlow(0L)
     internal val storageCapacity: StateFlow<StorageCapacityUiState> = storageCapacityRefresh.flatMapLatest {
         store.watchStorageCapacity().map { StorageCapacityUiState(it) }

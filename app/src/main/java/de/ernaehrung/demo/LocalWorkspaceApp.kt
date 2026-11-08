@@ -61,6 +61,7 @@ fun LocalWorkspaceApp() {
     var catalogFilter by rememberSaveable { mutableStateOf("") }
     val recognitionMode = rememberSaveable { mutableStateOf("Barcode & Produkt") }
     var selectedBatch by rememberSaveable { mutableStateOf("") }
+    var selectedHistoryBatch by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedStorageLocation by rememberSaveable { mutableStateOf<String?>(null) }
     if (demo) {
         BackHandler { demo = false }
@@ -106,7 +107,9 @@ fun LocalWorkspaceApp() {
                             onOpenBatchReview = { selectedBatch = it; go(WorkspacePage.BATCH_REVIEW) },
                             onOpenStorageCapacity = { selectedStorageLocation = it; go(WorkspacePage.STORAGE_CAPACITY) },
                             recognitionModeState = recognitionMode,onOpenPlanning = { go(WorkspacePage.PLAN) },
-                            onOpenShopping = { go(WorkspacePage.SHOPPING) })
+                            onOpenShopping = { go(WorkspacePage.SHOPPING) },
+                            onOpenStockHistory = { selectedHistoryBatch = it; go(WorkspacePage.HISTORY) },
+                            initialHistoryBatchId = selectedHistoryBatch)
                     } else if (page == WorkspacePage.FITNESS) {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
@@ -155,7 +158,10 @@ fun LocalWorkspaceApp() {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING,
                             WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.NUTRITION_GOALS, WorkspacePage.PERSONAL_RESTRICTIONS, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
-                            Action(target.title, true, "workspace_go_${target.name}") { go(target) }
+                            Action(target.title, true, "workspace_go_${target.name}") {
+                                if (target == WorkspacePage.HISTORY) selectedHistoryBatch = null
+                                go(target)
+                            }
                         }
                         Action("Demo-Rundgang öffnen", true, "workspace_demo") { demo = true }
                         Text("Der Rundgang zeigt feste Beispiele. Eigene lokale Einträge werden dort nicht dargestellt.")

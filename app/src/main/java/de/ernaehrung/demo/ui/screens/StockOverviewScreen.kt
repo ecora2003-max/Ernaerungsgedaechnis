@@ -12,7 +12,8 @@ import java.math.BigDecimal
 import java.math.BigInteger
 
 @Composable
-internal fun StockOverviewScreen(state: LocalDataState,onOpenBatchReview: ((String) -> Unit)?) {
+internal fun StockOverviewScreen(state: LocalDataState,onOpenBatchReview: ((String) -> Unit)?,
+    onOpenStockHistory: ((String) -> Unit)? = null) {
     var query by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var positiveOnly by rememberSaveable { mutableStateOf(false) }
@@ -57,6 +58,7 @@ internal fun StockOverviewScreen(state: LocalDataState,onOpenBatchReview: ((Stri
                 KV("MHD",row.batch.bestBefore ?: "Unbekannt"); KV("Verbrauchsdatum",row.batch.useBy ?: "Unbekannt")
                 Text("Charge: ${row.batch.id}",style = MaterialTheme.typography.labelSmall)
                 onOpenBatchReview?.let { open -> Action("Chargenangaben prüfen",true,"stock_review_${row.batch.id}") { open(row.batch.id) } }
+                onOpenStockHistory?.let { open -> Action("Buchungen dieser Charge",true,"stock_history_${row.batch.id}") { open(row.batch.id) } }
                 if (row.originReversed) Badge("Herkunft storniert · nur Historie",Amber)
             }
         }

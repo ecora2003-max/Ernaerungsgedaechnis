@@ -189,9 +189,12 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var storageNote by rememberSaveable { mutableStateOf("") }
     var deviation by rememberSaveable { mutableStateOf("") }
     var useBy by rememberSaveable { mutableStateOf("") }
-    var checked by remember { mutableStateOf(false) }
-    var released by remember { mutableStateOf(false) }
-    var confirmed by remember { mutableStateOf(false) }
+    // Each newly confirmed manufacturing event has its own physical checks.
+    // Keep draft fields, never reuse a previous event's actual-action gestures.
+    var checked by remember(key,selected,location) { mutableStateOf(false) }
+    var released by remember(key,selected,location,date,useBy,portions) { mutableStateOf(false) }
+    var confirmed by remember(key,selected,allocationMode,batches,quantities,portions,location,date,
+        storageNote,deviation,useBy,checked,released) { mutableStateOf(false) }
     val capacityState by model.storageCapacity.collectAsStateWithLifecycle()
     var useCapacity by remember { mutableStateOf(false) }
     var outerVolume by remember { mutableStateOf("") }
