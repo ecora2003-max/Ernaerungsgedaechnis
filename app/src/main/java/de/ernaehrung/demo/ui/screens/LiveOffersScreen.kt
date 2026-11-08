@@ -85,14 +85,16 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             model.selectProvider(); selected = it; store = ""; region = ""; delivery = ""
             connectionConsent = false; selectionError = null
         }
-        Section(retailer.title, when (source.status) {
+        val appliedEvidence = state.authorizedEvidenceRef.takeIf { state.scope?.retailer == retailer }
+        Section(retailer.title, if (appliedEvidence != null) "Quellenfreigabe für die angewendete Auswahl geprüft" else when (source.status) {
             LiveSourceStatus.RIGHTS_UNVERIFIED -> "Automatischer Abruf noch nicht freigegeben"
             LiveSourceStatus.RIGHTS_RESTRICTED -> "Fortlaufende Nutzung dieser Quelle eingeschränkt"
             LiveSourceStatus.CONNECTION_REQUIRED -> if (state.connected) "Anmeldung gespeichert · Preisanschluss separat prüfen" else "Offizieller Zugang muss verbunden werden"
             LiveSourceStatus.READY -> "Quelle eingerichtet"
             LiveSourceStatus.BLOCKED -> "Quelle derzeit gesperrt"
         })
-        Text(source.explanation, Modifier.testTag("live_source_status"))
+        Text(if (appliedEvidence != null) "Quellennachweis: $appliedEvidence · gilt ausschließlich für den angewendeten Geltungsbereich. Keine vollständige Marktabdeckung." else source.explanation,
+            Modifier.testTag("live_source_status"))
         OutlinedButton({ context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.evidenceRef))) }) { Text("Beleg zur Quelle öffnen") }
         if (retailer == LiveRetailer.KNUSPR) {
             Text("Anmeldung über den offiziellen Knuspr-OAuth-Zugang im Browser. Nur Verbindungsmetadaten und ausdrücklich gewählte Suchdaten sind vorgesehen; keine Ernährungs-, Körper- oder Trainingshistorie. Kein Warenkorb und keine Bestellung.")
@@ -191,7 +193,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                         LiveOfferApplicability.DELIVERY_CONFIRMED -> "Liefergebiet bestätigt"
                         LiveOfferApplicability.UNKNOWN -> "Geltungsbereich ungeklärt"
                     }} · ${offer.storeId ?: offer.deliveryAreaId ?: offer.regionId ?: "keine genaue Zuordnung"}")
-                    if (!offer.conditionsConfirmed) Text("Preisbedingungen nicht unabhängig bestätigt; kein freigegebener Einkaufsvergleich.")
+                    if (!offer.conditionsConfirmed) Text("Diese Quellangabe allein bestätigt keine Preisbedingungen. Ein Vergleich benötigt zusätzlich einen unabhängigen Nachweis.")
                     offer.conditions?.let { Text(it) }
                     Text("Quellenartikel ${offer.sourceProductId} · ${offer.sourceUrl}")
                     OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy) { Text("Als Vergleichsreferenz wählen") }
@@ -207,6 +209,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     comparison.rateOrder < 0 -> "Referenz hat einen geringeren Waren-Grundpreis."
                     else -> "Gleicher Waren-Grundpreis."
                 }, Modifier.testTag("live_comparison_result"))
+                comparison.targetRate?.let { Text("Referenz: ${formatReviewedOfferRate(it)}") }
+                comparison.alternativeRate?.let { Text("Alternative: ${formatReviewedOfferRate(it)}") }
+                if (comparison.rateOrder != null) Text("Diese Werte verwenden die separat geprüfte genaue Artikel-/Gebindebasis. Fehlende Mengenangaben des ursprünglichen Feeds werden nicht überschrieben.")
                 Text("Pfand, Lieferkosten, Mindestbestellwert, Vorrat und Einkaufsbudget sind damit nicht verglichen. Es wird keine Einkaufsposition geändert oder gebucht.")
             }
         }

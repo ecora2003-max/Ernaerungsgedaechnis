@@ -14,7 +14,7 @@ internal data class LiveOffersUiState(val busy: Boolean = false, val scope: Live
     val result: LiveRefreshResult? = null, val message: String? = null, val connected: Boolean = false,
     val discovery: KnusprToolDiscovery? = null, val authorizationUrl: URI? = null,
     val automatic: Boolean = false, val selectionLoaded: Boolean = false, val comparison: LivePriceComparison? = null,
-    val reference: LiveOfferSelection? = null)
+    val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null)
 
 /** No FoodStore/Room writer and no health/profile export. HTTP happens only on
  * explicit connection/selection; unapproved catalogue sources never start IO. */
@@ -42,7 +42,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
     fun selectProvider() {
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
         mutable.value = mutable.value.copy(scope = null, result = null, discovery = null, message = null,
-            automatic = false, comparison = null, authorizationUrl = null, busy = true)
+            automatic = false, comparison = null, authorizationUrl = null, busy = true, authorizedEvidenceRef = null)
         work = viewModelScope.launch {
             try { withContext(Dispatchers.IO) { ticket?.let(privateStore::cancelAttempt); settings.clearSelection() } }
             finally { if (generation == expected) mutable.value = mutable.value.copy(busy = false) }
@@ -52,16 +52,19 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
         if (automatic && (mutable.value.busy || !mutable.value.automatic)) return
         work?.cancel(); val expected = ++generation
         val keepAutomatic = mutable.value.scope == scope && mutable.value.automatic
-        mutable.value = mutable.value.copy(scope = scope, busy = true, result = null, message = null, automatic = keepAutomatic, comparison = null)
+        mutable.value = mutable.value.copy(scope = scope, busy = true, result = null, message = null, automatic = keepAutomatic,
+            comparison = null, authorizedEvidenceRef = null)
         work = viewModelScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) {
+                val (result, evidence) = withContext(Dispatchers.IO) {
                     if (!automatic) settings.select(scope, keepAutomatic)
-                    runtime.refresh(scope, automatic).also {
+                    val result = runtime.refresh(scope, automatic).also {
                         if (it.status in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED)) settings.select(scope, false)
                     }
+                    result to runtime.policy(scope)?.evidenceRef
                 }
                 if (generation == expected) mutable.value = mutable.value.copy(busy = false, result = result,
+                    authorizedEvidenceRef = evidence,
                     automatic = keepAutomatic && result.status !in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED),
                     message = when {
                         result.fromCache -> "Letzter erlaubter Stand aus dieser Sitzung. Keine erfolgreiche neue Abfrage; Gültigkeit und Preisstand prüfen."
@@ -109,6 +112,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
         if (expected != generation || mutable.value.busy) return
         if (!validBatch || !validReference) mutable.value = mutable.value.copy(
             result = value.result.takeIf { validBatch }, reference = value.reference.takeIf { validReference }, comparison = null,
+            authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
             message = "Quellfreigabe oder Geltungsbereich geändert. Nicht mehr freigegebene Sitzungsdaten verworfen.")
         val current = mutable.value
         if (current.result?.refreshAfter?.let { java.time.Instant.now() < it } == true) return
