@@ -10,6 +10,8 @@ Stand: 07.11.2026. **Flexible Ziel- und Nachweismatrix**, keine Phasenreihenfolg
 
 ## Aktive funktionale Priorität
 
+**Neueste verbindliche Reihenfolge 08.11.2026: [P0 automatische Angebote → P1 direkte Rezept-KI](P0_GEMINI_KNUSPR.md).** ZUERST reale autorisierte aktuelle Supermarktangebote für Aldi Nord und Süd, Lidl, REWE, Penny, Kaufland, Netto Marken-Discount, EDEKA **plus Knuspr** (offizielles OAuth-MCP) in Angebots- und Einkaufsvergleich integrieren. Einzelne nicht verfügbare Anbieter ausdrücklich BLOCKED, andere fertig umsetzen; Picnic bei Blockade DEFERRED. **DANACH** drei echte wählbare Rezept-KI-Modi: Nano 4 Fast, Nano 3, Gemini Cloud API, ohne Modell-/Cloudscheinbelege. Bestehende Offline-, Privacy-, FoodStore-, Quellen- und Gerätegates unverändert. Nachrangige Lager-/UI-Details bis dahin nicht vorziehen.
+
 Exklusiver Codex-Einzelentwickler gemäß [AGENTS](../AGENTS.md) und [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md); A/B/III/IV bleiben pausiert. Einkauf A1 und Rezept B1 zuerst vollständig anschließen und tatsächlich abnehmen, anschließend weitere Gesamt-App-Ziele einschließlich Fitness. Die frühere parallele A/B-Rollen- und Acht-Phasen-Steuerung gilt nicht. Keine alleinige Bestandsaufnahme, Prozentfreigabe oder Gerätebehauptung aus Kompiliergrün.
 
 ## Ziel- und Nachweismatrix
