@@ -42,7 +42,8 @@ import java.util.UUID
 internal fun RecipeAiExchangePanel(
     catalog: List<ProductVersionEntity>, portions: Int?, restrictions: Set<String>,
     preferences: RecipeRequestPreferences?, flags: Gate.Flags, typedContext: RecipeTypedContext?,
-    editingEnabled: Boolean, onResponse: (String, RecipeDraftV1Import.Imported) -> Unit
+    editingEnabled: Boolean, onResponse: (String, RecipeDraftV1Import.Imported) -> Unit,
+    providedDirectModel: DirectRecipeAiViewModel? = null
 ) {
     val androidContext = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -50,7 +51,7 @@ internal fun RecipeAiExchangePanel(
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
             DirectRecipeAiViewModel(androidContext.applicationContext) as T
     } }
-    val directModel = viewModel<DirectRecipeAiViewModel>(key = "direct-recipe-ai", factory = directFactory)
+    val directModel = providedDirectModel ?: viewModel<DirectRecipeAiViewModel>(key = "direct-recipe-ai", factory = directFactory)
     val directState by directModel.state.collectAsStateWithLifecycle()
     var wish by remember { mutableStateOf("") }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
