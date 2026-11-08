@@ -217,6 +217,12 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 - [ ] In einem unabhängigen neuen Instrumentation-Prozess genaue historische Produktfassungen/IDs, null versus 0, persistierten Bestand/Verzehr, idempotente Retries, abgewiesene unbestätigte Buchung, FK und tatsächliche Netzfreiheit nachweisen. Bereits bestätigte Fixturedaten überleben den Abbruch; daraus keine vollständige UI-Zustands- oder Stromausfallabnahme ableiten.
 - [ ] Originale Phasenausgaben, Source-SHA, SDK, APK-SHAs und unterschiedliche tatsächliche Prozesskennungen sichern. Shell-Erfolg bei Instrumentation-Fehler darf nicht grün werden. Beide regulären SDK35-/26-Gerätejobs müssen die zusätzlichen realen Prozessbelege prüfen; Phasen separat von JUnit-Fallzahlen ausweisen.
 
+## 24. Frische Bestätigung für manuellen Zugang und jede neue Herstellung
+
+- [ ] Manuelle Zugangsmenge, genaue Artikel-/Lagerauswahl und Daten bleiben nach Activity-Neuerstellung erhalten; Zugangs- und Chargenfreigabe werden nicht wiederhergestellt und gelten nur für den jeweiligen Vorgang/relevante Eingaben. Neue Vorgangskennung ohne neue Zustimmung erzeugt keinen weiteren Zugang.
+- [ ] Nach erfolgreicher Herstellung und **Neuen Vorgang beginnen** können Zutaten-/Portions-/Lagerangaben erhalten bleiben, Kochbestätigung, physische Lagerprüfung und Fertigportionenfreigabe verlangen aber neue Gesten. Zwei gesondert bestätigte Herstellungen erzeugen genau zwei Ereignisse; Kochen zählt nicht als gegessener Verzehr.
+- [ ] Ursprüngliche zwei rote Standard-App-Fälle und unveränderte grüne Regression sichern; tatsächliche zusätzliche Android-/Offline-/Retry-/Neustart-/SQLite-/FK-Fälle auf exaktem neuen Head bestehen. Bisherige Room-/v1-Verträge und unabhängige FoodStore-Prüfungen unverändert erhalten.
+
 ## 25. Sofortiger P0-Meilenstein: Gemini Nano 4 Fast, Nano 3, Gemini Cloud und Knuspr
 
 **Verbindlicher Nutzerauftrag vom 08.11.2026:** [P0-Vertikalschnitte](P0_GEMINI_KNUSPR.md), [Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286). Die externe Teilen-/JSON-Integration allein ist keine echte integrierte generative KI.
@@ -227,9 +233,3 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 - [ ] Für alle drei Modelle geprüfte Ausgabe → vorhandener v1-Revalidator/Restriktions-/Rechtegates → getrennt bestätigte Rezept-/Herstellungs-/Verzehraktionen, Offline-/Neustart-/Widerrufs-/Fehlerfälle auf exaktem Code-/Test-SHA.
 - [ ] **Knuspr**: OAuth/MCP-Tool-Discovery und autorisierte tatsächliche Live-Suche, Angebots-/Preis-/Verfügbarkeitsanzeige mit Liefergebiet/Beobachtungszeit und bestehendem Einkaufsvergleich. Bei nicht aufhebbarem Zugangshindernis Blocker ehrlich dokumentieren; Fixtures nicht als Liveanbieter ausgeben.
 - [ ] **Picnic** bei belegter Blockade für P0 als DEFERRED akzeptieren, keine stillschweigende Entfernung aus dem langfristigen Auftrag; bisherige acht Händler nicht verwerfen.
-
-## 24. Frische Bestätigung für manuellen Zugang und jede neue Herstellung
-
-- [ ] Manuelle Zugangsmenge, genaue Artikel-/Lagerauswahl und Daten bleiben nach Activity-Neuerstellung erhalten; Zugangs- und Chargenfreigabe werden nicht wiederhergestellt und gelten nur für den jeweiligen Vorgang/relevante Eingaben. Neue Vorgangskennung ohne neue Zustimmung erzeugt keinen weiteren Zugang.
-- [ ] Nach erfolgreicher Herstellung und **Neuen Vorgang beginnen** können Zutaten-/Portions-/Lagerangaben erhalten bleiben, Kochbestätigung, physische Lagerprüfung und Fertigportionenfreigabe verlangen aber neue Gesten. Zwei gesondert bestätigte Herstellungen erzeugen genau zwei Ereignisse; Kochen zählt nicht als gegessener Verzehr.
-- [ ] Ursprüngliche zwei rote Standard-App-Fälle und unveränderte grüne Regression sichern; tatsächliche zusätzliche Android-/Offline-/Retry-/Neustart-/SQLite-/FK-Fälle auf exaktem neuen Head bestehen. Bisherige Room-/v1-Verträge und unabhängige FoodStore-Prüfungen unverändert erhalten.
