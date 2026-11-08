@@ -37,10 +37,16 @@ internal interface StorageCapacityDao {
 }
 
 internal data class StorageCapacityInput(val locationId: String, val previousId: String?,
-    val totalMl: Long?, val occupiedMl: Long?, val temperatureCelsiusText: String?, val reason: String)
+    val totalMl: Long?, val occupiedMl: Long?, val temperatureCelsiusText: String?, val reason: String, val locationReviewId: String? = null)
 data class ProductionCapacityEvidence(val reviewId: String, val addedOuterVolumeMl: Long, val physicallyChecked: Boolean)
 internal data class StorageCapacitySnapshot(val locations: List<StorageLocationEntity>, val history: List<StorageCapacityReviewEntity>,
-    val reversedOperationIds: Set<String>)
+    val reversedOperationIds: Set<String>, val originalLocations: List<StorageLocationEntity> = locations,
+    val locationHistory: List<StorageLocationReviewEntity> = emptyList()) {
+    fun trustedFree(row: StorageCapacityReviewEntity): Long? =
+        if (locations.none { it.id == row.locationId && it.confirmed }) null else
+            StorageCapacityRules.trustedFree(row, history, reversedOperationIds,
+                locationHistory.filter { it.locationId == row.locationId }.maxByOrNull { it.revision })
+}
 
 internal object StorageCapacityRules {
     const val MANUAL = "PHYSICAL_CHECK_V1"
@@ -69,7 +75,16 @@ internal object StorageCapacityRules {
         }
         return null
     }
-    fun trustedFree(value: StorageCapacityReviewEntity, history: List<StorageCapacityReviewEntity>, reversed: Set<String>): Long? {
+    fun trustedFree(value: StorageCapacityReviewEntity, history: List<StorageCapacityReviewEntity>, reversed: Set<String>,
+        locationReview: StorageLocationReviewEntity? = null): Long? {
+        if (locationReview != null) {
+            if (!locationReview.confirmed) return null
+            val boundary = locationReview.capacityReviewId?.let { id -> history.find { it.id == id } ?: return null }
+            val physical = physicalBasis(value, history) ?: return null
+            // Exact immutable predecessor IDs disambiguate reviews even within
+            // the same millisecond. A name/status review is not a physical check.
+            if (boundary != null && physical.revision <= boundary.revision) return null
+        }
         val byId = history.associateBy { it.id }; val visited = mutableSetOf<String>()
         var current = value
         while (visited.add(current.id)) {
@@ -89,21 +104,26 @@ internal object StorageCapacityRules {
 internal class StorageCapacityOperations(private val db: FoodDatabase, private val now: () -> Long,
     private val zone: () -> String = { ZoneId.systemDefault().id }) {
     private val dao get() = db.storageCapacityDao()
-    fun watch() = db.invalidationTracker.createFlow("storage_locations", "storage_capacity_reviews", "operation_reversals", emitInitialState = true)
-        .map { db.withTransaction { StorageCapacitySnapshot(db.foodDao().allLocations(), dao.history(), dao.reversedOperations().toSet()) } }.distinctUntilChanged()
+    fun watch() = db.invalidationTracker.createFlow("storage_locations", "storage_location_reviews", "storage_capacity_reviews", "operation_reversals", emitInitialState = true)
+        .map { db.withTransaction { StorageCapacitySnapshot(db.foodDao().allLocations(), dao.history(), dao.reversedOperations().toSet(), db.foodDao().originalLocations(), db.storageLocationReviewDao().history()) } }.distinctUntilChanged()
 
     suspend fun save(key: String, input: StorageCapacityInput, confirmed: Boolean): String = db.withTransaction {
         require(confirmed) { "Diese aktuellen tatsächlichen Lagerangaben ausdrücklich bestätigen." }
         StorageCapacityRules.validate(input.totalMl, input.occupiedMl, input.temperatureCelsiusText)
         require(input.reason.isNotBlank() && input.reason.length <= 2000) { "Prüf-/Korrekturgrund fehlt oder ist zu lang." }
-        val hash = WriteRules.fingerprint("STORAGE_CAPACITY_CHECK_V1", input.locationId, input.previousId,
+        val legacyHash = WriteRules.fingerprint("STORAGE_CAPACITY_CHECK_V1", input.locationId, input.previousId,
             input.totalMl, input.occupiedMl, input.temperatureCelsiusText, input.reason)
+        val hash = input.locationReviewId?.let { WriteRules.fingerprint("STORAGE_CAPACITY_LOCATION_REVIEW_V1", legacyHash, it) } ?: legacyHash
         WriteRules.replay(db.foodDao(), key, hash)?.let { return@withTransaction it }
         val location = requireNotNull(db.foodDao().location(input.locationId)) { "Lagerort fehlt." }
         require(location.confirmed) { "Ein geplanter oder unbestätigter Lagerort erzeugt keine tatsächliche Kapazität." }
+        val locationReview = db.storageLocationReviewDao().latest(input.locationId)
+        require(locationReview?.id == input.locationReviewId) {
+            "Name oder Status inzwischen geändert. Aktuellen Lagerort vor der Kapazitätsprüfung erneut lesen." }
         val previous = dao.latest(input.locationId)
         require(previous?.id == input.previousId) { "Kapazitätsprüfung inzwischen geändert. Neu lesen und erneut bestätigen." }
-        val at = now(); require(at >= 0L && (previous == null || at >= previous.recordedAt)) { "Zeitpunkt liegt vor der bisherigen Prüfung." }
+        val at = now(); require(at >= 0L && (previous == null || at >= previous.recordedAt) &&
+            (locationReview == null || at >= locationReview.recordedAt)) { "Zeitpunkt liegt vor der bisherigen Prüfung." }
         val id = WriteRules.id()
         db.foodDao().insertOperation(OperationEntity(key, "STORAGE_CAPACITY_CHECK_V1", hash, at, id))
         dao.insert(StorageCapacityReviewEntity(id, input.locationId, Math.addExact(previous?.revision ?: 0, 1),
@@ -118,7 +138,7 @@ internal class StorageCapacityOperations(private val db: FoodDatabase, private v
         require(evidence.addedOuterVolumeMl >= 0L) { "Tatsächliches zusätzliches Behälter-Außenvolumen in ganzen Millilitern angeben; 0 für bereits belegte Behälter ist erlaubt." }
         val previous = requireNotNull(dao.latest(locationId)) { "Aktuelle strukturierte Kapazitätsprüfung fehlt." }
         require(previous.id == evidence.reviewId) { "Kapazitätsfassung inzwischen geändert. Herstellung neu prüfen." }
-        val free = requireNotNull(StorageCapacityRules.trustedFree(previous, dao.history(locationId), dao.reversedOperations().toSet())) {
+        val free = requireNotNull(StorageCapacityRules.trustedFree(previous, dao.history(locationId), dao.reversedOperations().toSet(), db.storageLocationReviewDao().latest(locationId))) {
             "Freie Kapazität bleibt unbekannt oder die Herstellungsbasis wurde storniert. Aktuelle physische Angaben erneut prüfen." }
         require(evidence.addedOuterVolumeMl <= free) { "Zusätzliche Behälter passen nicht in die bestätigte freie Kapazität." }
         return previous

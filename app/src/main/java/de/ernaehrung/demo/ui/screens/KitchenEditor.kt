@@ -191,9 +191,10 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var useBy by rememberSaveable { mutableStateOf("") }
     // Each newly confirmed manufacturing event has its own physical checks.
     // Keep draft fields, never reuse a previous event's actual-action gestures.
-    var checked by remember(key,selected,location) { mutableStateOf(false) }
-    var released by remember(key,selected,location,date,useBy,portions) { mutableStateOf(false) }
-    var confirmed by remember(key,selected,allocationMode,batches,quantities,portions,location,date,
+    val locationFacts = state.locations.find { it.id == location }
+    var checked by remember(key,selected,locationFacts) { mutableStateOf(false) }
+    var released by remember(key,selected,locationFacts,date,useBy,portions) { mutableStateOf(false) }
+    var confirmed by remember(key,selected,allocationMode,batches,quantities,portions,locationFacts,date,
         storageNote,deviation,useBy,checked,released) { mutableStateOf(false) }
     val capacityState by model.storageCapacity.collectAsStateWithLifecycle()
     var useCapacity by remember { mutableStateOf(false) }
@@ -202,11 +203,11 @@ private fun ProductionEditor(state: LocalDataState, blocked: Boolean, key: Strin
     var capacityBasis by remember { mutableStateOf<String?>(null) }
     val capacityData = capacityState.snapshot
     val currentCapacity = capacityData?.history?.filter { it.locationId == location }?.maxByOrNull { it.revision }
-    val freeCapacity = if (currentCapacity == null || capacityData == null) null
-        else StorageCapacityRules.trustedFree(currentCapacity, capacityData.history, capacityData.reversedOperationIds)
+    val freeCapacity = if (currentCapacity == null) null
+        else capacityData.trustedFree(currentCapacity)
     val parsedOuterVolume = outerVolume.trim().toLongOrNull()?.takeIf { it >= 0L }
     var appliedPrefillSequence by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(useCapacity, location, currentCapacity?.id, capacityState.readError, capacityData?.reversedOperationIds) {
+    LaunchedEffect(useCapacity, location, currentCapacity?.id, capacityState.readError, capacityData?.reversedOperationIds, capacityData?.locationHistory) {
         capacityBasis = if (useCapacity) currentCapacity?.id else null
         capacityConfirmed = false
         if (useCapacity) confirmed = false

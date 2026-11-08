@@ -63,7 +63,7 @@ internal object BatchReviewTimes {
 internal class BatchReviewOperations(private val db: FoodDatabase, private val now: () -> Long) {
     private val dao = db.foodDao()
     fun watch(id: String) = db.invalidationTracker.createFlow("batches", "batch_reviews", "product_versions",
-        "storage_locations", "operations", "operation_reversals", "stock_movements").map {
+        "storage_locations", "storage_location_reviews", "operations", "operation_reversals", "stock_movements").map {
         db.withTransaction {
             val original = requireNotNull(dao.originalBatch(id)) { "Charge nicht gefunden." }
             val history = dao.batchReviews(id)

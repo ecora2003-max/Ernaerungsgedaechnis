@@ -29,7 +29,7 @@ private fun rememberStorageCapacityModel(): StorageCapacityViewModel {
 }
 
 private data class CapacityEditBasis(val location: StorageLocationEntity, val latest: StorageCapacityReviewEntity?,
-    val reversed: Set<String>)
+    val reversed: Set<String>, val locationReviewId: String?)
 private data class CapacityForm(val total: String = "", val occupied: String = "", val temperature: String = "",
     val reason: String = "", val confirmed: Boolean = false)
 
@@ -42,6 +42,8 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
     var selectedId by rememberSaveable(initialLocationId) { mutableStateOf(initialLocationId) }
     var operationKey by rememberSaveable { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<CapacityEditBasis?>(null) }
+    var locationEditing by remember { mutableStateOf<LocationEditBasis?>(null) }
+    var locationForm by remember { mutableStateOf(LocationForm()) }
     // Outside the changing fact/history layout: a newly inserted warning or
     // Room revision must neither replace nor drop the user's unsaved fields.
     var form by remember { mutableStateOf(CapacityForm()) }
@@ -49,6 +51,7 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
     LaunchedEffect(snapshot?.locations) { if (selectedId == null) selectedId = snapshot?.locations?.firstOrNull()?.id }
     val location = snapshot?.locations?.find { it.id == selectedId }
     val latest = snapshot?.history?.filter { it.locationId == selectedId }?.maxByOrNull { it.revision }
+    val locationReview = snapshot?.locationHistory?.filter { it.locationId == selectedId }?.maxByOrNull { it.revision }
     Column(Modifier.fillMaxWidth().testTag("storage_capacity_screen"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Heading("Lagerorte & Kapazität", "Tatsächlichen Platz vor Ort prüfen")
         Text("Nutzbare Gesamtkapazität und belegtes Behälter-Außenvolumen getrennt erfassen. Lebensmittelmasse oder gegessene Portionen sagen nicht, wie viel Platz Behälter noch belegen. Fehlende Angaben bleiben unbekannt; geplante Lagerorte schaffen keinen realen Platz.")
@@ -58,7 +61,7 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
         } else if (snapshot == null) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (snapshot != null && !saving.busy) IdPicker("Lagerort für Kapazitätsprüfung",
             snapshot.locations.map { it.id to "${it.name} · ${if (it.confirmed) "vorhanden" else "geplant/unbestätigt"}" }, selectedId.orEmpty()) {
-            selectedId = it; editing = null; operationKey = null; model.clearResult()
+            selectedId = it; editing = null; locationEditing = null; operationKey = null; model.clearResult()
         }
         if (snapshot?.locations?.isEmpty() == true) Text("Noch kein Lagerort angelegt.", Modifier.testTag("storage_capacity_empty"))
         if (onCreateLocation != null) OutlinedButton(onCreateLocation, enabled = !saving.busy) { Text("Lagerort anlegen") }
@@ -69,27 +72,50 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
                 Text("Noch keine strukturierte physische Kapazitätsprüfung.")
                 Text("Unbekannt", Modifier.testTag("storage_capacity_free"))
             } else CapacityFacts(latest, data, "storage_capacity_")
-            if (editing == null || saving.result != null) OutlinedButton({
+            if ((locationEditing == null && editing == null) || saving.result != null) OutlinedButton({
+                model.clearResult(); editing = null; operationKey = UUID.randomUUID().toString()
+                locationEditing = LocationEditBasis(place, locationReview?.id, latest?.id)
+                locationForm = LocationForm(place.name, place.confirmed)
+            }, enabled = !saving.busy && !state.readError, modifier = Modifier.testTag("storage_location_edit")) {
+                Text("Name oder Status prüfen")
+            }
+            if ((editing == null && locationEditing == null) || saving.result != null) OutlinedButton({
                 model.clearResult(); operationKey = UUID.randomUUID().toString()
-                editing = CapacityEditBasis(place, latest, data.reversedOperationIds)
+                locationEditing = null
+                editing = CapacityEditBasis(place, latest, data.reversedOperationIds, locationReview?.id)
                 form = CapacityForm(latest?.totalMl?.toString().orEmpty(), latest?.occupiedMl?.toString().orEmpty(),
                     latest?.temperatureCelsiusText.orEmpty())
             }, enabled = place.confirmed && !saving.busy && !state.readError, modifier = Modifier.testTag("storage_capacity_edit")) {
                 Text("Aktuelle Angaben vor Ort prüfen")
             }
             Fold("Unveränderte ursprüngliche Lagerangaben") {
-                Text("${place.name} · ${if (place.confirmed) "vorhanden bestätigt" else "geplant/unbestätigt"}")
-                Text("Ursprüngliche nutzbare Kapazitätsangabe: ${place.usableCapacityMl?.let { "$it ml" } ?: "unbekannt"}")
-                Text("Ursprüngliche Temperaturangabe: ${place.temperatureCelsius?.let { "$it °C" } ?: "unbekannt"}")
+                val original = data.originalLocations.find { it.id == place.id } ?: place
+                Text("${original.name} · ${if (original.confirmed) "vorhanden bestätigt" else "geplant/unbestätigt"}")
+                Text("Ursprüngliche nutzbare Kapazitätsangabe: ${original.usableCapacityMl?.let { "$it ml" } ?: "unbekannt"}")
+                Text("Ursprüngliche Temperaturangabe: ${original.temperatureCelsius?.let { "$it °C" } ?: "unbekannt"}")
                 Text("Ohne überliefertes belegtes Außenvolumen ergibt der ursprüngliche Kapazitätswert keinen bestätigten freien Platz.")
             }
         }
         saving.error?.let { Hint(it) }
         if (saving.busy) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("storage_capacity_saving"))
-        if (saving.result != null) Text("Physische Lagerprüfung dauerhaft gespeichert. Keine Lebensmittelmenge oder Mahlzeit gebucht.", Modifier.testTag("storage_capacity_saved"))
+        if (saving.result != null) {
+            if (saving.locationSaved) Text("Name und Status dauerhaft gespeichert. Keine Menge gebucht. Freien Lagerplatz anschließend separat vor Ort prüfen.", Modifier.testTag("storage_location_saved"))
+            else Text("Physische Lagerprüfung dauerhaft gespeichert. Keine Lebensmittelmenge oder Mahlzeit gebucht.", Modifier.testTag("storage_capacity_saved"))
+        }
+        val locationBasis = locationEditing
+        if (locationBasis != null && saving.result == null && operationKey != null) key(operationKey) {
+            val stale = snapshot == null || state.readError || location != locationBasis.location ||
+                locationReview?.id != locationBasis.previousId || latest?.id != locationBasis.capacityId
+            LocationEditor(locationBasis, locationForm, { locationForm = it }, stale || saving.busy) { input, confirmed ->
+                model.saveLocation(requireNotNull(operationKey), input, confirmed)
+            }
+            if (stale) Hint("Lagerort oder Kapazitätsprüfung inzwischen geändert. Formular schließen und aktuellen Stand erneut prüfen.")
+            OutlinedButton({ locationEditing = null; operationKey = null; model.clearResult() }, enabled = !saving.busy,
+                modifier = Modifier.testTag("storage_location_cancel")) { Text("Lagerortprüfung abbrechen") }
+        }
         val basis = editing
         if (basis != null && saving.result == null && operationKey != null) key(operationKey) {
-            val stale = snapshot == null || state.readError || location?.id != basis.location.id || latest?.id != basis.latest?.id ||
+            val stale = snapshot == null || state.readError || location != basis.location || locationReview?.id != basis.locationReviewId || latest?.id != basis.latest?.id ||
                 snapshot.reversedOperationIds != basis.reversed || !basis.location.confirmed
             if (stale) Hint("Prüfgrundlage inzwischen geändert oder nicht lesbar. Formular schließen und aktuelle Angaben erneut prüfen.")
             CapacityEditor(basis, form, { form = it }, stale || saving.busy) { input, confirmed ->
@@ -102,13 +128,20 @@ internal fun StorageCapacityScreen(initialLocationId: String? = null, providedMo
             Fold("Kapazitätshistorie · Prüfung ${row.revision}") { CapacityFacts(row, data, "capacity_history_${row.id}_") }
         }
         }
+        snapshot?.locationHistory?.filter { it.locationId == selectedId }?.sortedByDescending { it.revision }?.forEach { row ->
+            Fold("Lagerorthistorie · Prüfung ${row.revision}") {
+                Text("${row.name} · ${if (row.confirmed) "vorhanden bestätigt" else "geplant/unbestätigt"}")
+                Text("${row.reason} · Nutzerangabe · ${Instant.ofEpochMilli(row.recordedAt).atZone(ZoneId.of(row.zoneId))}")
+                Text("Prüfkennung ${row.id} · Vorgang ${row.operationId}")
+            }
+        }
         Text("Eine Mengenprüfung ersetzt keine Prüfung geeigneter Temperatur, Kühlkette oder Lebensmittelhaltbarkeit. Herstellung bleibt eine getrennte ausdrückliche Buchung; Verzehr räumt Behälter nicht selbsttätig aus.")
     }
 }
 
 @Composable
 internal fun CapacityFacts(row: StorageCapacityReviewEntity, snapshot: StorageCapacitySnapshot, prefix: String) {
-    val free = StorageCapacityRules.trustedFree(row, snapshot.history, snapshot.reversedOperationIds)
+    val free = snapshot.trustedFree(row)
     Text("Nutzbare Gesamtkapazität: ${row.totalMl?.let { "$it ml" } ?: "unbekannt"}", Modifier.testTag("${prefix}total"))
     Text("Belegtes Behälter-Außenvolumen: ${row.occupiedMl?.let { "$it ml" } ?: "unbekannt"}", Modifier.testTag("${prefix}occupied"))
     Text(free?.let { "$it ml" } ?: "Unbekannt", Modifier.testTag("${prefix}free"))
@@ -118,7 +151,7 @@ internal fun CapacityFacts(row: StorageCapacityReviewEntity, snapshot: StorageCa
     if (physical != null) Text("Physische Prüfgrundlage: ${Instant.ofEpochMilli(physical.recordedAt).atZone(ZoneId.of(physical.zoneId))}")
     Text(if (row.basisKind == StorageCapacityRules.MANUAL) "Vor Ort geprüft · Nutzerangabe" else
         "Aus bestätigter Herstellung fortgeschrieben · zusätzlich ${row.addedOuterVolumeMl ?: "unbekannt"} ml Außenvolumen. Die Temperaturangabe stammt aus der physischen Prüfgrundlage.")
-    if (row.totalMl != null && row.occupiedMl != null && free == null) Text("Die Herstellungsgrundlage wurde storniert oder ist nicht vollständig nachweisbar. Freien Platz erneut physisch prüfen.")
+    if (row.totalMl != null && row.occupiedMl != null && free == null) Text("Lagerort oder Prüfgrundlage inzwischen geändert, storniert oder nicht vollständig nachweisbar. Freien Platz erneut physisch prüfen.")
     Text("${row.reason} · Stand ${Instant.ofEpochMilli(row.recordedAt).atZone(ZoneId.of(row.zoneId))}")
 }
 
@@ -133,7 +166,7 @@ private fun CapacityEditor(basis: CapacityEditBasis, form: CapacityForm, onChang
         val all = millilitres(form.total); val used = millilitres(form.occupied); val temp = form.temperature.takeIf { it.isNotBlank() }
         StorageCapacityRules.validate(all, used, temp)
         require(form.reason.isNotBlank() && form.reason.length <= 2000) { "Prüf-/Korrekturgrund angeben." }
-        StorageCapacityInput(basis.location.id, basis.latest?.id, all, used, temp, form.reason)
+        StorageCapacityInput(basis.location.id, basis.latest?.id, all, used, temp, form.reason, basis.locationReviewId)
     }
     Section("Diese tatsächlichen Angaben prüfen", "Leer bleibt unbekannt; 0 bleibt bekannte Null. Keine Schätzung aus Lebensmittelmengen.")
     Text("Ungespeicherte Eingaben werden beim Schließen oder Neustart dieser Ansicht verworfen.")
@@ -146,4 +179,24 @@ private fun CapacityEditor(basis: CapacityEditBasis, form: CapacityForm, onChang
     Check("Diese aktuellen tatsächlichen Angaben vor Ort geprüft und ausdrücklich bestätigen", form.confirmed) { if (!blocked) onChange(form.copy(confirmed = it)) }
     Button({ onSave(input.getOrThrow(), form.confirmed) }, enabled = !blocked && form.confirmed && input.isSuccess,
         modifier = Modifier.testTag("storage_capacity_save")) { Text("Physische Lagerprüfung speichern") }
+}
+
+private data class LocationEditBasis(val location: StorageLocationEntity, val previousId: String?, val capacityId: String?)
+private data class LocationForm(val name: String = "", val present: Boolean = false, val reason: String = "", val confirmed: Boolean = false)
+
+@Composable
+private fun LocationEditor(basis: LocationEditBasis, form: LocationForm, onChange: (LocationForm) -> Unit, blocked: Boolean,
+    onSave: (StorageLocationReviewInput, Boolean) -> Unit) {
+    LaunchedEffect(blocked) { if (blocked && form.confirmed) onChange(form.copy(confirmed = false)) }
+    Section("Diesen Lagerort prüfen", "Identität und bisherige Historie bleiben erhalten.")
+    Text("Geplant/unbestätigt schafft keinen realen Lagerplatz. Vorhandenen Bestand zuerst separat umlagern oder korrigieren, bevor ein vorhandener Ort zurückgenommen wird. Die Ortsprüfung ersetzt keine neue Kapazitätsprüfung.")
+    Text("Ungespeicherte Eingaben und Bestätigung werden beim Schließen oder Neustart verworfen.")
+    Field("Name des Lagerortes", form.name, { onChange(form.copy(name = it, confirmed = false)) }, modifier = Modifier.testTag("storage_location_name"))
+    Check("Dieser Lagerort ist tatsächlich vorhanden", form.present) { if (!blocked) onChange(form.copy(present = it, confirmed = false)) }
+    Field("Grund der Lagerortprüfung", form.reason, { onChange(form.copy(reason = it, confirmed = false)) }, modifier = Modifier.testTag("storage_location_reason"))
+    Check("Name und Status geprüft und ausdrücklich bestätigen", form.confirmed) { if (!blocked) onChange(form.copy(confirmed = it)) }
+    Button({ onSave(StorageLocationReviewInput(basis.location.id, basis.previousId, basis.capacityId,
+        form.name, form.present, form.reason), form.confirmed) },
+        enabled = !blocked && form.confirmed && form.name.isNotBlank() && form.name.length <= 200 && form.reason.isNotBlank() && form.reason.length <= 2000,
+        modifier = Modifier.testTag("storage_location_save")) { Text("Lagerortprüfung speichern") }
 }

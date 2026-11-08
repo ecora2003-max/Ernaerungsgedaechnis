@@ -71,6 +71,9 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val batchReviews = BatchReviewOperations(db, now)
     internal fun watchBatchReview(id: String) = batchReviews.watch(id)
     internal suspend fun reviewBatch(key: String, input: BatchReviewInput, confirmed: Boolean) = batchReviews.save(key, input, confirmed)
+    private val locationReviews = StorageLocationReviewOperations(db, now)
+    internal suspend fun reviewStorageLocation(key: String, input: StorageLocationReviewInput, confirmed: Boolean) =
+        locationReviews.save(key, input, confirmed)
     private val storageCapacity = StorageCapacityOperations(db, now)
     internal fun watchStorageCapacity() = storageCapacity.watch()
     internal suspend fun reviewStorageCapacity(key: String, input: StorageCapacityInput, confirmed: Boolean) =

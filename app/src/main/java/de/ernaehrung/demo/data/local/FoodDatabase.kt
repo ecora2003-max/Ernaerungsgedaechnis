@@ -31,6 +31,8 @@ internal interface FoodDao {
     @Insert suspend fun insertProduct(value: ProductEntity)
     @Insert suspend fun insertVersion(value: ProductVersionEntity)
     @Insert suspend fun insertAlias(value: ProductAliasEntity)
+    @Query("SELECT * FROM storage_location_reviews r WHERE recordedAt<=:at AND revision=(SELECT MAX(revision) FROM storage_location_reviews WHERE locationId=r.locationId AND recordedAt<=:at) ORDER BY locationId")
+    suspend fun storageLocationReviewsAt(at: Long): List<StorageLocationReviewEntity>
     @Insert suspend fun insertLocation(value: StorageLocationEntity)
     @Insert suspend fun insertOperation(value: OperationEntity)
     @Insert suspend fun insertBatch(value: BatchEntity)
@@ -149,7 +151,8 @@ internal interface FoodDao {
     @Query("SELECT * FROM product_versions WHERE id = :id") suspend fun version(id: String): ProductVersionEntity?
     @Query("SELECT * FROM product_versions WHERE productId = :id ORDER BY revision DESC LIMIT 1") suspend fun latestVersion(id: String): ProductVersionEntity?
     @Query("SELECT * FROM product_versions WHERE productId = :id ORDER BY revision") suspend fun versions(id: String): List<ProductVersionEntity>
-    @Query("SELECT * FROM storage_locations WHERE id = :id") suspend fun location(id: String): StorageLocationEntity?
+    @Query("SELECT * FROM storage_locations ORDER BY id") suspend fun originalLocations(): List<StorageLocationEntity>
+    @Query("SELECT * FROM current_storage_locations WHERE id = :id") suspend fun location(id: String): StorageLocationEntity?
     @Query("SELECT * FROM current_batches WHERE id = :id") suspend fun batch(id: String): BatchEntity?
     @Query("SELECT COUNT(*) FROM batches") suspend fun batchCount(): Int
     @Query("SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = :id") suspend fun balance(id: String): Long
@@ -164,7 +167,7 @@ internal interface FoodDao {
     @Query("SELECT * FROM diary_days WHERE date = :date") suspend fun day(date: String): DiaryDayEntity?
     @Query("SELECT date FROM diary_days UNION SELECT c.date FROM consumption_events c LEFT JOIN operation_reversals r ON r.originalOperationId = c.operationId WHERE r.originalOperationId IS NULL ORDER BY date DESC")
     suspend fun knownNutritionDates(): List<String>
-    @Query("SELECT * FROM storage_locations ORDER BY name, id") suspend fun allLocations(): List<StorageLocationEntity>
+    @Query("SELECT * FROM current_storage_locations ORDER BY name, id") suspend fun allLocations(): List<StorageLocationEntity>
     @Query("SELECT * FROM recipe_versions r WHERE r.revision = (SELECT MAX(revision) FROM recipe_versions WHERE recipeId = r.recipeId) ORDER BY r.id")
     suspend fun currentRecipes(): List<RecipeVersionEntity>
     @Query("SELECT * FROM recipe_ingredients WHERE recipeVersionId = :id ORDER BY position") suspend fun ingredients(id: String): List<RecipeIngredientEntity>
@@ -180,20 +183,20 @@ internal interface FoodDao {
         (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount,
         EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = b.originOperationId) AS originReversed
         FROM current_batches b JOIN product_versions v ON v.id = b.versionId
-        JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
+        JOIN current_storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     fun observeBatches(): Flow<List<BatchRow>>
 
     @Query("""SELECT b.*, v.name AS productName, v.baseUnit AS unit, l.name AS locationName,
         (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount,
         EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = b.originOperationId) AS originReversed
         FROM current_batches b JOIN product_versions v ON v.id = b.versionId
-        JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
+        JOIN current_storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     suspend fun planningBatches(): List<BatchRow>
     @Query("""SELECT b.*, v.name AS productName, v.baseUnit AS unit, l.name AS locationName,
         (SELECT COALESCE(SUM(delta), 0) FROM stock_movements WHERE batchId = b.id) AS stockAmount,
         EXISTS(SELECT 1 FROM operation_reversals r WHERE r.originalOperationId = b.originOperationId) AS originReversed
         FROM batches b JOIN product_versions v ON v.id = b.versionId
-        JOIN storage_locations l ON l.id = b.locationId ORDER BY b.id""")
+        JOIN current_storage_locations l ON l.id = b.locationId ORDER BY b.id""")
     suspend fun originalPlanningBatches(): List<BatchRow>
     /** Effective movement day falls back to the linked legacy consumption date. */
     @Query("""SELECT m.id, m.batchId, m.operationId, m.kind AS movementKind,
@@ -218,7 +221,7 @@ internal interface FoodDao {
         LEFT JOIN operations o ON o.id = m.operationId ORDER BY m.id""")
     suspend fun stockMovementSnapshotRows(): List<StockMovementSnapshotRow>
 
-    @Query("SELECT * FROM storage_locations ORDER BY name") fun observeLocations(): Flow<List<StorageLocationEntity>>
+    @Query("SELECT * FROM current_storage_locations ORDER BY name,id") fun observeLocations(): Flow<List<StorageLocationEntity>>
     @Query("""SELECT m.*, v.name AS productName, v.baseUnit AS unit FROM stock_movements m
         JOIN batches b ON b.id = m.batchId JOIN product_versions v ON v.id = b.versionId
         ORDER BY m.recordedAt DESC, m.id DESC LIMIT 30""")
@@ -239,7 +242,7 @@ internal interface FoodDao {
 // A deterministic child-before-parent order avoids its TimSort contract failure
 // and keeps generated deletion order consistent. Self-edges do not order entities.
 @Database(entities = [RecipeFavoriteEntity::class, PersonalRestrictionEntity::class, NutritionGoalRunEntity::class, NutritionGoalVersionEntity::class, NutritionGoalValueEntity::class,
-    StorageCapacityReviewEntity::class, BatchReviewEntity::class,
+    StorageLocationReviewEntity::class, StorageCapacityReviewEntity::class, BatchReviewEntity::class,
     StockMovementEntity::class,
     RecipeIngredientEntity::class,
     ConsumptionAllocationEntity::class,
@@ -284,13 +287,14 @@ internal interface FoodDao {
     ProductEntity::class,
     RecipeEntity::class,
     PlanSeriesEntity::class],
-    views = [CurrentBatchView::class], version = 17, exportSchema = true)
+    views = [CurrentBatchView::class, CurrentStorageLocationView::class], version = 18, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
     internal abstract fun healthDao(): HealthImportDao
     internal abstract fun bodyDao(): BodyMeasurementDao
     internal abstract fun manualWorkoutDao(): ManualWorkoutDao
+    internal abstract fun storageLocationReviewDao(): StorageLocationReviewDao
     internal abstract fun storageCapacityDao(): StorageCapacityDao
     internal abstract fun nutritionGoalDao(): NutritionGoalDao
     internal abstract fun personalRestrictionDao(): PersonalRestrictionDao
@@ -302,7 +306,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

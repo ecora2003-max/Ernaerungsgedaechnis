@@ -19,7 +19,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             "body_measurements", "body_measurement_runs", "body_measurement_versions", "training_events", "training_sets",
             "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
-        internal val TABLES = setOf("alias_decisions", "recipe_favorites",
+        internal val TABLES = setOf("storage_location_reviews", "alias_decisions", "recipe_favorites",
             "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "storage_capacity_reviews",
             "batch_reviews",
@@ -167,10 +167,11 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         else {
             val goals = setOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values")
             val missing = when (original.databaseVersion) {
-                13 -> goals + setOf("storage_capacity_reviews", "personal_restrictions", "recipe_favorites")
-                14 -> goals + setOf("personal_restrictions", "recipe_favorites")
-                15 -> setOf("personal_restrictions", "recipe_favorites")
-                16 -> setOf("recipe_favorites")
+                13 -> goals + setOf("storage_location_reviews", "storage_capacity_reviews", "personal_restrictions", "recipe_favorites")
+                14 -> goals + setOf("storage_location_reviews", "personal_restrictions", "recipe_favorites")
+                15 -> setOf("storage_location_reviews", "personal_restrictions", "recipe_favorites")
+                16 -> setOf("storage_location_reviews", "recipe_favorites")
+                17 -> setOf("storage_location_reviews")
                 else -> emptySet()
             }
             val pin = when (original.databaseVersion) {
@@ -178,12 +179,13 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
                 14 -> "adf43266f88da0de1632891687871124"
                 15 -> "f0276403a772111cf77efeaf250b4b2b"
                 16 -> "e2d5d92fe1b98be4adaf09fc57288228"
+                17 -> "ac53ed935c0fb8f4986777c82f6cdfb5"
                 else -> null
             }
-            require(sql.version == 17 && pin != null && original.identityHash == pin &&
+            require(sql.version == 18 && pin != null && original.identityHash == pin &&
                 original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            original.copy(databaseVersion = 17, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
+            original.copy(databaseVersion = 18, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
                 BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
             })
         }
@@ -250,5 +252,6 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         NutritionGoalSnapshot(db.nutritionGoalDao().versions(), db.nutritionGoalDao().values())
         PersonalRestrictionSnapshot(db.personalRestrictionDao().history())
         RecipeFavoriteOperations(db,now).snapshot()
+        StorageLocationReviewOperations(db,now).validateHistory()
     }
 }

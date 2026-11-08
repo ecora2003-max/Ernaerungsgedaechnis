@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - 'app/src/androidTest/**'
+      - 'app/src/sharedTest/**'
+      - 'app/schemas/**'
       - 'app/src/main/**'
       - 'build.gradle.kts'
       - 'gradle/wrapper/**'
@@ -140,21 +142,21 @@ jobs:
       - name: Execute actual API 26 core UI and persistent Room flows offline
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
-          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest,de.ernaehrung.demo.StockEventsOnDeviceTest,de.ernaehrung.demo.ActualEventApprovalOnDeviceTest
-          EG_ANDROID_TEST_TIMEOUT: 10m
+          EG_ANDROID_TEST_CLASS: de.ernaehrung.demo.PlanExecutionOnDeviceTest,de.ernaehrung.demo.NutritionDayConfirmationOnDeviceTest,de.ernaehrung.demo.StockOverviewOnDeviceTest,de.ernaehrung.demo.PublishedDatabaseMigrationOnDeviceTest,de.ernaehrung.demo.StockEventsOnDeviceTest,de.ernaehrung.demo.ActualEventApprovalOnDeviceTest,de.ernaehrung.demo.StorageLocationOnDeviceTest,de.ernaehrung.demo.RecipeDeviceCredentialUiTest,de.ernaehrung.demo.RecipeAiExchangeOnDeviceTest,de.ernaehrung.demo.RecipeAiLifecycleOnDeviceTest,de.ernaehrung.demo.RecognitionOnDeviceTest,de.ernaehrung.demo.SystemCameraOnDeviceTest,de.ernaehrung.demo.StorageCapacityOnDeviceTest
+          EG_ANDROID_TEST_TIMEOUT: 15m
         with:
           api-level: 26
           target: google_apis
           arch: x86
           profile: pixel_6
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back emulated -camera-front none
           script: |
             chmod +x gradlew
             bash tools/prepare_android_api26_core.sh
             bash tools/run_android_device_tests.sh
             bash tools/run_android_process_restart.sh
-      - name: Verify actual API and all seven original device test results
+      - name: Verify actual API and all eighteen original device test results
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -163,19 +165,21 @@ jobs:
           reports = list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))
           assert reports, 'No original instrumentation XML'
           suites = [ET.parse(path).getroot() for path in reports]
-          assert sum(int(s.get('tests', '0')) for s in suites) == 7
+          assert sum(int(s.get('tests', '0')) for s in suites) == 18
           assert all(int(s.get(field, '0')) == 0 for s in suites for field in ('failures', 'errors', 'skipped'))
           classes = {t.get('classname') for s in suites for t in s.findall('testcase')}
           expected = {'de.ernaehrung.demo.' + name for name in (
               'PlanExecutionOnDeviceTest', 'NutritionDayConfirmationOnDeviceTest', 'StockOverviewOnDeviceTest',
-              'PublishedDatabaseMigrationOnDeviceTest', 'StockEventsOnDeviceTest', 'ActualEventApprovalOnDeviceTest')}
+              'PublishedDatabaseMigrationOnDeviceTest', 'StockEventsOnDeviceTest', 'ActualEventApprovalOnDeviceTest', 'StorageLocationOnDeviceTest',
+              'RecipeDeviceCredentialUiTest', 'RecipeAiExchangeOnDeviceTest', 'RecipeAiLifecycleOnDeviceTest',
+              'RecognitionOnDeviceTest', 'SystemCameraOnDeviceTest', 'StorageCapacityOnDeviceTest')}
           assert classes == expected, (classes, expected)
           import json, subprocess
           proof = json.loads(Path('app/build/outputs/device-diagnostics/process-restart.json').read_text())
           assert proof['status'] == 'PASS' and proof['actualSdk'] == 26 and proof['forceStopObserved'] is True
           assert proof['sourceCommit'] == subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
           assert proof['mainPidBefore'] != proof['mainPidAfter'] and proof['seedPid'] != proof['readPid']
-          print('ANDROID_API26_CORE_PASS: actual SDK 26; 7/7; 0 failures/errors/skips')
+          print('ANDROID_API26_CORE_PASS: actual SDK 26; 18/18; 0 failures/errors/skips')
           PY
       - name: Upload original API 26 evidence only
         if: ${{ always() }}

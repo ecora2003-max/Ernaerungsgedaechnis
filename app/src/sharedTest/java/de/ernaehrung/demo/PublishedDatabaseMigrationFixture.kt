@@ -62,21 +62,23 @@ object PublishedDatabaseMigrationFixture {
                 if (fromVersion >= 14) seedV14(old)
                 if (fromVersion >= 15) seedV15(old)
                 if (fromVersion >= 16) seedV16(old)
+                if (fromVersion >= 17) seedV17(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; 14 -> 46; 15 -> 49; 16 -> 50; else -> 44 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; 14 -> 46; 15 -> 49; 16 -> 50; 17 -> 51; else -> 44 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v17.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v18.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(17, sql.version)
+            assertEquals(18, sql.version)
             assertEquals(if (fromVersion >= 15) 2 else 0, upgraded.nutritionGoalDao().versions().size)
             assertEquals(if (fromVersion >= 15) 2 else 0, upgraded.nutritionGoalDao().values().size)
             assertEquals(if (fromVersion >= 16) 2 else 0,upgraded.personalRestrictionDao().history().size)
-            assertTrue(upgraded.recipeFavoriteDao().history().isEmpty())
+            assertEquals(if (fromVersion >= 17) 1 else 0, upgraded.recipeFavoriteDao().history().size)
+            assertTrue(upgraded.storageLocationReviewDao().history().isEmpty())
             assertEquals(if (fromVersion >= 13) 1 else 0, upgraded.foodDao().batchReviewsAt(Long.MAX_VALUE).size)
             val capacityHistory = upgraded.storageCapacityDao().history()
             assertEquals(if (fromVersion >= 14) 1 else 0, capacityHistory.size)
@@ -178,9 +180,9 @@ object PublishedDatabaseMigrationFixture {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; 14, 15, 16 -> 22; else -> 20 }, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; 14, 15, 16, 17 -> 22; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -213,6 +215,11 @@ object PublishedDatabaseMigrationFixture {
             'Selbst eingeschätzt','MANUAL','USER_REPORTED','Datum selbst geprüft')""")
         db.execSQL("""INSERT INTO manual_workout_sets(id,versionId,position,exercise,rawRepetitions,repetitions,
             rawLoadKg,loadKg) VALUES('workout-v11-set','workout-v11-version',0,'Kniebeuge','008',8,'40,0000','40')""")
+    }
+
+    private fun seedV17(db: SQLiteDatabase) {
+        val hash = RecipeFavoriteOperations.hash(RecipeFavoriteInput("rv", null, true))
+        db.execSQL("INSERT INTO recipe_favorites VALUES('favorite-v17','r','rv',1,NULL,'FAVORITE',?,2,'Europe/Berlin')", arrayOf(hash))
     }
 
     private fun seedV16(db: SQLiteDatabase) {

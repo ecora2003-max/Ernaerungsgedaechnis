@@ -39,6 +39,7 @@ internal object WriteRules {
         require(dao.balance(batchId) >= amount) { "Nicht genügend Bestand. Es wurde nichts gebucht." }
         batchDate(dao, batch, date)
         if (foodUse) {
+            require(dao.location(batch.locationId)?.confirmed == true) { "Lagerort nicht als vorhanden bestätigt." }
             require(batch.release == ReleaseStatus.RELEASED) { "Charge ist gesperrt oder ungeklärt." }
             require(batch.useBy == null || batch.useBy >= date) { "Verbrauchsdatum überschritten." }
         }
