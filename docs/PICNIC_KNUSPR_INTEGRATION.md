@@ -1,6 +1,6 @@
 # Verbindliche Zusatzintegration: Picnic und Knuspr (DE)
 
-Stand: 08.11.2026. **Nutzerauftrag:** Beide Online-Lebensmittelhändler **Picnic und Knuspr** gehören zusätzlich zu den bisher geplanten Supermarktketten zum langfristigen Umfang. **Aktuelle Priorisierung vom 08.11.: Knuspr-Liveangebote jetzt als P0 integrieren; Picnic bei technischen/API-/Rechteblockaden vorläufig zurückstellen und nicht als Blocker dieses P0-Meilensteins behandeln.** Picnic bleibt späteres Ziel. [Aktueller P0-Auftrag](P0_GEMINI_KNUSPR.md). Fehlende externe Fähigkeiten dürfen die bestehenden Offline-/Einkaufsfunktionen nicht blockieren.
+Stand: 08.11.2026. **Nutzerauftrag:** Beide Online-Lebensmittelhändler **Picnic und Knuspr** gehören zusätzlich zu den bisher geplanten Supermarktketten zum langfristigen Umfang. **Aktuelle Reihenfolge vom 08.11.: P0 zuerst automatische Liveangebote der acht bisherigen Supermarktketten plus Knuspr integrieren, danach P1 vollständig integrierte Rezept-KI; Picnic bei technischen/API-/Rechteblockaden vorläufig zurückstellen und nicht als Blocker dieses P0-Meilensteins behandeln.** Picnic bleibt späteres Ziel. [Aktueller P0-Auftrag](P0_GEMINI_KNUSPR.md). Fehlende externe Fähigkeiten dürfen die bestehenden Offline-/Einkaufsfunktionen nicht blockieren.
 
 ## Verbindliche Referenz und belegter Iststand
 
