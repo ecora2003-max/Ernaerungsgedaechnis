@@ -1,6 +1,6 @@
 # Haupt-App: verbindliche modulübergreifende Integrationsabnahme
 
-Stand 06.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md). Die Haupt-App ist das **einzige** Schreibrepository; ausschließlich Codex entwickelt, ohne GitHub-Sperren oder automatische Lock-Recovery. A/B/III/IV bleiben pausiert; parallele Schreibsitzungen sind weiterhin zu vermeiden. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
+Stand 08.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md) und [P0-Multimodell/Knuspr](P0_GEMINI_KNUSPR.md). Die Haupt-App ist das **einzige** Schreibrepository; ausschließlich Codex entwickelt, ohne GitHub-Sperren oder automatische Lock-Recovery. A/B/III/IV bleiben pausiert; parallele Schreibsitzungen sind weiterhin zu vermeiden. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
 
 ## 1. Version / unveränderliche Vertrags-SHAs
 
@@ -88,9 +88,9 @@ SDK-Fallback, optionale Herzfrequenz-/Schlaf-/BIA-Berechtigungen, genaue Krafttr
 
 **Belegstand Sicherung V1:** #269, exakt `2be714c75376af3cb1cd7da58c24cff1f6cc544b`, main `e96e14eedb9613f975a6df1de8f4d445b35cafd2`: 733/733 JVM und zwölf Migrationen ([App-CI 42191862868](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42191862868)), 29/29 echte API35-Fälle einschließlich realem SAF-/Restorefall ([Geräte-CI 42191862816](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/42191862816)) PASS, 0 Fehler/Skips. Native Abbruchprüfungen beider Dialoge werden im folgenden funktionalen Anschluss ergänzt; bis zum ausgeführten Beleg bleibt das vollständige Gerätegate offen. Unterstützte App-Variante und Room 13 ausdrücklich gebunden; keine Watch-/Gesamt-App-Freigabe.
 
-## 10. Picnic UND Knuspr – verpflichtende Zusatzanbieter (Nutzerauftrag 06.11.2026)
+## 10. Knuspr sofort, Picnic bei Blockade nachrangig (Nutzerentscheidungen 06./08.11.2026)
 
-**Beide Anbieter sind zusätzliche, eigenständig abzunehmende Gesamt-App-Ziele.** Referenz (ausschließlich lesen): [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik); vollständiger [Implementierungs- und Nachweisauftrag](PICNIC_KNUSPR_INTEGRATION.md). Recherche/Wrapper-Methoden sind **keine** geprüften Live-Connectoren.
+**Beide Anbieter bleiben langfristige Gesamt-App-Ziele. Für den aktuellen P0-Meilenstein hat Knuspr Vorrang; Picnic darf bei tatsächlichen API-/Rechte-/Zugangsblockaden ausdrücklich als DEFERRED markiert werden und verhindert nicht die Nano-/Knuspr-Fertigstellung.** Referenz (ausschließlich lesen): [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik); vollständiger [Implementierungs- und Nachweisauftrag](PICNIC_KNUSPR_INTEGRATION.md). Recherche/Wrapper-Methoden sind **keine** geprüften Live-Connectoren.
 
 - [ ] **Getrennte Anschlüsse Picnic und Knuspr:** unabhängig konfigurierbare/deaktivierbare Provider-Adapter, dokumentierte API-/Capability-Versionen und authentifiziert tatsächlich verfügbare Funktionen. Bei Knuspr offiziellen MCP-OAuth-Flow und `tools/list` auf realen Rückgaben prüfen; bei Picnic nichtöffentlichen Wrapper/API und nachgewiesenen erlaubten Nutzungsumfang getrennt einstufen. Keine erfundenen Toolnamen, Partnerfreigaben oder Checkout-Fähigkeiten.
 - [ ] **Einkaufsdaten je Anbieter:** per echter Android-Oberfläche gezielte Produktsuche, aktuelle Preise und Angebote im belegten Umfang, Lieferbarkeit/Region/Zeitraum, Packungsgröße, bekannte Grundpreise und verfügbare Artikeldetails anzeigen; Rechte-/Zeit-/Scope-Gates vor Abruf und Anzeige. Fehlende Felder als unbekannt, keine fiktive Vollständigkeit eines Katalogs oder Angebots.
@@ -216,6 +216,17 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 - [ ] Auf dem wegwerfbaren Emulator bestätigte synthetische Lager-/Verzehrdaten erzeugen; normalen App-Prozess starten, durch `am force-stop` vollständig beenden, tatsächliche PID-Abwesenheit beobachten und App mit neuer PID starten. Physische Geräte vor Installation/Eingriffen und nicht debuggable Ziele vor Fixturezugriff ablehnen; keine Signaturumgehung oder Datenlöschung.
 - [ ] In einem unabhängigen neuen Instrumentation-Prozess genaue historische Produktfassungen/IDs, null versus 0, persistierten Bestand/Verzehr, idempotente Retries, abgewiesene unbestätigte Buchung, FK und tatsächliche Netzfreiheit nachweisen. Bereits bestätigte Fixturedaten überleben den Abbruch; daraus keine vollständige UI-Zustands- oder Stromausfallabnahme ableiten.
 - [ ] Originale Phasenausgaben, Source-SHA, SDK, APK-SHAs und unterschiedliche tatsächliche Prozesskennungen sichern. Shell-Erfolg bei Instrumentation-Fehler darf nicht grün werden. Beide regulären SDK35-/26-Gerätejobs müssen die zusätzlichen realen Prozessbelege prüfen; Phasen separat von JUnit-Fallzahlen ausweisen.
+
+## 25. Sofortiger P0-Meilenstein: Gemini Nano 4 Fast, Nano 3, Gemini Cloud und Knuspr
+
+**Verbindlicher Nutzerauftrag vom 08.11.2026:** [P0-Vertikalschnitte](P0_GEMINI_KNUSPR.md), [Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286). Die externe Teilen-/JSON-Integration allein ist keine echte integrierte generative KI.
+
+- [ ] Drei getrennte **vom Nutzer auswählbare** Rezept-KI-Modi in der echten Android-UI: **Nano 4 Fast (on-device)**, **Nano 3 (on-device)**, **Gemini Cloud via offizielle Gemini API**; nachvollziehbare Verfügbarkeit, Modellidentität, Download-/Fehler-/Quota-/Offlinezustand, keine stillschweigende Modellersetzung.
+- [ ] Nano 4 Fast und Nano 3 auf kompatibler echter Hardware mit **echter lokaler Modellantwort je Modus** und tatsächlich überprüfter Version belegen; nicht verfügbare Varianten getrennt BLOCKED kennzeichnen, nicht aus Fixture/Emulator freigeben.
+- [ ] Gemini Cloud mit gültiger tatsächlich unterstützter Modell-ID, sicherer Schlüssel-/Proxy-Konfiguration, ausdrücklichem Übertragungs-Consent, Kostentransparenz und echter API-Antwort nachweisen. Fehlende Cloudkonfiguration darf keine verdeckte Cloud-Übertragung auslösen.
+- [ ] Für alle drei Modelle geprüfte Ausgabe → vorhandener v1-Revalidator/Restriktions-/Rechtegates → getrennt bestätigte Rezept-/Herstellungs-/Verzehraktionen, Offline-/Neustart-/Widerrufs-/Fehlerfälle auf exaktem Code-/Test-SHA.
+- [ ] **Knuspr**: OAuth/MCP-Tool-Discovery und autorisierte tatsächliche Live-Suche, Angebots-/Preis-/Verfügbarkeitsanzeige mit Liefergebiet/Beobachtungszeit und bestehendem Einkaufsvergleich. Bei nicht aufhebbarem Zugangshindernis Blocker ehrlich dokumentieren; Fixtures nicht als Liveanbieter ausgeben.
+- [ ] **Picnic** bei belegter Blockade für P0 als DEFERRED akzeptieren, keine stillschweigende Entfernung aus dem langfristigen Auftrag; bisherige acht Händler nicht verwerfen.
 
 ## 24. Frische Bestätigung für manuellen Zugang und jede neue Herstellung
 
