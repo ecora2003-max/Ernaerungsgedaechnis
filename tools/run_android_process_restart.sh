@@ -92,7 +92,8 @@ data = dict(format='android-actual-process-restart-v1', status='PASS', sourceCom
             forceStopObserved=True, subjectApkSha256=hashlib.sha256(Path(subject_apk).read_bytes()).hexdigest(),
             testApkSha256=hashlib.sha256(Path(test_apk).read_bytes()).hexdigest(),
             checks=['confirmed stock/consumption', 'historical versions', 'null != 0', 'idempotent retry',
-                    'unconfirmed operation rejected', 'FK', 'actual network absence'])
+                    'unconfirmed operation rejected', 'FK', 'actual network absence',
+                    'private OAuth keystore persistence/replay rejection', 'durable automatic-refresh floor/default deny'])
 (root / 'process-restart.json').write_text(json.dumps(data, indent=2) + '\n')
 print('ANDROID_ACTUAL_PROCESS_RESTART_PASS:', data['actualSdk'], first, '->', second)
 PY

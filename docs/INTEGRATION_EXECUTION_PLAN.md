@@ -21,6 +21,8 @@ Die abgeleitete Produktplan-§13-Ansicht ist als #274 auf Main `32a37be1b9f087b3
 
 Diese Liste ist funktionsorientiert, keine starre Acht-Phasen-Roadmap. Bei echter Blockade an einer unabhängigen erlaubten Funktion weiterarbeiten. Kein wiederholtes Vollinventar und keine zufälligen Mikroprüfungen ohne Funktionsbezug.
 
+**P0-Arbeitsstand 08.11.:** [Angebots-/Knuspr-Anschluss und konkrete Providerblockaden](LIVE_OFFERS.md). Standard-Angebotsseite/Einkaufsbedarf, erlaubter Vordergrundrefresh, fünf gepinnte Parser, unabhängiger Vergleich und offizieller PKCE-/MCP-Geräteweg werden gemeinsam geprüft. Alle Produktionsfeeds weiterhin gesperrt; keine Liveabnahme. #285 auf Main `d653303dfbd44cfb1780439d08af33427e473f6b` nach825 JVM/17 Migrationen/43 API35/18 API26 und beiden Prozessbelegen integriert. P1-Reihenfolge unverändert.
+
 ## Architektur und Integration
 
 Einziges Schreibrepository ist die Haupt-App; **sechs** Referenzrepos (EG-Architecture, vier EG-Fachmodule und das neue `ecora2003-max/piknik`) ausschließlich lesen. FoodStore bleibt einzige explizit bestätigte, atomare/idempotente Ist-Grenze. null != 0, Integer-Cents, historische Identitäten/Versionen/Filialen/Quellen erhalten. Keine destruktive Room-Migration, kein stiller Wechsel von `1.0.0-draft` / Schema-Blob `bedde4677342817fe6b883962c8dfbbd60100072` zu nicht freigegebenem v1.1, keine unautorisierte externe Datenübertragung oder kostenpflichtige Cloudpflicht.

@@ -16,6 +16,8 @@ Exklusiver Codex-Einzelentwickler gemäß [AGENTS](../AGENTS.md) und [Ausführun
 
 Aktueller gemeinsamer Ist-/Chronik-/Neustartmeilenstein **#284 auf Main `fdebde07cc795b6c855861725ca1d238d48be330`**, exakt `6c83fec15a549631f1d38064f87a839152cca677`: originale **817 JVM/16 Migrationen, 42 API35 und tatsächliche SDK26/7 Kernfälle**, 0 Fehler/Skips PASS. Zusätzlich tatsächlicher Prozessabbruch/PID-Abwesenheit und unabhängiger Wiederleseprozess auf beiden SDKs PASS; getrennt von Fallzahlen. Vollständige versionierte Lager-/Verzehrchronik und frische vorgangsgebundene Zugangs-/Herstellungsbestätigungen integriert, Room17/51 Tabellen unverändert. Frei verwaltbare Lagerorte (§6.2) auf bestehendem Branch angeschlossen, lokal825 JVM/17 Migrationen/Lint/Android-Testkompilierung PASS, erhaltendes Room18; neue43er-/8er-Geräte-CI/Prozessbelege vor Integration offen. Geplante Orte schaffen keinen realen Platz. Physischer Watch-, realer Modell- und beide Liveanbietergates bleiben offen.
 
+**P0-Arbeitsstand 08.11.:** [Angebots-/Knuspr-Anschluss und konkrete Providerblockaden](LIVE_OFFERS.md). Standard-Angebotsseite/Einkaufsbedarf, erlaubter Vordergrundrefresh, fünf gepinnte Parser, unabhängiger Vergleich und offizieller PKCE-/MCP-Geräteweg werden gemeinsam geprüft. Alle Produktionsfeeds weiterhin gesperrt; keine Liveabnahme. #285 auf Main `d653303dfbd44cfb1780439d08af33427e473f6b` nach825 JVM/17 Migrationen/43 API35/18 API26 und beiden Prozessbelegen integriert. P1-Reihenfolge unverändert.
+
 ## Ziel- und Nachweismatrix
 
 | Ziel | Tatsächlich belegter Teilstand | Offene Integrations- und Abnahmebelege |
