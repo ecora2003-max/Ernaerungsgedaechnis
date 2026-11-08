@@ -62,8 +62,8 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
         // A released batch in an unconfirmed storage location is not usable stock.
         // Include location facts in the revision to invalidate a prior review if
         // the storage evidence changes without a stock movement.
-        val locations = rows.map { it.batch.locationId }.distinct()
-            .associateWith { dao.location(it) }
+        val locationReviews = dao.storageLocationReviewsAt(asOfMillis).associateBy { it.locationId }
+        val locations = dao.originalLocations().associate { it.id to it.withReview(locationReviews[it.id]) }
         // Planning balances alone do not prove that the referenced product
         // version and originating receipt/production existed at this instant.
         // Legacy rows with future-dated evidence must not become current stock.
@@ -298,8 +298,13 @@ internal class RecipeRoomStockSnapshotReader(private val dao: FoodDao) {
                     it.openedAt, it.thawedAt, it.openedAtText, it.thawedAtText, it.release, it.safetyNote)
             })
         val capacities = dao.storageCapacityReviewsAt(asOfMillis)
-        val revision = if (capacities.isEmpty()) batchRevision else WriteRules.fingerprint(
-            "RECIPE_ROOM_STOCK_LOCATION_CAPACITY_V1", batchRevision, capacities.map {
+        val locationRevision = if (locationReviews.isEmpty()) batchRevision else WriteRules.fingerprint(
+            "RECIPE_ROOM_STOCK_LOCATION_REVIEWS_V1", batchRevision, locationReviews.values.sortedBy { it.locationId }.map {
+                listOf(it.id,it.locationId,it.revision,it.previousId,it.operationId,it.name,it.confirmed,it.capacityReviewId,
+                    it.reason,it.source,it.quality,it.recordedAt,it.zoneId)
+            })
+        val revision = if (capacities.isEmpty()) locationRevision else WriteRules.fingerprint(
+            "RECIPE_ROOM_STOCK_LOCATION_CAPACITY_V1", locationRevision, capacities.map {
                 listOf(it.id, it.locationId, it.revision, it.previousId, it.operationId, it.totalMl, it.occupiedMl,
                     it.temperatureCelsiusText, it.reason, it.basisKind, it.addedOuterVolumeMl,
                     it.source, it.quality, it.recordedAt, it.zoneId)

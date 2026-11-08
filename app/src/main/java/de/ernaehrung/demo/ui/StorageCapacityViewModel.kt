@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 internal data class StorageCapacityUiState(val snapshot: StorageCapacitySnapshot? = null, val readError: Boolean = false)
-internal data class StorageCapacitySaveState(val busy: Boolean = false, val result: String? = null, val error: String? = null)
+internal data class StorageCapacitySaveState(val busy: Boolean = false, val result: String? = null, val error: String? = null, val locationSaved: Boolean = false)
 
 /** SavedState never receives fields, confirmation or a snapshot. The screen
  * retains only opaque location/operation IDs and freezes a RAM-only edit basis.
@@ -25,6 +25,16 @@ internal class StorageCapacityViewModel(private val store: FoodStore) : ViewMode
     val saveState = saving.asStateFlow()
     fun retry() { refresh.value += 1L }
     fun clearResult() { if (!saving.value.busy) saving.value = StorageCapacitySaveState() }
+    fun saveLocation(key: String, input: StorageLocationReviewInput, confirmed: Boolean) {
+        if (saving.value.busy || saving.value.result != null) return
+        saving.value = StorageCapacitySaveState(busy = true)
+        viewModelScope.launch {
+            try { saving.value = StorageCapacitySaveState(result = store.reviewStorageLocation(key, input, confirmed), locationSaved = true) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: IllegalArgumentException) { saving.value = StorageCapacitySaveState(error = failure.message ?: "Lagerort erneut prüfen.") }
+            catch (_: Exception) { saving.value = StorageCapacitySaveState(error = "Lagerort konnte nicht gespeichert werden. Vorhandene Daten bleiben erhalten; erneut versuchen.") }
+        }
+    }
     fun save(key: String, input: StorageCapacityInput, confirmed: Boolean) {
         if (saving.value.busy || saving.value.result != null) return
         saving.value = StorageCapacitySaveState(busy = true)

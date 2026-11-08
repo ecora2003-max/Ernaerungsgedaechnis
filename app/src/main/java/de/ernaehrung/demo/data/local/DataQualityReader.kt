@@ -27,7 +27,7 @@ internal data class DataQualitySnapshot(val checkedOn: String, val products: Int
 internal class DataQualityReader(private val db: FoodDatabase, private val now: () -> Long) {
     fun observe() = db.invalidationTracker.createFlow("products", "product_versions", "product_aliases", "alias_decisions",
         "receipt_scans", "receipt_scan_resolutions", "receipts", "receipt_lines", "purchase_events", "receipt_stock_bookings",
-        "batches", "batch_reviews", "storage_locations", "stock_movements", "operation_reversals", "operations", "diary_days",
+        "batches", "batch_reviews", "storage_locations", "storage_location_reviews", "stock_movements", "operation_reversals", "operations", "diary_days",
         "consumption_events", "productions", "recipe_versions", "recipe_ingredients").map { read() }.distinctUntilChanged()
 
     suspend fun read(): DataQualitySnapshot = db.withTransaction {

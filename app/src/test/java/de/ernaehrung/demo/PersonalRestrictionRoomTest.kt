@@ -144,7 +144,7 @@ class PersonalRestrictionRoomTest {
     @Test fun privateBackupScopeIncludesOnlyExplicitlyChosenProfileDataAndPublishedRoom15RetainsItsOriginalRetryDigest() = runBlocking {
         val emptyCurrent = store.captureBackup("de.ernaehrung.demo",true,true)
         val old15 = emptyCurrent.copy(databaseVersion = 15,identityHash = "f0276403a772111cf77efeaf250b4b2b",
-            tables = emptyCurrent.tables.filterNot { it.name in setOf("personal_restrictions","recipe_favorites") })
+            tables = emptyCurrent.tables.filterNot { it.name in setOf("personal_restrictions","recipe_favorites","storage_location_reviews") })
         val digest = BackupArchiveCodec.digest(BackupArchiveCodec.encode(old15))
         val id = active("own","ALLERGEN:SOY")
         assertTrue(store.captureBackup("de.ernaehrung.demo",false,true).tables.single { it.name == "personal_restrictions" }.rows.isEmpty())

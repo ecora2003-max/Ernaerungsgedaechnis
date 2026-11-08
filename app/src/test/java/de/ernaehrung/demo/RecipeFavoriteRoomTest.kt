@@ -69,7 +69,7 @@ class RecipeFavoriteRoomTest {
         val identity = db.foodDao().recipeVersion(v1)!!.recipeId
         store.setRecipeFavorite("favorite",RecipeFavoriteInput(v1,null,true),true)
         val archive = store.captureBackup(app,false,true)
-        assertEquals(51,archive.tables.size)
+        assertEquals(52,archive.tables.size)
         assertEquals(1,archive.tables.single { it.name == "recipe_favorites" }.rows.size)
         assertEquals(BackupRestoreStatus.RESTORED,restore(archive).status)
         assertEquals(store.readRecipeFavorites(),destination.readRecipeFavorites())
@@ -88,7 +88,7 @@ class RecipeFavoriteRoomTest {
         store.confirmPersonalRestrictions("profile-confirm",proposal,store.readPersonalRestrictions().versionBinding(proposal),true)
         val current = store.captureBackup(app,true,true)
         val old = current.copy(databaseVersion = 16,identityHash = "e2d5d92fe1b98be4adaf09fc57288228",
-            tables = current.tables.filterNot { it.name == "recipe_favorites" })
+            tables = current.tables.filterNot { it.name in setOf("recipe_favorites", "storage_location_reviews") })
         assertEquals(50,old.tables.size)
         assertTrue(destination.validateBackupForPreview(old,app))
         assertEquals(BackupRestoreStatus.RESTORED,restore(old).status)

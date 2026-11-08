@@ -177,5 +177,8 @@ jobs:
             app/build/test-results/testDebugUnitTest/*.xml
             app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/14.json
             app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/15.json
+            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/16.json
+            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/17.json
+            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/18.json
           if-no-files-found: ignore
           retention-days: 7

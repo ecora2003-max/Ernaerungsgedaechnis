@@ -4,6 +4,27 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** No old location, batch, capacity, operation or source is rewritten. */
+    val MIGRATION_17_18 = object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS storage_location_reviews (id TEXT NOT NULL,locationId TEXT NOT NULL,
+                revision INTEGER NOT NULL,previousId TEXT,operationId TEXT NOT NULL,name TEXT NOT NULL,confirmed INTEGER NOT NULL,
+                capacityReviewId TEXT,reason TEXT NOT NULL,source TEXT NOT NULL,quality TEXT NOT NULL,recordedAt INTEGER NOT NULL,
+                zoneId TEXT NOT NULL,PRIMARY KEY(id),
+                FOREIGN KEY(locationId) REFERENCES storage_locations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(operationId) REFERENCES operations(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(locationId,previousId) REFERENCES storage_location_reviews(locationId,id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(locationId,capacityReviewId) REFERENCES storage_capacity_reviews(locationId,id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_location_reviews_locationId_revision ON storage_location_reviews(locationId,revision)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_location_reviews_locationId_id ON storage_location_reviews(locationId,id)")
+            db.execSQL("CREATE INDEX index_storage_location_reviews_locationId_previousId ON storage_location_reviews(locationId,previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_location_reviews_previousId ON storage_location_reviews(previousId)")
+            db.execSQL("CREATE UNIQUE INDEX index_storage_location_reviews_operationId ON storage_location_reviews(operationId)")
+            db.execSQL("CREATE INDEX index_storage_location_reviews_locationId_capacityReviewId ON storage_location_reviews(locationId,capacityReviewId)")
+            db.execSQL("CREATE VIEW `current_storage_locations` AS $CURRENT_LOCATIONS_SQL")
+        }
+    }
+
     /** A new empty library preference history, preserving every existing recipe and food fact. */
     val MIGRATION_16_17 = object : Migration(16,17) {
         override fun migrate(db: SupportSQLiteDatabase) {
