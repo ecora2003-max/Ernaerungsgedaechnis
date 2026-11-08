@@ -14,9 +14,14 @@ Nur lesen: `EG-Architecture`, `EG-Preisdaten`, `EG-Produktdaten`, `EG-Einkaufsin
 4. Vor einem Merge den konkreten PR-Head, die tatsächliche Mergefähigkeit und grüne CI auf exakt diesem Code-/Teststand überprüfen. Bei neuer Main-Basis ohne Force-Push aktualisieren und die erforderlichen Tests wiederholen.
 5. Am Sitzungs-/Kontingentende Arbeitsstand in Codecommit/PR und knapp in `docs/STATUS.md` sichern (Tests, konkrete nächste Schritte und Blockaden). Keine Sperren erwerben oder freigeben, kein Wächter, keine automatischen Entwicklungs- oder Recovery-Läufe starten.
 
-## Neue höchste Priorität vom 08.11.2026
+## Neue verbindliche Reihenfolge vom 08.11.2026
 
-[Verbindlicher P0-Auftrag](docs/P0_GEMINI_KNUSPR.md) und [Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286): **direkt integrierte generative Rezept-KI mit wählbarem Gemini Nano 4 Fast, Nano 3 oder Gemini Cloud API** sowie **automatische Knuspr-Liveangebote** vor weiteren unabhängigen Nebenfunktionen umsetzen. Nano-Modellverfügbarkeit real nachweisen, Cloud nur mit gesonderter Datenfreigabe und sicherem API-Zugang. Offener PR zuerst sicher abschließen/sichern. **Picnic ist bei belegter technischer/vertraglicher Blockade vorläufig zurückstellbar**, nicht Blocker von Nano/Knuspr. Keine Fake-API-Tools, Preise, Modelldaten oder Gerätebelege.
+[Issue #286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286), [vollständiger P0/P1-Auftrag](docs/P0_GEMINI_KNUSPR.md).
+
+1. **P0 ZUERST – AUTOMATISCHE LIVE-SUPERMARKTANGEBOTE** für Aldi Nord/Süd, Lidl, REWE, Penny, Kaufland, Netto Marken-Discount und EDEKA **plus Knuspr** als tatsächliche App-Angebotslisten, Aktualisierung, Filial-/Liefergebietsbezug, gültige Normal-/Aktionspreise, Einkaufsliste und Preisvergleich. Freigegebene reale Händlerquellen/Knuspr OAuth-MCP nutzen; andere Anbieter trotz einzelner blockierter Quellen funktionsfähig integrieren. Blocker/Evidence ehrlich dokumentieren; keine Fake-Live-Daten, keine aufgeweichten ADR-/APP_DISPLAY-Gates. Picnic bei API-/Rechte-/Zugangsblockade DEFERRED.
+2. **P1 DANACH – VOLLSTÄNDIGE REZEPT-KI** mit drei wählbaren Modi **Gemini Nano 4 Fast**, **Gemini Nano 3**, **Gemini Cloud API** direkt in Android, echten Modell-/Cloudantworten und sicherer unabhängiger Rezeptprüfung. Nur Teilen/JSON-Import ist keine Erfüllung.
+
+Laufenden PR zunächst sauber abschließen/sichern, dann P0 vor P1; keine nachrangigen Lager-/Kosmetik-Features dazwischen. Beide Hauptziele auf echten Geräte-/Quellständen abnehmen.
 
 ## Fachliche Grenzen
 
