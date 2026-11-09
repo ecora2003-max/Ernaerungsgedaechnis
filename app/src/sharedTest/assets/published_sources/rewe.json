@@ -1,0 +1,11 @@
+{"products":[
+  {"id":101,"title":"Synthetische REWE-Aktion","brand":"Testmarke","pricing":{"current":129,"regular":189,"refund":25}},
+  {"id":"zero","title":"Synthetische REWE-Null","pricing":{"current":0,"regular":0,"refund":0}},
+  {"id":"unknown","title":"Synthetische REWE-Quelle","pricing":{"current":200}},
+  {"id":"above","title":"Synthetischer widersprüchlicher Referenzpreis","pricing":{"current":200,"regular":100}},
+  {"id":"bad-string","title":"Synthetische ungültige Preiszeichenfolge","pricing":{"current":"99"}},
+  {"id":"bad-bool","title":"Synthetischer ungültiger Wahrheitswert","pricing":{"current":true}},
+  {"id":"bad-fraction","title":"Synthetischer ungültiger Bruchcent","pricing":{"current":1.23}},
+  {"id":"bad-negative","title":"Synthetischer ungültiger negativer Preis","pricing":{"current":-1}},
+  {"id":"bad-large","title":"Synthetischer ungültiger Überlaufpreis","pricing":{"current":100000001}}
+]}

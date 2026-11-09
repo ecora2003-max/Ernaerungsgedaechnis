@@ -32,6 +32,8 @@ android {
     testOptions { unitTests.isIncludeAndroidResources=true }
     packaging { resources.excludes+="/META-INF/{AL2.0,LGPL2.1}" }
     sourceSets["test"].resources.srcDir("schemas")
+    sourceSets["test"].resources.srcDir("src/sharedTest/assets")
+    sourceSets["androidTest"].assets.srcDir("src/sharedTest/assets")
     // One synthetic migration fixture runs against both host and platform SQLite.
     // Published schema assets are packaged only in the instrumentation APK.
     sourceSets["test"].java.srcDir("src/sharedTest/java")
@@ -41,6 +43,9 @@ android {
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
     implementation(project(":nano-runtime"))
+    // Bounded, local-only parsing of published Netto branch-offer HTML. The
+    // parser never fetches a resource or follows the mutating wishlist link.
+    implementation("org.jsoup:jsoup:1.24.1")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("androidx.room:room-runtime:2.7.2")
     implementation("androidx.room:room-ktx:2.7.2")

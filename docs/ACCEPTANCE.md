@@ -255,6 +255,7 @@ Nachweis: #276, exakt `4e317e13058b2d03132f61e35c24ded8ab971c62`, Main `58661963
 
 ## 27. P0-Angebotsanschluss und offizieller Knuspr-Geräteweg
 
+- [ ] Zusätzliche konkrete REWE-/ALDI-Süd-Suchpreise und Netto-Filialangebots-HTML gemäß [Formaten](LIVE_OFFERS.md) auf JVM und echten API26-/35-Geräten prüfen: aktuelle/Normal-/Apppreise und Pfand getrennt, bekannte0/Unbekannt, keine Wunschlistenaktion, kein Webshoppreis als Filialpreis und keine Menge/Gültigkeit aus Text oder Abrufdatum. Gleiche synthetische Dokumente gegen gepinnte Originalparser; tatsächliche unabhängige Quellen-/Scope-/Artikelprofile und Liveabnahme weiterhin separat erforderlich.
 - [x] Standard-App-Angebotsseite mit allen acht Ketten plus Knuspr, Filiale/Region versus Liefergebiet, Einkaufstag, Aktualisierung, tatsächlichen Geld-/Mengen-/Quellzeit-/Gültigkeitsangaben und lokaler Bedarfsliste bedienbar. Kein Preis/Bestand aus Vorschlägen gebucht.
 - [x] Unabhängige Quellen-/APP_DISPLAY-/Capability-/Scope-Prüfung vor jedem Netzabruf; wiederholte manuelle und ausdrückliche automatische Abrufe respektieren erlaubten Rhythmus auch nach Neustart. Fehler pausieren Automatik; kein Cache ohne gesonderte Erlaubnis und keine verdeckte Ausweichquelle.
 - [x] Offizieller Knuspr-S256-PKCE-Geräteweg, geschützte NoBackup-Tokensteuerung, Callback-Laufzeit/Replay/Logout und tatsächliche MCP-Tool-Discovery technisch geprüft. Unbekanntes Schema/Prosa erzeugt keine Preise; Produktaufruf ohne zusätzliche unabhängige Freigabe gesperrt.

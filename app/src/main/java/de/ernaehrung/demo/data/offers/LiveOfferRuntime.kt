@@ -57,7 +57,8 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
     val quantityMilli: Long?, val unit: OfferMassUnit?, val quantityBasis: OfferQuantityBasis?, val kind: LiveOfferKind,
     val validFrom: LocalDate?, val validUntil: LocalDate?, val sourceObservedAt: Instant?, val fetchedAt: Instant,
     val storeId: String?, val regionId: String?, val deliveryAreaId: String?, val applicability: LiveOfferApplicability,
-    val conditions: String?, val conditionsConfirmed: Boolean, val sourceUrl: String, val packageDescription: String? = null) {
+    val conditions: String?, val conditionsConfirmed: Boolean, val sourceUrl: String, val packageDescription: String? = null,
+    val priceDetails: LivePriceDetails? = null) {
     init {
         require(id.isNotBlank() && sourceId.isNotBlank() && sourceProductId.isNotBlank() && title.isNotBlank() && title.length <= 1000)
         require(merchandiseCents == null || merchandiseCents in 0L..1_000_000_000_000L)

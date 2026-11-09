@@ -1,0 +1,8 @@
+{"meta":{"pagination":{"totalCount":4000,"offset":0,"limit":12}},"data":[
+  {"sku":"primary","name":"Synthetische ALDI-Probe","brandName":"Testmarke","price":{"amount":149,"amountRelevant":159,"bottleDeposit":25,"currencyCode":"EUR","wasPriceDisplay":"  1,99 €  "}},
+  {"sku":"zero","name":"Synthetische ALDI-Null","price":{"amountRelevant":0,"amount":99,"bottleDeposit":0,"currencyCode":"EUR"}},
+  {"sku":"fallback","name":"Synthetischer ALDI-Ersatzwert","price":{"amountRelevant":"99","amount":199,"currencyCode":"EUR"}},
+  {"sku":"unknown-deposit","name":"Synthetisches ALDI-Pfand unbekannt","price":{"amount":89,"currencyCode":"EUR"}},
+  {"sku":"bad-currency","name":"Synthetische fremde Währung","price":{"amount":99,"currencyCode":"USD"}},
+  {"sku":"bad-bool","name":"Synthetischer ungültiger Wahrheitswert","price":{"amount":true,"currencyCode":"EUR"}}
+]}

@@ -1,0 +1,18 @@
+{
+  "rewe": [
+    {"id":"101","current":129,"regular":189,"deposit":25,"brand":"Testmarke"},
+    {"id":"zero","current":0,"regular":0,"deposit":0},
+    {"id":"unknown","current":200},
+    {"id":"above","current":200,"regular":100}
+  ],
+  "aldi_sued": [
+    {"id":"primary","current":159,"deposit":25,"previous":"  1,99 €  ","brand":"Testmarke"},
+    {"id":"zero","current":0,"deposit":0},
+    {"id":"fallback","current":199},
+    {"id":"unknown-deposit","current":89}
+  ],
+  "netto": [
+    {"id":"n-zero","current":0,"app":0,"wishlist":"2026-11-14 20:00:00","from":"2026-11-09"},
+    {"id":"n-offer","current":100,"app":79,"wishlist":"2026-11-14 20:00:00","from":"2026-11-09","unitText":"2,00 €/kg"}
+  ]
+}

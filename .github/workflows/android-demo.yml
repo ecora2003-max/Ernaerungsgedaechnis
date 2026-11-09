@@ -9,9 +9,9 @@ on:
         type: boolean
   push:
     branches: [main]
-    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
+    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_published_source_reference.py', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
   pull_request:
-    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
+    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_published_source_reference.py', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
 permissions:
   contents: read
 concurrency:
@@ -69,6 +69,17 @@ jobs:
             app/src/test/resources/integration/recipe_schema_v1_cases.jsonl
           python3 tools/check_recipe_v1_schema.py "$RUNNER_TEMP/recipe-contract-v1.json" \
             app/src/test/resources/integration/recipe_draft_v1.json
+      - name: Verify three published price-source shapes against pinned pure references
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check 'beautifulsoup4==4.15.0' 'soupsieve==3.0.4' 'typing_extensions==4.16.0'
+          curl --fail --location --silent --show-error --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Preisdaten/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/adapters/stationary_price_catalogues.py \
+            -o "$RUNNER_TEMP/stationary_price_catalogues.py"
+          curl --fail --location --silent --show-error --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Preisdaten/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/catalogues/netto_branch_offers.py \
+            -o "$RUNNER_TEMP/netto_branch_offers.py"
+          python3 tools/check_published_source_reference.py "$RUNNER_TEMP/stationary_price_catalogues.py" \
+            "$RUNNER_TEMP/netto_branch_offers.py" app/src/sharedTest/assets/published_sources
       - name: Verify pinned product-data historical price parity fixtures
         run: |
           curl --fail --location --silent --show-error --output "$RUNNER_TEMP/eg-product-history-core.py" \

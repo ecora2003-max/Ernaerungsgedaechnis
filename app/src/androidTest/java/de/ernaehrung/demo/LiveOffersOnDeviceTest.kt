@@ -48,6 +48,101 @@ class LiveOffersOnDeviceTest {
     private fun ready() = compose.waitUntil(25_000) {
         compose.onAllNodes(hasTestTag("live_offers_refresh") and isEnabled()).fetchSemanticsNodes().size == 1
     }
+    @Test fun suppliedReweAldiAndNettoDocumentsReachActualPriceUiWithSeparateReferenceAppDepositAndAccessFailure(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
+        val food = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
+        val bodies = db.bodyDao().versions(); val health = db.healthDao().history("com.sec.android.app.shealth")
+        val day = AppCalendar.today(); val prefix = "synthetic-published-${UUID.randomUUID()}"
+        data class Source(val retailer: LiveRetailer, val store: String?, val url: String,
+            val format: PublishedOfferHttpSource.Format, val file: String)
+        val known = listOf(
+            Source(LiveRetailer.REWE, "000001", "https://www.rewe.de/api/stationary-product-search/products?query=Synthetisch&wwIdent=000001",
+                PublishedOfferHttpSource.Format.REWE_STATIONARY, "rewe.json"),
+            Source(LiveRetailer.ALDI_SUED, "B000", "https://api.aldi-sued.de/v3/product-search?q=Synthetisch&servicePoint=B000&serviceType=walk-in&limit=12&offset=0&currency=EUR",
+                PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN, "aldi_sued.json"),
+            Source(LiveRetailer.NETTO_MD, null, "https://www.netto-online.de/angebote/c-N07",
+                PublishedOfferHttpSource.Format.NETTO_BRANCH_HTML, "netto.html"))
+        val requests = mutableListOf<OfferHttpRequest>(); var denyHtml = false
+        val http = OfferHttp { request ->
+            requests += request
+            val match = known.single { it.url == request.uri.toString() }
+            if (denyHtml && match.retailer == LiveRetailer.NETTO_MD) OfferHttpReply(403, emptyMap(), "synthetic access denied")
+            else {
+                val payload = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().context.assets
+                    .open("published_sources/${match.file}").bufferedReader().use { it.readText() }
+                OfferHttpReply(200, mapOf("content-type" to if (match.file.endsWith("html")) "text/html" else "application/json"), payload)
+            }
+        }
+        val scopes = known.associate { it.retailer to LiveOfferScope(it.retailer, it.store, null, null, day) }
+        val sources = known.associate { source -> source.retailer to PublishedOfferHttpSource(URI(source.url),
+            "$prefix-${source.retailer}", scopes.getValue(source.retailer), source.format, http) }
+        val grants = known.associate { source -> source.retailer to LiveSourceGrant("$prefix-${source.retailer}",
+            source.retailer, "synthetic-independent-host-review-not-a-live-permission", day, day, setOf(URI(source.url).host),
+            true, null, scopes.getValue(source.retailer), sources.getValue(source.retailer).capability) }
+        val runtime = LiveOfferRuntime(sources, LivePermissionRegistry { scope -> grants[scope.retailer]?.takeIf { it.verifiedScope == scope } })
+        val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        try {
+            compose.runOnUiThread {
+                model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                        LiveOffersViewModel(context, runtime, http) as T
+                })[LiveOffersViewModel::class.java]
+                compose.activity.setContent { DemoTheme {
+                    Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        LiveOffersScreen(providedModel = model)
+                    }
+                } }
+            }
+            for (source in known) {
+                ready(); tap("Angebotsanbieter"); tap("choose_${source.retailer}"); ready()
+                compose.onNodeWithTag("live_store_input").performScrollTo().performTextReplacement(source.store.orEmpty())
+                tap("live_offers_refresh")
+                compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED &&
+                    model.state.value.scope == scopes[source.retailer] && !model.state.value.busy }
+                when (source.retailer) {
+                    LiveRetailer.REWE -> {
+                        compose.onNodeWithTag("live_regular_101").performScrollTo().assertTextContains("1,89 €", substring = true)
+                        compose.onNodeWithTag("live_regular_zero").performScrollTo().assertTextContains("0,00 €", substring = true)
+                        compose.onNodeWithText("Warenpreis: 1,29 € · Pfand: 0,25 € · zusammen: 1,54 €").performScrollTo().assertExists()
+                    }
+                    LiveRetailer.ALDI_SUED -> {
+                        compose.onNodeWithTag("live_regular_primary").performScrollTo().assertTextContains("unbekannt", substring = true)
+                        compose.onNodeWithTag("live_previous_primary").performScrollTo().assertTextContains("1,99 €", substring = true)
+                        compose.onNodeWithText("Warenpreis: 0,00 € · Pfand: 0,00 € · zusammen: 0,00 €").performScrollTo().assertExists()
+                        assertNull(model.state.value.result!!.batch!!.offers.first().priceDetails!!.regularCents)
+                    }
+                    LiveRetailer.NETTO_MD -> {
+                        compose.onNodeWithTag("live_app_price_n-offer").performScrollTo().assertTextContains("0,79 €", substring = true)
+                        compose.onNodeWithTag("live_unit_text_n-offer").performScrollTo().assertTextContains("2,00 €/kg", substring = true)
+                        compose.onNodeWithTag("live_app_price_n-zero").performScrollTo().assertTextContains("0,00 €", substring = true)
+                        compose.onNodeWithText("Warenpreis: 1,00 € · Pfand: unbekannt · zusammen: unbekannt").performScrollTo().assertExists()
+                        assertTrue(model.state.value.result!!.batch!!.offers.all { it.storeId == null &&
+                            it.applicability == LiveOfferApplicability.CHAIN_REPORTED && it.quantityMilli == null })
+                    }
+                    else -> error("Only these three synthetic source shapes")
+                }
+            }
+            assertEquals(3, requests.size)
+            denyHtml = true; tap("live_offers_refresh")
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.FAILED && !model.state.value.busy }
+            assertTrue(model.state.value.result!!.fromCache)
+            compose.onNodeWithText("Anbieter sperrt den Zugriff. Kein automatischer Wiederholungsversuch.").performScrollTo().assertExists()
+            compose.onNodeWithTag("live_app_price_n-offer").performScrollTo().assertTextContains("0,79 €", substring = true)
+            assertEquals(4, requests.size)
+            requests.forEach { assertEquals("GET", it.method); assertNull(it.body)
+                assertFalse(it.uri.path.contains("Wishlist")); assertTrue(it.headers.keys.none { key -> key.equals("Authorization", true) }) }
+            assertEquals(food, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())
+            assertEquals(paid, dao.allPaidPrices()); assertEquals(bodies, db.bodyDao().versions())
+            assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
+        finally {
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            PrivateOfferSettings.forApp(context).clearSelection()
+        }
+    }
     @Test fun eightRetailersStayIndependentlyBlockedAndKnusprConsentDoesNotSurviveRecreationWithoutAnyActualBooking(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
