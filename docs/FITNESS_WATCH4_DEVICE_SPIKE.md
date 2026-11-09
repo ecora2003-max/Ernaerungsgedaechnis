@@ -1,6 +1,6 @@
 # Physische Fitnessprüfung: Pixel 9 Pro XL und Galaxy Watch 4
 
-Verbindliche Grundlage: [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253), Gates in [ACCEPTANCE.md](ACCEPTANCE.md). Dieser Ablauf ist vorbereitet, **noch nicht auf physischer Hardware ausgeführt**. Die Test-APK und ihr exakter Code-/Test-Commit werden erst nach grüner Prüfung im STATUS verlinkt.
+Verbindliche Grundlage: [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253), Gates in [ACCEPTANCE.md](ACCEPTANCE.md). Der physische Ablauf ist **teilweise durch Nutzerrückmeldung belegt**: am 09.11.2026 erfolgreicher Samsung-Health-Schrittimport und eine am Handy erzeugte Probeaufzeichnung, danach ein direkt auf der Galaxy Watch 4 erstelltes Training in Samsung Health und EG. Der neue Watch-Schritt-Tageswert und die übrigen physischen Lebenszyklus-/Privacyfälle bleiben zu prüfen. Die geprüfte Test-APK und ihr exakter Code-/Test-Commit sind im STATUS verlinkt; ein vollständiges Gate B ist damit noch nicht erklärt.
 
 Das Nutzer-Testziel ist **Pixel 9 Pro XL mit Android 17**, gekoppelt mit **Galaxy Watch 4** (Nutzerangabe vom 05.11.2026). Der API35-CI-Emulator ersetzt diesen Test nicht. Vor Ort zusätzlich Android-Build, Watch-/Wear-OS-, Samsung-Health- und Health-Connect-Version festhalten. Keine Kontonamen, Gesundheitsrohwerte, Gerätekennungen oder vollständigen Logcats ins Repository übernehmen.
 
@@ -13,6 +13,8 @@ Das Nutzer-Testziel ist **Pixel 9 Pro XL mit Android 17**, gekoppelt mit **Galax
 3. In EG über **Mehr → Fitness** die angezeigte lokale Importfreigabe ausdrücklich auswählen und **Leserechte prüfen und Daten übernehmen** betätigen. Im echten Systemdialog nur Schritte und Trainings freigeben. Ablehnung muss ohne lokale Übernahme bleiben; manuelle Körpermessungen und Ernährung bleiben unabhängig nutzbar.
 4. In EG den tatsächlich übernommenen aktuellen Tageswert und den neuen Workout-Eintrag mit Trainingsart, Zeit, Dauer, Quelle und gelieferten Geräteangaben prüfen. Die Herkunft zusätzlich mit Watch/Samsung Health/Health Connect abgleichen: Das Samsung-Quellpaket oder der Gerätetyp allein beweisen kein Watch-4-Modell. Fehlende Metadaten bleiben unbekannt.
 5. Fitness verlassen und erneut öffnen: Nach aktivierter Freigabe muss eine neue automatische Vordergrundübernahme erfolgen. Anschließend **Jetzt erneut synchronisieren** prüfen. Unveränderte Quellen dürfen keine zusätzlichen Datensatzversionen erzeugen; überlappende Roh-Schrittintervalle werden nicht blind summiert. Der Tageswert ist der getrennte Health-Connect-Aggregatwert, nicht die Summe der angezeigten Intervalle.
+
+**Dauer richtig einordnen:** Die aus Quellbeginn/-ende berechnete Zeitspanne kann von der Workout-Dauer in Samsung Health abweichen. Die Nutzerbilder zeigen diese Unterscheidung beim Uhrtest. Eine aktive Trainingsdauer oder Pausen dürfen daraus nicht erfunden werden; aktuell bleiben sie unbekannt. Ein beim Datensatz fehlendes Gerätemodell bleibt auch nach bestätigter Uhrennutzung unbekannt. Quellherkunft wird über die tatsächliche Uhr-Aufzeichnung und ihre Weitergabe abgeglichen, nicht durch nachträgliches Befüllen fehlender Metadaten.
 
 ## Neustart, Änderungen, Widerruf und lokale Löschung
 
