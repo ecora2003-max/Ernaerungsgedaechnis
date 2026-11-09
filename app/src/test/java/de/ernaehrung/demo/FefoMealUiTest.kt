@@ -52,9 +52,18 @@ class FefoMealUiTest {
                 Column(Modifier.verticalScroll(rememberScrollState())) { LocalDataContent(model, "Ernährung") }
             } } }
             rule.waitUntil(25_000) {
-                rule.onAllNodesWithText("Tatsächlichen Verzehr erfassen").fetchSemanticsNodes().isNotEmpty()
+                // The independently loaded day panel changes the layout above
+                // this fold. Click only after that actual report and the stock
+                // snapshot have reached the UI, not during the loading shift.
+                rule.onAllNodesWithTag("nutrition_applied_day_$day").fetchSemanticsNodes().isNotEmpty() &&
+                    model.state.value.versions.any { it.id == version } &&
+                    model.state.value.batches.any { it.batch.id == early } &&
+                    model.state.value.batches.any { it.batch.id == later }
             }
             tap("Tatsächlichen Verzehr erfassen")
+            rule.waitUntil(25_000) {
+                rule.onAllNodesWithTag("meal_source_Bestand nach FEFO").fetchSemanticsNodes().isNotEmpty()
+            }
             rule.onNodeWithTag("meal_source_Bestand nach FEFO").performScrollTo().performClick()
             rule.onNodeWithTag("Verzehr-Artikelversion").performScrollTo().performClick()
             rule.onNodeWithTag("choose_$version").performScrollTo().performClick()
