@@ -187,7 +187,7 @@ private fun HealthExtraRecordCard(row: HealthExtraStored, onHistory: (() -> Unit
         Text("${extraTime(r.startAt)}" + (r.endAt?.let { " bis ${extraTime(it)}" } ?: " · Einzelmessung"))
         Text("Quellpaket: ${r.sourcePackage}")
         Text("Hersteller: ${r.manufacturer ?: "unbekannt"} · Modell: ${r.model ?: "unbekannt"}")
-        Text("Gerätetyp: ${r.deviceType?.toString() ?: "unbekannt"} · Aufzeichnungsmethode: ${r.recordingMethod}")
+        Text("Gerätetyp: ${r.deviceType?.takeIf { it != 0 }?.toString() ?: "unbekannt"} · Aufzeichnungsmethode: ${r.recordingMethod.takeIf { it != 0 }?.toString() ?: "unbekannt"}")
         fun offset(seconds: Int?) = seconds?.let { ZoneOffset.ofTotalSeconds(it).id } ?: "unbekannt"
         Text("UTC-Offset der Quelle: ${offset(r.startOffsetSeconds)}" + if (r.endAt == null) "" else " / ${offset(r.endOffsetSeconds)}")
         Text("Quelländerung: ${extraTime(r.sourceModifiedAt)} · Quellversion: ${r.clientRecordVersion} · lokale Version: ${row.revision}")

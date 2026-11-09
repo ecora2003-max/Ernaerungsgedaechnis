@@ -128,7 +128,7 @@ class StorageLocationReviewRoomTest {
         val v17 = publishedBackupFixture(oldCurrent, 17)
         val review = store.reviewStorageLocation("review", input(place, "Vorhanden"), true)
         val current = store.captureBackup("de.ernaehrung.demo", false, true)
-        assertEquals(52, current.tables.size)
+        assertEquals(56, current.tables.size)
         for (archive in listOf(v17, current)) {
             val target = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
             try {

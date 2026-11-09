@@ -182,5 +182,6 @@ jobs:
             app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/17.json
             app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/18.json
             app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/19.json
+            app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/20.json
           if-no-files-found: ignore
           retention-days: 7

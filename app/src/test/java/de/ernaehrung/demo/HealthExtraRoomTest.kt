@@ -176,4 +176,23 @@ class HealthExtraRoomTest {
         store.restoreBackup("old-19", old, BackupArchiveCodec.digest(BackupArchiveCodec.encode(old)), "test.app", true)
         assertTrue(store.healthExtraCache().first().records.isEmpty())
     }
+
+    @Test fun corruptedBackupUnitsRawNumbersAndSampleOrderRollbackTheWholeRestore(): Unit = runBlocking {
+        val p = SyntheticExtraSource(); enable(p); store.syncHealthExtra("original", p)
+        val full = store.captureBackup("test.app", true, true)
+        db.close(); context.deleteDatabase(name); db = open(); store = FoodStore(db) { clock }
+        for ((tableName, column, replacement) in listOf(
+            Triple("health_extra_versions", "unit", BackupCell.Text("invented-unit")),
+            Triple("health_extra_versions", "scalarBits", BackupCell.Integer(Double.NaN.toRawBits())),
+            Triple("health_extra_samples", "position", BackupCell.Integer(8)))) {
+            val bad = full.copy(tables = full.tables.map { table ->
+                if (table.name != tableName) table else table.copy(rows = table.rows.mapIndexed { index, row ->
+                    if (index != 0) row else row.toMutableList().apply { this[table.columns.indexOf(column)] = replacement }
+                })
+            })
+            reject { store.restoreBackup("invalid-$column", bad, BackupArchiveCodec.digest(BackupArchiveCodec.encode(bad)), "test.app", true) }
+            assertNull(db.healthExtraDao().state()); assertTrue(db.healthExtraDao().versions().isEmpty())
+            assertTrue(db.healthExtraDao().runs().isEmpty()); assertEquals(0, db.foodDao().operationCount())
+        }
+    }
 }

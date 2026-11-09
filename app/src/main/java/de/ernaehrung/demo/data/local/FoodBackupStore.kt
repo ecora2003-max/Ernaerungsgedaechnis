@@ -271,5 +271,6 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         PersonalRestrictionSnapshot(db.personalRestrictionDao().history())
         RecipeFavoriteOperations(db,now).snapshot()
         StorageLocationReviewOperations(db,now).validateHistory()
+        HealthExtraOperations(db,now).validateHistory()
     }
 }

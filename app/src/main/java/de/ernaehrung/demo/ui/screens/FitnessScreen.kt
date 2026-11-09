@@ -154,7 +154,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                     Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}",
                         Modifier.testTag("fitness_sport_${row.externalId}"))
                     WorkoutDurationInfo(row, cache, state.busy || state.awaitingPermission) { model.readWorkoutDuration(row) }
-                    Text("Trainingsenergie und Herzfrequenz: unbekannt")
+                    Text("Diese Basisaufzeichnung enthält keine Puls- oder Energiewerte. Zusätzliche Health-Connect-Quelldaten können getrennt freigegeben werden; sie werden diesem Training nicht automatisch zugeschrieben.")
                 }
                 Text("Quelländerung: ${time(row.sourceModifiedAt)} · lokale Version ${row.revision}")
                 Text("Zeitzonenversatz der Quelle: ${offset(row.startOffsetSeconds)} / ${offset(row.endOffsetSeconds)}")

@@ -33,7 +33,7 @@ private fun rememberTrainingJournalModel(): TrainingJournalViewModel {
 /** Reader of published legacy tables and the latest private HC cache. */
 @Composable
 internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
-    model: TrainingJournalViewModel = rememberTrainingJournalModel()) {
+    model: TrainingJournalViewModel = rememberTrainingJournalModel(), onOpenExtra: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val fitness = rememberFitnessModel()
     val health by fitness.state.collectAsStateWithLifecycle()
@@ -62,6 +62,9 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
     } ?: "${Instant.ofEpochMilli(at)} (UTC; Quellversatz unbekannt)"
     Column(Modifier.fillMaxWidth().testTag("training_journal"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Trainingsjournal · lokal", style = MaterialTheme.typography.headlineSmall)
+        onOpenExtra?.let { open ->
+            OutlinedButton(open, modifier = Modifier.testTag("journal_open_extra")) { Text("Puls, Energie & weitere Quelldaten ansehen") }
+        }
         Text("Gespeicherte Trainings mit ihrer Herkunft. Zeitliche Überschneidungen sind ein Prüfhinweis; daraus folgt weder eine Zusammenführung noch eine Summe von Trainingsenergie oder Schritten.")
         write.message?.let { Text(it, Modifier.testTag("workout_message")) }
         val dataReady = snapshot != null && !state.readError
@@ -125,7 +128,7 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
                             val overlaps = WorkoutOverlaps.with(interval, intervals)
                             if (overlaps.isNotEmpty()) Text("Zeitliche Überschneidung mit ${overlaps.size} weiterem gespeicherten Training. Prüfe die Quellen; es wird nichts automatisch addiert oder entfernt.",
                                 Modifier.testTag("training_overlap_${row.externalId}"))
-                            Text("Distanz, Intensität, Herzfrequenz und Trainingsenergie: im aktuellen Import nicht überliefert.")
+                            Text("Intensität: nicht überliefert. Puls, Distanz und Energie liegen in getrennten Health-Connect-Typen und werden nicht automatisch diesem Training zugeordnet.")
                         }
                     }
                 }

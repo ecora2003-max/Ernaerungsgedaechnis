@@ -85,6 +85,32 @@ class HealthConnectReadApiOnDeviceTest {
                 dataOriginFilter = setOf(DataOrigin(FitnessHealthPolicy.SAMSUNG_PACKAGE))))
             val exerciseMillis = aggregate[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.toMillis()
             assertTrue(exerciseMillis == null || exerciseMillis == 0L)
+            // Actual reads of every optional type, with minimal selected read
+            // rights and NO older-history request on unsupported system builds.
+            val extra = AndroidHealthExtraSource(target)
+            val query = HealthExtraKernel.plan(HealthExtraSelection(HealthExtraKind.entries.toSet()),
+                System.currentTimeMillis(), java.time.ZoneId.systemDefault().id)
+            assertFalse(query.needsHistory)
+            assertFalse(HealthExtraKernel.HISTORY_PERMISSION in extra.requiredPermissions(query))
+            val extraGrants = extra.requiredPermissions(query) - extra.grantedPermissions()
+            extraGrants.forEach { instrumentation.uiAutomation.grantRuntimePermission(target.packageName, it) }
+            val extras = withTimeout(15_000) {
+                val deadline = SystemClock.elapsedRealtime() + 14_000L
+                var result: HealthExtraSnapshot? = null
+                while (result == null) {
+                    try { result = extra.readSnapshot(query) }
+                    catch (failure: SecurityException) {
+                        if (extraGrants.isEmpty() || SystemClock.elapsedRealtime() >= deadline ||
+                            !extra.grantedPermissions().containsAll(extra.requiredPermissions(query))) throw failure
+                        delay(200)
+                    }
+                }
+                result
+            }
+            HealthExtraKernel.validate(extras, query, System.currentTimeMillis())
+            assertTrue(extras.records.isEmpty())
+            assertTrue(extras.stepDay!!.steps == null || extras.stepDay.steps == 0L)
+            println("HEALTH_EXTRA_REAL_EMPTY_PROVIDER_PASS: seven record types and all-source step-day; historyAvailable=${extra.historyAvailable()}; no older-history query")
             assertEquals(food, FoodDatabase.localSandbox(target).foodDao().operationCount())
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("health-api-flow")

@@ -134,7 +134,7 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.BODY_RAW) {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
                     } else if (page == WorkspacePage.TRAINING) {
-                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) })
+                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) })
                     } else if (page == WorkspacePage.BATCH_REVIEW) {
                         BatchReviewScreen(selectedBatch)
                     } else if (page == WorkspacePage.BACKUP) {

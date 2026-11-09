@@ -9,7 +9,7 @@ object FoodMigrations {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_runs (id TEXT NOT NULL,kind TEXT NOT NULL,
                 fingerprint TEXT NOT NULL,recordedAt INTEGER NOT NULL,authorizationRevision INTEGER NOT NULL,
-                kinds TEXT,windowDays INTEGER,endDay TEXT,historyOptIn INTEGER,capturedAt INTEGER,
+                kinds TEXT,windowDays INTEGER,endDay TEXT,historyOptIn INTEGER,requestedAt INTEGER,capturedAt INTEGER,
                 windowStart INTEGER,windowEnd INTEGER,zone TEXT,day TEXT,dayStart INTEGER,dayEnd INTEGER,
                 steps INTEGER,stepSources TEXT,changedRecords INTEGER NOT NULL,hiddenRecords INTEGER NOT NULL,PRIMARY KEY(id))""")
             db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_state (id TEXT NOT NULL,enabled INTEGER NOT NULL,

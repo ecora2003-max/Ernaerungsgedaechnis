@@ -20,7 +20,7 @@ internal data class HealthExtraStateEntity(@PrimaryKey val id: String = "health-
 internal data class HealthExtraRunEntity(@PrimaryKey val id: String, val kind: String,
     val fingerprint: String, val recordedAt: Long, val authorizationRevision: Long,
     val kinds: String? = null, val windowDays: Int? = null, val endDay: String? = null,
-    val historyOptIn: Boolean? = null, val capturedAt: Long? = null,
+    val historyOptIn: Boolean? = null, val requestedAt: Long? = null, val capturedAt: Long? = null,
     val windowStart: Long? = null, val windowEnd: Long? = null, val zone: String? = null,
     val day: String? = null, val dayStart: Long? = null, val dayEnd: Long? = null,
     val steps: Long? = null, val stepSources: String? = null,

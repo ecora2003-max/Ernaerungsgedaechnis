@@ -158,7 +158,7 @@ jobs:
             bash tools/prepare_android_api26_core.sh
             bash tools/run_android_device_tests.sh
             bash tools/run_android_process_restart.sh
-      - name: Verify actual API and all twenty-six original device test results
+      - name: Verify actual API and all twenty-eight original device test results
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -167,7 +167,7 @@ jobs:
           reports = list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))
           assert reports, 'No original instrumentation XML'
           suites = [ET.parse(path).getroot() for path in reports]
-          assert sum(int(s.get('tests', '0')) for s in suites) == 27
+          assert sum(int(s.get('tests', '0')) for s in suites) == 28
           assert all(int(s.get(field, '0')) == 0 for s in suites for field in ('failures', 'errors', 'skipped'))
           classes = {t.get('classname') for s in suites for t in s.findall('testcase')}
           expected = {'de.ernaehrung.demo.' + name for name in (
@@ -181,7 +181,7 @@ jobs:
           assert proof['status'] == 'PASS' and proof['actualSdk'] == 26 and proof['forceStopObserved'] is True
           assert proof['sourceCommit'] == subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
           assert proof['mainPidBefore'] != proof['mainPidAfter'] and proof['seedPid'] != proof['readPid']
-          print('ANDROID_API26_CORE_PASS: actual SDK 26; 27/27; 0 failures/errors/skips')
+          print('ANDROID_API26_CORE_PASS: actual SDK 26; 28/28; 0 failures/errors/skips')
           PY
       - name: Upload original API 26 evidence only
         if: ${{ always() }}

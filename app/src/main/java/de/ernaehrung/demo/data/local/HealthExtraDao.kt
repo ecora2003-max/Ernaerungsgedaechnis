@@ -8,6 +8,9 @@ internal interface HealthExtraDao {
     @Query("SELECT * FROM health_extra_state WHERE id='health-extra-v1'")
     suspend fun state(): HealthExtraStateEntity?
     @Query("SELECT * FROM health_extra_runs WHERE id=:key") suspend fun run(key: String): HealthExtraRunEntity?
+    @Query("SELECT * FROM health_extra_runs") suspend fun runs(): List<HealthExtraRunEntity>
+    @Query("SELECT * FROM health_extra_versions") suspend fun versions(): List<HealthExtraVersionEntity>
+    @Query("SELECT * FROM health_extra_samples") suspend fun samples(): List<HealthExtraSampleEntity>
     @Query("""SELECT h.* FROM health_extra_versions h WHERE h.revision=(SELECT MAX(v.revision)
         FROM health_extra_versions v WHERE v.sourcePackage=h.sourcePackage AND v.kind=h.kind AND v.externalId=h.externalId)
         ORDER BY h.startAt DESC,h.sourcePackage,h.kind,h.externalId""")
@@ -27,7 +30,7 @@ internal interface HealthExtraDao {
     @Query("DELETE FROM health_extra_samples") suspend fun purgeSamples()
     @Query("DELETE FROM health_extra_versions") suspend fun purgeVersions()
     @Query("""UPDATE health_extra_runs SET kind='REDACTED',fingerprint='',recordedAt=0,authorizationRevision=0,
-        kinds=NULL,windowDays=NULL,endDay=NULL,historyOptIn=NULL,capturedAt=NULL,windowStart=NULL,windowEnd=NULL,zone=NULL,
+        kinds=NULL,windowDays=NULL,endDay=NULL,historyOptIn=NULL,requestedAt=NULL,capturedAt=NULL,windowStart=NULL,windowEnd=NULL,zone=NULL,
         day=NULL,dayStart=NULL,dayEnd=NULL,steps=NULL,stepSources=NULL,changedRecords=0,hiddenRecords=0 WHERE kind!='PURGE'""")
     suspend fun redactRuns()
 }

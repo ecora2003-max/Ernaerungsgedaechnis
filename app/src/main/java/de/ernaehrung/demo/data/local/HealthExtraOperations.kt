@@ -29,7 +29,9 @@ internal class HealthExtraOperations(private val db: FoodDatabase, private val n
     private fun assemble(rows: List<HealthExtraVersionEntity>, samples: List<HealthExtraSampleEntity>): List<HealthExtraStored> {
         val grouped = samples.groupBy { listOf(it.sourcePackage, it.kind, it.externalId, it.revision) }
         return rows.map { row -> row.stored(grouped[listOf(row.sourcePackage, row.kind, row.externalId, row.revision)]
-            .orEmpty().sortedBy { it.position }.map { it.sample() }) }
+            .orEmpty().sortedBy { it.position }.mapIndexed { index, sample ->
+                check(sample.position == index) { "HEALTH_CACHE_INVALID" }; sample.sample()
+            }) }
     }
     fun observe() = db.invalidationTracker.createFlow("health_extra_state", "health_extra_runs",
         "health_extra_versions", "health_extra_samples").map {
@@ -103,7 +105,7 @@ internal class HealthExtraOperations(private val db: FoodDatabase, private val n
                 val changes = HealthExtraKernel.changes(snapshot, query, assemble(dao.latest(), dao.latestSamples()), at)
                 val day = snapshot.stepDay
                 val run = HealthExtraRunEntity(operation, "SYNC", digest, at, current.authorizationRevision,
-                    current.kinds, current.windowDays, current.endDay, current.historyOptIn, snapshot.capturedAt,
+                    current.kinds, current.windowDays, current.endDay, current.historyOptIn, query.requestedAt, snapshot.capturedAt,
                     query.windowStart, query.windowEnd, query.zone, day?.day, day?.startAt, day?.endAt, day?.steps,
                     day?.let { JSONArray(it.sourcePackages.sorted()).toString() }, changes.count { it.visible }, changes.count { !it.visible })
                 dao.insertRun(run)
@@ -151,5 +153,59 @@ internal class HealthExtraOperations(private val db: FoodDatabase, private val n
         dao.saveState(HealthExtraStateEntity(authorizationRevision = revision))
         dao.purgeSamples(); dao.purgeVersions(); dao.redactRuns()
         dao.insertRun(HealthExtraRunEntity(operation, "PURGE", hash, now(), revision))
+    }
+
+    /** Backups retain typed payload, not arbitrary database strings masquerading
+     * as verified observations. Check raw units/bits/series/scope and lineage
+     * before a capture or restore can commit. Never contact the provider here. */
+    suspend fun validateHistory() {
+        val auth = state()
+        check(auth.authorizationRevision >= 0 && auth.windowDays in HealthExtraKernel.WINDOWS &&
+            (!auth.enabled || auth.kinds.isNotEmpty())) { "HEALTH_CACHE_INVALID" }
+        HealthExtraKernel.parseKinds(auth.kinds)
+        auth.endDay?.let { check(java.time.LocalDate.parse(it).toString() == it) { "HEALTH_CACHE_INVALID" } }
+        val runs = dao.runs().associateBy { it.id }
+        fun window(run: HealthExtraRunEntity): HealthExtraSnapshot {
+            check(run.authorizationRevision > 0 && run.changedRecords >= 0 && run.hiddenRecords >= 0 &&
+                run.fingerprint.matches(Regex("[0-9a-f]{64}"))) { "HEALTH_CACHE_INVALID" }
+            val selection = HealthExtraSelection(HealthExtraKernel.parseKinds(requireNotNull(run.kinds)),
+                requireNotNull(run.windowDays), run.endDay, requireNotNull(run.historyOptIn))
+            val q = HealthExtraKernel.plan(selection, requireNotNull(run.requestedAt), requireNotNull(run.zone))
+            check(q.windowStart == run.windowStart && q.windowEnd == run.windowEnd) { "HEALTH_CACHE_INVALID" }
+            val day = if (HealthExtraKind.ALL_SOURCE_STEPS in selection.kinds) {
+                val sources = JSONArray(requireNotNull(run.stepSources))
+                val packages = (0 until sources.length()).map { sources.getString(it) }
+                check(packages == packages.distinct().sorted()) { "HEALTH_CACHE_INVALID" }
+                HealthExtraStepDay(requireNotNull(run.day), q.zone, requireNotNull(run.dayStart), requireNotNull(run.dayEnd), run.steps, packages.toSet())
+            } else {
+                check(listOf(run.day, run.dayStart, run.dayEnd, run.steps, run.stepSources).all { it == null }) { "HEALTH_CACHE_INVALID" }
+                null
+            }
+            return HealthExtraSnapshot(query = q, capturedAt = requireNotNull(run.capturedAt), records = emptyList(), stepDay = day)
+                .also { HealthExtraKernel.validate(it, q, run.recordedAt) }
+        }
+        val windows = runs.values.filter { it.kind == "SYNC" }.associate { it.id to window(it) }
+        check(auth.lastSuccessRunId == null || windows.containsKey(auth.lastSuccessRunId)) { "HEALTH_CACHE_INVALID" }
+        val entities = dao.versions()
+        val rows = assemble(entities, dao.samples())
+        val previous = mutableMapOf<Triple<String, String, String>, Long>()
+        entities.zip(rows).sortedWith(compareBy({ it.first.sourcePackage }, { it.first.kind }, { it.first.externalId }, { it.first.revision }))
+            .forEach { (entity, row) ->
+                val id = Triple(entity.sourcePackage, entity.kind, entity.externalId)
+                val old = previous[id] ?: 0L
+                check(old < Long.MAX_VALUE && row.revision == old + 1 && row.fingerprint == HealthExtraKernel.recordFingerprint(row.record)) { "HEALTH_CACHE_INVALID" }
+                previous[id] = row.revision
+                val run = requireNotNull(runs[entity.runId]) { "HEALTH_CACHE_INVALID" }
+                val snapshot = requireNotNull(windows[run.id]) { "HEALTH_CACHE_INVALID" }.copy(records = listOf(row.record))
+                val q = snapshot.query
+                HealthExtraKernel.validate(snapshot, q, run.recordedAt)
+                check(when (row.reason) {
+                    FitnessRecordVisibility.SOURCE_READ -> row.visible && (row.record.endAt == null || row.record.endAt <= snapshot.capturedAt)
+                    FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE -> !row.visible && row.record.endAt != null && row.record.endAt > snapshot.capturedAt
+                    FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW -> !row.visible && row.record.startAt >= q.windowStart &&
+                        (row.record.endAt ?: row.record.startAt) <= q.windowEnd
+                    else -> false
+                }) { "HEALTH_CACHE_INVALID" }
+            }
     }
 }
