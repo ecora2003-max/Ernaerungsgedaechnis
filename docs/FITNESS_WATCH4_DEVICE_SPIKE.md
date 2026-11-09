@@ -1,5 +1,7 @@
 # Physische Fitnessprüfung: Pixel 9 Pro XL und Galaxy Watch 4
 
+Zusätzlicher Vergleich: [Trainingszeit im Quellzeitfenster](FITNESS_WORKOUT_DURATION.md), separat und ausdrücklich abfragbar. Der neue Fensterwert ist noch kein physisch geprüfter Abgleich mit Samsung Health.
+
 Verbindliche Grundlage: [Issue #253](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/253), Gates in [ACCEPTANCE.md](ACCEPTANCE.md). Der physische Ablauf ist **teilweise durch Nutzerrückmeldung belegt**: am 09.11.2026 erfolgreicher Samsung-Health-Schrittimport und eine am Handy erzeugte Probeaufzeichnung, danach ein direkt auf der Galaxy Watch 4 erstelltes Training in Samsung Health und EG. Der neue Watch-Schritt-Tageswert und die übrigen physischen Lebenszyklus-/Privacyfälle bleiben zu prüfen. Die geprüfte Test-APK und ihr exakter Code-/Test-Commit sind im STATUS verlinkt; ein vollständiges Gate B ist damit noch nicht erklärt.
 
 Das Nutzer-Testziel ist **Pixel 9 Pro XL mit Android 17**, gekoppelt mit **Galaxy Watch 4** (Nutzerangabe vom 05.11.2026). Der API35-CI-Emulator ersetzt diesen Test nicht. Vor Ort zusätzlich Android-Build, Watch-/Wear-OS-, Samsung-Health- und Health-Connect-Version festhalten. Keine Kontonamen, Gesundheitsrohwerte, Gerätekennungen oder vollständigen Logcats ins Repository übernehmen.
