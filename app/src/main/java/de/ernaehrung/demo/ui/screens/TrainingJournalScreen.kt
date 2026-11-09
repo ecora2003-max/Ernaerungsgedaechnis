@@ -125,7 +125,14 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
                         }
                     }
                 }
-                val hidden = snapshot.imported.count { !it.visible }
+                val deferred = snapshot.imported.count {
+                    !it.visible && it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE
+                }
+                if (deferred > 0) Text("Zurückgestellte Quelltrainings: $deferred. Bei ihrer letzten Prüfung lag das Ende nach dem Lesestand. Sie zählen nicht als abgeschlossene Trainings. Originale und Historie sind über Fitness erreichbar.",
+                    Modifier.testTag("training_deferred_count"))
+                val hidden = snapshot.imported.count {
+                    !it.visible && it.visibilityReason == FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW
+                }
                 if (hidden > 0) Text("$hidden importierte Trainings waren im vollständig abgeglichenen Fenster nicht mehr sichtbar. Ihre Quellhistorie bleibt über Fitness erreichbar.",
                     Modifier.testTag("training_missing_count"))
                 Text("Manuell erfasste Trainings", style = MaterialTheme.typography.titleMedium)

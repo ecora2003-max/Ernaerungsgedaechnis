@@ -98,6 +98,50 @@ class FitnessImportRoomTest {
         assertEquals(1, db.foodDao().operationCount())
     }
 
+    @Test fun deferredIntervalsSurviveRestartRetryAndLaterReleaseWithoutChangingFoodOrAggregate(): Unit = runBlocking {
+        val pendingSteps = healthSteps(9_999, "pending-steps").copy(endAt = HEALTH_AT + 60_000)
+        val pendingWorkout = healthWorkout().copy(externalId = "pending-workout", endAt = HEALTH_AT + 60_000)
+        val records = listOf(healthSteps(0), healthWorkout(), pendingSteps, pendingWorkout)
+        val provider = SyntheticHealthSource(healthSnapshot(records = records, aggregate = null))
+        store.enableFitnessImport("enable", true, true)
+        provider.snapshot = provider.snapshot.copy(records = listOf(pendingSteps.copy(sourceModifiedAt = HEALTH_AT + 1)))
+        rejected { store.syncFitness("invalid-modified-time", provider) }
+        assertEquals("HEALTH_SOURCE_MODIFIED_TIME_INVALID", db.healthDao().state(sourceId)?.lastErrorCode)
+        provider.snapshot = healthSnapshot(records = records, aggregate = null)
+        val run = store.syncFitness("partial", provider)
+        assertEquals(2, run.changedRecords); assertEquals(2, run.hiddenRecords)
+        assertNull(db.healthDao().state(sourceId)?.lastErrorCode)
+        assertNull(run.aggregatedSteps)
+        val original = db.healthDao().history(sourceId)
+        assertEquals(4, original.size)
+        val pending = original.filterNot { it.visible }
+        assertTrue(pending.all { it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE })
+        assertEquals(setOf(pendingSteps, pendingWorkout), pending.map { it.record() }.toSet())
+        db.close(); db = open(); store = FoodStore(db) { clock }
+        assertEquals(original, db.healthDao().history(sourceId))
+        provider.onRead = { error("Retry must not reread the source") }
+        assertEquals(run, store.syncFitness("partial", provider))
+        provider.onRead = {}
+        store.syncFitness("identical-pending", provider)
+        assertEquals(original, db.healthDao().history(sourceId))
+        clock = HEALTH_AT + 65_000
+        provider.snapshot = healthSnapshot(HEALTH_AT + 60_000, records, aggregate = 0)
+        store.syncFitness("completed", provider)
+        assertEquals(0L, store.fitnessCache().first().lastSuccess?.aggregatedSteps)
+        assertEquals(6, db.healthDao().history(sourceId).size)
+        val latest = db.healthDao().latest(sourceId)
+        assertTrue(latest.all { it.visible && it.visibilityReason == FitnessRecordVisibility.SOURCE_READ })
+        latest.filter { it.externalId.startsWith("pending-") }.forEach { assertEquals(2L, it.revision) }
+        store.syncFitness("identical-completed", provider)
+        assertEquals(6, db.healthDao().history(sourceId).size)
+        assertEquals(1, db.foodDao().operationCount())
+        assertNotNull(db.foodDao().version(version))
+        assertEquals(0, db.foodDao().activeConsumptionCount())
+        assertTrue(db.foodDao().purchases().isEmpty()); assertTrue(db.foodDao().allPaidPrices().isEmpty())
+        assertTrue(db.foodDao().planningBatches().isEmpty())
+        db.openHelper.readableDatabase.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
+    }
+
     @Test fun permissionRevokedAfterReadingRollsBackAllSourceDataAndStopsFutureReads() = runBlocking {
         val provider = SyntheticHealthSource()
         store.enableFitnessImport("enable", true, true)

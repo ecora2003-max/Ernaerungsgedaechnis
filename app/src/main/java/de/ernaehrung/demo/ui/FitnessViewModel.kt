@@ -59,8 +59,14 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
         return granted
     }
     private suspend fun sync(at: Long) {
-        withContext(Dispatchers.IO) { store.syncFitness(key("health-sync"), source) }
-        update(at) { it.copy(message = "Samsung-Health-Daten lokal übernommen.") }
+        val deferred = withContext(Dispatchers.IO) {
+            store.syncFitness(key("health-sync"), source)
+            store.fitnessCache().first().records.count {
+                it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE
+            }
+        }
+        update(at) { it.copy(message = if (deferred == 0) "Samsung-Health-Daten lokal übernommen."
+            else "Lesestand lokal übernommen. Noch zurückgestellte Quellintervalle: $deferred.") }
     }
 
     /** Foreground only; no background/history permission and no timer/service. */

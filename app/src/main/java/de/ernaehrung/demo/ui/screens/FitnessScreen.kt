@@ -158,7 +158,22 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
             } }
         }
         if (visible.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere Einträge anzeigen") }
-        val noLongerVisible = cache?.records.orEmpty().filterNot { it.visible }
+        val deferred = cache?.records.orEmpty().filter {
+            !it.visible && it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE
+        }
+        if (deferred.isNotEmpty()) {
+            Text("Noch zurückgestellte Quellintervalle: ${deferred.size}", Modifier.testTag("fitness_deferred_records"))
+            Text("Bei ihrer letzten Prüfung endeten diese Quellintervalle nach dem Lesestand. Ihre Originaldaten bleiben erhalten und werden bei einer späteren Übernahme erneut geprüft. Sie zählen noch nicht als abgeschlossene Schritte oder Trainings; es wird keine Dauer oder Schrittzahl daraus hochgerechnet.")
+            deferred.take(shown).forEach { row ->
+                TextButton({ model.showHistory(row) }, Modifier.testTag("fitness_deferred_${row.externalId}")) {
+                    Text("${if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall" else "Training"} zurückgestellt · ${time(row.startAt)} bis ${time(row.endAt)}")
+                }
+            }
+            if (deferred.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere zurückgestellte Intervalle anzeigen") }
+        }
+        val noLongerVisible = cache?.records.orEmpty().filter {
+            !it.visible && it.visibilityReason == FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW
+        }
         if (noLongerVisible.isNotEmpty()) {
             Text("Im vollständig gelesenen Fenster nicht mehr sichtbar: ${noLongerVisible.size}",
                 Modifier.testTag("fitness_missing_records"))
@@ -172,7 +187,15 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
         }
         state.history?.let { rows ->
             Text("Gespeicherte Änderungshistorie", style = MaterialTheme.typography.titleSmall)
-            rows.forEach { row -> Text("Version ${row.revision}: ${if (row.visible) "aus Quelle gelesen" else "im vollständigen Fenster nicht mehr sichtbar"} · ${time(row.startAt)} · ${if (row.kind == "STEPS") "${row.steps} Schritte" else row.title ?: "Training"}") }
+            rows.forEach { row ->
+                val reason = when (row.visibilityReason) {
+                    FitnessRecordVisibility.SOURCE_READ -> "aus Quelle gelesen"
+                    FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE -> "zurückgestellt: Quellintervall endet nach dem Lesestand"
+                    FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW -> "im vollständigen Fenster nicht mehr sichtbar"
+                    else -> "Sichtbarkeit unbekannt"
+                }
+                Text("Version ${row.revision}: $reason · ${time(row.startAt)} bis ${time(row.endAt)} · ${if (row.kind == "STEPS") "${row.steps} Schritte (Originalwert)" else row.title ?: "Training"}")
+            }
             TextButton({ model.closeHistory() }) { Text("Historie schließen") }
         }
         if (cache?.lastSuccess != null || cache?.records?.isNotEmpty() == true) {

@@ -43,7 +43,8 @@ class BackupRoomTest {
         store.beginManualWorkout("training")
         store.saveManualWorkout("training", ManualWorkoutInput("Synthetischer Lauf", FitnessTimestampInput(day), durationMinutes = "0,50"), null, null, true)
         store.enableFitnessImport("enable", true, true)
-        store.syncFitness("sync", SyntheticHealthSource(healthSnapshot(records = listOf(healthSteps(0), healthWorkout()), aggregate = null)))
+        store.syncFitness("sync", SyntheticHealthSource(healthSnapshot(records = listOf(healthSteps(0),
+            healthWorkout().copy(endAt = HEALTH_AT + 60_000)), aggregate = null)))
         Unit
     }
     @After fun close() { source.close(); target.close() }
@@ -88,6 +89,10 @@ class BackupRoomTest {
         val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
         assertEquals(source.healthDao().history(origin), target.healthDao().history(origin))
         assertEquals(0L, target.healthDao().latest(origin).single { it.kind == "STEPS" }.steps)
+        val deferred = target.healthDao().latest(origin).single { it.kind == "WORKOUT" }
+        assertFalse(deferred.visible)
+        assertEquals(FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE, deferred.visibilityReason)
+        assertEquals(HEALTH_AT + 60_000, deferred.endAt)
         assertFalse(target.healthDao().state(origin)!!.enabled)
         assertEquals(source.healthDao().state(origin)!!.authorizationRevision + 1, target.healthDao().state(origin)!!.authorizationRevision)
         val count = target.foodDao().operationCount()
