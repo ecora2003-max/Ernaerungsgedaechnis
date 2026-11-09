@@ -1,5 +1,6 @@
 package de.ernaehrung.demo
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.*
 import de.ernaehrung.demo.ui.*
 import de.ernaehrung.demo.ui.screens.LocalDataContent
@@ -52,6 +55,8 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
     }
 }
 
+private const val WORKOUT_SOURCE_ROUTE = "WORKOUT_SOURCE/{source}/{record}/{revision}/{fingerprint}"
+
 /** The default application uses one real Room-backed model across all sections.
  * The immutable design tour remains an explicit opt-in, outside this data flow.
  */
@@ -61,17 +66,13 @@ fun LocalWorkspaceApp() {
     val model = rememberLocalDataViewModel()
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
-    val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route } ?: WorkspacePage.HOME
+    val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route?.substringBefore('/') } ?: WorkspacePage.HOME
     var demo by rememberSaveable { mutableStateOf(false) }
     var catalogFilter by rememberSaveable { mutableStateOf("") }
     val recognitionMode = rememberSaveable { mutableStateOf("Barcode & Produkt") }
     var selectedBatch by rememberSaveable { mutableStateOf("") }
     var selectedHistoryBatch by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedStorageLocation by rememberSaveable { mutableStateOf<String?>(null) }
-    var workoutSourcePackage by rememberSaveable { mutableStateOf("") }
-    var workoutSourceId by rememberSaveable { mutableStateOf("") }
-    var workoutSourceRevision by rememberSaveable { mutableLongStateOf(0L) }
-    var workoutSourceFingerprint by rememberSaveable { mutableStateOf("") }
     if (demo) {
         BackHandler { demo = false }
         DemoApp()
@@ -80,9 +81,12 @@ fun LocalWorkspaceApp() {
     fun go(page: WorkspacePage) { nav.navigate(page.name) { launchSingleTop = true } }
     fun openSourceWindow(row: de.ernaehrung.demo.data.local.HealthRecordVersionEntity) {
         val target = row.sourceWindowTarget()
-        workoutSourcePackage = target.sourcePackage; workoutSourceId = target.externalId
-        workoutSourceRevision = target.revision; workoutSourceFingerprint = target.fingerprint
-        go(WorkspacePage.WORKOUT_SOURCE)
+        // Each back-stack entry owns its immutable version binding. A second
+        // workout must not replace the target of an earlier screen on Back.
+        nav.navigate(listOf(WorkspacePage.WORKOUT_SOURCE.name, Uri.encode(target.sourcePackage),
+            Uri.encode(target.externalId), target.revision.toString(), target.fingerprint).joinToString("/")) {
+            launchSingleTop = true
+        }
     }
     val tabs = listOf(WorkspacePage.HOME, WorkspacePage.STOCK, WorkspacePage.SCAN, WorkspacePage.PLAN, WorkspacePage.MORE)
     val icons: List<ImageVector> = listOf(Icons.Outlined.Home, Icons.Outlined.Inventory2,
@@ -110,7 +114,14 @@ fun LocalWorkspaceApp() {
         }
     }) { padding ->
         NavHost(nav, startDestination = WorkspacePage.HOME.name, modifier = Modifier.padding(padding)) {
-            WorkspacePage.entries.forEach { page -> composable(page.name) {
+            WorkspacePage.entries.forEach { page ->
+                val route = if (page == WorkspacePage.WORKOUT_SOURCE) WORKOUT_SOURCE_ROUTE else page.name
+                val arguments = if (page == WorkspacePage.WORKOUT_SOURCE) listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("record") { type = NavType.StringType },
+                    navArgument("revision") { type = NavType.LongType },
+                    navArgument("fingerprint") { type = NavType.StringType }) else emptyList()
+                composable(route, arguments = arguments) { destination ->
                 Column(Modifier.fillMaxSize().testTag("workspace_page_${page.name}")
                     .verticalScroll(rememberScrollState()).background(Warm).padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -140,14 +151,10 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.HEALTH_EXTRA) {
                         HealthExtraScreen()
                     } else if (page == WorkspacePage.WORKOUT_SOURCE) {
-                        if (workoutSourceRevision > 0 && workoutSourceFingerprint.isNotEmpty()) {
-                            WorkoutSourceWindowScreen(WorkoutSourceTarget(workoutSourcePackage, workoutSourceId,
-                                workoutSourceRevision, workoutSourceFingerprint),
-                                onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) }, onOpenTraining = { go(WorkspacePage.TRAINING) })
-                        } else {
-                            Text("Wähle ein gespeichertes Training im Trainingsjournal.")
-                            Action("Trainingsjournal öffnen", true, "workout_source_choose") { go(WorkspacePage.TRAINING) }
-                        }
+                        val args = requireNotNull(destination.arguments)
+                        WorkoutSourceWindowScreen(WorkoutSourceTarget(requireNotNull(args.getString("source")),
+                            requireNotNull(args.getString("record")), args.getLong("revision"), requireNotNull(args.getString("fingerprint"))),
+                            onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) }, onOpenTraining = { go(WorkspacePage.TRAINING) })
                     } else if (page == WorkspacePage.OFFERS) {
                         val shopping by model.shopping.collectAsStateWithLifecycle()
                         LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report)

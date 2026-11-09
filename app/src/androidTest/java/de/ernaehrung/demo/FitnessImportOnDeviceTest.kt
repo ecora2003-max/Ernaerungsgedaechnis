@@ -60,6 +60,8 @@ class FitnessImportOnDeviceTest {
         val store = FoodStore(db) { clock + 5_000 }
         val raw = FitnessSourceRecord(token, FitnessRecordKind.WORKOUT, origin, clock - 60_000, clock - 1_000,
             null, null, clock - 1, null, 1, null, null, null, 0, exerciseType = 0, title = "Synthetisches Fenstertraining")
+        val other = raw.copy(externalId = "$token-other/:?+%", title = "Synthetisches anderes Fenstertraining",
+            startAt = raw.startAt - 180_000, endAt = raw.startAt - 120_000)
         var workout = raw
         val zone = ZoneId.systemDefault()
         val core = object : FitnessHealthSource {
@@ -71,7 +73,7 @@ class FitnessImportOnDeviceTest {
                 reads++
                 val day = Instant.ofEpochMilli(clock).atZone(zone).toLocalDate()
                 return FitnessHealthSnapshot(origin, clock - FitnessHealthPolicy.MAX_WINDOW_MILLIS, clock, clock,
-                    listOf(workout), day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), clock, null)
+                    listOf(workout, other), day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), clock, null)
             }
         }
         var distance = 0.0
@@ -109,9 +111,20 @@ class FitnessImportOnDeviceTest {
             store.authorizeHealthExtra("$token-extra-restop", null, extra, true)
             compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_value_DISTANCE") and
                 hasText("12,75 m", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Trainingsjournal öffnen").performScrollTo().performClick()
+            compose.onNodeWithTag("journal_source_window_${other.externalId}").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_empty").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(other.title)).assertExists()
             compose.activityRule.scenario.recreate()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_empty").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(other.title)).assertExists()
+            compose.onNodeWithTag("workspace_back").performClick()
+            compose.onNodeWithTag("training_journal").assertExists()
+            compose.onNodeWithTag("workspace_back").performClick()
             compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_value_DISTANCE") and
                 hasText("12,75 m", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(raw.title)).assertExists()
+            compose.onNodeWithText(requireNotNull(other.title)).assertDoesNotExist()
             compose.onNodeWithTag("workout_source_window").assertExists()
             compose.onNodeWithTag("workout_source_value_DISTANCE").performScrollTo().assertTextContains("12,75 m", substring = true)
             assertEquals(1, core.reads); assertEquals(2, extra.reads)

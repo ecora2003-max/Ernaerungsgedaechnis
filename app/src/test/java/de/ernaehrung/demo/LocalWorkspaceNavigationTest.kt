@@ -2,6 +2,7 @@ package de.ernaehrung.demo
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -19,6 +20,45 @@ class LocalWorkspaceNavigationTest {
     @get:Rule(order = 0) val database: org.junit.rules.TestRule = IsolatedWorkspaceDatabase()
     @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun tap(text: String) = rule.onNodeWithText(text).performScrollTo().performClick()
+
+    @Test fun separateWorkoutWindowsKeepTheirOwnSourceVersionWhenGoingBackAfterRecreation(): Unit = runBlocking {
+        val db = FoodDatabase.localSandbox(rule.activity.applicationContext)
+        val store = FoodStore(db) { HEALTH_AT + 5_000 }
+        val a = healthWorkout().copy(externalId = "synthetic-A/:?+%", title = "Synthetisches Training A")
+        val b = a.copy(externalId = "synthetic-B/:?+%", title = "Synthetisches Training B",
+            startAt = a.startAt - 120_000, endAt = a.startAt - 60_000)
+        val source = SyntheticHealthSource(healthSnapshot(records = listOf(a, b)))
+        store.enableFitnessImport("navigation-core-enable", true, true)
+        store.syncFitness("navigation-core-read", source)
+        store.enableFitnessImport("navigation-core-stop", false, true)
+        val foodBefore = db.foodDao().operationCount()
+        fun open(id: String) {
+            rule.waitUntil(15_000) { rule.onAllNodesWithTag("journal_source_window_$id").fetchSemanticsNodes().isNotEmpty() }
+            rule.onNodeWithTag("journal_source_window_$id").performScrollTo().performClick()
+        }
+        fun window(title: String) {
+            rule.waitUntil(15_000) {
+                rule.onAllNodesWithTag("workout_source_window").fetchSemanticsNodes().isNotEmpty() &&
+                    rule.onAllNodesWithText(title).fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithTag("workspace_page_WORKOUT_SOURCE").assertExists()
+        }
+        rule.onNodeWithTag("workspace_tab_MORE").performClick()
+        rule.onNodeWithTag("workspace_go_TRAINING").performScrollTo().performClick()
+        open(a.externalId); window(requireNotNull(a.title))
+        tap("Trainingsjournal öffnen")
+        open(b.externalId); window(requireNotNull(b.title))
+        rule.activityRule.scenario.recreate()
+        window(requireNotNull(b.title))
+        rule.onNodeWithTag("workspace_back").performClick()
+        rule.onNodeWithTag("training_journal").assertExists()
+        rule.onNodeWithTag("workspace_back").performClick()
+        window(requireNotNull(a.title))
+        rule.onNodeWithText(requireNotNull(b.title)).assertDoesNotExist()
+        assertEquals(1, source.reads.get())
+        assertEquals(foodBefore, db.foodDao().operationCount())
+        assertFalse(requireNotNull(db.healthDao().state(FitnessHealthPolicy.SAMSUNG_PACKAGE)).enabled)
+    }
 
     @Test fun defaultNavigationUsesActualRoomDataAndExplicitMealSurvivesActivityRecreation() = runBlocking {
         val db = FoodDatabase.localSandbox(rule.activity.applicationContext)
