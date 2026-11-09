@@ -14,10 +14,11 @@ internal data class BackupRestoreResult(val status: BackupRestoreStatus, val dig
  */
 internal class FoodBackupStore(private val db: FoodDatabase, private val now: () -> Long) {
     companion object {
+        private val EXTRA_TABLES = setOf("health_extra_state", "health_extra_runs", "health_extra_versions", "health_extra_samples")
         internal val FITNESS_TABLES = setOf("health_import_state", "health_import_runs", "health_source_record_versions",
             "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
             "body_measurements", "body_measurement_runs", "body_measurement_versions", "training_events", "training_sets",
-            "manual_workout_runs", "manual_workout_versions", "manual_workout_sets")
+            "manual_workout_runs", "manual_workout_versions", "manual_workout_sets") + EXTRA_TABLES
         // Deliberately pinned. Adding a domain table must update and test backup coverage.
         internal val TABLES = setOf("storage_location_reviews", "alias_decisions", "recipe_favorites",
             "personal_restrictions", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values",
@@ -65,7 +66,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             "stock_movements",
             "storage_locations",
             "training_events",
-            "training_sets")
+            "training_sets") + EXTRA_TABLES
     }
     private data class Column(val name: String, val type: String, val required: Boolean, val primaryKey: Int)
     private val dao = db.foodDao()
@@ -125,7 +126,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
                 val insert = "INSERT INTO `${table.name}` (${columns.joinToString { "`${it.name}`" }}) VALUES (${columns.joinToString { "?" }})"
                 sql.compileStatement(insert).use { statement ->
                     table.rows.forEach { original ->
-                        val row = if (table.name == "health_import_state") quarantineHealthControl(original, columns) else original
+                        val row = if (table.name in setOf("health_import_state", "health_extra_state")) quarantineHealthControl(original, columns) else original
                         statement.clearBindings()
                         row.forEachIndexed { index, cell -> when (cell) {
                             BackupCell.Unknown -> statement.bindNull(index + 1)
@@ -142,7 +143,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
             // SQLite may coerce a supplied value (for example NaN to NULL).
             // Verify every original typed field before commit; never accept a lossy restore.
             require(archive.tables.all { table ->
-                val expected = if (table.name == "health_import_state") table.copy(rows = table.rows.map {
+                val expected = if (table.name in setOf("health_import_state", "health_extra_state")) table.copy(rows = table.rows.map {
                     quarantineHealthControl(it, schema.getValue(table.name))
                 }) else table
                 alreadyPresent(sql, expected, schema.getValue(table.name))
@@ -173,7 +174,7 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
                 16 -> setOf("storage_location_reviews", "recipe_favorites")
                 17 -> setOf("storage_location_reviews")
                 else -> emptySet()
-            }
+            } + EXTRA_TABLES
             val pin = when (original.databaseVersion) {
                 13 -> "ddbdbf0fb475ae9d3a5c9a40b4284aa3"
                 14 -> "adf43266f88da0de1632891687871124"
@@ -181,22 +182,23 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
                 16 -> "e2d5d92fe1b98be4adaf09fc57288228"
                 17 -> "ac53ed935c0fb8f4986777c82f6cdfb5"
                 18 -> "ee216143184cd60023a7c45e8dd1db92"
+                19 -> "8f344563dbaf81105d195b506157c252"
                 else -> null
             }
-            require(sql.version == 19 && pin != null && original.identityHash == pin &&
+            require(sql.version == 20 && pin != null && original.identityHash == pin &&
                 original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
             val metricColumns = listOf("workoutExternalId", "workoutRecordRevision", "workoutRecordFingerprint",
                 "workoutDurationMillis", "workoutDurationStatus", "workoutDurationAttempt")
             val bridged = original.tables.map { table ->
-                if (table.name != "health_import_runs") table else {
+                if (table.name != "health_import_runs" || original.databaseVersion >= 19) table else {
                     val expected = currentSchema.getValue(table.name).map { it.name }
                     require(table.columns == expected.dropLast(metricColumns.size) && expected.takeLast(metricColumns.size) == metricColumns &&
                         table.rows.all { it.size == table.columns.size }) { "Sicherung enthält unerwartete Spalten." }
                     table.copy(columns = expected, rows = table.rows.map { it + List(metricColumns.size) { BackupCell.Unknown } })
                 }
             }
-            original.copy(databaseVersion = 19, identityHash = identity(sql), tables = bridged + missing.sorted().map {
+            original.copy(databaseVersion = 20, identityHash = identity(sql), tables = bridged + missing.sorted().map {
                 BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
             })
         }
@@ -255,6 +257,11 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         require(enabled >= 0 && revision >= 0)
         this[enabled] = BackupCell.Integer(0)
         this[revision] = BackupCell.Integer(Math.addExact((this[revision] as BackupCell.Integer).value, 1L))
+        if (columns.any { it.name == "kinds" }) {
+            listOf("lastAttemptAt", "lastErrorCode").forEach { name ->
+                this[columns.indexOfFirst { it.name == name }] = BackupCell.Unknown
+            }
+        }
     }
     private suspend fun requireConsistent(sql: SupportSQLiteDatabase) {
         sql.query("PRAGMA foreign_key_check").use { require(!it.moveToFirst()) { "Fremdschlüssel der Sicherung sind nicht vollständig erhalten." } }
@@ -264,5 +271,6 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
         PersonalRestrictionSnapshot(db.personalRestrictionDao().history())
         RecipeFavoriteOperations(db,now).snapshot()
         StorageLocationReviewOperations(db,now).validateHistory()
+        HealthExtraOperations(db,now).validateHistory()
     }
 }

@@ -23,7 +23,9 @@ import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.FitnessViewModel
+import de.ernaehrung.demo.ui.HealthExtraViewModel
 import de.ernaehrung.demo.ui.screens.FitnessScreen
+import de.ernaehrung.demo.ui.screens.HealthExtraScreen
 import java.time.*
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
@@ -40,6 +42,103 @@ import org.junit.runner.RunWith
 class FitnessImportOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Before fun unlock() = prepareUnlockedTestDevice()
+
+    @Test fun additionalTypesUseExplicitSelectionRawSourceValuesHistoryConsentReopenAndSeparatePurge(): Unit = runBlocking {
+        assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val sandbox = FoodDatabase.localSandbox(context)
+        val foodBefore = sandbox.foodDao().operationCount()
+        val coreBefore = FoodStore(sandbox).fitnessCache().first()
+        // Verify the real application navigation, then exercise the production
+        // screen against an isolated synthetic provider and real platform SQLite.
+        compose.onNodeWithTag("workspace_tab_MORE").performClick()
+        compose.onNodeWithTag("workspace_go_HEALTH_EXTRA").performScrollTo().performClick()
+        compose.onNodeWithTag("health_extra_screen").assertExists()
+        val name = "synthetic-extra-ui-${UUID.randomUUID()}.db"
+        fun open() = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
+        var db = open()
+        var clock = System.currentTimeMillis()
+        var store = FoodStore(db) { clock }
+        val provider = SyntheticExtraSource()
+        var originals: List<HealthExtraRecord>? = null
+        provider.response = { q -> syntheticExtraSnapshot(q).let { s ->
+            val rows = originals ?: s.records.map {
+                if (it.kind == HealthExtraKind.DISTANCE) it.copy(endAt = q.requestedAt + 30_000) else it
+            }.also { originals = it }
+            s.copy(records = rows)
+        } }
+        var models = ViewModelStore()
+        lateinit var model: HealthExtraViewModel
+        fun mount() {
+            compose.runOnUiThread {
+                model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                        HealthExtraViewModel(store, provider) { clock } as T
+                })[HealthExtraViewModel::class.java]
+                compose.activity.setContent { DemoTheme {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+                        HealthExtraScreen(model)
+                    }
+                } }
+            }
+        }
+        fun ready(predicate: () -> Boolean) { compose.waitUntil(15_000) { !model.state.value.busy && predicate() }; compose.waitForIdle() }
+        fun tap(tag: String) { compose.onNodeWithTag(tag).performScrollTo().performClick() }
+        try {
+            mount(); ready { model.state.value.cache != null && model.state.value.availability != null }
+            assertEquals(0, provider.reads)
+            compose.onNodeWithTag("health_extra_connect").performScrollTo().assertIsNotEnabled()
+            HealthExtraKind.entries.forEach { tap("health_extra_kind_${it.name}") }
+            tap("health_extra_days_90")
+            compose.onNodeWithTag("health_extra_connect").performScrollTo().assertIsNotEnabled()
+            tap("health_extra_history_consent"); tap("health_extra_consent")
+            tap("health_extra_connect"); ready { model.state.value.cache?.records?.size == 7 }
+            assertEquals(1, provider.reads); assertTrue(provider.lastQuery!!.needsHistory)
+            val snapshot = model.state.value.cache!!
+            assertEquals(0L, snapshot.lastSuccess!!.steps)
+            assertEquals(4, snapshot.records.sumOf { it.record.samples.size })
+            assertTrue(snapshot.records.all { it.revision == 1L }); assertEquals(6, snapshot.records.count { it.visible })
+            assertEquals("W", db.healthExtraDao().latest().single { it.kind == "BASAL_RATE" }.unit)
+            compose.onNodeWithTag("health_extra_step_day").performScrollTo().assertTextContains(": 0", substring = true)
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(2)
+            tap("health_extra_filter_kind_BODY_FAT")
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(1)
+            tap("health_extra_filter_all_kinds"); tap("health_extra_filter_source_test.synthetic.scale")
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(2)
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.phone").assertCountEquals(0)
+            assertEquals(1, provider.reads) // Display filtering cannot read or authorize anything.
+            tap("health_extra_filter_all_sources")
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 1.", substring = true)
+            tap("health_extra_refresh"); ready { model.state.value.cache?.lastSuccess?.id != requireNotNull(snapshot.lastSuccess).id }
+            assertEquals(0, model.state.value.cache!!.lastSuccess!!.hiddenRecords)
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 1.", substring = true)
+            clock += 40_000
+            tap("health_extra_refresh"); ready { model.state.value.cache?.records?.all { it.visible } == true }
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 0.", substring = true)
+            val released = model.state.value.cache!!.records
+            assertEquals(2L, released.single { it.record.kind == HealthExtraKind.DISTANCE }.revision)
+            assertEquals(snapshot.records.map { it.record }.toSet(), released.map { it.record }.toSet())
+            tap("health_extra_stop"); ready { model.state.value.cache?.state?.enabled == false }
+            compose.runOnUiThread { compose.activity.setContent { DemoTheme {} }; models.clear() }
+            compose.waitForIdle(); db.close(); db = open(); store = FoodStore(db) { clock }; models = ViewModelStore()
+            mount(); ready { model.state.value.cache?.records?.size == 7 }
+            assertEquals(3, provider.reads)
+            assertEquals(released, model.state.value.cache!!.records)
+            assertFalse(model.state.value.cache!!.state.enabled)
+            tap("health_extra_erase_consent"); tap("health_extra_erase")
+            ready { model.state.value.cache?.records?.isEmpty() == true }
+            assertTrue(db.healthExtraDao().latestSamples().isEmpty())
+            assertEquals(coreBefore, FoodStore(sandbox).fitnessCache().first())
+            assertEquals(foodBefore, sandbox.foodDao().operationCount()); assertEquals(0, db.foodDao().operationCount())
+            assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("health-extra-flow"); throw failure }
+        finally {
+            compose.runOnUiThread { compose.activity.setContent { DemoTheme {} }; models.clear() }
+            compose.waitForIdle(); db.close(); context.deleteDatabase(name)
+        }
+    }
 
     @Test fun syntheticCacheAppearsInDefaultFitnessUiSurvivesRecreationAndDeletesWithoutFoodWrites(): Unit = runBlocking {
         assertTrue("Synthetic cleanup requires a disposable emulator", Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))

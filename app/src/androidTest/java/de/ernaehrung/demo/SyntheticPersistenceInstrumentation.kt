@@ -18,6 +18,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 import java.io.File
 
@@ -107,6 +108,15 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     store.readFitnessWorkoutDuration("$key-health-duration", provider,
                         db.healthDao().latestWorkout(origin, complete.externalId)!!.durationTarget())
                     store.enableFitnessImport("$key-health-stop", false, true)
+                    check(db.healthExtraDao().state()?.enabled != true && db.healthExtraDao().latest().isEmpty())
+                    val extraProvider = SyntheticExtraSource().apply {
+                        response = { q -> syntheticExtraSnapshot(q).let { snapshot -> snapshot.copy(records = snapshot.records.map {
+                            if (it.kind == HealthExtraKind.DISTANCE) it.copy(endAt = q.requestedAt + 60_000) else it
+                        }) } }
+                    }
+                    store.authorizeHealthExtra("$key-extra-enable", HealthExtraSelection(HealthExtraKind.entries.toSet()), extraProvider, true)
+                    store.syncHealthExtra("$key-extra-sync", extraProvider)
+                    store.authorizeHealthExtra("$key-extra-stop", null, extraProvider, true)
                     val data = JSONObject().put("proof",proof).put("source",source).put("package",targetContext.packageName)
                         .put("pid",Process.myPid()).put("sdk",Build.VERSION.SDK_INT).put("schema",db.openHelper.readableDatabase.version)
                         .put("date",date).put("first",first).put("second",second).put("location",location)
@@ -164,6 +174,26 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                         duration.workoutRecordFingerprint == complete.fingerprint)
                     check(db.healthDao().currentWorkoutDurations(origin, true).single() == duration)
                     check(db.healthDao().latest(origin) == healthRows && db.healthDao().state(origin) == healthState)
+                    val extraState = requireNotNull(db.healthExtraDao().state())
+                    check(!extraState.enabled && extraState.lastSuccessRunId == "$key-extra-sync" && extraState.lastErrorCode == null)
+                    val extraRun = requireNotNull(db.healthExtraDao().run("$key-extra-sync"))
+                    val extraQuery = HealthExtraKernel.plan(HealthExtraSelection(HealthExtraKind.entries.toSet()),
+                        requireNotNull(extraRun.requestedAt), requireNotNull(extraRun.zone))
+                    val extraRows = store.healthExtraCache().first().records
+                    val expectedExtra = syntheticExtraSnapshot(extraQuery).records.map {
+                        if (it.kind == HealthExtraKind.DISTANCE) it.copy(endAt = extraQuery.requestedAt + 60_000) else it
+                    }
+                    check(extraRows.size == 7 && extraRows.map { it.record }.toSet() == expectedExtra.toSet())
+                    check(extraRows.all { it.revision == 1L } && extraRows.count { it.visible } == 6)
+                    check(extraRows.single { !it.visible }.reason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE)
+                    check(extraRun.steps == 0L && extraRun.stepSources == "[\"test.synthetic.phone\",\"test.synthetic.wearable\"]")
+                    check(db.healthExtraDao().latestSamples().size == 4)
+                    val extraRetry = SyntheticExtraSource().apply {
+                        available = FitnessHealthSource.Availability.UNSUPPORTED
+                        grants = emptySet(); onRead = { error("Stopped extra retry must never read provider") }
+                    }
+                    check(store.syncHealthExtra("$key-extra-sync", extraRetry) == extraRun && extraRetry.reads == 0)
+                    check(store.healthExtraCache().first().records == extraRows && db.healthExtraDao().state() == extraState)
                     val date = data.getString("date"); val first = data.getString("first"); val second = data.getString("second")
                     val location = data.getString("location"); val batch = data.getString("batch"); val meal = data.getString("meal")
                     check(dao.balance(batch) == 65_000L && requireNotNull(dao.batch(batch)).versionId == first)

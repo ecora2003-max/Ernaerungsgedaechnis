@@ -183,13 +183,13 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
             lastAttemptAt = now(), lastErrorCode = "PERMISSION_MISSING"))
     }
 
-    suspend fun purge(key: String, confirmed: Boolean) = db.withTransaction {
+    suspend fun purge(key: String, confirmed: Boolean): Boolean = db.withTransaction {
         require(confirmed) { "HEALTH_EXPLICIT_ACTION_REQUIRED" }
         validateKey(key)
         val hash = FitnessImportKernel.fingerprint("HEALTH_LOCAL_PURGE_V1", source)
         dao.run(key)?.let {
             require(it.kind == "PURGE" && it.sourcePackage == source && it.fingerprint == hash) { "HEALTH_OPERATION_REUSED" }
-            return@withTransaction
+            return@withTransaction false
         }
         val revision = next(state().authorizationRevision)
         // Detach the FK before removing only this source's local health history.
@@ -197,6 +197,7 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
         dao.purgeRecords(source)
         dao.redactRuns(source)
         dao.insertRun(HealthImportRunEntity(key, source, "PURGE", hash, now(), revision))
+        true
     }
 
     suspend fun history(kind: String, id: String) = db.withTransaction {

@@ -4,6 +4,34 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Empty optional observations; no existing source, consent or fact is rewritten. */
+    val MIGRATION_19_20 = object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_runs (id TEXT NOT NULL,kind TEXT NOT NULL,
+                fingerprint TEXT NOT NULL,recordedAt INTEGER NOT NULL,authorizationRevision INTEGER NOT NULL,
+                kinds TEXT,windowDays INTEGER,endDay TEXT,historyOptIn INTEGER,requestedAt INTEGER,capturedAt INTEGER,
+                windowStart INTEGER,windowEnd INTEGER,zone TEXT,day TEXT,dayStart INTEGER,dayEnd INTEGER,
+                steps INTEGER,stepSources TEXT,changedRecords INTEGER NOT NULL,hiddenRecords INTEGER NOT NULL,PRIMARY KEY(id))""")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_state (id TEXT NOT NULL,enabled INTEGER NOT NULL,
+                authorizationRevision INTEGER NOT NULL,kinds TEXT NOT NULL,windowDays INTEGER NOT NULL,endDay TEXT,
+                historyOptIn INTEGER NOT NULL,lastSuccessRunId TEXT,lastAttemptAt INTEGER,lastErrorCode TEXT,PRIMARY KEY(id),
+                FOREIGN KEY(lastSuccessRunId) REFERENCES health_extra_runs(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE INDEX index_health_extra_state_lastSuccessRunId ON health_extra_state(lastSuccessRunId)")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_versions (sourcePackage TEXT NOT NULL,kind TEXT NOT NULL,
+                externalId TEXT NOT NULL,revision INTEGER NOT NULL,runId TEXT NOT NULL,visible INTEGER NOT NULL,
+                reason TEXT NOT NULL,fingerprint TEXT NOT NULL,unit TEXT NOT NULL,startAt INTEGER NOT NULL,endAt INTEGER,
+                startOffsetSeconds INTEGER,endOffsetSeconds INTEGER,sourceModifiedAt INTEGER NOT NULL,clientRecordId TEXT,
+                clientRecordVersion INTEGER NOT NULL,manufacturer TEXT,model TEXT,deviceType INTEGER,recordingMethod INTEGER NOT NULL,
+                scalarBits INTEGER,PRIMARY KEY(sourcePackage,kind,externalId,revision),
+                FOREIGN KEY(runId) REFERENCES health_extra_runs(id) ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+            db.execSQL("CREATE INDEX index_health_extra_versions_runId ON health_extra_versions(runId)")
+            db.execSQL("""CREATE TABLE IF NOT EXISTS health_extra_samples (sourcePackage TEXT NOT NULL,kind TEXT NOT NULL,
+                externalId TEXT NOT NULL,revision INTEGER NOT NULL,position INTEGER NOT NULL,at INTEGER NOT NULL,doubleBits INTEGER,bpm INTEGER,
+                PRIMARY KEY(sourcePackage,kind,externalId,revision,position),
+                FOREIGN KEY(sourcePackage,kind,externalId,revision) REFERENCES health_extra_versions(sourcePackage,kind,externalId,revision)
+                ON UPDATE NO ACTION ON DELETE RESTRICT)""")
+        }
+    }
     /** Nullable provider metric evidence only; all original raw values are preserved. */
     val MIGRATION_18_19 = object : Migration(18, 19) {
         override fun migrate(db: SupportSQLiteDatabase) {

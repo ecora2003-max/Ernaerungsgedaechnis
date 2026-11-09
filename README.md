@@ -1,8 +1,8 @@
 # Ernährungsgedächtnis · Android-Entwicklung
 
-[**Aktuelle Android-Test-APK herunterladen**](downloads/EG-Watch-Test-duration-17e4d04.apk?raw=true) · [GitHub Releases](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.10.0) · [Installation und genaue Nachweise](downloads/README.md)
+[**Aktuelle Android-Test-APK herunterladen**](downloads/EG-Watch-Test-extra-bae0044.apk?raw=true) · [GitHub Releases](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.11.0) · [Installation und genaue Nachweise](downloads/README.md)
 
-Android-App mit Kotlin, Jetpack Compose und Material 3. Testversion **0.10.0-fitness-duration** verbindet lokale Daten, bestätigte Buchungen, Ernährung/Rezepte, Planung/Einkauf, Erkennung und Fitness. Weiterhin Entwicklungs-/Testbetrieb; die vollständige App-Abnahme ist offen. Aktuelle Funktionen und Belege stehen im [STATUS](docs/STATUS.md); die frühere starre Phasenfolge beschreibt historische Meilensteine.
+Android-App mit Kotlin, Jetpack Compose und Material 3. Testversion **0.11.0-health-extra** verbindet lokale Daten, bestätigte Buchungen, Ernährung/Rezepte, Planung/Einkauf, Erkennung und Fitness. Weiterhin Entwicklungs-/Testbetrieb; die vollständige App-Abnahme ist offen. Aktuelle Funktionen und Belege stehen im [STATUS](docs/STATUS.md); die frühere starre Phasenfolge beschreibt historische Meilensteine.
 
 **Scan** öffnet jetzt die lokale Erkennung: Barcode fotografieren/Bild wählen/manuell eingeben, offline im Katalog prüfen, optional Open Food Facts abfragen und bearbeitbare Produktangaben bestätigen. EAN-/GTIN-Prüfziffern, konkrete Artikelversionen, Quellen und unbekannte Werte bleiben erhalten. Produktanlage bucht keinen Vorrat. Unter **Bon & OCR** Kamera/System-Fotoauswahl oder mehrzeiligen Text verwenden, einen Entwurf speichern und Vorschläge prüfen. Erst eine ausdrückliche Zahlungsbestätigung erzeugt einen Einkauf; geklärte Lagerzugänge werden separat bestätigt. Händleraliase lassen sich ausdrücklich lernen, korrigieren und zurücknehmen. Anleitung/Grenzen: [docs/RECOGNITION.md](docs/RECOGNITION.md).
 
@@ -12,18 +12,18 @@ Tatsächliche Zugänge, Verbrauch, Umlagerung, Zählkorrektur, Entsorgung und He
 
 Gemeinsame Tages-/Wochen-/56-Tage-Planung mit expliziter Ist-Zuordnung berechnet offenen Restbedarf. Einkaufsvorschläge berücksichtigen geeigneten Bestand, bestätigte Kaufpackungen, Preise und Überschüsse. Listenhäkchen sind kein Kauf. Verfügbares Budget erscheint erst nach explizit vollständigem Ausgabenabgleich. Regeln: [docs/PLANNING.md](docs/PLANNING.md), [docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md), [docs/SHOPPING.md](docs/SHOPPING.md), [docs/PURCHASES.md](docs/PURCHASES.md).
 
-Aktuell **Room19 mit52 Tabellen und zwei Views**, mit erhaltenden Migrationen sämtlicher veröffentlichter Versionen1–18 und explizit bestätigten privaten Sicherungen. Die frühere Phase-5-/Room7-Basis bleibt historisch dokumentiert. Quellen-/APP_DISPLAY-Freigaben und echte Liveangebote aller Händler/Knuspr, reale Nano4Fast-/Nano3-/Cloud-Modellantworten, neue Watch-Schritte und übrige physische Lebenszyklus-/Fitnessgates sind weiterhin separat nachzuweisen. **Das Repository ist öffentlich:** keine persönlichen Bons, Profile, Datenbanken, Zugangsdaten oder privaten Schlüssel committen. [Aktuelle Nachweise](docs/STATUS.md), [Abnahmekriterien](docs/ACCEPTANCE.md), [Produktplan](docs/product/).
+Aktuell **Room20 mit56 Tabellen und zwei Views**, mit erhaltenden Migrationen sämtlicher veröffentlichter Versionen1–19 und explizit bestätigten privaten Sicherungen. Die frühere Phase-5-/Room7-Basis bleibt historisch dokumentiert. Quellen-/APP_DISPLAY-Freigaben und echte Liveangebote aller Händler/Knuspr, reale Nano4Fast-/Nano3-/Cloud-Modellantworten, neue Watch-Schritte und übrige physische Lebenszyklus-/Fitnessgates sind weiterhin separat nachzuweisen. **Das Repository ist öffentlich:** keine persönlichen Bons, Profile, Datenbanken, Zugangsdaten oder privaten Schlüssel committen. [Aktuelle Nachweise](docs/STATUS.md), [Abnahmekriterien](docs/ACCEPTANCE.md), [Produktplan](docs/product/).
 
 ## Schnellstart
 
-Projektordner in Android Studio öffnen und Gradle synchronisieren. Benötigt werden JDK 17, Android SDK 35 und Build Tools 34.0.0. Der Gradle-Wrapper ist vollständig enthalten.
+Projektordner in Android Studio öffnen und Gradle synchronisieren. Benötigt werden JDK 17, Android SDK 36 und Build Tools 35.0.0. Der Gradle-Wrapper ist vollständig enthalten.
 
 ```bash
 chmod +x gradlew
 ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin
 ```
 
-Das letzte Prüftask kompiliert die zwei zusätzlichen Gerätetests; es führt sie nicht aus. Auf einem angeschlossenen Android-Gerät/Emulator mit `./gradlew :app:connectedDebugAndroidTest` separat ausführen. Native Kamera/OCR wurden in der Cloud ohne Android-Gerät nicht ausgeführt.
+Das letzte Prüftask kompiliert die Instrumentierung; es führt keine Gerätetests aus. Auf einem angeschlossenen Android-Gerät/Emulator mit `./gradlew :app:connectedDebugAndroidTest` separat ausführen. Exakte tatsächliche API35-/API26-, Prozess-/Netzfreiheits- und APK-Nachweise stehen in [PR294](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/294) und den Releasehinweisen. Ein leerer Systemprovider und synthetische Emulatorfälle ersetzen keine physische Pixel-/Watch-Abnahme.
 
 Für ausgewählte APK-Meilensteine zusätzlich `./gradlew :app:assembleDebug` ausführen. Die installierbare Debug-APK entsteht unter `app/build/outputs/apk/debug/app-debug.apk`. Mindestversion: Android 8.0 (API 26), Zielversion: API 35. Paketname: `de.ernaehrung.demo`.
 

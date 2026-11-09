@@ -69,7 +69,7 @@ class RecipeFavoriteRoomTest {
         val identity = db.foodDao().recipeVersion(v1)!!.recipeId
         store.setRecipeFavorite("favorite",RecipeFavoriteInput(v1,null,true),true)
         val archive = store.captureBackup(app,false,true)
-        assertEquals(52,archive.tables.size)
+        assertEquals(56,archive.tables.size)
         assertEquals(1,archive.tables.single { it.name == "recipe_favorites" }.rows.size)
         assertEquals(BackupRestoreStatus.RESTORED,restore(archive).status)
         assertEquals(store.readRecipeFavorites(),destination.readRecipeFavorites())

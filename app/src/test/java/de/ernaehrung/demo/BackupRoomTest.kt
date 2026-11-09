@@ -68,7 +68,7 @@ class BackupRoomTest {
 
     @Test fun fullEncryptedRestorePreservesOriginalIdsNullZeroDecimalsReviewsAndHistoryButDoesNotEnableAProvider() = runBlocking {
         val before = source.foodDao().operationCount()
-        val archive = capture(); assertEquals(52, archive.tables.size)
+        val archive = capture(); assertEquals(56, archive.tables.size)
         assertEquals(FoodBackupStore.TABLES, archive.tables.map { it.name }.toSet())
         assertEquals(before, source.foodDao().operationCount())
         val bytes = BackupArchiveCodec.encode(archive)
@@ -140,25 +140,16 @@ class BackupRoomTest {
         assertNull(marker.workoutExternalId); assertNull(marker.workoutDurationMillis); assertNull(marker.workoutDurationAttempt)
     }
 
-    @Test fun pinnedPublishedThirteenThroughEighteenArchivesGainOnlyUnknownMetricColumnsAndKeepOriginalRetryDigest(): Unit = runBlocking {
+    @Test fun pinnedPublishedThirteenThroughNineteenArchivesGainOnlyEmptyExtraDomainsAndKeepOriginalRetryDigest(): Unit = runBlocking {
         val full = capture()
         val pins = mapOf(13 to "ddbdbf0fb475ae9d3a5c9a40b4284aa3", 14 to "adf43266f88da0de1632891687871124",
             15 to "f0276403a772111cf77efeaf250b4b2b", 16 to "e2d5d92fe1b98be4adaf09fc57288228",
-            17 to "ac53ed935c0fb8f4986777c82f6cdfb5", 18 to "ee216143184cd60023a7c45e8dd1db92")
+            17 to "ac53ed935c0fb8f4986777c82f6cdfb5", 18 to "ee216143184cd60023a7c45e8dd1db92", 19 to "8f344563dbaf81105d195b506157c252")
         for ((version, pin) in pins) {
             target.close(); target = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
             destination = FoodStore(target) { at }
-            val missing = buildSet {
-                if (version < 18) add("storage_location_reviews")
-                if (version < 17) add("recipe_favorites")
-                if (version < 16) add("personal_restrictions")
-                if (version < 15) addAll(listOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values"))
-                if (version < 14) add("storage_capacity_reviews")
-            }
-            val archive = full.copy(databaseVersion = version, identityHash = pin,
-                tables = full.tables.filterNot { it.name in missing }.map { table ->
-                    if (table.name == "health_import_runs") table.copy(columns = table.columns.dropLast(6), rows = table.rows.map { it.dropLast(6) }) else table
-                })
+            val archive = publishedBackupFixture(full, version)
+            assertEquals(pin, archive.identityHash)
             assertTrue(destination.validateBackupForPreview(archive, appId))
             assertEquals(BackupRestoreStatus.RESTORED, restore(archive).status)
             assertEquals(digest(archive), target.foodDao().operation("restore")!!.resultId)

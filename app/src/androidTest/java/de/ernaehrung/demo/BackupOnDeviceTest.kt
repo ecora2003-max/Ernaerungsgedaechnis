@@ -156,7 +156,7 @@ class BackupOnDeviceTest {
             // Diagnose the real Android SQLite representation independently of
             // the external chooser; this is a read-only synthetic snapshot.
             val androidSnapshot = store.captureBackup(target.packageName, true, true)
-            assertEquals(52, androidSnapshot.tables.size)
+            assertEquals(56, androidSnapshot.tables.size)
             assertEquals(sourceCount, source.foodDao().operationCount())
             val sourceModel = model(store)
             mount(sourceModel, "source")
