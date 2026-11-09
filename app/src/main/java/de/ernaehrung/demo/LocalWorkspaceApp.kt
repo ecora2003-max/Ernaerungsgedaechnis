@@ -23,6 +23,8 @@ import de.ernaehrung.demo.ui.screens.LocalDataContent
 import de.ernaehrung.demo.ui.screens.rememberLocalDataViewModel
 import de.ernaehrung.demo.ui.screens.FitnessScreen
 import de.ernaehrung.demo.ui.screens.HealthExtraScreen
+import de.ernaehrung.demo.ui.screens.WorkoutSourceWindowScreen
+import de.ernaehrung.demo.data.fitness.WorkoutSourceTarget
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
@@ -40,7 +42,7 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"), PERSONAL_RESTRICTIONS("Persönliche Ausschlüsse"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"), OFFERS("Angebote & Preisvergleich"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), WORKOUT_SOURCE("Trainingszeitfenster"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG, BATCH_REVIEW, STORAGE_CAPACITY -> STOCK
@@ -66,12 +68,22 @@ fun LocalWorkspaceApp() {
     var selectedBatch by rememberSaveable { mutableStateOf("") }
     var selectedHistoryBatch by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedStorageLocation by rememberSaveable { mutableStateOf<String?>(null) }
+    var workoutSourcePackage by rememberSaveable { mutableStateOf("") }
+    var workoutSourceId by rememberSaveable { mutableStateOf("") }
+    var workoutSourceRevision by rememberSaveable { mutableLongStateOf(0L) }
+    var workoutSourceFingerprint by rememberSaveable { mutableStateOf("") }
     if (demo) {
         BackHandler { demo = false }
         DemoApp()
         return
     }
     fun go(page: WorkspacePage) { nav.navigate(page.name) { launchSingleTop = true } }
+    fun openSourceWindow(row: de.ernaehrung.demo.data.local.HealthRecordVersionEntity) {
+        val target = row.sourceWindowTarget()
+        workoutSourcePackage = target.sourcePackage; workoutSourceId = target.externalId
+        workoutSourceRevision = target.revision; workoutSourceFingerprint = target.fingerprint
+        go(WorkspacePage.WORKOUT_SOURCE)
+    }
     val tabs = listOf(WorkspacePage.HOME, WorkspacePage.STOCK, WorkspacePage.SCAN, WorkspacePage.PLAN, WorkspacePage.MORE)
     val icons: List<ImageVector> = listOf(Icons.Outlined.Home, Icons.Outlined.Inventory2,
         Icons.Outlined.QrCodeScanner, Icons.Outlined.CalendarMonth, Icons.Outlined.MoreHoriz)
@@ -120,12 +132,22 @@ fun LocalWorkspaceApp() {
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
                             onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
+                            onOpenSourceWindow = ::openSourceWindow,
                             onOpenTraining = { go(WorkspacePage.TRAINING) },
                             onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
                                 FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
                             })
                     } else if (page == WorkspacePage.HEALTH_EXTRA) {
                         HealthExtraScreen()
+                    } else if (page == WorkspacePage.WORKOUT_SOURCE) {
+                        if (workoutSourceRevision > 0 && workoutSourceFingerprint.isNotEmpty()) {
+                            WorkoutSourceWindowScreen(WorkoutSourceTarget(workoutSourcePackage, workoutSourceId,
+                                workoutSourceRevision, workoutSourceFingerprint),
+                                onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) }, onOpenTraining = { go(WorkspacePage.TRAINING) })
+                        } else {
+                            Text("Wähle ein gespeichertes Training im Trainingsjournal.")
+                            Action("Trainingsjournal öffnen", true, "workout_source_choose") { go(WorkspacePage.TRAINING) }
+                        }
                     } else if (page == WorkspacePage.OFFERS) {
                         val shopping by model.shopping.collectAsStateWithLifecycle()
                         LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report)
@@ -134,7 +156,8 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.BODY_RAW) {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
                     } else if (page == WorkspacePage.TRAINING) {
-                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) })
+                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
+                            onOpenSourceWindow = ::openSourceWindow)
                     } else if (page == WorkspacePage.BATCH_REVIEW) {
                         BatchReviewScreen(selectedBatch)
                     } else if (page == WorkspacePage.BACKUP) {

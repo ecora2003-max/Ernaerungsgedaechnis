@@ -1,0 +1,19 @@
+# Lokale Quelldaten im Trainingszeitfenster
+
+Der Anschluss `HEALTH_WORKOUT_SOURCE_WINDOW_V1` verbindet ein importiertes Training mit den bereits separat freigegebenen Zusatzdaten. Einstieg: Training in Fitness oder Trainingsjournal → **Quelldaten im Trainingszeitfenster ansehen**. Die Seite führt ausschließlich Room-Lesezugriffe aus. Sie startet keine SDK-Abfrage, Rechteanforderung, Übernahme oder Buchung; die Zusatzkopie wird weiterhin über ihre eigene Ansicht freigegeben/aktualisiert.
+
+## Bindung und Darstellung
+
+- Die Auswahl bindet Quellpaket, Quell-ID, lokale Revision und Originalfingerprint des Trainings. Bei Korrektur, fehlender Sichtbarkeit oder lokaler Löschung werden die bisherigen Projektionen entfernt. Die neue Trainingsversion muss bewusst erneut geöffnet werden. Eine Aktivitätsneuerstellung stellt die Auswahl wieder her, ohne einen Provider-Retry auszulösen.
+- Nur aktuell lokal sichtbare Herzfrequenz-, Geschwindigkeits-, Distanz-, Aktivenergie- und Gesamtenergieintervalle **desselben tatsächlichen Quellpakets** mit echter zeitlicher Überschneidung werden angezeigt. Gleiche Quelle und Zeit sind kein Beweis für dasselbe Gerät oder die Zugehörigkeit zu einem Training. Körperfett/Grundumsatzpunkte, gemeinsame Schritt-Tageswerte und fremde Quellen werden nicht zu Trainingsattributen.
+- Für Messpunktreihen werden ausschließlich Originalindizes mit Zeitstempel im halboffenen Quellzeitfenster `[Beginn, Ende)` ausgewählt. Die Originalreihe, Reihenfolge, Bits, Metadaten und Fingerprints bleiben unverändert gespeichert. Anzahl und Min-/Maxbereich sind Beschreibungen dieser ausgewählten Rohpunkte; kein Mittelwert, keine Interpolation oder Intensitätsschätzung. Fehlen passende Punkte, bleibt der Wert unbekannt, nicht0.
+- Skalarwerte aus identischem oder vollständig enthaltenem Originalintervall werden ausdrücklich nur für **dieses Originalintervall** angezeigt. Werte eines weiter reichenden Intervalls werden im Trainingsfenster nicht numerisch zugeordnet, gekürzt oder hochgerechnet. Das Original bleibt in der Zusatzkopie sichtbar. Insbesondere wird ein Tages-Gesamtenergieeintrag nicht zu Trainingskalorien.
+- Zurückgestellte oder im letzten Abgleich nicht mehr sichtbare Originale liefern keine abgeschlossenen Werte. Ihre Zahl bleibt erkennbar. Ältere beibehaltene Typen/Intervalle außerhalb des letzten Zusatz-Leseauftrags werden entsprechend gekennzeichnet. Quellenkorrekturen aktualisieren die lokale Anzeige; Einwilligungsstopp erhält ihre Lesbarkeit, Purge entfernt sie.
+
+## Datenhoheit und Nachweise
+
+Core-Trainingsversion und Zusatzkopie werden in einer gemeinsamen SQLite-Lesetransaktion ausgewählt. Es gibt keine neue Tabelle/Migration, kein Zurückschreiben, keine Energiesumme, aktive Trainingsdauer, TDEE- oder Zielrechnung. Die bisherige explizite SDK-Trainingsfensterdauer bleibt ein eigener Anschluss.
+
+Synthetische Kernel-/Room-Fälle prüfen halboffene Grenzen, fremde Quellen, vollständige Originale, bekannte0, breite Energieintervalle, Korrekturen, lokale Sichtbarkeit, Einwilligungsstopp und Purge. Der zusätzliche native Standard-UI-Fall muss reale Navigation, aktualisierte Raw-Werte, versionsgebundene Aktivitätsneuerstellung, Korrektur-/Purgeausblendung, FoodStore-Ist-Isolation und tatsächliche Netzfreiheit nachweisen. Kompilierung ist kein Geräte-PASS; konkrete exakte Heads/Originalartefakte stehen im zugehörigen PR und STATUS.
+
+Die veröffentlichte v11-APK bleibt der davor geprüfte Zusatzimport-Meilenstein. Ein abweichender späterer Appbaum testet diese ältere Datei nicht als eigenen neuen Stand; der separate APK-Smoke meldet dann ausdrücklich NOT_APPLICABLE. Neue APKs werden weiterhin nur an gewählten Meilensteinen bereitgestellt. Physische zusätzliche Typübernahme, neue Watch-Schritte und die übrigen Pixel-/Android17-/Watch4-Gates bleiben unabhängig offen.

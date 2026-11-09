@@ -43,6 +43,7 @@ internal data class HealthRecordVersionEntity(val sourcePackage: String, val kin
         clientRecordVersion, manufacturer, model, deviceType, recordingMethod, steps, exerciseType, title, notes)
     fun stored() = FitnessStoredRecord(record(), revision, visible, fingerprint, visibilityReason)
     fun durationTarget() = FitnessWorkoutDurationTarget(externalId, revision, fingerprint)
+    fun sourceWindowTarget() = WorkoutSourceTarget(sourcePackage, externalId, revision, fingerprint)
     companion object {
         fun from(change: FitnessRecordChange, runId: String): HealthRecordVersionEntity {
             val r = change.record

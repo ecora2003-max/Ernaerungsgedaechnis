@@ -33,7 +33,8 @@ private fun rememberTrainingJournalModel(): TrainingJournalViewModel {
 /** Reader of published legacy tables and the latest private HC cache. */
 @Composable
 internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
-    model: TrainingJournalViewModel = rememberTrainingJournalModel(), onOpenExtra: (() -> Unit)? = null) {
+    model: TrainingJournalViewModel = rememberTrainingJournalModel(), onOpenExtra: (() -> Unit)? = null,
+    onOpenSourceWindow: ((HealthRecordVersionEntity) -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val fitness = rememberFitnessModel()
     val health by fitness.state.collectAsStateWithLifecycle()
@@ -129,6 +130,9 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
                             if (overlaps.isNotEmpty()) Text("Zeitliche Überschneidung mit ${overlaps.size} weiterem gespeicherten Training. Prüfe die Quellen; es wird nichts automatisch addiert oder entfernt.",
                                 Modifier.testTag("training_overlap_${row.externalId}"))
                             Text("Intensität: nicht überliefert. Puls, Distanz und Energie liegen in getrennten Health-Connect-Typen und werden nicht automatisch diesem Training zugeordnet.")
+                            onOpenSourceWindow?.let { open ->
+                                OutlinedButton({ open(row) }, modifier = Modifier.testTag("journal_source_window_${row.externalId}")) { Text("Quelldaten im Trainingszeitfenster ansehen") }
+                            }
                         }
                     }
                 }

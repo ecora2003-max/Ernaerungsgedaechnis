@@ -41,7 +41,8 @@ internal fun rememberFitnessModel(): FitnessViewModel {
 @Composable
 internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
     onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null,
-    onOpenTraining: (() -> Unit)? = null, onOpenExtra: (() -> Unit)? = null) {
+    onOpenTraining: (() -> Unit)? = null, onOpenExtra: (() -> Unit)? = null,
+    onOpenSourceWindow: ((HealthRecordVersionEntity) -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -155,6 +156,9 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                         Modifier.testTag("fitness_sport_${row.externalId}"))
                     WorkoutDurationInfo(row, cache, state.busy || state.awaitingPermission) { model.readWorkoutDuration(row) }
                     Text("Diese Basisaufzeichnung enthält keine Puls- oder Energiewerte. Zusätzliche Health-Connect-Quelldaten können getrennt freigegeben werden; sie werden diesem Training nicht automatisch zugeschrieben.")
+                    onOpenSourceWindow?.let { open ->
+                        OutlinedButton({ open(row) }, modifier = Modifier.testTag("fitness_source_window_${row.externalId}")) { Text("Quelldaten im Trainingszeitfenster ansehen") }
+                    }
                 }
                 Text("Quelländerung: ${time(row.sourceModifiedAt)} · lokale Version ${row.revision}")
                 Text("Zeitzonenversatz der Quelle: ${offset(row.startOffsetSeconds)} / ${offset(row.endOffsetSeconds)}")

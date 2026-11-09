@@ -35,10 +35,11 @@ internal class HealthExtraOperations(private val db: FoodDatabase, private val n
     }
     fun observe() = db.invalidationTracker.createFlow("health_extra_state", "health_extra_runs",
         "health_extra_versions", "health_extra_samples").map {
-        db.withTransaction {
-            val auth = state()
-            HealthExtraCache(auth, auth.lastSuccessRunId?.let { dao.run(it) }, assemble(dao.latest(), dao.latestSamples()))
-        }
+        readCache()
+    }
+    suspend fun readCache(): HealthExtraCache = db.withTransaction {
+        val auth = state()
+        HealthExtraCache(auth, auth.lastSuccessRunId?.let { dao.run(it) }, assemble(dao.latest(), dao.latestSamples()))
     }
     suspend fun history(source: String, kind: String, id: String) = db.withTransaction {
         assemble(dao.history(source, kind, id), dao.historySamples(source, kind, id))
