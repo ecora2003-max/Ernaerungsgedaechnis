@@ -9,9 +9,9 @@ on:
         type: boolean
   push:
     branches: [main]
-    paths: ['app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
+    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
   pull_request:
-    paths: ['app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
+    paths: ['downloads/**', 'tools/check_signed_apk_smoke.py', 'tools/test_signed_apk_smoke.py', 'app/**', 'nano-runtime/**', 'gradle/**', '*.gradle.kts', 'gradle.properties', 'gradlew*', '.github/workflows/android-demo.yml', 'docs/INTEGRATION_ROADMAP.md', 'tools/check_recipe_runtime_schema_reference.py', 'tools/check_recipe_reference_sources.py', 'tools/recipe_reference_v1_manifest.json', 'tools/run_android_process_restart.sh', 'tools/test_android_process_restart.py']
 permissions:
   contents: read
 concurrency:
@@ -49,6 +49,8 @@ jobs:
           ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :nano-runtime:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac
       - name: Verify process-proof shell rejection and physical-device refusal
         run: python3 -m unittest discover -s tools -p 'test_android_process_restart.py'
+      - name: Verify signed-APK smoke refuses physical or existing installations
+        run: python3 -m unittest discover -s tools -p 'test_signed_apk_smoke.py'
       - name: Verify fresh JUnit XML and migration regression counts
         run: python3 tools/check_junit_xml.py app/build/test-results/testDebugUnitTest
 

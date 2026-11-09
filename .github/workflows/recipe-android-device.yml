@@ -12,6 +12,9 @@ on:
       - 'app/src/androidTest/**'
       - 'app/src/sharedTest/**'
       - 'app/schemas/**'
+      - 'downloads/**'
+      - 'tools/check_signed_apk_smoke.py'
+      - 'tools/test_signed_apk_smoke.py'
       - 'app/src/main/**'
       - 'nano-runtime/**'
       - 'settings.gradle.kts'
@@ -87,6 +90,7 @@ jobs:
             adb shell svc wifi disable
             adb shell svc data disable
             bash tools/run_android_device_tests.sh
+            python3 tools/check_signed_apk_smoke.py downloads/EG-Watch-Test-extra-bae0044.json
             bash tools/run_android_process_restart.sh
       - name: Verify actual API 35 process-restart evidence
         run: |
@@ -157,6 +161,7 @@ jobs:
             chmod +x gradlew
             bash tools/prepare_android_api26_core.sh
             bash tools/run_android_device_tests.sh
+            python3 tools/check_signed_apk_smoke.py downloads/EG-Watch-Test-extra-bae0044.json
             bash tools/run_android_process_restart.sh
       - name: Verify actual API and all twenty-eight original device test results
         run: |

@@ -1,0 +1,30 @@
+{
+  "sourceCommit": "bae00449da11d8e422fecfb4a816b34ff39d9309",
+  "package": "de.ernaehrung.demo.watchspike",
+  "label": "EG \u00b7 Watch-Test",
+  "sha256": "8dd0ec6fcd37e0a03d7ae43a04899ae3695d9f4c54e030cf3cbc8e03b731d8a4",
+  "bytes": 66952927,
+  "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
+  "schema": 20,
+  "staticChecks": [
+    "V2/V3",
+    "16KiB ZIP alignment",
+    "unchanged payload",
+    "no test components",
+    "both libraries: arm64/x86_64 ELF PT_LOAD align >=0x4000"
+  ],
+  "localTests": {
+    "jvm": 907,
+    "migrations": 19,
+    "lintErrors": 0
+  },
+  "nativeCi": "Final exact-head results, original artifact digests, signed-APK smoke evidence and Main merge are recorded in PR294 and the release notes. App/test/build tree must match this source commit.",
+  "physicalPixelAndroid17WatchStepsAndWorkout": "NOT_YET_TESTED",
+  "applicationTreeSha": "a663d2ac5d9e243b8ca46e68436493b656253541",
+  "versionCode": 11,
+  "versionName": "0.11.0-health-extra",
+  "pullRequest": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/294",
+  "release": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.11.0",
+  "apkFile": "EG-Watch-Test-extra-bae0044.apk",
+  "apkVariantExecution": "Default-package native suites, exact signed-variant emulator UI/schema smoke and physical Pixel/Watch execution are distinct. Physical execution of this signed version and additional data types remains open."
+}
