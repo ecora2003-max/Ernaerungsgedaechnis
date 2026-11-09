@@ -142,7 +142,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                 Text(if (row.kind == FitnessRecordKind.STEPS.name) "Schrittintervall: ${row.steps} Schritte"
                     else row.title?.takeIf { it.isNotBlank() } ?: "Training aus Samsung Health",
                     style = MaterialTheme.typography.titleSmall)
-                Text("${time(row.startAt)} bis ${time(row.endAt)} · ${FitnessPresentation.duration(row.endAt - row.startAt)}",
+                Text("${time(row.startAt)} bis ${time(row.endAt)} · Zeitspanne: ${FitnessPresentation.duration(row.endAt - row.startAt)}",
                     Modifier.testTag("fitness_duration_${row.kind}_${row.externalId}"))
                 Text("Quelle: Samsung Health · ${row.manufacturer?.takeIf { it.isNotBlank() } ?: "Hersteller unbekannt"} · ${row.model?.takeIf { it.isNotBlank() } ?: "Gerätemodell unbekannt"}")
                 Text(FitnessPresentation.recordingMethod(row.recordingMethod))
@@ -150,6 +150,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                 if (row.kind == FitnessRecordKind.WORKOUT.name) {
                     Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}",
                         Modifier.testTag("fitness_sport_${row.externalId}"))
+                    Text("Aktive Trainingsdauer: im aktuellen Import nicht überliefert. Sie kann von der Zeitspanne zwischen Quellbeginn und -ende abweichen.")
                     Text("Trainingsenergie und Herzfrequenz: unbekannt")
                 }
                 Text("Quelländerung: ${time(row.sourceModifiedAt)} · lokale Version ${row.revision}")

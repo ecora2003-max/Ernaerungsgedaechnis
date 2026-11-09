@@ -1,0 +1,63 @@
+{
+  "sourceCommit": "c46a948e1de3f5ea1b295fe9c626c8ffea8aafd8",
+  "testedHead": "acd97b9d54614164f9e593ac4b7f046a955ec8a0",
+  "package": "de.ernaehrung.demo.watchspike",
+  "label": "EG · Watch-Test",
+  "sha256": "15ff54b85703d56efb8f554dbc50cd93fb2332186ccaffb970b787946ad948c3",
+  "bytes": 66727448,
+  "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
+  "schema": 18,
+  "staticChecks": [
+    "V2/V3",
+    "16KiB ZIP alignment",
+    "unchanged payload",
+    "no test components",
+    "both libraries: arm64/x86_64 ELF PT_LOAD align >=0x4000"
+  ],
+  "localTests": {
+    "jvm": 869,
+    "migrations": 17,
+    "lintErrors": 0
+  },
+  "nativeCi": {
+    "status": "PASS",
+    "runId": 42571459695,
+    "package": "de.ernaehrung.demo",
+    "api35": {
+      "tests": 50,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "artifactId": 13654735392,
+      "artifactSha256": "09aca1c929dc88c0a0b80409b6652c9e45fc01d035f4fcdc80d5bdd2fcee4b98",
+      "actualProcessRestart": "PASS"
+    },
+    "api26": {
+      "tests": 26,
+      "classes": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "artifactId": 13654061009,
+      "artifactSha256": "6aef42edaa5401b1573670d6290af4cce1053c799cab15a9fa0c276e989613f8",
+      "actualProcessRestart": "PASS"
+    },
+    "nonEmptyHealthSource": "synthetic",
+    "realSystemProvider": "empty API35 provider, separately verified"
+  },
+  "physicalPixelAndroid17WatchStepsAndWorkout": "NOT_YET_TESTED",
+  "integratedMain": "cc3b778fa921a656c6a51cf292c86e0b1bb1de0c",
+  "pullRequest": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/291",
+  "appCi": {
+    "runId": 42571459909,
+    "artifactId": 13654055134,
+    "artifactSha256": "881cca5072beb6c8d4a59bfcb58486d6e1a301011e9ff787cdff12b1b6975448",
+    "jvm": 869,
+    "migrations": 17,
+    "lintErrors": 0,
+    "status": "PASS"
+  },
+  "apkVariantExecution": "Built and statically verified; native evidence tests the same source with the default package. No physical execution of this signed variant yet.",
+  "versionCode": 9,
+  "versionName": "0.9.0-recognition"
+}
