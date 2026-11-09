@@ -178,8 +178,7 @@ class StorageCapacityRoomTest {
     @Test fun publishedRoom13BackupGetsOnlyEmptyNewCapacityHistoryAndKeepsItsOriginalDigestReplayAndLaterChecks() = runBlocking {
         val (_, location, _) = seed()
         val original14 = store.captureBackup("de.ernaehrung.demo", false, true)
-        val original13 = original14.copy(databaseVersion = 13, identityHash = "ddbdbf0fb475ae9d3a5c9a40b4284aa3",
-            tables = original14.tables.filter { it.name !in setOf("storage_capacity_reviews", "nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values", "personal_restrictions", "recipe_favorites", "storage_location_reviews") })
+        val original13 = publishedBackupFixture(original14, 13)
         val digest = BackupArchiveCodec.digest(BackupArchiveCodec.encode(original13))
         val target = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
         try {

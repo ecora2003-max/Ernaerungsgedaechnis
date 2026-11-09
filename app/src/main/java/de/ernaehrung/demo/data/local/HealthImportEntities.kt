@@ -19,7 +19,10 @@ internal data class HealthImportRunEntity(@PrimaryKey val id: String, val source
     val capturedAt: Long? = null, val windowStart: Long? = null, val windowEnd: Long? = null,
     val day: String? = null, val dayZone: String? = null, val dayStart: Long? = null,
     val dayEnd: Long? = null, val aggregatedSteps: Long? = null,
-    val changedRecords: Int = 0, val hiddenRecords: Int = 0)
+    val changedRecords: Int = 0, val hiddenRecords: Int = 0,
+    val workoutExternalId: String? = null, val workoutRecordRevision: Long? = null,
+    val workoutRecordFingerprint: String? = null, val workoutDurationMillis: Long? = null,
+    val workoutDurationStatus: String? = null, val workoutDurationAttempt: Long? = null)
 
 /** Original payload and every correction/visibility revision remain separate.
  * Explicit local purge is the only delete path; it never deletes provider data.
@@ -39,6 +42,7 @@ internal data class HealthRecordVersionEntity(val sourcePackage: String, val kin
         startAt, endAt, startOffsetSeconds, endOffsetSeconds, sourceModifiedAt, clientRecordId,
         clientRecordVersion, manufacturer, model, deviceType, recordingMethod, steps, exerciseType, title, notes)
     fun stored() = FitnessStoredRecord(record(), revision, visible, fingerprint, visibilityReason)
+    fun durationTarget() = FitnessWorkoutDurationTarget(externalId, revision, fingerprint)
     companion object {
         fun from(change: FitnessRecordChange, runId: String): HealthRecordVersionEntity {
             val r = change.record

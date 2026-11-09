@@ -60,6 +60,9 @@ class TrainingJournalUiTest {
                 return FitnessHealthSnapshot(origin, at - Duration.ofDays(28).toMillis(), at, at + reads - 1L, records,
                     day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), at, null)
             }
+            override suspend fun readWorkoutDuration(query: FitnessWorkoutDurationQuery) = FitnessWorkoutDurationSnapshot(
+                sourcePackage = origin, windowStart = query.startAt, windowEnd = query.endAt, capturedAt = System.currentTimeMillis(),
+                records = listOf(a), durationMillis = 0, status = FitnessWorkoutDurationStatus.AVAILABLE)
         }
         store.enableFitnessImport("journal-enable", true, true); store.syncFitness("journal-sync", provider)
         store.enableFitnessImport("journal-stop", false, true)
@@ -78,7 +81,12 @@ class TrainingJournalUiTest {
         assertEquals(authBefore, db.healthDao().state(origin)); assertEquals(healthBefore, db.healthDao().history(origin))
         records = listOf(a)
         store.enableFitnessImport("journal-enable-again", true, true); store.syncFitness("journal-rescan", provider)
+        store.readFitnessWorkoutDuration("journal-duration", provider, db.healthDao().latestWorkout(origin, a.externalId)!!.durationTarget())
         store.enableFitnessImport("journal-stop-again", false, true)
+        compose.waitUntil(25_000) {
+            compose.onAllNodes(hasTestTag("fitness_workout_duration_journal-a") and hasText("Trainingszeit im Quellzeitfenster laut Health Connect: 0 s")).fetchSemanticsNodes().size == 1
+        }
+        compose.onNodeWithTag("fitness_workout_duration_read_journal-a").performScrollTo().assertIsNotEnabled()
         compose.waitUntil(25_000) { compose.onAllNodesWithTag("training_overlap_journal-a").fetchSemanticsNodes().isEmpty() }
         waitTag("training_missing_count")
         compose.onNodeWithTag("training_imported_count").performScrollTo().assertTextEquals("1 in der lokalen Kopie sichtbare Trainings")

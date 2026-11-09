@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "17e4d04288afcf96527222a94ba2ba8334256443",
+  "package": "de.ernaehrung.demo.watchspike",
+  "label": "EG \u00b7 Watch-Test",
+  "sha256": "94a334135c042f2f271b815de36139d03e10254a1a31ab99a750818bd4a28983",
+  "bytes": 66817759,
+  "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
+  "schema": 19,
+  "staticChecks": [
+    "V2/V3",
+    "16KiB ZIP alignment",
+    "unchanged payload",
+    "no test components",
+    "both libraries: arm64/x86_64 ELF PT_LOAD align >=0x4000"
+  ],
+  "localTests": {
+    "jvm": 888,
+    "migrations": 18,
+    "lintErrors": 0
+  },
+  "nativeCi": "Final exact-head results, artifact digests and Main merge reference are recorded in PR293 and the release notes. App/test/build sources must match this source commit.",
+  "physicalPixelAndroid17WatchStepsAndWorkout": "NOT_YET_TESTED",
+  "applicationTreeSha": "53c0063ad9535799edea2fc57a9b64d23aaa1aa6",
+  "versionCode": 10,
+  "versionName": "0.10.0-fitness-duration",
+  "pullRequest": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/293",
+  "release": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.10.0",
+  "apkVariantExecution": "Same-source default-package native tests and separately built/statically verified signed test variant are distinct. This new signed APK has not yet been physically executed on the Pixel/Watch target."
+}

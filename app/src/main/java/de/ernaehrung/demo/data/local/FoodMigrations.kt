@@ -4,6 +4,17 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object FoodMigrations {
+    /** Nullable provider metric evidence only; all original raw values are preserved. */
+    val MIGRATION_18_19 = object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutExternalId TEXT")
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutRecordRevision INTEGER")
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutRecordFingerprint TEXT")
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutDurationMillis INTEGER")
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutDurationStatus TEXT")
+            db.execSQL("ALTER TABLE health_import_runs ADD COLUMN workoutDurationAttempt INTEGER")
+        }
+    }
     /** No old location, batch, capacity, operation or source is rewritten. */
     val MIGRATION_17_18 = object : Migration(17, 18) {
         override fun migrate(db: SupportSQLiteDatabase) {

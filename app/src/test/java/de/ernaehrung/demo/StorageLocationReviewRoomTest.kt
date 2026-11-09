@@ -125,8 +125,7 @@ class StorageLocationReviewRoomTest {
     @Test fun newHistorySurvivesLosslessBackupWhilePublishedV17RestoreAddsOnlyAnEmptyLocationHistory() = runBlocking {
         val place = store.addLocation("plan", "Geplant", false)
         val oldCurrent = store.captureBackup("de.ernaehrung.demo", false, true)
-        val v17 = oldCurrent.copy(databaseVersion = 17, identityHash = "ac53ed935c0fb8f4986777c82f6cdfb5",
-            tables = oldCurrent.tables.filterNot { it.name == "storage_location_reviews" })
+        val v17 = publishedBackupFixture(oldCurrent, 17)
         val review = store.reviewStorageLocation("review", input(place, "Vorhanden"), true)
         val current = store.captureBackup("de.ernaehrung.demo", false, true)
         assertEquals(52, current.tables.size)

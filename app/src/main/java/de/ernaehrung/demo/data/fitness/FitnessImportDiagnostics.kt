@@ -11,6 +11,7 @@ internal enum class FitnessReadStage(val description: String) {
     CHANGE_TOKEN("den Änderungsstand vorbereiten"), STEPS("Schrittintervalle lesen"),
     STEP_MAPPING("Schrittintervalle übernehmen"), WORKOUTS("Trainings lesen"),
     WORKOUT_MAPPING("Trainings übernehmen"), DAILY_STEPS("den Tageswert der Schritte lesen"),
+    WORKOUT_DURATION("die von Health Connect gemeldete Trainingsdauer lesen"),
     CHANGE_CHECK("den abschließenden Änderungsstand prüfen")
 }
 internal enum class FitnessReadReason { BAD_REQUEST, STATE, IO, REMOTE, OTHER }

@@ -35,6 +35,8 @@ private fun rememberTrainingJournalModel(): TrainingJournalViewModel {
 internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
     model: TrainingJournalViewModel = rememberTrainingJournalModel()) {
     val state by model.state.collectAsStateWithLifecycle()
+    val fitness = rememberFitnessModel()
+    val health by fitness.state.collectAsStateWithLifecycle()
     val snapshot = state.snapshot
     val writer = rememberManualWorkoutModel()
     val write by writer.state.collectAsStateWithLifecycle()
@@ -103,8 +105,9 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
                 Text("Letzter erfolgreicher Import: ${snapshot.lastSyncAt?.let { Instant.ofEpochMilli(it).toString() } ?: "Noch keiner"}")
                 if (snapshot.lastWindowStart != null && snapshot.lastWindowEnd != null)
                     Text("Zuletzt vollständig abgeglichen: ${Instant.ofEpochMilli(snapshot.lastWindowStart)} bis ${Instant.ofEpochMilli(snapshot.lastWindowEnd)}. Ältere Einträge bleiben erhalten und wurden außerhalb dieses Fensters nicht neu abgeglichen.")
-                Text(if (snapshot.importEnabled) "Automatische Übernahme ist freigegeben. Dieses Journal liest nur die gespeicherte Kopie."
+                Text(if (snapshot.importEnabled) "Automatische Übernahme ist freigegeben. Beim Öffnen liest dieses Journal nur die gespeicherte Kopie. Eine Dauerprüfung liest Health Connect erst nach deinem Druck auf die zugehörige Schaltfläche."
                     else "Automatische Übernahme ist ausgeschaltet. Die gespeicherte Kopie bleibt lesbar.")
+                health.message?.let { Text(it, Modifier.testTag("training_duration_message")) }
                 Text("${current.size} in der lokalen Kopie sichtbare Trainings", Modifier.testTag("training_imported_count"))
                 current.take(shown).forEach { row ->
                     OutlinedCard(Modifier.fillMaxWidth().testTag("training_imported_${row.externalId}")) {
@@ -113,7 +116,7 @@ internal fun TrainingJournalScreen(onOpenFitness: () -> Unit,
                             Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}")
                             Text("${sourceTime(row.startAt, row.startOffsetSeconds)} bis ${sourceTime(row.endAt, row.endOffsetSeconds)}")
                             Text("Zeitspanne zwischen Quellbeginn und -ende: ${FitnessPresentation.duration(row.endAt - row.startAt)}")
-                            Text("Aktive Trainingsdauer: im aktuellen Import nicht überliefert. Sie kann von dieser Zeitspanne abweichen.")
+                            WorkoutDurationInfo(row, health.cache, health.busy || health.awaitingPermission) { fitness.readWorkoutDuration(row) }
                             Text("Quelle: ${row.sourcePackage} · ${row.manufacturer ?: "Hersteller unbekannt"} · ${row.model ?: "Modell unbekannt"} · ${FitnessPresentation.device(row.deviceType)}")
                             Text(FitnessPresentation.recordingMethod(row.recordingMethod))
                             Text("Lokale Quellversion ${row.revision} · Quelländerung ${Instant.ofEpochMilli(row.sourceModifiedAt)}")

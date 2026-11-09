@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.*
 internal data class FitnessUiState(val cache: FitnessCache? = null,
     val availability: FitnessHealthSource.Availability? = null, val hasPermissions: Boolean = false,
     val busy: Boolean = false, val awaitingPermission: Boolean = false, val permissionLaunch: String? = null,
-    val message: String? = null, val history: List<HealthRecordVersionEntity>? = null)
+    val message: String? = null, val history: List<HealthRecordVersionEntity>? = null,
+    val durationHistory: List<HealthImportRunEntity>? = null)
 
 /** Permission result is only a trigger to re-read actual OS grants. A pending
  * local connection gesture lives in this process, never in saved state or JSON.
@@ -28,9 +29,11 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
     init {
         viewModelScope.launch {
             store.fitnessCache().catch { mutable.update { it.copy(message = "Lokale Fitnessdaten konnten nicht gelesen werden.") } }
-                .collect { cache -> mutable.update { it.copy(cache = cache,
-                    history = it.history?.takeIf { rows -> rows.isNotEmpty() && cache.records.any { r ->
-                        r.kind == rows.first().kind && r.externalId == rows.first().externalId } }) } }
+                .collect { cache -> mutable.update { old ->
+                    val history = old.history?.takeIf { rows -> rows.isNotEmpty() && cache.records.any { r ->
+                        r.kind == rows.first().kind && r.externalId == rows.first().externalId } }
+                    old.copy(cache = cache, history = history, durationHistory = old.durationHistory?.takeIf { history != null })
+                } }
         }
     }
     private fun key(prefix: String) = "$prefix-${UUID.randomUUID()}"
@@ -131,21 +134,39 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
     fun purge(confirmed: Boolean) {
         pendingConnection = false
         historyJob?.cancel()
-        mutable.update { it.copy(awaitingPermission = false, permissionLaunch = null, history = null) }
+        mutable.update { it.copy(awaitingPermission = false, permissionLaunch = null, history = null, durationHistory = null) }
         action(replace = true) { at ->
             store.purgeLocalFitnessImport(key("health-purge"), confirmed)
             update(at) { it.copy(message = "Lokale Samsung-Health-Kopie gelöscht und Übernahme ausgeschaltet.") }
         }
     }
+    /** Journal entry is local-only; this explicit action is its only provider query. */
+    fun readWorkoutDuration(record: HealthRecordVersionEntity) = action { at ->
+        val auth = store.fitnessCache().first().state
+        check(auth.enabled) { "HEALTH_LOCAL_OPT_IN_REQUIRED" }
+        if (!grants(at)) {
+            store.stopFitnessAfterPermissionLoss(auth.authorizationRevision)
+            update(at) { it.copy(message = "Dauerprüfung gestoppt: Leserechte fehlen. Die gespeicherte Kopie bleibt lokal lesbar.") }
+        } else {
+            withContext(Dispatchers.IO) { store.readFitnessWorkoutDuration(key("health-duration"), source, record.durationTarget()) }
+            update(at) { it.copy(message = "Dauerprüfung gespeichert. Der Quellzeitraum und der letzte vollständige Import bleiben erhalten.") }
+        }
+    }
     fun showHistory(record: HealthRecordVersionEntity) {
         historyJob?.cancel()
         val at = generation
+        val authorization = state.value.cache?.state?.authorizationRevision
         historyJob = viewModelScope.launch {
             val rows = store.fitnessRecordHistory(record.kind, record.externalId)
-            if (at == generation) mutable.update { it.copy(history = rows) }
+            val durations = if (record.kind == FitnessRecordKind.WORKOUT.name)
+                store.fitnessWorkoutDurationHistory(record.externalId) else emptyList()
+            val fresh = store.fitnessCache().first()
+            if (at == generation && fresh.state.authorizationRevision == authorization &&
+                fresh.records.any { it.externalId == record.externalId && it.kind == record.kind })
+                mutable.update { it.copy(history = rows, durationHistory = durations) }
         }
     }
-    fun closeHistory() { historyJob?.cancel(); mutable.update { it.copy(history = null) } }
+    fun closeHistory() { historyJob?.cancel(); mutable.update { it.copy(history = null, durationHistory = null) } }
     fun providerInstallUnavailable() { mutable.update { it.copy(message = "Health Connect konnte nicht im Store geöffnet werden. Du kannst es selbst im Play Store suchen; die lokale App bleibt nutzbar.") } }
     fun settingsUnavailable() { mutable.update { it.copy(message = "Health-Connect-Einstellungen sind auf diesem Gerät nicht erreichbar.") } }
 }
