@@ -261,6 +261,10 @@ internal interface FoodDao {
     PaidPriceObservationEntity::class,
     HealthImportStateEntity::class,
     HealthRecordVersionEntity::class,
+    HealthExtraStateEntity::class,
+    HealthExtraRunEntity::class,
+    HealthExtraVersionEntity::class,
+    HealthExtraSampleEntity::class,
     BodyMeasurementVersionEntity::class,
     ManualWorkoutSetEntity::class,
     ProductAliasEntity::class,
@@ -287,11 +291,12 @@ internal interface FoodDao {
     ProductEntity::class,
     RecipeEntity::class,
     PlanSeriesEntity::class],
-    views = [CurrentBatchView::class, CurrentStorageLocationView::class], version = 19, exportSchema = true)
+    views = [CurrentBatchView::class, CurrentStorageLocationView::class], version = 20, exportSchema = true)
 @TypeConverters(ValueConverters::class)
 abstract class FoodDatabase : RoomDatabase() {
     internal abstract fun foodDao(): FoodDao
     internal abstract fun healthDao(): HealthImportDao
+    internal abstract fun healthExtraDao(): HealthExtraDao
     internal abstract fun bodyDao(): BodyMeasurementDao
     internal abstract fun manualWorkoutDao(): ManualWorkoutDao
     internal abstract fun storageLocationReviewDao(): StorageLocationReviewDao
@@ -306,7 +311,7 @@ abstract class FoodDatabase : RoomDatabase() {
         @Volatile private var instance: FoodDatabase? = null
         fun localSandbox(context: Context): FoodDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, FoodDatabase::class.java, TEST_DATABASE_NAME)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19)
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19, FoodMigrations.MIGRATION_19_20)
                 // No fallbackToDestructiveMigration: future versions require explicit preserving migrations.
                 .build().also { instance = it }
         }

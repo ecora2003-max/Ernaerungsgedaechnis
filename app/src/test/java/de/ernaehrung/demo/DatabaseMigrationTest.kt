@@ -38,6 +38,7 @@ class DatabaseMigrationTest {
 
     @Test fun upgradeFromPublishedV17PreservesAll51TablesIncludingFavoritesAndAddsOnlyEmptyLocationHistory() = upgradeFromPublishedVersion(17)
     @Test fun upgradeFromPublishedV18PreservesAll52TablesAndLeavesNewWorkoutMetricEvidenceUnknown() = upgradeFromPublishedVersion(18)
+    @Test fun upgradeFromPublishedV19PreservesAll52TablesAndKnownZeroDurationWithoutGrantingExtraConsent() = upgradeFromPublishedVersion(19)
 
     private fun upgradeFromPublishedVersion(fromVersion: Int) {
         val schema = javaClass.classLoader!!.getResourceAsStream("de.ernaehrung.demo.data.local.FoodDatabase/$fromVersion.json")!!

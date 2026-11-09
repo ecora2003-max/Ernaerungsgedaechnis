@@ -6,7 +6,7 @@ import org.json.JSONObject
 /** Build a synthetic OLD archive using the actual published schema, not a
  * current archive with a misleading old version/hash and newer columns. */
 internal fun publishedBackupFixture(current: BackupArchive, version: Int): BackupArchive {
-    require(version in 13..18)
+    require(version in 13..19)
     val text = requireNotNull(object {}.javaClass.classLoader!!.getResourceAsStream(
         "de.ernaehrung.demo.data.local.FoodDatabase/$version.json")).bufferedReader().use { it.readText() }
     val schema = JSONObject(text).getJSONObject("database")

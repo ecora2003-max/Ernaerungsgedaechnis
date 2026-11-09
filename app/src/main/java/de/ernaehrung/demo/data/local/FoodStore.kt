@@ -130,9 +130,21 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun readFitnessWorkoutDuration(key: String, provider: de.ernaehrung.demo.data.fitness.FitnessHealthSource,
         target: de.ernaehrung.demo.data.fitness.FitnessWorkoutDurationTarget) = health.workoutDuration(key, provider, target)
     internal suspend fun stopFitnessAfterPermissionLoss(expectedRevision: Long) = health.permissionsLost(expectedRevision)
-    internal suspend fun purgeLocalFitnessImport(key: String, confirmed: Boolean) = health.purge(key, confirmed)
+    internal suspend fun purgeLocalFitnessImport(key: String, confirmed: Boolean): Unit = db.withTransaction {
+        // An old core purge retry must never erase observations imported later.
+        // Both domains receive their retry marker on the FIRST global purge only.
+        if (health.purge(key, confirmed)) healthExtra.purge(key, confirmed)
+    }
     internal suspend fun fitnessRecordHistory(kind: String, id: String) = health.history(kind, id)
     internal suspend fun fitnessWorkoutDurationHistory(id: String) = health.durationHistory(id)
+    private val healthExtra = HealthExtraOperations(db, now)
+    internal fun healthExtraCache() = healthExtra.observe()
+    internal suspend fun authorizeHealthExtra(key: String, selection: de.ernaehrung.demo.data.fitness.HealthExtraSelection?,
+        provider: de.ernaehrung.demo.data.fitness.HealthExtraSource, confirmed: Boolean) = healthExtra.authorize(key, selection, provider, confirmed)
+    internal suspend fun syncHealthExtra(key: String, provider: de.ernaehrung.demo.data.fitness.HealthExtraSource) = healthExtra.sync(key, provider)
+    internal suspend fun stopHealthExtraAfterPermissionLoss(revision: Long) = healthExtra.permissionsLost(revision)
+    internal suspend fun purgeHealthExtra(key: String, confirmed: Boolean): Unit = healthExtra.purge(key, confirmed)
+    internal suspend fun healthExtraHistory(source: String, kind: String, id: String) = healthExtra.history(source, kind, id)
     /** Read-only, transactionally consistent host snapshot; never a booking. */
     internal suspend fun readRecipeRoomStockSnapshot():
         de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =

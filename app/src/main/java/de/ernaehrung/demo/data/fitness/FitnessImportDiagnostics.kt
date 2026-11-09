@@ -12,6 +12,7 @@ internal enum class FitnessReadStage(val description: String) {
     STEP_MAPPING("Schrittintervalle übernehmen"), WORKOUTS("Trainings lesen"),
     WORKOUT_MAPPING("Trainings übernehmen"), DAILY_STEPS("den Tageswert der Schritte lesen"),
     WORKOUT_DURATION("die von Health Connect gemeldete Trainingsdauer lesen"),
+    EXTRA_RECORDS("die ausgewählten zusätzlichen Gesundheitsdaten lesen"), EXTRA_MAPPING("die zusätzlichen Quelldaten übernehmen"),
     CHANGE_CHECK("den abschließenden Änderungsstand prüfen")
 }
 internal enum class FitnessReadReason { BAD_REQUEST, STATE, IO, REMOTE, OTHER }
@@ -27,7 +28,10 @@ internal object FitnessImportDiagnostics {
         "HEALTH_RECORD_INTERVAL_INVALID", "HEALTH_RECORD_AFTER_CAPTURE", "HEALTH_RECORD_OUTSIDE_WINDOW",
         "HEALTH_SOURCE_MODIFIED_TIME_INVALID", "HEALTH_SOURCE_VERSION_INVALID", "HEALTH_OFFSET_INVALID",
         "HEALTH_METADATA_INVALID", "HEALTH_STEP_INVALID", "HEALTH_WORKOUT_INVALID", "HEALTH_CACHE_AMBIGUOUS",
-        "HEALTH_CACHE_INVALID", "HEALTH_REVISION_LIMIT", "HEALTH_AUTHORIZATION_CHANGED")
+        "HEALTH_CACHE_INVALID", "HEALTH_REVISION_LIMIT", "HEALTH_AUTHORIZATION_CHANGED",
+        "HEALTH_EXTRA_SCOPE_INVALID", "HEALTH_EXTRA_HISTORY_CONSENT_REQUIRED", "HEALTH_EXTRA_HISTORY_UNAVAILABLE",
+        "HEALTH_EXTRA_CAPTURE_INVALID", "HEALTH_EXTRA_SOURCE_INVALID", "HEALTH_EXTRA_VALUE_INVALID",
+        "HEALTH_EXTRA_SAMPLE_TIME_INVALID", "HEALTH_EXTRA_STEP_DAY_INVALID", "HEALTH_EXTRA_UNIT_INVALID")
     suspend fun <T> read(stage: FitnessReadStage, action: suspend () -> T): T = try { action() }
     catch (cancelled: CancellationException) { throw cancelled }
     catch (permission: SecurityException) { throw permission }
@@ -73,8 +77,11 @@ internal object FitnessImportDiagnostics {
     fun explain(storedCode: String?): String {
         val code = safeCode(storedCode)
         val text = when {
+            code == "HEALTH_EXTRA_HISTORY_CONSENT_REQUIRED" -> "Für diesen Zeitraum ist eine eigene Freigabe zum Lesen älterer Gesundheitsdaten nötig."
+            code == "HEALTH_EXTRA_HISTORY_UNAVAILABLE" -> "Health Connect unterstützt das Lesen älterer Daten hier noch nicht. Wähle einen jüngeren Zeitraum."
+            code == "HEALTH_EXTRA_SCOPE_INVALID" -> "Wähle mindestens einen Datentyp und ein gültiges Enddatum bis heute."
             code == "PERMISSION_MISSING" -> "Leserechte fehlen. Die letzte lokale Kopie bleibt lesbar."
-            code == "SOURCE_CHANGED_RETRY" -> "Samsung-Health-Daten haben sich während der Übernahme geändert. Nach abgeschlossener Synchronisierung erneut versuchen."
+            code == "SOURCE_CHANGED_RETRY" -> "Die ausgewählten Gesundheitsdaten haben sich während der Übernahme geändert. Nach abgeschlossener Synchronisierung erneut versuchen."
             code == "HEALTH_RECORD_AFTER_CAPTURE" -> "Ein Quellintervall endet nach dem gelesenen Zeitpunkt. Die bisherige Kopie bleibt erhalten."
             code == "HEALTH_SOURCE_MODIFIED_TIME_INVALID" -> "Ein Quelländerungszeitpunkt ist ungültig. Datum und Uhrzeit von Telefon und Uhr prüfen."
             code.startsWith("HEALTH_READ_") -> {

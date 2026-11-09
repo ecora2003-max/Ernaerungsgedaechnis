@@ -22,6 +22,7 @@ import de.ernaehrung.demo.ui.*
 import de.ernaehrung.demo.ui.screens.LocalDataContent
 import de.ernaehrung.demo.ui.screens.rememberLocalDataViewModel
 import de.ernaehrung.demo.ui.screens.FitnessScreen
+import de.ernaehrung.demo.ui.screens.HealthExtraScreen
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
@@ -39,7 +40,7 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"), PERSONAL_RESTRICTIONS("Persönliche Ausschlüsse"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"), OFFERS("Angebote & Preisvergleich"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG, BATCH_REVIEW, STORAGE_CAPACITY -> STOCK
@@ -118,10 +119,13 @@ fun LocalWorkspaceApp() {
                         val daily by model.daily.collectAsStateWithLifecycle()
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
+                            onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
                             onOpenTraining = { go(WorkspacePage.TRAINING) },
                             onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
                                 FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
                             })
+                    } else if (page == WorkspacePage.HEALTH_EXTRA) {
+                        HealthExtraScreen()
                     } else if (page == WorkspacePage.OFFERS) {
                         val shopping by model.shopping.collectAsStateWithLifecycle()
                         LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report)
@@ -164,7 +168,7 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.MORE) {
                         Heading("Deine Arbeitsbereiche", "Alle Einträge bleiben lokal auf diesem Gerät.")
                         listOf(WorkspacePage.CATALOG, WorkspacePage.KITCHEN, WorkspacePage.SHOPPING, WorkspacePage.OFFERS,
-                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.NUTRITION_GOALS, WorkspacePage.PERSONAL_RESTRICTIONS, WorkspacePage.FITNESS, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
+                            WorkspacePage.PURCHASES, WorkspacePage.NUTRITION, WorkspacePage.NUTRITION_GOALS, WorkspacePage.PERSONAL_RESTRICTIONS, WorkspacePage.FITNESS, WorkspacePage.HEALTH_EXTRA, WorkspacePage.BODY, WorkspacePage.BODY_RAW, WorkspacePage.TRAINING, WorkspacePage.QUALITY, WorkspacePage.BACKUP, WorkspacePage.STORAGE_CAPACITY, WorkspacePage.HISTORY).forEach { target ->
                             Action(target.title, true, "workspace_go_${target.name}") {
                                 if (target == WorkspacePage.HISTORY) selectedHistoryBatch = null
                                 go(target)

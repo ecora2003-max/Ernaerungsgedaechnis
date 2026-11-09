@@ -41,7 +41,7 @@ internal fun rememberFitnessModel(): FitnessViewModel {
 @Composable
 internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
     onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null,
-    onOpenTraining: (() -> Unit)? = null) {
+    onOpenTraining: (() -> Unit)? = null, onOpenExtra: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -68,6 +68,9 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
     fun offset(seconds: Int?) = seconds?.let { ZoneOffset.ofTotalSeconds(it).id } ?: "unbekannt"
     Column(Modifier.fillMaxWidth().testTag("fitness_screen"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Fitness · Samsung Health", style = MaterialTheme.typography.headlineSmall)
+        onOpenExtra?.let { open ->
+            OutlinedButton(open, modifier = Modifier.testTag("fitness_open_extra")) { Text("Puls, Energie, Distanz & weitere Gesundheitsdaten") }
+        }
         onOpenBody?.let { open ->
             BodyMeasurementSummary(open, onOpenBodyHistory)
         }
@@ -204,10 +207,10 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
             TextButton({ model.closeHistory() }) { Text("Historie schließen") }
         }
         if (cache?.lastSuccess != null || cache?.records?.isNotEmpty() == true) {
-            Text("Die lokale Kopie lässt sich löschen. Deine Ernährung, Vorräte und Daten in Samsung Health bleiben erhalten.")
+            Text("Die lokale Gesundheitskopie einschließlich zusätzlich freigegebener Datentypen lässt sich löschen. Deine Ernährung, Vorräte, manuellen Messungen und Daten in Health Connect bleiben erhalten.")
             Row {
                 Checkbox(deleteApproved, { deleteApproved = it }, Modifier.testTag("fitness_delete_opt_in"))
-                Text("Lokale Samsung-Health-Kopie einschließlich Änderungshistorie löschen")
+                Text("Lokale Health-Connect-Basis- und Zusatzkopie einschließlich Änderungshistorie löschen")
             }
             Button({ deleteApproved = false; model.purge(true) }, enabled = deleteApproved,
                 modifier = Modifier.testTag("fitness_delete")) { Text("Lokale Gesundheitskopie löschen") }

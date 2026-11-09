@@ -137,7 +137,7 @@ internal class FitnessViewModel(private val store: FoodStore, private val source
         mutable.update { it.copy(awaitingPermission = false, permissionLaunch = null, history = null, durationHistory = null) }
         action(replace = true) { at ->
             store.purgeLocalFitnessImport(key("health-purge"), confirmed)
-            update(at) { it.copy(message = "Lokale Samsung-Health-Kopie gelöscht und Übernahme ausgeschaltet.") }
+            update(at) { it.copy(message = "Lokale Health-Connect-Basis- und Zusatzkopie gelöscht und Übernahmen ausgeschaltet.") }
         }
     }
     /** Journal entry is local-only; this explicit action is its only provider query. */

@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import de.ernaehrung.demo.data.local.*
+import de.ernaehrung.demo.data.fitness.*
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -64,23 +65,33 @@ object PublishedDatabaseMigrationFixture {
                 if (fromVersion >= 16) seedV16(old)
                 if (fromVersion >= 17) seedV17(old)
                 if (fromVersion >= 18) seedV18(old)
+                if (fromVersion >= 19) seedV19(old)
                 old.version = fromVersion
                 snapshot { old.rawQuery(it, null) }
             }
-            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; 14 -> 46; 15 -> 49; 16 -> 50; 17 -> 51; 18 -> 52; else -> 44 }, before.size)
+            assertEquals(when (fromVersion) { 1 -> 22; 2 -> 25; 3 -> 26; 4 -> 28; 5 -> 29; 6 -> 32; 7 -> 35; 8 -> 36; 9 -> 39; 10 -> 41; 13 -> 45; 14 -> 46; 15 -> 49; 16 -> 50; 17 -> 51; 18, 19 -> 52; else -> 44 }, before.size)
             assertTrue("All old modules have representative records", before.values.all { it.isNotEmpty() })
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19).build()
-            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v19.
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19, FoodMigrations.MIGRATION_19_20).build()
+            val sql = upgraded.openHelper.writableDatabase // Room validates the complete migrated schema against v20.
             assertEquals(before, snapshot { sql.query(it) })
             sql.query("PRAGMA foreign_key_check").use { assertEquals(0, it.count) }
-            assertEquals(19, sql.version)
+            assertEquals(20, sql.version)
+            assertNull(upgraded.healthExtraDao().state())
+            assertTrue(upgraded.healthExtraDao().latest().isEmpty())
+            assertTrue(upgraded.healthExtraDao().latestSamples().isEmpty())
             assertEquals(if (fromVersion >= 15) 2 else 0, upgraded.nutritionGoalDao().versions().size)
             assertEquals(if (fromVersion >= 15) 2 else 0, upgraded.nutritionGoalDao().values().size)
             assertEquals(if (fromVersion >= 16) 2 else 0,upgraded.personalRestrictionDao().history().size)
             assertEquals(if (fromVersion >= 17) 1 else 0, upgraded.recipeFavoriteDao().history().size)
             assertEquals(if (fromVersion >= 18) 1 else 0, upgraded.storageLocationReviewDao().history().size)
             upgraded.healthDao().runs("com.sec.android.app.shealth").forEach { run ->
+                if (fromVersion >= 19 && run.kind == "WORKOUT_DURATION_V1") {
+                    assertEquals("synthetic-workout-v19", run.workoutExternalId)
+                    assertEquals(1L, run.workoutRecordRevision); assertEquals(0L, run.workoutDurationMillis)
+                    assertEquals("AVAILABLE", run.workoutDurationStatus); assertEquals(1L, run.workoutDurationAttempt)
+                    return@forEach
+                }
                 assertNull(run.workoutExternalId); assertNull(run.workoutRecordRevision)
                 assertNull(run.workoutRecordFingerprint); assertNull(run.workoutDurationMillis); assertNull(run.workoutDurationStatus)
                 assertNull(run.workoutDurationAttempt)
@@ -95,11 +106,12 @@ object PublishedDatabaseMigrationFixture {
             }
             if (fromVersion >= 12) assertEquals("measure", upgraded.bodyDao().versions().single { it.id == "body-v12-linked" }.legacyOriginId)
             assertEquals("No new paid price is inferred during migration", if (fromVersion < 8) 0 else 1, upgraded.foodDao().allPaidPrices().size)
-            assertEquals(if (fromVersion >= 9) 1 else 0, upgraded.healthDao().history("com.sec.android.app.shealth").size)
+            assertEquals(if (fromVersion >= 19) 2 else if (fromVersion >= 9) 1 else 0, upgraded.healthDao().history("com.sec.android.app.shealth").size)
             if (fromVersion < 9) assertNull(upgraded.healthDao().state("com.sec.android.app.shealth"))
             else {
-                assertEquals(0L, upgraded.healthDao().history("com.sec.android.app.shealth").single().steps)
-                assertNull(upgraded.healthDao().history("com.sec.android.app.shealth").single().startOffsetSeconds)
+                val steps = upgraded.healthDao().history("com.sec.android.app.shealth").single { it.kind == "STEPS" }
+                assertEquals(0L, steps.steps)
+                assertNull(steps.startOffsetSeconds)
                 assertEquals("health-migration-sync", upgraded.healthDao().state("com.sec.android.app.shealth")!!.lastSuccessRunId)
             }
             assertEquals(if (fromVersion >= 12) 2 else if (fromVersion >= 10) 1 else 0, upgraded.bodyDao().versions().size)
@@ -186,9 +198,9 @@ object PublishedDatabaseMigrationFixture {
             assertEquals(50_000L, dao.balance("batch")); assertEquals(100_000L, dao.balance(moved))
             upgraded.close()
             upgraded = Room.databaseBuilder(context, FoodDatabase::class.java, name)
-                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19).build()
+                .addMigrations(FoodMigrations.MIGRATION_1_2, FoodMigrations.MIGRATION_2_3, FoodMigrations.MIGRATION_3_4, FoodMigrations.MIGRATION_4_5, FoodMigrations.MIGRATION_5_6, FoodMigrations.MIGRATION_6_7, FoodMigrations.MIGRATION_7_8, FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17, FoodMigrations.MIGRATION_17_18, FoodMigrations.MIGRATION_18_19, FoodMigrations.MIGRATION_19_20).build()
             assertEquals(100_000L, upgraded.foodDao().balance(moved))
-            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; 14, 15, 16, 17 -> 22; 18 -> 23; else -> 20 }, upgraded.foodDao().operationCount())
+            assertEquals(when (fromVersion) { 1 -> 4; 2 -> 8; 3 -> 9; 4 -> 10; 5 -> 13; 6 -> 16; 7 -> 19; 13 -> 21; 14, 15, 16, 17 -> 22; 18, 19 -> 23; else -> 20 }, upgraded.foodDao().operationCount())
             val legacy = upgraded.foodDao().plan("plan")!!
             assertEquals("plan", legacy.seriesId); assertNull(legacy.title)
             val newPlan = FoodStore(upgraded).savePlan("new-plan", PlanInput("Überarbeitet", legacy.startsOn, legacy.endsOn,
@@ -304,6 +316,24 @@ object PublishedDatabaseMigrationFixture {
             visibilityReason,fingerprint,startAt,endAt,sourceModifiedAt,clientRecordVersion,recordingMethod,steps)
             VALUES('com.sec.android.app.shealth','STEPS','synthetic-health-record',1,'health-migration-sync',1,
             'READ_FROM_SOURCE','synthetic-health-value',1000,2000,3000,0,0,0)""")
+    }
+
+    private fun seedV19(db: SQLiteDatabase) {
+        val source = "com.sec.android.app.shealth"
+        val r = FitnessSourceRecord("synthetic-workout-v19", FitnessRecordKind.WORKOUT, source,
+            1000, 2000, null, null, 3000, null, 0, null, null, null, 0, exerciseType = 0)
+        val fp = FitnessImportKernel.recordFingerprint(r)
+        db.execSQL("""INSERT INTO health_source_record_versions(sourcePackage,kind,externalId,revision,runId,visible,
+            visibilityReason,fingerprint,startAt,endAt,sourceModifiedAt,clientRecordVersion,recordingMethod,exerciseType)
+            VALUES(?,'WORKOUT',?,1,'health-migration-sync',1,'READ_FROM_SOURCE',?,1000,2000,3000,0,0,0)""",
+            arrayOf(source, r.externalId, fp))
+        val metric = FitnessImportKernel.fingerprint("HEALTH_WORKOUT_DURATION_V1", source, r.externalId, 1L, fp,
+            1000L, 2000L, 3000L, 0L, "AVAILABLE")
+        db.execSQL("""INSERT INTO health_import_runs(id,sourcePackage,kind,fingerprint,recordedAt,authorizationRevision,
+            capturedAt,windowStart,windowEnd,changedRecords,hiddenRecords,workoutExternalId,workoutRecordRevision,
+            workoutRecordFingerprint,workoutDurationMillis,workoutDurationStatus,workoutDurationAttempt)
+            VALUES('health-v19-duration',?,'WORKOUT_DURATION_V1',?,4001,1,3000,1000,2000,0,0,?,1,?,0,'AVAILABLE',1)""",
+            arrayOf(source, metric, r.externalId, fp))
     }
 
     private fun seedV7(db: SQLiteDatabase) {
