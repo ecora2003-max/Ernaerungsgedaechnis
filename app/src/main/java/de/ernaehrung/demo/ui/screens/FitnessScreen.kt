@@ -198,7 +198,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                 Text("Version ${row.revision}: $reason · ${time(row.startAt)} bis ${time(row.endAt)} · ${if (row.kind == "STEPS") "${row.steps} Schritte (Originalwert)" else row.title ?: "Training"}")
             }
             state.durationHistory.orEmpty().forEach { run ->
-                Text("Dauerprüfung zur Quellversion ${run.workoutRecordRevision} · ${time(run.recordedAt)}: ${workoutDurationStatus(run.workoutDurationStatus)}")
+                Text("Dauerprüfung ${run.workoutDurationAttempt} zur Quellversion ${run.workoutRecordRevision} · ${time(run.recordedAt)}: ${workoutDurationStatus(run.workoutDurationStatus)}")
                 WorkoutDurationEvidence(run)
             }
             TextButton({ model.closeHistory() }) { Text("Historie schließen") }

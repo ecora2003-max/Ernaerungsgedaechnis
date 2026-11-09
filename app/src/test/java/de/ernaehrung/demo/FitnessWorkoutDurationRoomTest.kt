@@ -73,6 +73,7 @@ class FitnessWorkoutDurationRoomTest {
         provider.durationReply = { response(it, null) }; val later = read("a-same-millisecond-later")
         assertEquals(later, store.fitnessCache().first().durationAttempts.single())
         assertEquals(0L, store.fitnessCache().first().knownDurations.single().workoutDurationMillis)
+        assertEquals(listOf(1L, 2L, 3L, 4L, 5L), store.fitnessWorkoutDurationHistory(healthWorkout().externalId).map { it.workoutDurationAttempt })
     }
     @Test fun correctedOrDisappearedRawVersionsNeverInheritAnEarlierMetric(): Unit = runBlocking {
         read("known"); val previous = target(); clock++

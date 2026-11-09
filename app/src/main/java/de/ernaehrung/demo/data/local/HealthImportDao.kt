@@ -36,7 +36,7 @@ internal interface HealthImportDao {
             AND n.workoutDurationAttempt>r.workoutDurationAttempt)""")
     suspend fun currentWorkoutDurations(source: String, knownOnly: Boolean): List<HealthImportRunEntity>
     @Query("""SELECT * FROM health_import_runs WHERE sourcePackage=:source AND kind='WORKOUT_DURATION_V1'
-        AND workoutExternalId=:id ORDER BY recordedAt,id""")
+        AND workoutExternalId=:id ORDER BY workoutRecordRevision,workoutDurationAttempt,id""")
     suspend fun workoutDurationHistory(source: String, id: String): List<HealthImportRunEntity>
     @Query("""SELECT MAX(workoutDurationAttempt) FROM health_import_runs WHERE sourcePackage=:source
         AND kind='WORKOUT_DURATION_V1' AND workoutExternalId=:id AND workoutRecordRevision=:revision
