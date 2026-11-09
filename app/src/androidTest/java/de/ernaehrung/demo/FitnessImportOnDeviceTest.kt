@@ -27,12 +27,13 @@ class FitnessImportOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Before fun unlock() = prepareUnlockedTestDevice()
 
-    @Test fun syntheticCacheAppearsInDefaultFitnessUiSurvivesRecreationAndDeletesWithoutFoodWrites() = runBlocking {
+    @Test fun syntheticCacheAppearsInDefaultFitnessUiSurvivesRecreationAndDeletesWithoutFoodWrites(): Unit = runBlocking {
         assertTrue("Synthetic cleanup requires a disposable emulator", Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         val target = InstrumentationRegistry.getInstrumentation().targetContext
         assertNull((target.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
         val db = FoodDatabase.localSandbox(target)
-        val store = FoodStore(db)
+        var readAt = System.currentTimeMillis()
+        val store = FoodStore(db) { readAt + 5_000L }
         val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
         assertNull("Refuse to overwrite any existing health consent", db.healthDao().state(origin))
         assertTrue("Use an empty synthetic health sandbox", db.healthDao().history(origin).isEmpty())
@@ -40,10 +41,9 @@ class FitnessImportOnDeviceTest {
         val before = store.operations().first()
         val stockBefore = db.foodDao().planningBatches()
         val mealsBefore = db.foodDao().activeConsumptionCount()
-        val at = System.currentTimeMillis()
+        val at = readAt
         val zone = ZoneId.systemDefault()
-        val day = Instant.ofEpochMilli(at).atZone(zone).toLocalDate()
-        val records = listOf(
+        val completed = listOf(
             FitnessSourceRecord("$token-steps", FitnessRecordKind.STEPS, origin, at - 60_000L,
                 at - 1L, null, null, at - 1L, null, 0L, "CI SYNTHETIC", "No Watch proof", null, 0, steps = 500L),
             FitnessSourceRecord("$token-workout", FitnessRecordKind.WORKOUT, origin, at - 1_800_000L,
@@ -52,6 +52,10 @@ class FitnessImportOnDeviceTest {
             FitnessSourceRecord("$token-missing", FitnessRecordKind.WORKOUT, origin, at - 3_600_000L,
                 at - 1_800_001L, null, null, at - 1L, null, 0L, "CI SYNTHETIC", "No Watch proof", null, 0,
                 exerciseType = 0, title = "Synthetisches verschwundenes Training"))
+        val pendingSteps = completed[0].copy(externalId = "$token-pending-steps", endAt = at + 60_000L, steps = 9_999L)
+        val pendingWorkout = completed[1].copy(externalId = "$token-pending-workout", endAt = at + 60_000L,
+            title = "Synthetisches zurückgestelltes Training")
+        val records = completed + listOf(pendingSteps, pendingWorkout)
         var currentRecords = records
         var reads = 0
         val provider = object : FitnessHealthSource {
@@ -60,8 +64,9 @@ class FitnessImportOnDeviceTest {
             override suspend fun grantedPermissions() = requiredPermissions
             override suspend fun readSnapshot(): FitnessHealthSnapshot {
                 reads++
-                return FitnessHealthSnapshot(origin, at - Duration.ofDays(28).toMillis(), at, at + reads - 1L,
-                    currentRecords, day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), at, 321L)
+                val day = Instant.ofEpochMilli(readAt).atZone(zone).toLocalDate()
+                return FitnessHealthSnapshot(origin, readAt - Duration.ofDays(28).toMillis(), readAt, readAt + reads - 1L,
+                    currentRecords, day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), readAt, 321L)
             }
         }
         fun waitTag(tag: String) = compose.waitUntil(25_000) {
@@ -88,6 +93,12 @@ class FitnessImportOnDeviceTest {
                 .assertTextEquals("Trainingsart: Sonstiges Training")
             compose.onNodeWithTag("fitness_duration_WORKOUT_$token-workout").performScrollTo()
                 .assertTextContains("29 min 59,999 s", substring = true)
+            compose.onNodeWithTag("fitness_deferred_records").performScrollTo().assertTextContains("2", substring = true)
+            compose.onNodeWithTag("fitness_duration_WORKOUT_$token-pending-workout").assertDoesNotExist()
+            compose.onNodeWithTag("fitness_deferred_$token-pending-workout").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Version 1: zurückgestellt:", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Version 1: zurückgestellt:", substring = true).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Historie schließen").performScrollTo().performClick()
             compose.onNodeWithTag("fitness_missing_records").performScrollTo().assertTextContains("1", substring = true)
             compose.onNodeWithTag("fitness_missing_$token-missing").performScrollTo().performClick()
             compose.waitUntil(15_000) {
@@ -103,8 +114,29 @@ class FitnessImportOnDeviceTest {
                 .addMigrations(FoodMigrations.MIGRATION_8_9, FoodMigrations.MIGRATION_9_10, FoodMigrations.MIGRATION_10_11, FoodMigrations.MIGRATION_11_12, FoodMigrations.MIGRATION_12_13, FoodMigrations.MIGRATION_13_14, FoodMigrations.MIGRATION_14_15, FoodMigrations.MIGRATION_15_16, FoodMigrations.MIGRATION_16_17).build()
             try {
                 assertEquals(2, reopened.healthDao().latest(origin).count { it.visible })
+                val pending = reopened.healthDao().latest(origin).filter {
+                    it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE
+                }
+                assertEquals(setOf(pendingSteps, pendingWorkout), pending.map { it.record() }.toSet())
                 assertEquals(false, reopened.healthDao().state(origin)?.enabled)
             } finally { reopened.close() }
+            compose.onNodeWithTag("fitness_open_training").performScrollTo().performClick()
+            waitTag("training_deferred_count")
+            compose.onNodeWithTag("training_deferred_count").performScrollTo().assertTextContains("Zurückgestellte Quelltrainings: 1", substring = true)
+            compose.onNodeWithTag("training_missing_count").performScrollTo().assertTextContains("1 importierte Trainings", substring = true)
+            compose.onNodeWithTag("workspace_back").performClick()
+            waitTag("fitness_deferred_records")
+            readAt = at + 60_000L // Explicit synthetic clock; no physical Watch/time evidence.
+            store.enableFitnessImport("$token-reenable", true, true)
+            store.syncFitness("$token-complete", provider)
+            store.syncFitness("$token-complete", provider)
+            store.enableFitnessImport("$token-stop-again", false, true)
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("fitness_deferred_records").fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithTag("fitness_record_counts").performScrollTo().assertTextContains("Trainings: 2", substring = true)
+            compose.onNodeWithTag("fitness_record_counts").assertTextContains("Schrittintervalle: 2", substring = true)
+            compose.onNodeWithTag("fitness_daily_steps").performScrollTo().assertTextContains("321", substring = true)
+            assertEquals(2, db.healthDao().historyFor(origin, "WORKOUT", pendingWorkout.externalId).size)
+            assertEquals(3, reads)
             compose.onNodeWithTag("fitness_delete").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithTag("fitness_delete_opt_in").performScrollTo().performClick()
             compose.onNodeWithTag("fitness_delete").performScrollTo().performClick()
@@ -115,7 +147,7 @@ class FitnessImportOnDeviceTest {
             assertEquals(mealsBefore, db.foodDao().activeConsumptionCount())
             assertEquals(0, target.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
             assertNull((target.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).activeNetwork)
-            assertEquals(2, reads)
+            assertEquals(3, reads)
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("fitness-flow")
             throw failure

@@ -87,4 +87,21 @@ class FitnessViewModelTest {
         withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.lastSuccess != null } }
         assertEquals(1, provider.reads.get())
     }
+
+    @Test fun pendingIntervalsHaveASuccessNoticeAndLaterCompletionClearsIt(): Unit = runBlocking {
+        val pending = healthSteps().copy(endAt = HEALTH_AT + 1_000)
+        provider.snapshot = healthSnapshot(records = listOf(healthWorkout(), pending))
+        val vm = model()
+        withTimeout(10_000) { vm.state.first { it.cache != null } }
+        vm.connect()
+        val partial = withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.lastSuccess != null } }
+        assertNull(partial.cache?.state?.lastErrorCode)
+        assertTrue(requireNotNull(partial.message).contains("Noch zurückgestellte Quellintervalle: 1."))
+        assertEquals(1, partial.cache?.records?.count { it.visible })
+        provider.snapshot = healthSnapshot(HEALTH_AT + 1_000, listOf(healthWorkout(), pending))
+        vm.resync()
+        val complete = withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.records?.all { r -> r.visible } == true } }
+        assertEquals("Samsung-Health-Daten lokal übernommen.", complete.message)
+        assertEquals(0, db.foodDao().operationCount())
+    }
 }

@@ -12,9 +12,11 @@ import androidx.test.runner.AndroidJUnitRunner
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.data.ai.*
+import de.ernaehrung.demo.data.fitness.*
 import java.net.URI
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import java.io.File
@@ -77,11 +79,34 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     val gemini = PrivateGeminiSettings.forApp(targetContext)
                     gemini.saveKey("synthetic-key-$proof"); gemini.mode(DirectRecipeMode.CLOUD)
                     gemini.model("models/gemini-synthetic-fixture")
+                    // Synthetic raw intervals in real SQLite/WAL. No OS health
+                    // read or Watch proof. Consent is stopped before Main starts.
+                    val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
+                    check(db.healthDao().history(origin).isEmpty() && db.healthDao().state(origin)?.enabled != true)
+                    val healthAt = System.currentTimeMillis()
+                    val healthDay = Instant.ofEpochMilli(healthAt).atZone(ZoneOffset.UTC).toLocalDate()
+                    val pendingSteps = FitnessSourceRecord("$key-pending-steps", FitnessRecordKind.STEPS, origin,
+                        healthAt - 60_000, healthAt + 60_000, null, null, healthAt - 1, null, 0,
+                        "SYNTHETIC", "No Watch proof", null, 0, steps = 9_999)
+                    val pendingWorkout = pendingSteps.copy(externalId = "$key-pending-workout", kind = FitnessRecordKind.WORKOUT,
+                        steps = null, exerciseType = 0)
+                    val complete = pendingWorkout.copy(externalId = "$key-complete-workout", endAt = healthAt - 1)
+                    val provider = object : FitnessHealthSource {
+                        override val requiredPermissions = FitnessHealthPolicy.REQUIRED_PERMISSIONS
+                        override fun availability() = FitnessHealthSource.Availability.AVAILABLE
+                        override suspend fun grantedPermissions() = requiredPermissions
+                        override suspend fun readSnapshot() = FitnessHealthSnapshot(origin, healthAt - FitnessHealthPolicy.MAX_WINDOW_MILLIS,
+                            healthAt, healthAt, listOf(pendingSteps, pendingWorkout, complete), healthDay.toString(), "Z",
+                            healthDay.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(), healthAt, 17)
+                    }
+                    store.enableFitnessImport("$key-health-enable", true, true)
+                    store.syncFitness("$key-health-sync", provider)
+                    store.enableFitnessImport("$key-health-stop", false, true)
                     val data = JSONObject().put("proof",proof).put("source",source).put("package",targetContext.packageName)
                         .put("pid",Process.myPid()).put("sdk",Build.VERSION.SDK_INT).put("schema",db.openHelper.readableDatabase.version)
                         .put("date",date).put("first",first).put("second",second).put("location",location)
                         .put("batch",batch).put("meal",meal).put("operations",dao.operationCount()).put("meals",dao.activeConsumptionCount())
-                        .put("offerRefreshAt",refreshAt)
+                        .put("offerRefreshAt",refreshAt).put("healthCapturedAt",healthAt)
                     val output = journal.startWrite()
                     try { output.write(data.toString().toByteArray(Charsets.UTF_8)); journal.finishWrite(output) }
                     catch (failure: Throwable) { journal.failWrite(output); throw failure }
@@ -110,6 +135,24 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     check(gemini.read().let { it.key == "synthetic-key-$proof" && it.mode == DirectRecipeMode.CLOUD &&
                         it.model == "models/gemini-synthetic-fixture" })
                     gemini.clear()
+                    val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
+                    val healthAt = data.getLong("healthCapturedAt")
+                    val healthState = requireNotNull(db.healthDao().state(origin))
+                    check(!healthState.enabled && healthState.lastSuccessRunId == "$key-health-sync" && healthState.lastErrorCode == null)
+                    val healthRows = db.healthDao().latest(origin)
+                    check(healthRows.size == 3 && db.healthDao().history(origin).size == 3)
+                    val deferred = healthRows.filter { it.visibilityReason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE }
+                    check(deferred.size == 2 && deferred.all { !it.visible && it.revision == 1L && it.endAt == healthAt + 60_000 && it.sourceModifiedAt == healthAt - 1 })
+                    check(deferred.single { it.kind == "STEPS" }.steps == 9_999L)
+                    check(healthRows.single { it.visible }.let { it.externalId == "$key-complete-workout" && it.endAt == healthAt - 1 })
+                    val retryOnly = object : FitnessHealthSource {
+                        override val requiredPermissions = FitnessHealthPolicy.REQUIRED_PERMISSIONS
+                        override fun availability(): FitnessHealthSource.Availability = error("Retry must not access provider")
+                        override suspend fun grantedPermissions(): Set<String> = error("Retry must not access provider")
+                        override suspend fun readSnapshot(): FitnessHealthSnapshot = error("Retry must not access provider")
+                    }
+                    check(store.syncFitness("$key-health-sync", retryOnly).aggregatedSteps == 17L)
+                    check(db.healthDao().latest(origin) == healthRows && db.healthDao().state(origin) == healthState)
                     val date = data.getString("date"); val first = data.getString("first"); val second = data.getString("second")
                     val location = data.getString("location"); val batch = data.getString("batch"); val meal = data.getString("meal")
                     check(dao.balance(batch) == 65_000L && requireNotNull(dao.batch(batch)).versionId == first)

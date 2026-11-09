@@ -7,7 +7,7 @@ import org.junit.Test
 
 class FitnessImportKernelTest {
     private fun stored(changes: List<FitnessRecordChange>) = changes.map {
-        FitnessStoredRecord(it.record, it.revision, it.visible, it.fingerprint)
+        FitnessStoredRecord(it.record, it.revision, it.visible, it.fingerprint, it.reason)
     }
 
     @Test fun completeRescansVersionChangesHideOnlyMissingRowsAndAllowReappearanceWithoutDuplicates() {
@@ -71,5 +71,67 @@ class FitnessImportKernelTest {
         assertNull(change.record.model)
         assertNull(snapshot.aggregatedSteps)
         FitnessImportKernel.validate(snapshot.copy(aggregatedSteps = 0L), end)
+    }
+
+    @Test fun laterEndedIntervalsAreDeferredUnchangedWhileCompletedRecordsStillImport() {
+        val steps = healthSteps(9_999, "pending-steps").copy(endAt = HEALTH_AT + 60_000)
+        val workout = healthWorkout().copy(externalId = "pending-workout", endAt = HEALTH_AT + 120_000)
+        val boundary = healthSteps(0, "at-capture").copy(endAt = HEALTH_AT)
+        val snapshot = healthSnapshot(records = listOf(healthWorkout(), steps, workout, boundary), aggregate = 123)
+        val changes = FitnessImportKernel.changes(snapshot, emptyList(), HEALTH_AT)
+        assertEquals(4, changes.size)
+        assertEquals(setOf(steps, workout), changes.filterNot { it.visible }.map { it.record }.toSet())
+        assertTrue(changes.filterNot { it.visible }.all { it.reason == "DEFERRED_END_AFTER_CAPTURE" })
+        assertEquals(setOf(healthWorkout(), boundary), changes.filter { it.visible }.map { it.record }.toSet())
+        assertEquals(123L, snapshot.aggregatedSteps)
+    }
+
+    @Test fun deferredRetriesAndLaterCompletionProduceOnlyOneVisibilityRevision() {
+        val pending = healthSteps().copy(endAt = HEALTH_AT + 60_000)
+        val snapshot = healthSnapshot(records = listOf(pending), aggregate = null)
+        val first = FitnessImportKernel.changes(snapshot, emptyList(), HEALTH_AT)
+        assertFalse(first.single().visible)
+        assertTrue(FitnessImportKernel.changes(snapshot, stored(first), HEALTH_AT).isEmpty())
+        val completed = healthSnapshot(HEALTH_AT + 60_000, listOf(pending), aggregate = 0)
+        val released = FitnessImportKernel.changes(completed, stored(first), HEALTH_AT + 60_000).single()
+        assertTrue(released.visible)
+        assertEquals("SOURCE_READ", released.reason)
+        assertEquals(2L, released.revision)
+        assertEquals(pending, released.record)
+        assertTrue(FitnessImportKernel.changes(completed, stored(listOf(released)), HEALTH_AT + 60_000).isEmpty())
+    }
+
+    @Test fun deferredAbsenceNeedsACompleteWindowAndIsNotRepeatedlyDeclaredMissing() {
+        val pending = healthWorkout().copy(endAt = HEALTH_AT + 60_000)
+        val first = FitnessImportKernel.changes(healthSnapshot(records = listOf(pending)), emptyList(), HEALTH_AT)
+        assertTrue(FitnessImportKernel.changes(healthSnapshot(records = emptyList()), stored(first), HEALTH_AT).isEmpty())
+        val later = healthSnapshot(HEALTH_AT + 60_000, emptyList())
+        val missing = FitnessImportKernel.changes(later, stored(first), HEALTH_AT + 60_000).single()
+        assertFalse(missing.visible)
+        assertEquals("NOT_VISIBLE_IN_WINDOW", missing.reason)
+        assertEquals(2L, missing.revision)
+        assertTrue(FitnessImportKernel.changes(later, stored(listOf(missing)), HEALTH_AT + 60_000).isEmpty())
+    }
+
+    @Test fun deferralNeverRelaxesModifiedTimeOrOtherSourceValidation() {
+        val pending = healthSteps().copy(endAt = HEALTH_AT + 60_000)
+        listOf(pending.copy(sourceModifiedAt = HEALTH_AT + 1), pending.copy(startAt = HEALTH_AT + 1),
+            pending.copy(steps = -1), pending.copy(sourcePackage = "foreign.app")).forEach { invalid ->
+            assertTrue(runCatching { FitnessImportKernel.changes(
+                healthSnapshot(records = listOf(healthWorkout(), invalid)), emptyList(), HEALTH_AT) }.isFailure)
+        }
+    }
+
+    @Test fun sourceCorrectionCanDeferAPreviouslyCompletedRecordWithoutLosingItsIdentity() {
+        val initial = FitnessImportKernel.changes(healthSnapshot(records = listOf(healthSteps())), emptyList(), HEALTH_AT)
+        val correction = healthSteps(250).copy(endAt = HEALTH_AT + 60_000, clientRecordVersion = 1)
+        val deferred = FitnessImportKernel.changes(healthSnapshot(HEALTH_AT + 1,
+            listOf(correction)), stored(initial), HEALTH_AT + 1).single()
+        assertEquals(2L, deferred.revision)
+        assertFalse(deferred.visible)
+        assertEquals(correction, deferred.record)
+        assertEquals("DEFERRED_END_AFTER_CAPTURE", deferred.reason)
+        assertTrue(FitnessImportKernel.changes(healthSnapshot(HEALTH_AT + 2, listOf(correction)),
+            stored(listOf(deferred)), HEALTH_AT + 2).isEmpty())
     }
 }

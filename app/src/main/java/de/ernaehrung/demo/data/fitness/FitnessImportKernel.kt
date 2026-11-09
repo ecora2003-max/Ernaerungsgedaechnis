@@ -13,9 +13,17 @@ internal object FitnessHealthPolicy {
 }
 
 internal data class FitnessStoredRecord(val record: FitnessSourceRecord, val revision: Long,
-    val visible: Boolean, val fingerprint: String)
+    val visible: Boolean, val fingerprint: String, val visibilityReason: String =
+        if (visible) FitnessRecordVisibility.SOURCE_READ else FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW)
 internal data class FitnessRecordChange(val record: FitnessSourceRecord, val revision: Long,
     val visible: Boolean, val reason: String, val fingerprint: String)
+
+/** Stored in the existing visibility ledger; deferred payload is never a completed activity. */
+internal object FitnessRecordVisibility {
+    const val SOURCE_READ = "SOURCE_READ"
+    const val NOT_VISIBLE_IN_WINDOW = "NOT_VISIBLE_IN_WINDOW"
+    const val DEFERRED_END_AFTER_CAPTURE = "DEFERRED_END_AFTER_CAPTURE"
+}
 
 /** Complete source windows only. Pure plan: no Room, Android, network or food write.
  * A missing row means NOT_VISIBLE_IN_WINDOW, not a claim that it was physically
@@ -54,7 +62,9 @@ internal object FitnessImportKernel {
         snapshot.records.forEach { r ->
             require(r.sourcePackage == snapshot.sourcePackage && r.externalId.isNotBlank()) { "HEALTH_SOURCE_SCOPE" }
             require(r.startAt >= 0L && r.startAt < r.endAt) { "HEALTH_RECORD_INTERVAL_INVALID" }
-            require(r.endAt <= snapshot.capturedAt) { "HEALTH_RECORD_AFTER_CAPTURE" }
+            // Overlapping reads can include an interval ending after capture.
+            // Preserve the raw payload; changes() defers its visibility instead
+            // of rejecting unrelated completed records or clipping the interval.
             require(r.startAt < snapshot.windowEnd && r.endAt > snapshot.windowStart) { "HEALTH_RECORD_OUTSIDE_WINDOW" }
             require(r.sourceModifiedAt in 0L..snapshot.capturedAt) { "HEALTH_SOURCE_MODIFIED_TIME_INVALID" }
             require(r.clientRecordVersion >= 0L) { "HEALTH_SOURCE_VERSION_INVALID" }
@@ -84,13 +94,15 @@ internal object FitnessImportKernel {
         incoming.forEach { (key, r) ->
             val old = previous[key]
             val digest = recordFingerprint(r)
-            if (old == null || !old.visible || old.fingerprint != digest)
-                result += FitnessRecordChange(r, next(old), true, "SOURCE_READ", digest)
+            val visible = r.endAt <= snapshot.capturedAt
+            val reason = if (visible) FitnessRecordVisibility.SOURCE_READ else FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE
+            if (old == null || old.visible != visible || old.visibilityReason != reason || old.fingerprint != digest)
+                result += FitnessRecordChange(r, next(old), visible, reason, digest)
         }
         previous.forEach { (key, old) ->
-            if (old.visible && key !in incoming && old.record.startAt >= snapshot.windowStart &&
+            if (old.visibilityReason != FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW && key !in incoming && old.record.startAt >= snapshot.windowStart &&
                 old.record.endAt <= snapshot.windowEnd)
-                result += FitnessRecordChange(old.record, next(old), false, "NOT_VISIBLE_IN_WINDOW", old.fingerprint)
+                result += FitnessRecordChange(old.record, next(old), false, FitnessRecordVisibility.NOT_VISIBLE_IN_WINDOW, old.fingerprint)
         }
         return result.sortedWith(compareBy({ it.record.kind.name }, { it.record.externalId }))
     }
