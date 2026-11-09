@@ -2,7 +2,7 @@
   "sourceCommit": "c46a948e1de3f5ea1b295fe9c626c8ffea8aafd8",
   "testedHead": "acd97b9d54614164f9e593ac4b7f046a955ec8a0",
   "package": "de.ernaehrung.demo.watchspike",
-  "label": "EG · Watch-Test",
+  "label": "EG \u00b7 Watch-Test",
   "sha256": "15ff54b85703d56efb8f554dbc50cd93fb2332186ccaffb970b787946ad948c3",
   "bytes": 66727448,
   "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
@@ -45,7 +45,7 @@
     "nonEmptyHealthSource": "synthetic",
     "realSystemProvider": "empty API35 provider, separately verified"
   },
-  "physicalPixelAndroid17WatchStepsAndWorkout": "NOT_YET_TESTED",
+  "physicalPixelAndroid17WatchStepsAndWorkout": "PARTIAL_WATCH_WORKOUT_CONFIRMED_NEW_WATCH_STEPS_AND_LIFECYCLE_PENDING",
   "integratedMain": "cc3b778fa921a656c6a51cf292c86e0b1bb1de0c",
   "pullRequest": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/291",
   "appCi": {
@@ -57,7 +57,7 @@
     "lintErrors": 0,
     "status": "PASS"
   },
-  "apkVariantExecution": "Built and statically verified; native evidence tests the same source with the default package. No physical execution of this signed variant yet.",
+  "apkVariantExecution": "Built and statically verified; native evidence tests the default package. Subsequent user feedback on 2026-11-09 confirms physical Samsung step import, a phone trial and a new Watch workout in this signed test app. New Watch steps in the EG daily aggregate and remaining physical lifecycle gates are not yet confirmed.",
   "versionCode": 9,
   "versionName": "0.9.0-recognition"
 }
