@@ -1,6 +1,7 @@
 package de.ernaehrung.demo
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -98,7 +99,7 @@ fun LocalWorkspaceApp() {
         NavHost(nav, startDestination = WorkspacePage.HOME.name, modifier = Modifier.padding(padding)) {
             WorkspacePage.entries.forEach { page -> composable(page.name) {
                 Column(Modifier.fillMaxSize().testTag("workspace_page_${page.name}")
-                    .verticalScroll(rememberScrollState()).padding(18.dp),
+                    .verticalScroll(rememberScrollState()).background(Warm).padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (page.section != null) {
                         if (page == WorkspacePage.SHOPPING) Action("Aktuelle Angebote & Preisvergleich", true,
