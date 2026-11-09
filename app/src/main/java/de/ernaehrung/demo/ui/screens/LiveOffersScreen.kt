@@ -182,6 +182,18 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     Section(offer.title, when (offer.kind) { LiveOfferKind.PROMOTION -> "Aktionsangabe"; LiveOfferKind.REGULAR -> "Normalpreisangabe"; else -> "Preisart ungeklärt" })
                     fun cents(value: Long?) = value?.let { BigDecimal.valueOf(it, 2).toPlainString().replace('.', ',') + " €" } ?: "unbekannt"
                     Text("Warenpreis: ${cents(offer.merchandiseCents)} · Pfand: ${cents(offer.depositCents)} · zusammen: ${cents(offer.checkoutCents)}")
+                    offer.priceDetails?.let { detail ->
+                        detail.brand?.let { Text("Markenangabe der Quelle: $it") }
+                        Text("Normalpreisangabe der Quelle: ${cents(detail.regularCents)}",
+                            Modifier.testTag("live_regular_${offer.sourceProductId}"))
+                        detail.previousDisplay?.let { Text("Frühere Preisangabe als Originaltext: $it · Betrag und Gültigkeit nicht unabhängig bestätigt",
+                            Modifier.testTag("live_previous_${offer.sourceProductId}")) }
+                        detail.appCents?.let { Text("Bedingter Apppreis der Quelle: ${cents(it)} · getrennt vom allgemeinen Warenpreis",
+                            Modifier.testTag("live_app_price_${offer.sourceProductId}")) }
+                        detail.unitPriceDisplay?.let { Text("Veröffentlichte Grundpreisangabe: $it · Packungsmenge und Mengenbasis ungeprüft",
+                            Modifier.testTag("live_unit_text_${offer.sourceProductId}")) }
+                        detail.wishlistUntilLocal?.let { Text("Zusätzliche lokale Zeitangabe der Quelle: $it · Bedeutung als Angebotsende ungeprüft") }
+                    }
                     Text("Menge: ${offer.quantityMilli?.let(Amounts::format) ?: "unbekannt"} ${offer.unit?.label.orEmpty()} · Basis ${offer.quantityBasis?.name ?: "unbekannt"}")
                     offer.packageDescription?.let { Text("Packungsangabe der Quelle: $it · keine bestätigte Mengenbasis daraus abgeleitet") }
                     Text("Grundpreis: ${offer.unitPriceText()?.replace('.', ',') ?: "unbekannt"}")
