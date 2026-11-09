@@ -96,6 +96,7 @@ class FitnessImportOnDeviceTest {
             store.enableFitnessImport("$token-stop", false, true); store.authorizeHealthExtra("$token-extra-stop", null, extra, true)
             compose.onNodeWithTag("workspace_tab_MORE").performClick()
             compose.onNodeWithTag("workspace_go_TRAINING").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("journal_source_window_$token").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("journal_source_window_$token").performScrollTo().performClick()
             compose.onNodeWithTag("workout_source_window").assertExists()
             compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_value_HEART_RATE").fetchSemanticsNodes().isNotEmpty() }
@@ -112,6 +113,7 @@ class FitnessImportOnDeviceTest {
             compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_value_DISTANCE") and
                 hasText("12,75 m", substring = true)).fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Trainingsjournal öffnen").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("journal_source_window_${other.externalId}").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("journal_source_window_${other.externalId}").performScrollTo().performClick()
             compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_empty").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText(requireNotNull(other.title)).assertExists()
