@@ -5,11 +5,17 @@ import android.os.SystemClock
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.metadata.DataOrigin
+import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.time.TimeRangeFilter
 import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.FoodDatabase
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import java.time.Instant
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -63,6 +69,22 @@ class HealthConnectReadApiOnDeviceTest {
             // Preserve whichever absence representation the actual provider
             // supplies; a known zero must never be rewritten into null.
             assertTrue(snapshot.aggregatedSteps == null || snapshot.aggregatedSteps == 0L)
+            val at = System.currentTimeMillis()
+            val targetId = FitnessWorkoutDurationTarget("synthetic-absent-system-session", 1, "0".repeat(64))
+            val durationQuery = FitnessWorkoutDurationQuery(targetId, at - 60_000, at - 1, at)
+            val duration = source.readWorkoutDuration(durationQuery)
+            FitnessWorkoutDurationPolicy.validate(durationQuery, duration, System.currentTimeMillis())
+            assertEquals(FitnessWorkoutDurationStatus.SOURCE_MISSING, duration.status)
+            assertNull(duration.durationMillis); assertTrue(duration.records.isEmpty())
+            // Real empty system-provider metric capability, no invented Samsung
+            // session and no forced 0 for absence. Production skips attribution
+            // when the selected source record is missing, as checked above.
+            val aggregate = HealthConnectClient.getOrCreate(target).aggregate(AggregateRequest(
+                setOf(ExerciseSessionRecord.EXERCISE_DURATION_TOTAL),
+                TimeRangeFilter.between(Instant.ofEpochMilli(at - 60_000), Instant.ofEpochMilli(at - 1)),
+                dataOriginFilter = setOf(DataOrigin(FitnessHealthPolicy.SAMSUNG_PACKAGE))))
+            val exerciseMillis = aggregate[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.toMillis()
+            assertTrue(exerciseMillis == null || exerciseMillis == 0L)
             assertEquals(food, FoodDatabase.localSandbox(target).foodDao().operationCount())
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("health-api-flow")

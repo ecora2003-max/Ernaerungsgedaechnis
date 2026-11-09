@@ -59,23 +59,26 @@ internal object FitnessImportKernel {
             snapshot.dayEnd > snapshot.dayStart && snapshot.dayEnd <= snapshot.windowEnd &&
             snapshot.dayEnd <= day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()) { "HEALTH_DAY_INVALID" }
         require(snapshot.aggregatedSteps == null || snapshot.aggregatedSteps >= 0L) { "HEALTH_AGGREGATE_INVALID" }
-        snapshot.records.forEach { r ->
-            require(r.sourcePackage == snapshot.sourcePackage && r.externalId.isNotBlank()) { "HEALTH_SOURCE_SCOPE" }
-            require(r.startAt >= 0L && r.startAt < r.endAt) { "HEALTH_RECORD_INTERVAL_INVALID" }
-            // Overlapping reads can include an interval ending after capture.
-            // Preserve the raw payload; changes() defers its visibility instead
-            // of rejecting unrelated completed records or clipping the interval.
-            require(r.startAt < snapshot.windowEnd && r.endAt > snapshot.windowStart) { "HEALTH_RECORD_OUTSIDE_WINDOW" }
-            require(r.sourceModifiedAt in 0L..snapshot.capturedAt) { "HEALTH_SOURCE_MODIFIED_TIME_INVALID" }
-            require(r.clientRecordVersion >= 0L) { "HEALTH_SOURCE_VERSION_INVALID" }
-            require(listOf(r.startOffsetSeconds, r.endOffsetSeconds).all { it == null || it in -64_800..64_800 }) { "HEALTH_OFFSET_INVALID" }
-            require(r.recordingMethod >= 0 && (r.deviceType == null || r.deviceType >= 0)) { "HEALTH_METADATA_INVALID" }
-            when (r.kind) {
-                FitnessRecordKind.STEPS -> require(r.steps != null && r.steps >= 0L &&
-                    r.exerciseType == null && r.title == null && r.notes == null) { "HEALTH_STEP_INVALID" }
-                FitnessRecordKind.WORKOUT -> require(r.steps == null && r.exerciseType != null &&
-                    r.exerciseType >= 0) { "HEALTH_WORKOUT_INVALID" }
-            }
+        snapshot.records.forEach { r -> validateRecord(r, snapshot.sourcePackage, snapshot.windowStart, snapshot.windowEnd, snapshot.capturedAt) }
+    }
+
+    /** Shared raw validation; neither caller clips intervals or invents optional metadata. */
+    fun validateRecord(r: FitnessSourceRecord, source: String, windowStart: Long, windowEnd: Long, capturedAt: Long) {
+        require(r.sourcePackage == source && r.externalId.isNotBlank()) { "HEALTH_SOURCE_SCOPE" }
+        require(r.startAt >= 0L && r.startAt < r.endAt) { "HEALTH_RECORD_INTERVAL_INVALID" }
+        // Overlapping reads can include an interval ending after capture.
+        // Preserve the raw payload; changes() defers its visibility instead
+        // of rejecting unrelated completed records or clipping the interval.
+        require(r.startAt < windowEnd && r.endAt > windowStart) { "HEALTH_RECORD_OUTSIDE_WINDOW" }
+        require(r.sourceModifiedAt in 0L..capturedAt) { "HEALTH_SOURCE_MODIFIED_TIME_INVALID" }
+        require(r.clientRecordVersion >= 0L) { "HEALTH_SOURCE_VERSION_INVALID" }
+        require(listOf(r.startOffsetSeconds, r.endOffsetSeconds).all { it == null || it in -64_800..64_800 }) { "HEALTH_OFFSET_INVALID" }
+        require(r.recordingMethod >= 0 && (r.deviceType == null || r.deviceType >= 0)) { "HEALTH_METADATA_INVALID" }
+        when (r.kind) {
+            FitnessRecordKind.STEPS -> require(r.steps != null && r.steps >= 0L &&
+                r.exerciseType == null && r.title == null && r.notes == null) { "HEALTH_STEP_INVALID" }
+            FitnessRecordKind.WORKOUT -> require(r.steps == null && r.exerciseType != null &&
+                r.exerciseType >= 0) { "HEALTH_WORKOUT_INVALID" }
         }
     }
 

@@ -29,6 +29,8 @@ internal class SyntheticHealthSource(var snapshot: FitnessHealthSnapshot = healt
     var permissionReply: ((Int) -> Set<String>)? = null
     val reads = AtomicInteger()
     val permissionChecks = AtomicInteger()
+    val durationReads = AtomicInteger()
+    var durationReply: (suspend (FitnessWorkoutDurationQuery) -> FitnessWorkoutDurationSnapshot)? = null
     override fun availability() = availabilityState
     override suspend fun grantedPermissions(): Set<String> =
         permissionReply?.invoke(permissionChecks.incrementAndGet()) ?: permissions
@@ -36,5 +38,9 @@ internal class SyntheticHealthSource(var snapshot: FitnessHealthSnapshot = healt
         reads.incrementAndGet()
         onRead()
         return snapshot
+    }
+    override suspend fun readWorkoutDuration(query: FitnessWorkoutDurationQuery): FitnessWorkoutDurationSnapshot {
+        durationReads.incrementAndGet()
+        return requireNotNull(durationReply) { "No synthetic duration response installed" }.invoke(query)
     }
 }

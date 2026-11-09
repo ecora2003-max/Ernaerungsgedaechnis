@@ -180,12 +180,23 @@ internal class FoodBackupStore(private val db: FoodDatabase, private val now: ()
                 15 -> "f0276403a772111cf77efeaf250b4b2b"
                 16 -> "e2d5d92fe1b98be4adaf09fc57288228"
                 17 -> "ac53ed935c0fb8f4986777c82f6cdfb5"
+                18 -> "ee216143184cd60023a7c45e8dd1db92"
                 else -> null
             }
-            require(sql.version == 18 && pin != null && original.identityHash == pin &&
+            require(sql.version == 19 && pin != null && original.identityHash == pin &&
                 original.tables.map { it.name }.toSet() == TABLES - missing && original.tables.size == TABLES.size - missing.size) {
                 "Datenbankschema dieser Sicherung wird noch nicht unterstützt. Keine Daten wurden geändert." }
-            original.copy(databaseVersion = 18, identityHash = identity(sql), tables = original.tables + missing.sorted().map {
+            val metricColumns = listOf("workoutExternalId", "workoutRecordRevision", "workoutRecordFingerprint",
+                "workoutDurationMillis", "workoutDurationStatus", "workoutDurationAttempt")
+            val bridged = original.tables.map { table ->
+                if (table.name != "health_import_runs") table else {
+                    val expected = currentSchema.getValue(table.name).map { it.name }
+                    require(table.columns == expected.dropLast(metricColumns.size) && expected.takeLast(metricColumns.size) == metricColumns &&
+                        table.rows.all { it.size == table.columns.size }) { "Sicherung enthält unerwartete Spalten." }
+                    table.copy(columns = expected, rows = table.rows.map { it + List(metricColumns.size) { BackupCell.Unknown } })
+                }
+            }
+            original.copy(databaseVersion = 19, identityHash = identity(sql), tables = bridged + missing.sorted().map {
                 BackupTable(it, currentSchema.getValue(it).map { column -> column.name }, emptyList())
             })
         }

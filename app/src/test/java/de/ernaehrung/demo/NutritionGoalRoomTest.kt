@@ -121,8 +121,7 @@ class NutritionGoalRoomTest {
         store.rememberProduct("food", ProductInput("Unverändertes Lebensmittel", source = Source.USER, quality = Quality.CONFIRMED))
         val beforeGoals = store.captureBackup("de.ernaehrung.demo", true, true)
         val goalNames = setOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values")
-        val old = beforeGoals.copy(databaseVersion = 14, identityHash = "adf43266f88da0de1632891687871124",
-            tables = beforeGoals.tables.filterNot { it.name in goalNames || it.name in setOf("personal_restrictions","recipe_favorites","storage_location_reviews") })
+        val old = publishedBackupFixture(beforeGoals, 14)
         val p = draft("profile")
         val full = store.captureBackup("de.ernaehrung.demo", true, true)
         assertTrue(full.tables.first { it.name == "nutrition_goal_versions" }.rows.isNotEmpty())

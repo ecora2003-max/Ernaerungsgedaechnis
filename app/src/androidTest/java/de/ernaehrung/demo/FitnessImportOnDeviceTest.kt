@@ -176,6 +176,101 @@ class FitnessImportOnDeviceTest {
         }
     }
 
+    @Test fun actualWorkoutDurationActionRetainsSourceSpanUnknownZeroRestartAndPrivacy(): Unit = runBlocking {
+        assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val sandbox = FoodDatabase.localSandbox(context)
+        val originalFood = sandbox.foodDao().operationCount()
+        val name = "synthetic-workout-duration-${UUID.randomUUID()}.db"
+        fun open() = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
+        var db = open()
+        var clock = System.currentTimeMillis()
+        val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
+        val raw = FitnessSourceRecord("synthetic-duration-workout", FitnessRecordKind.WORKOUT, origin,
+            clock - 90_000, clock - 1_000, null, null, clock - 1, null, 0,
+            "SYNTHETIC", "No Watch proof", null, 0, exerciseType = 0)
+        val provider = object : FitnessHealthSource {
+            var metric: Long? = 51_125
+            var fail = false
+            val reads = AtomicInteger()
+            val durationReads = AtomicInteger()
+            override val requiredPermissions = FitnessHealthPolicy.REQUIRED_PERMISSIONS
+            override fun availability() = FitnessHealthSource.Availability.AVAILABLE
+            override suspend fun grantedPermissions() = requiredPermissions
+            override suspend fun readSnapshot(): FitnessHealthSnapshot {
+                reads.incrementAndGet()
+                val day = Instant.ofEpochMilli(clock).atZone(ZoneOffset.UTC).toLocalDate()
+                return FitnessHealthSnapshot(origin, clock - FitnessHealthPolicy.MAX_WINDOW_MILLIS, clock, clock,
+                    listOf(raw), day.toString(), "Z", day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(), clock, null)
+            }
+            override suspend fun readWorkoutDuration(query: FitnessWorkoutDurationQuery): FitnessWorkoutDurationSnapshot {
+                durationReads.incrementAndGet()
+                if (fail) error("Synthetic source failure")
+                return FitnessWorkoutDurationSnapshot(sourcePackage = origin, windowStart = query.startAt, windowEnd = query.endAt,
+                    capturedAt = clock, records = listOf(raw), durationMillis = metric,
+                    status = if (metric == null) FitnessWorkoutDurationStatus.NOT_RETURNED else FitnessWorkoutDurationStatus.AVAILABLE)
+            }
+        }
+        val models = ViewModelStore()
+        lateinit var model: FitnessViewModel
+        var store = FoodStore(db) { clock }
+        fun mount() = compose.runOnUiThread {
+            model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T = FitnessViewModel(store, provider) as T
+            })[FitnessViewModel::class.java]
+            compose.activity.setContent { DemoTheme {
+                Column(Modifier.fillMaxSize().systemBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp)) { FitnessScreen(model) }
+            } }
+        }
+        fun ready(predicate: () -> Boolean) = compose.waitUntil(20_000) { !model.state.value.busy && predicate() }
+        fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
+        val readTag = "fitness_workout_duration_read_${raw.externalId}"
+        val valueTag = "fitness_workout_duration_${raw.externalId}"
+        try {
+            mount(); ready { model.state.value.cache != null && model.state.value.availability != null }
+            assertEquals(0, provider.durationReads.get())
+            tap("fitness_opt_in"); tap("fitness_connect"); ready { model.state.value.cache?.records?.size == 1 }
+            val initial = db.healthDao().history(origin)
+            val core = db.healthDao().state(origin)
+            tap(readTag); ready { model.state.value.cache?.knownDurations?.singleOrNull()?.workoutDurationMillis == 51_125L }
+            compose.onNodeWithTag(valueTag).performScrollTo().assertTextContains("51,125", substring = true)
+            clock++; provider.metric = null
+            tap(readTag); ready { model.state.value.cache?.durationAttempts?.singleOrNull()?.workoutDurationStatus == "NOT_RETURNED" }
+            compose.onNodeWithTag(valueTag).performScrollTo().assertTextContains("Unbekannt", substring = true)
+            compose.onNodeWithTag("fitness_workout_duration_previous_${raw.externalId}").performScrollTo().assertExists()
+            clock++; provider.fail = true
+            tap(readTag); ready { model.state.value.cache?.durationAttempts?.singleOrNull()?.workoutDurationStatus == "READ_FAILED" }
+            assertEquals(51_125L, model.state.value.cache!!.knownDurations.single().workoutDurationMillis)
+            clock++; provider.fail = false; provider.metric = 0
+            tap(readTag); ready { model.state.value.cache?.knownDurations?.singleOrNull()?.workoutDurationMillis == 0L }
+            assertEquals(4, provider.durationReads.get())
+            assertEquals(initial, db.healthDao().history(origin)); assertEquals(core, db.healthDao().state(origin))
+            val zero = model.state.value.cache!!.knownDurations.single()
+            val target = db.healthDao().latest(origin).single().durationTarget()
+            tap("fitness_stop"); ready { model.state.value.cache?.state?.enabled == false }
+            compose.onNodeWithTag(readTag).performScrollTo().assertIsNotEnabled()
+            compose.runOnUiThread { compose.activity.setContent { DemoTheme {} }; models.clear() }
+            compose.waitForIdle(); db.close(); db = open(); store = FoodStore(db) { clock }
+            mount(); ready { model.state.value.cache?.knownDurations?.singleOrNull()?.workoutDurationMillis == 0L }
+            assertEquals(zero, store.readFitnessWorkoutDuration(zero.id, provider, target))
+            assertEquals(4, provider.durationReads.get()); assertEquals(1, provider.reads.get())
+            compose.onNodeWithTag(valueTag).performScrollTo().assertTextContains("0 s", substring = true)
+            tap("fitness_delete_opt_in"); tap("fitness_delete"); ready { model.state.value.cache?.records?.isEmpty() == true }
+            assertTrue(db.healthDao().workoutDurationHistory(origin, raw.externalId).isEmpty())
+            val retired = db.healthDao().run(zero.id)!!
+            assertEquals("REDACTED", retired.kind); assertNull(retired.workoutDurationMillis); assertNull(retired.workoutExternalId)
+            assertNull(retired.workoutDurationAttempt)
+            assertEquals(0, db.foodDao().operationCount()); assertEquals(originalFood, sandbox.foodDao().operationCount())
+            assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("workout-duration-flow"); throw failure }
+        finally {
+            compose.runOnUiThread { compose.activity.setContent { DemoTheme {} }; models.clear() }
+            compose.waitForIdle(); db.close(); context.deleteDatabase(name)
+        }
+    }
+
     @Test fun actualFitnessControlsAcceptOnlyDeferredDataRetryCompleteAndStopAfterPermissionLoss(): Unit = runBlocking {
         // Real production UI/ViewModel/FoodStore/SQLite. ONLY the read-only
         // health port/clock are synthetic; no OS permission or Watch evidence.

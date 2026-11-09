@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 internal data class FitnessCache(val state: HealthImportStateEntity, val lastSuccess: HealthImportRunEntity?,
-    val records: List<HealthRecordVersionEntity>)
+    val records: List<HealthRecordVersionEntity>, val durationAttempts: List<HealthImportRunEntity> = emptyList(),
+    val knownDurations: List<HealthImportRunEntity> = emptyList())
 
 /** FoodStore-owned fitness ledger. No food operation, meal, stock, price or target
  * is touched. Local consent revisions use a Room CAS; OS permissions are rechecked before commit.
@@ -26,7 +27,8 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
         "health_import_state", "health_import_runs", "health_source_record_versions").map {
         db.withTransaction {
             val state = state()
-            FitnessCache(state, state.lastSuccessRunId?.let { dao.run(it) }, dao.latest(source))
+            FitnessCache(state, state.lastSuccessRunId?.let { dao.run(it) }, dao.latest(source),
+                dao.currentWorkoutDurations(source, false), dao.currentWorkoutDurations(source, true))
         }
     }
 
@@ -98,6 +100,67 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
         }
     }
 
+    /** Separate v1 action; never changes raw records, the complete-window
+     * success marker, today's steps, nutrition or any other fact. */
+    suspend fun workoutDuration(key: String, provider: FitnessHealthSource,
+        target: FitnessWorkoutDurationTarget): HealthImportRunEntity {
+        validateKey(key)
+        require(provider.requiredPermissions == FitnessHealthPolicy.REQUIRED_PERMISSIONS) { "HEALTH_PERMISSION_SCOPE" }
+        fun replay(run: HealthImportRunEntity): HealthImportRunEntity {
+            require(run.kind == FitnessWorkoutDurationPolicy.RUN_KIND && run.sourcePackage == source &&
+                run.workoutExternalId == target.externalId && run.workoutRecordRevision == target.revision &&
+                run.workoutRecordFingerprint == target.fingerprint) { "HEALTH_OPERATION_REUSED" }
+            return run
+        }
+        fun current(row: HealthRecordVersionEntity?) = row != null && row.visible &&
+            row.sourcePackage == source && row.kind == FitnessRecordKind.WORKOUT.name &&
+            row.durationTarget() == target && FitnessImportKernel.recordFingerprint(row.record()) == target.fingerprint
+        db.withTransaction { dao.run(key) }?.let { return replay(it) }
+        val (initial, row) = db.withTransaction {
+            val auth = state().also { check(it.enabled) { "HEALTH_LOCAL_OPT_IN_REQUIRED" } }
+            val raw = dao.latestWorkout(source, target.externalId)
+            check(current(raw)) { "HEALTH_CACHE_INVALID" }
+            auth to requireNotNull(raw)
+        }
+        val query = FitnessWorkoutDurationQuery(target, row.startAt, row.endAt, now())
+        val inWindow = FitnessWorkoutDurationPolicy.inReadWindow(query)
+        var snapshot: FitnessWorkoutDurationSnapshot? = null
+        val status = if (!inWindow) FitnessWorkoutDurationStatus.OUTSIDE_READ_WINDOW else try {
+            check(provider.availability() == FitnessHealthSource.Availability.AVAILABLE) { "HEALTH_SOURCE_UNAVAILABLE" }
+            if (!provider.grantedPermissions().containsAll(provider.requiredPermissions)) throw FitnessPermissionMissing()
+            provider.readWorkoutDuration(query).also {
+                FitnessWorkoutDurationPolicy.validate(query, it, now())
+                snapshot = it.copy(records = emptyList()) // Do not duplicate source payload in metric evidence.
+            }.status
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (permission: SecurityException) { permissionsLost(initial.authorizationRevision); throw permission }
+        catch (permission: FitnessPermissionMissing) { permissionsLost(initial.authorizationRevision); throw permission }
+        catch (changed: FitnessSourceChanged) { FitnessWorkoutDurationStatus.SOURCE_CHANGED }
+        catch (_: Exception) { FitnessWorkoutDurationStatus.READ_FAILED }
+        try {
+            return db.withTransaction {
+                dao.run(key)?.let { return@withTransaction replay(it) }
+                val auth = state()
+                check(auth.enabled && auth.authorizationRevision == initial.authorizationRevision) { "HEALTH_AUTHORIZATION_CHANGED" }
+                check(current(dao.latestWorkout(source, target.externalId))) { "HEALTH_CACHE_INVALID" }
+                if (inWindow && !provider.grantedPermissions().containsAll(provider.requiredPermissions)) throw FitnessPermissionMissing()
+                val at = now().also {
+                    check(it >= query.requestedAt && (snapshot?.capturedAt?.let { capture -> capture <= it } != false)) { "HEALTH_WINDOW_INVALID" }
+                }
+                val digest = FitnessImportKernel.fingerprint("HEALTH_WORKOUT_DURATION_V1", source,
+                    target.externalId, target.revision, target.fingerprint, query.startAt, query.endAt,
+                    snapshot?.capturedAt, snapshot?.durationMillis, status.name)
+                val attempt = next(dao.lastWorkoutDurationAttempt(source, target.externalId, target.revision, target.fingerprint) ?: 0L)
+                HealthImportRunEntity(key, source, FitnessWorkoutDurationPolicy.RUN_KIND, digest, at,
+                    auth.authorizationRevision, capturedAt = snapshot?.capturedAt, windowStart = query.startAt,
+                    windowEnd = query.endAt, workoutExternalId = target.externalId, workoutRecordRevision = target.revision,
+                    workoutRecordFingerprint = target.fingerprint, workoutDurationMillis = snapshot?.durationMillis,
+                    workoutDurationStatus = status.name, workoutDurationAttempt = attempt).also { dao.insertRun(it) }
+            }
+        } catch (permission: SecurityException) { permissionsLost(initial.authorizationRevision); throw permission }
+        catch (permission: FitnessPermissionMissing) { permissionsLost(initial.authorizationRevision); throw permission }
+    }
+
     /** A late failed attempt cannot overwrite newer consent or successful data. */
     private suspend fun recordFailure(revision: Long, baselineSuccess: String?, startedAt: Long, code: String) = db.withTransaction {
         val current = state()
@@ -139,4 +202,5 @@ internal class HealthImportOperations(private val db: FoodDatabase, private val 
     suspend fun history(kind: String, id: String) = db.withTransaction {
         dao.historyFor(source, kind, id)
     }
+    suspend fun durationHistory(id: String) = db.withTransaction { dao.workoutDurationHistory(source, id) }
 }

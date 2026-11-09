@@ -6,6 +6,9 @@ internal interface FitnessHealthSource {
     fun availability(): Availability
     suspend fun grantedPermissions(): Set<String>
     suspend fun readSnapshot(): FitnessHealthSnapshot
+    /** Separate opt-in query; the complete-window v1 import contract stays unchanged. */
+    suspend fun readWorkoutDuration(query: FitnessWorkoutDurationQuery): FitnessWorkoutDurationSnapshot =
+        throw UnsupportedOperationException("HEALTH_WORKOUT_DURATION_UNAVAILABLE")
 
     enum class Availability { AVAILABLE, INSTALL_OR_UPDATE_REQUIRED, UNSUPPORTED }
 }

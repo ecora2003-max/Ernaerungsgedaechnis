@@ -87,8 +87,7 @@ class RecipeFavoriteRoomTest {
         val proposal = requireNotNull(proposed.versionId)
         store.confirmPersonalRestrictions("profile-confirm",proposal,store.readPersonalRestrictions().versionBinding(proposal),true)
         val current = store.captureBackup(app,true,true)
-        val old = current.copy(databaseVersion = 16,identityHash = "e2d5d92fe1b98be4adaf09fc57288228",
-            tables = current.tables.filterNot { it.name in setOf("recipe_favorites", "storage_location_reviews") })
+        val old = publishedBackupFixture(current, 16)
         assertEquals(50,old.tables.size)
         assertTrue(destination.validateBackupForPreview(old,app))
         assertEquals(BackupRestoreStatus.RESTORED,restore(old).status)

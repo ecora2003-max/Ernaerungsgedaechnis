@@ -127,9 +127,12 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal fun fitnessCache() = health.observe()
     internal suspend fun enableFitnessImport(key: String, enabled: Boolean, confirmed: Boolean) = health.enable(key, enabled, confirmed)
     internal suspend fun syncFitness(key: String, provider: de.ernaehrung.demo.data.fitness.FitnessHealthSource) = health.sync(key, provider)
+    internal suspend fun readFitnessWorkoutDuration(key: String, provider: de.ernaehrung.demo.data.fitness.FitnessHealthSource,
+        target: de.ernaehrung.demo.data.fitness.FitnessWorkoutDurationTarget) = health.workoutDuration(key, provider, target)
     internal suspend fun stopFitnessAfterPermissionLoss(expectedRevision: Long) = health.permissionsLost(expectedRevision)
     internal suspend fun purgeLocalFitnessImport(key: String, confirmed: Boolean) = health.purge(key, confirmed)
     internal suspend fun fitnessRecordHistory(kind: String, id: String) = health.history(kind, id)
+    internal suspend fun fitnessWorkoutDurationHistory(id: String) = health.durationHistory(id)
     /** Read-only, transactionally consistent host snapshot; never a booking. */
     internal suspend fun readRecipeRoomStockSnapshot():
         de.ernaehrung.demo.data.integration.RecipeContextContentBinding.Snapshot? =

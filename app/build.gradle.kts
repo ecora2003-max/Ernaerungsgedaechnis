@@ -11,8 +11,8 @@ android {
         applicationId="de.ernaehrung.demo"
         minSdk=26
         targetSdk=35
-        versionCode=9
-        versionName="0.9.0-recognition"
+        versionCode=10
+        versionName="0.10.0-fitness-duration"
         manifestPlaceholders["appLabel"] = "Ernährung · Demo"
         testInstrumentationRunner="de.ernaehrung.demo.SyntheticPersistenceInstrumentation"
     }

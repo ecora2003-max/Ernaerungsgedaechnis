@@ -98,9 +98,14 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                         override suspend fun readSnapshot() = FitnessHealthSnapshot(origin, healthAt - FitnessHealthPolicy.MAX_WINDOW_MILLIS,
                             healthAt, healthAt, listOf(pendingSteps, pendingWorkout, complete), healthDay.toString(), "Z",
                             healthDay.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(), healthAt, 17)
+                        override suspend fun readWorkoutDuration(query: FitnessWorkoutDurationQuery) = FitnessWorkoutDurationSnapshot(
+                            sourcePackage = origin, windowStart = query.startAt, windowEnd = query.endAt, capturedAt = System.currentTimeMillis(),
+                            records = listOf(complete), durationMillis = 0, status = FitnessWorkoutDurationStatus.AVAILABLE)
                     }
                     store.enableFitnessImport("$key-health-enable", true, true)
                     store.syncFitness("$key-health-sync", provider)
+                    store.readFitnessWorkoutDuration("$key-health-duration", provider,
+                        db.healthDao().latestWorkout(origin, complete.externalId)!!.durationTarget())
                     store.enableFitnessImport("$key-health-stop", false, true)
                     val data = JSONObject().put("proof",proof).put("source",source).put("package",targetContext.packageName)
                         .put("pid",Process.myPid()).put("sdk",Build.VERSION.SDK_INT).put("schema",db.openHelper.readableDatabase.version)
@@ -152,6 +157,12 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                         override suspend fun readSnapshot(): FitnessHealthSnapshot = error("Retry must not access provider")
                     }
                     check(store.syncFitness("$key-health-sync", retryOnly).aggregatedSteps == 17L)
+                    val complete = healthRows.single { it.visible }
+                    val duration = store.readFitnessWorkoutDuration("$key-health-duration", retryOnly, complete.durationTarget())
+                    check(duration.workoutDurationMillis == 0L && duration.workoutDurationStatus == "AVAILABLE" && duration.workoutDurationAttempt == 1L)
+                    check(duration.workoutExternalId == complete.externalId && duration.workoutRecordRevision == complete.revision &&
+                        duration.workoutRecordFingerprint == complete.fingerprint)
+                    check(db.healthDao().currentWorkoutDurations(origin, true).single() == duration)
                     check(db.healthDao().latest(origin) == healthRows && db.healthDao().state(origin) == healthState)
                     val date = data.getString("date"); val first = data.getString("first"); val second = data.getString("second")
                     val location = data.getString("location"); val batch = data.getString("batch"); val meal = data.getString("meal")

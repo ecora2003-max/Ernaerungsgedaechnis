@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import de.ernaehrung.demo.data.backup.*
 import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
@@ -116,6 +117,57 @@ class BackupRoomTest {
         assertNull(target.healthDao().state(FitnessHealthPolicy.SAMSUNG_PACKAGE))
         assertEquals(before, source.healthDao().state(FitnessHealthPolicy.SAMSUNG_PACKAGE))
         assertEquals(90_000L, target.foodDao().balance(batch))
+    }
+
+    @Test fun workoutMetricBackupRequiresFitnessScopePreservesKnownZeroAndCannotResurrectAfterPurge(): Unit = runBlocking {
+        val provider = SyntheticHealthSource(healthSnapshot(HEALTH_AT + 1, listOf(healthSteps(0), healthWorkout()), aggregate = null))
+        store.syncFitness("completed", provider)
+        val row = source.healthDao().latest(FitnessHealthPolicy.SAMSUNG_PACKAGE).single { it.kind == "WORKOUT" }
+        provider.durationReply = { q -> FitnessWorkoutDurationSnapshot(sourcePackage = FitnessHealthPolicy.SAMSUNG_PACKAGE,
+            windowStart = q.startAt, windowEnd = q.endAt, capturedAt = at, records = listOf(healthWorkout()),
+            durationMillis = 0, status = FitnessWorkoutDurationStatus.AVAILABLE) }
+        val metric = store.readFitnessWorkoutDuration("duration-zero", provider, row.durationTarget())
+        val food = capture(false)
+        assertTrue(food.tables.filter { it.name in FoodBackupStore.FITNESS_TABLES }.all { it.rows.isEmpty() })
+        val archive = capture(true); restore(archive)
+        val cache = destination.fitnessCache().first()
+        assertFalse(cache.state.enabled); assertEquals(metric, cache.knownDurations.single())
+        assertEquals(0L, cache.knownDurations.single().workoutDurationMillis)
+        destination.purgeLocalFitnessImport("purge", true)
+        assertEquals(BackupRestoreStatus.ALREADY_PRESENT, restore(archive, "retry-after-purge").status)
+        assertTrue(destination.fitnessCache().first().knownDurations.isEmpty())
+        val marker = target.healthDao().run("duration-zero")!!
+        assertNull(marker.workoutExternalId); assertNull(marker.workoutDurationMillis); assertNull(marker.workoutDurationAttempt)
+    }
+
+    @Test fun pinnedPublishedThirteenThroughEighteenArchivesGainOnlyUnknownMetricColumnsAndKeepOriginalRetryDigest(): Unit = runBlocking {
+        val full = capture()
+        val pins = mapOf(13 to "ddbdbf0fb475ae9d3a5c9a40b4284aa3", 14 to "adf43266f88da0de1632891687871124",
+            15 to "f0276403a772111cf77efeaf250b4b2b", 16 to "e2d5d92fe1b98be4adaf09fc57288228",
+            17 to "ac53ed935c0fb8f4986777c82f6cdfb5", 18 to "ee216143184cd60023a7c45e8dd1db92")
+        for ((version, pin) in pins) {
+            target.close(); target = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), FoodDatabase::class.java).build()
+            destination = FoodStore(target) { at }
+            val missing = buildSet {
+                if (version < 18) add("storage_location_reviews")
+                if (version < 17) add("recipe_favorites")
+                if (version < 16) add("personal_restrictions")
+                if (version < 15) addAll(listOf("nutrition_goal_runs", "nutrition_goal_versions", "nutrition_goal_values"))
+                if (version < 14) add("storage_capacity_reviews")
+            }
+            val archive = full.copy(databaseVersion = version, identityHash = pin,
+                tables = full.tables.filterNot { it.name in missing }.map { table ->
+                    if (table.name == "health_import_runs") table.copy(columns = table.columns.dropLast(6), rows = table.rows.map { it.dropLast(6) }) else table
+                })
+            assertTrue(destination.validateBackupForPreview(archive, appId))
+            assertEquals(BackupRestoreStatus.RESTORED, restore(archive).status)
+            assertEquals(digest(archive), target.foodDao().operation("restore")!!.resultId)
+            assertEquals(BackupRestoreStatus.ALREADY_PRESENT, restore(archive, "same-original").status)
+            target.healthDao().runs(FitnessHealthPolicy.SAMSUNG_PACKAGE).forEach {
+                assertNull(it.workoutDurationMillis); assertNull(it.workoutExternalId); assertNull(it.workoutDurationStatus); assertNull(it.workoutDurationAttempt)
+            }
+            assertFalse(target.healthDao().state(FitnessHealthPolicy.SAMSUNG_PACKAGE)!!.enabled)
+        }
     }
 
     @Test fun missingConsentChangedDigestApplicationSchemaColumnsOrFitnessScopeNeverWriteAnything() = runBlocking {

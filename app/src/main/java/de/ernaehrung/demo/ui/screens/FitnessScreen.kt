@@ -29,7 +29,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Composable
-private fun rememberFitnessModel(): FitnessViewModel {
+internal fun rememberFitnessModel(): FitnessViewModel {
     val context = LocalContext.current.applicationContext
     val factory = remember(context) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -150,7 +150,7 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                 if (row.kind == FitnessRecordKind.WORKOUT.name) {
                     Text("Trainingsart: ${FitnessPresentation.sport(row.exerciseType)}",
                         Modifier.testTag("fitness_sport_${row.externalId}"))
-                    Text("Aktive Trainingsdauer: im aktuellen Import nicht überliefert. Sie kann von der Zeitspanne zwischen Quellbeginn und -ende abweichen.")
+                    WorkoutDurationInfo(row, cache, state.busy || state.awaitingPermission) { model.readWorkoutDuration(row) }
                     Text("Trainingsenergie und Herzfrequenz: unbekannt")
                 }
                 Text("Quelländerung: ${time(row.sourceModifiedAt)} · lokale Version ${row.revision}")
@@ -196,6 +196,10 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
                     else -> "Sichtbarkeit unbekannt"
                 }
                 Text("Version ${row.revision}: $reason · ${time(row.startAt)} bis ${time(row.endAt)} · ${if (row.kind == "STEPS") "${row.steps} Schritte (Originalwert)" else row.title ?: "Training"}")
+            }
+            state.durationHistory.orEmpty().forEach { run ->
+                Text("Dauerprüfung zur Quellversion ${run.workoutRecordRevision} · ${time(run.recordedAt)}: ${workoutDurationStatus(run.workoutDurationStatus)}")
+                WorkoutDurationEvidence(run)
             }
             TextButton({ model.closeHistory() }) { Text("Historie schließen") }
         }
