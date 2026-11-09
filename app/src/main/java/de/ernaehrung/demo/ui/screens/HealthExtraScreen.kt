@@ -76,6 +76,9 @@ internal fun HealthExtraScreen(model: HealthExtraViewModel = rememberHealthExtra
     var approved by remember { mutableStateOf(false) }
     var eraseApproved by remember { mutableStateOf(false) }
     var shown by remember { mutableIntStateOf(20) }
+    var displayedKind by remember { mutableStateOf<HealthExtraKind?>(null) }
+    var displayedSource by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(displayedKind, displayedSource) { shown = 20 }
     LaunchedEffect(state.selection) { approved = false }
     val editable = !state.busy && !state.awaitingPermission
     val selection = state.selection
@@ -160,9 +163,30 @@ internal fun HealthExtraScreen(model: HealthExtraViewModel = rememberHealthExtra
         Text("Rohwerte und Quellen", style = MaterialTheme.typography.titleMedium)
         Text("Fehlende Geräteangaben bleiben unbekannt. Ein Quellpaket belegt allein kein bestimmtes Uhrenmodell. Grundumsatzrate und Energieeinträge sind Quelldaten; es wird kein TDEE berechnet und kein Ernährungsziel geändert.")
         val rows = state.cache?.records.orEmpty()
-        Text("Gespeicherte Einträge: ${rows.size}. Zurückgestellte oder nicht mehr sichtbare Einträge bleiben als Historie erhalten.")
-        rows.take(shown).forEach { row -> HealthExtraRecordCard(row) { model.showHistory(row) } }
-        if (rows.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere Einträge anzeigen") }
+        val sources = rows.map { it.record.sourcePackage }.distinct().sorted()
+        LaunchedEffect(sources) { if (displayedSource !in sources) displayedSource = null }
+        val filtered = rows.filter { (displayedKind == null || it.record.kind == displayedKind) &&
+            (displayedSource == null || it.record.sourcePackage == displayedSource) }
+        Text("Anzeige filtern · ändert keine Lesefreigabe und fragt keine Quelle ab", style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = displayedKind == null, onClick = { displayedKind = null }, label = { Text("Alle Datentypen") },
+                modifier = Modifier.testTag("health_extra_filter_all_kinds"))
+            HealthExtraKind.entries.filter { it.shape != HealthExtraKind.Shape.AGGREGATE }.forEach { kind ->
+                FilterChip(selected = displayedKind == kind, onClick = { displayedKind = kind }, label = { Text(kind.label) },
+                    modifier = Modifier.testTag("health_extra_filter_kind_${kind.name}"))
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = displayedSource == null, onClick = { displayedSource = null }, label = { Text("Alle Quellen") },
+                modifier = Modifier.testTag("health_extra_filter_all_sources"))
+            sources.forEach { source ->
+                FilterChip(selected = displayedSource == source, onClick = { displayedSource = source }, label = { Text(source) },
+                    modifier = Modifier.testTag("health_extra_filter_source_$source"))
+            }
+        }
+        Text("Gespeicherte Einträge: ${rows.size} · im Filter: ${filtered.size}. Auch ältere gespeicherte Zeiträume bleiben auswählbar; sie gelten nicht als neu geprüft. Zurückgestellte oder nicht mehr sichtbare Einträge bleiben als Historie erhalten.")
+        filtered.take(shown).forEach { row -> HealthExtraRecordCard(row) { model.showHistory(row) } }
+        if (filtered.size > shown) OutlinedButton({ shown += 20 }) { Text("Weitere Einträge anzeigen") }
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Checkbox(eraseApproved, onCheckedChange = { eraseApproved = it }, modifier = Modifier.testTag("health_extra_erase_consent"))
             Text("Zusätzliche lokale Gesundheitskopie samt Rohwerten und Änderungshistorie löschen. Die Basisübernahme, manuelle Messungen und Daten in Health Connect bleiben erhalten.")

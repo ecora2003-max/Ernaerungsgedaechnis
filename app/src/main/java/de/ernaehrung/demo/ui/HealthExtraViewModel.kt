@@ -77,8 +77,11 @@ internal class HealthExtraViewModel(private val store: FoodStore, private val so
         return source.grantedPermissions().containsAll(HealthExtraKernel.permissions(query))
     }
     private suspend fun sync(at: Long) {
-        val run = withContext(Dispatchers.IO) { store.syncHealthExtra(key(), source) }
-        update(at) { it.copy(message = "Ausgewählte Gesundheitsdaten lokal übernommen. Änderungen: ${run.changedRecords}; zurückgestellt oder nicht mehr sichtbar: ${run.hiddenRecords}.") }
+        val deferred = withContext(Dispatchers.IO) {
+            store.syncHealthExtra(key(), source)
+            store.healthExtraCache().first().records.count { it.reason == FitnessRecordVisibility.DEFERRED_END_AFTER_CAPTURE }
+        }
+        update(at) { it.copy(message = "Ausgewählte Gesundheitsdaten lokal übernommen. Im lokalen Stand noch zurückgestellt: $deferred.") }
     }
     fun onForeground() {
         if (pending != null) return

@@ -25,7 +25,7 @@ class HealthExtraViewModelTest {
     private lateinit var store: FoodStore
     private lateinit var provider: SyntheticExtraSource
     private var models = ViewModelStore()
-    private val at = Instant.parse("2025-04-04T14:00:00Z").toEpochMilli()
+    private var at = Instant.parse("2025-04-04T14:00:00Z").toEpochMilli()
     private val selection = HealthExtraSelection(setOf(HealthExtraKind.HEART_RATE, HealthExtraKind.BASAL_RATE))
     private fun model(): HealthExtraViewModel = ViewModelProvider(models, object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -96,5 +96,30 @@ class HealthExtraViewModelTest {
         vm.onPermissionResult()
         withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.lastSuccess != null } }
         assertEquals(1, provider.reads); assertTrue(provider.lastQuery!!.needsHistory)
+    }
+
+    @Test fun unchangedDeferredIntervalsKeepTheirNoticeUntilAnActualLaterReadReleasesThem(): Unit = runBlocking {
+        val vm = model(); idle(vm)
+        val chosen = HealthExtraSelection(setOf(HealthExtraKind.DISTANCE))
+        vm.edit(chosen)
+        var original: HealthExtraRecord? = null
+        provider.response = { q -> syntheticExtraSnapshot(q).let { s ->
+            val row = original ?: s.records.single().copy(endAt = at + 10_000).also { original = it }
+            s.copy(records = listOf(row))
+        } }
+        vm.connect(true)
+        withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.lastSuccess != null } }
+        assertTrue(vm.state.value.message!!.contains("noch zurückgestellt: 1."))
+        val first = vm.state.value.cache!!.lastSuccess!!.id
+        vm.resync()
+        withTimeout(10_000) { vm.state.first { !it.busy && it.cache?.lastSuccess?.id != first } }
+        assertEquals(0, vm.state.value.cache!!.lastSuccess!!.hiddenRecords)
+        assertTrue(vm.state.value.message!!.contains("noch zurückgestellt: 1."))
+        assertEquals(1L, vm.state.value.cache!!.records.single().revision)
+        at += 20_000; vm.resync(); idle(vm)
+        withTimeout(10_000) { vm.state.first { it.cache?.records?.singleOrNull()?.revision == 2L } }
+        assertTrue(vm.state.value.message!!.contains("noch zurückgestellt: 0."))
+        assertTrue(vm.state.value.cache!!.records.single().visible)
+        assertEquals(original, vm.state.value.cache!!.records.single().record)
     }
 }

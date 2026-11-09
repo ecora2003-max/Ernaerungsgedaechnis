@@ -59,9 +59,16 @@ class FitnessImportOnDeviceTest {
         val name = "synthetic-extra-ui-${UUID.randomUUID()}.db"
         fun open() = Room.databaseBuilder(context, FoodDatabase::class.java, name).build()
         var db = open()
-        val clock = System.currentTimeMillis()
+        var clock = System.currentTimeMillis()
         var store = FoodStore(db) { clock }
         val provider = SyntheticExtraSource()
+        var originals: List<HealthExtraRecord>? = null
+        provider.response = { q -> syntheticExtraSnapshot(q).let { s ->
+            val rows = originals ?: s.records.map {
+                if (it.kind == HealthExtraKind.DISTANCE) it.copy(endAt = q.requestedAt + 30_000) else it
+            }.also { originals = it }
+            s.copy(records = rows)
+        } }
         var models = ViewModelStore()
         lateinit var model: HealthExtraViewModel
         fun mount() {
@@ -92,16 +99,33 @@ class FitnessImportOnDeviceTest {
             val snapshot = model.state.value.cache!!
             assertEquals(0L, snapshot.lastSuccess!!.steps)
             assertEquals(4, snapshot.records.sumOf { it.record.samples.size })
-            assertTrue(snapshot.records.all { it.visible && it.revision == 1L })
+            assertTrue(snapshot.records.all { it.revision == 1L }); assertEquals(6, snapshot.records.count { it.visible })
             assertEquals("W", db.healthExtraDao().latest().single { it.kind == "BASAL_RATE" }.unit)
             compose.onNodeWithTag("health_extra_step_day").performScrollTo().assertTextContains(": 0", substring = true)
-            compose.onAllNodesWithText("test.synthetic.scale", substring = true).assertCountEquals(2)
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(2)
+            tap("health_extra_filter_kind_BODY_FAT")
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(1)
+            tap("health_extra_filter_all_kinds"); tap("health_extra_filter_source_test.synthetic.scale")
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.scale").assertCountEquals(2)
+            compose.onAllNodesWithText("Quellpaket: test.synthetic.phone").assertCountEquals(0)
+            assertEquals(1, provider.reads) // Display filtering cannot read or authorize anything.
+            tap("health_extra_filter_all_sources")
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 1.", substring = true)
+            tap("health_extra_refresh"); ready { model.state.value.cache?.lastSuccess?.id != requireNotNull(snapshot.lastSuccess).id }
+            assertEquals(0, model.state.value.cache!!.lastSuccess!!.hiddenRecords)
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 1.", substring = true)
+            clock += 40_000
+            tap("health_extra_refresh"); ready { model.state.value.cache?.records?.all { it.visible } == true }
+            compose.onNodeWithTag("health_extra_message").performScrollTo().assertTextContains("noch zurückgestellt: 0.", substring = true)
+            val released = model.state.value.cache!!.records
+            assertEquals(2L, released.single { it.record.kind == HealthExtraKind.DISTANCE }.revision)
+            assertEquals(snapshot.records.map { it.record }.toSet(), released.map { it.record }.toSet())
             tap("health_extra_stop"); ready { model.state.value.cache?.state?.enabled == false }
             compose.runOnUiThread { compose.activity.setContent { DemoTheme {} }; models.clear() }
             compose.waitForIdle(); db.close(); db = open(); store = FoodStore(db) { clock }; models = ViewModelStore()
             mount(); ready { model.state.value.cache?.records?.size == 7 }
-            assertEquals(1, provider.reads)
-            assertEquals(snapshot.records, model.state.value.cache!!.records)
+            assertEquals(3, provider.reads)
+            assertEquals(released, model.state.value.cache!!.records)
             assertFalse(model.state.value.cache!!.state.enabled)
             tap("health_extra_erase_consent"); tap("health_extra_erase")
             ready { model.state.value.cache?.records?.isEmpty() == true }
