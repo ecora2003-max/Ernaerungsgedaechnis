@@ -14,7 +14,8 @@ import zipfile
 
 def main(subject, test, output):
     prefix = "assets/published_sources/"
-    wanted = {prefix + f for f in ("rewe.json", "aldi_sued.json", "netto.html", "reference_expected.json")}
+    wanted = {prefix + f for f in ("rewe.json", "aldi_sued.json", "netto.html", "reference_expected.json",
+                                   "aldi_nord.html", "kaufland.html", "kaufland_availability.json", "embedded_reference_expected.json")}
     def entries(path):
         with zipfile.ZipFile(path) as archive:
             return [name for name in archive.namelist() if name.startswith(prefix) and not name.endswith("/")]
@@ -29,7 +30,7 @@ def main(subject, test, output):
     target = Path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(proof, indent=2) + "\n")
-    print("PUBLISHED_SOURCE_TEST_ASSETS_PASS: zero subject fixtures; four test-only inputs; source/APK bound")
+    print(f"PUBLISHED_SOURCE_TEST_ASSETS_PASS: zero subject fixtures; {len(actual)} test-only inputs; source/APK bound")
 
 
 if __name__ == "__main__":

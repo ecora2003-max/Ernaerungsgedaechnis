@@ -1,0 +1,4 @@
+{
+  "aldi_nord": {"id":"n-one","current":199,"quantityText":"500 g","from":"2026-11-09","until":"2026-11-14","scope":"CHAIN_REPORTED","store":null},
+  "kaufland": {"id":"k-one","current":199,"quantityText":"500 g","from":"2026-11-09","until":"2026-11-14","scope":"STORE_CONFIRMED","store":"DE1234"}
+}
