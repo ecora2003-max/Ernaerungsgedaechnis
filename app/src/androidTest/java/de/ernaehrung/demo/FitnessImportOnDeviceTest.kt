@@ -43,6 +43,108 @@ class FitnessImportOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @Before fun unlock() = prepareUnlockedTestDevice()
 
+    @Test fun actualJournalSourceWindowKeepsRawPointsUnknownWideEnergyAndVersionBoundRecreation(): Unit = runBlocking {
+        assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context)
+        val origin = FitnessHealthPolicy.SAMSUNG_PACKAGE
+        assertTrue("Disposable empty health sandbox only", db.healthDao().latest(origin).isEmpty())
+        assertTrue(db.healthExtraDao().latest().isEmpty())
+        val beforeFood = db.foodDao().operationCount()
+        val beforeStock = db.foodDao().planningBatches()
+        val beforeMeals = db.foodDao().activeConsumptionCount()
+        val token = "synthetic-window-${UUID.randomUUID()}"
+        var clock = System.currentTimeMillis()
+        val store = FoodStore(db) { clock + 5_000 }
+        val raw = FitnessSourceRecord(token, FitnessRecordKind.WORKOUT, origin, clock - 60_000, clock - 1_000,
+            null, null, clock - 1, null, 1, null, null, null, 0, exerciseType = 0, title = "Synthetisches Fenstertraining")
+        val other = raw.copy(externalId = "$token-other/:?+%", title = "Synthetisches anderes Fenstertraining",
+            startAt = raw.startAt - 180_000, endAt = raw.startAt - 120_000)
+        var workout = raw
+        val zone = ZoneId.systemDefault()
+        val core = object : FitnessHealthSource {
+            var reads = 0
+            override val requiredPermissions = FitnessHealthPolicy.REQUIRED_PERMISSIONS
+            override fun availability() = FitnessHealthSource.Availability.AVAILABLE
+            override suspend fun grantedPermissions() = requiredPermissions
+            override suspend fun readSnapshot(): FitnessHealthSnapshot {
+                reads++
+                val day = Instant.ofEpochMilli(clock).atZone(zone).toLocalDate()
+                return FitnessHealthSnapshot(origin, clock - FitnessHealthPolicy.MAX_WINDOW_MILLIS, clock, clock,
+                    listOf(workout, other), day.toString(), zone.id, day.atStartOfDay(zone).toInstant().toEpochMilli(), clock, null)
+            }
+        }
+        var distance = 0.0
+        val extra = SyntheticExtraSource().also { p -> p.response = { q ->
+            val heart = syntheticExtraRecord(q, HealthExtraKind.HEART_RATE).copy(sourcePackage = origin,
+                startAt = raw.startAt - 1_000, endAt = raw.endAt + 500,
+                samples = listOf(HealthExtraSample(raw.startAt - 1, bpm = 66), HealthExtraSample(raw.startAt, bpm = 71),
+                    HealthExtraSample(raw.endAt - 1, bpm = 89), HealthExtraSample(raw.endAt, bpm = 99)))
+            val metre = syntheticExtraRecord(q, HealthExtraKind.DISTANCE).copy(sourcePackage = origin,
+                startAt = raw.startAt, endAt = raw.endAt, scalarBits = distance.toRawBits())
+            val total = syntheticExtraRecord(q, HealthExtraKind.TOTAL_ENERGY).copy(sourcePackage = origin,
+                startAt = raw.startAt - 60_000, endAt = q.windowEnd, scalarBits = 2100.5.toRawBits())
+            val phone = syntheticExtraRecord(q, HealthExtraKind.ACTIVE_ENERGY)
+            HealthExtraSnapshot(query = q, capturedAt = q.requestedAt, records = listOf(heart, metre, total, phone))
+        } }
+        try {
+            store.enableFitnessImport("$token-enable", true, true); store.syncFitness("$token-read", core)
+            store.authorizeHealthExtra("$token-extra-enable", HealthExtraSelection(WorkoutSourceWindow.TYPES), extra, true)
+            store.syncHealthExtra("$token-extra-read", extra)
+            store.enableFitnessImport("$token-stop", false, true); store.authorizeHealthExtra("$token-extra-stop", null, extra, true)
+            compose.onNodeWithTag("workspace_tab_MORE").performClick()
+            compose.onNodeWithTag("workspace_go_TRAINING").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("journal_source_window_$token").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("journal_source_window_$token").performScrollTo().performClick()
+            compose.onNodeWithTag("workout_source_window").assertExists()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_value_HEART_RATE").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("workout_source_samples_HEART_RATE").performScrollTo().assertTextContains("2 von 4", substring = true)
+            compose.onNodeWithTag("workout_source_value_HEART_RATE").performScrollTo().assertTextContains("71–89 bpm", substring = true)
+            compose.onNodeWithTag("workout_source_value_DISTANCE").performScrollTo().assertTextContains("0,0 m", substring = true)
+            compose.onNodeWithTag("workout_source_value_TOTAL_ENERGY").performScrollTo().assertTextContains("Kein Wert", substring = true)
+            compose.onNodeWithTag("workout_source_kind_ACTIVE_ENERGY").assertDoesNotExist()
+            assertEquals(1, core.reads); assertEquals(1, extra.reads)
+            distance = 12.75; clock += 1_000
+            store.authorizeHealthExtra("$token-extra-reenable", HealthExtraSelection(WorkoutSourceWindow.TYPES), extra, true)
+            store.syncHealthExtra("$token-extra-corrected", extra)
+            store.authorizeHealthExtra("$token-extra-restop", null, extra, true)
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_value_DISTANCE") and
+                hasText("12,75 m", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Trainingsjournal öffnen").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("journal_source_window_${other.externalId}").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("journal_source_window_${other.externalId}").performScrollTo().performClick()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_empty").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(other.title)).assertExists()
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_empty").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(other.title)).assertExists()
+            compose.onNodeWithTag("workspace_back").performClick()
+            compose.onNodeWithTag("training_journal").assertExists()
+            compose.onNodeWithTag("workspace_back").performClick()
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_value_DISTANCE") and
+                hasText("12,75 m", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText(requireNotNull(raw.title)).assertExists()
+            compose.onNodeWithText(requireNotNull(other.title)).assertDoesNotExist()
+            compose.onNodeWithTag("workout_source_window").assertExists()
+            compose.onNodeWithTag("workout_source_value_DISTANCE").performScrollTo().assertTextContains("12,75 m", substring = true)
+            assertEquals(1, core.reads); assertEquals(2, extra.reads)
+            clock += 1_000; workout = raw.copy(title = "Synthetische Quellkorrektur", clientRecordVersion = 2)
+            store.enableFitnessImport("$token-reenable", true, true); store.syncFitness("$token-core-corrected", core)
+            store.enableFitnessImport("$token-restop", false, true)
+            compose.waitUntil(15_000) { compose.onAllNodesWithTag("workout_source_stale").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("workout_source_kind_HEART_RATE").assertDoesNotExist()
+            store.purgeLocalFitnessImport("$token-purge", true)
+            compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("workout_source_stale") and
+                hasText("nicht mehr in der lokalen Kopie vorhanden", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("workout_source_stale").performScrollTo().assertExists()
+            assertEquals(beforeFood, db.foodDao().operationCount()); assertEquals(beforeStock, db.foodDao().planningBatches())
+            assertEquals(beforeMeals, db.foodDao().activeConsumptionCount()); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("workout-source-window-flow"); throw failure }
+        finally { store.purgeLocalFitnessImport("$token-cleanup", true) }
+    }
+
     @Test fun additionalTypesUseExplicitSelectionRawSourceValuesHistoryConsentReopenAndSeparatePurge(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         val context = compose.activity.applicationContext

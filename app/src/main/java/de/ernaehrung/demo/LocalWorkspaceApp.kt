@@ -1,5 +1,6 @@
 package de.ernaehrung.demo
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,12 +18,16 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.*
 import de.ernaehrung.demo.ui.*
 import de.ernaehrung.demo.ui.screens.LocalDataContent
 import de.ernaehrung.demo.ui.screens.rememberLocalDataViewModel
 import de.ernaehrung.demo.ui.screens.FitnessScreen
 import de.ernaehrung.demo.ui.screens.HealthExtraScreen
+import de.ernaehrung.demo.ui.screens.WorkoutSourceWindowScreen
+import de.ernaehrung.demo.data.fitness.WorkoutSourceTarget
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
@@ -40,7 +45,7 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"), PERSONAL_RESTRICTIONS("Persönliche Ausschlüsse"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"), OFFERS("Angebote & Preisvergleich"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), WORKOUT_SOURCE("Trainingszeitfenster"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG, BATCH_REVIEW, STORAGE_CAPACITY -> STOCK
@@ -49,6 +54,8 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
         else -> MORE
     }
 }
+
+private const val WORKOUT_SOURCE_ROUTE = "WORKOUT_SOURCE/{source}/{record}/{revision}/{fingerprint}"
 
 /** The default application uses one real Room-backed model across all sections.
  * The immutable design tour remains an explicit opt-in, outside this data flow.
@@ -59,7 +66,7 @@ fun LocalWorkspaceApp() {
     val model = rememberLocalDataViewModel()
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
-    val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route } ?: WorkspacePage.HOME
+    val current = WorkspacePage.entries.firstOrNull { it.name == entry?.destination?.route?.substringBefore('/') } ?: WorkspacePage.HOME
     var demo by rememberSaveable { mutableStateOf(false) }
     var catalogFilter by rememberSaveable { mutableStateOf("") }
     val recognitionMode = rememberSaveable { mutableStateOf("Barcode & Produkt") }
@@ -72,6 +79,15 @@ fun LocalWorkspaceApp() {
         return
     }
     fun go(page: WorkspacePage) { nav.navigate(page.name) { launchSingleTop = true } }
+    fun openSourceWindow(row: de.ernaehrung.demo.data.local.HealthRecordVersionEntity) {
+        val target = row.sourceWindowTarget()
+        // Each back-stack entry owns its immutable version binding. A second
+        // workout must not replace the target of an earlier screen on Back.
+        nav.navigate(listOf(WorkspacePage.WORKOUT_SOURCE.name, Uri.encode(target.sourcePackage),
+            Uri.encode(target.externalId), target.revision.toString(), target.fingerprint).joinToString("/")) {
+            launchSingleTop = true
+        }
+    }
     val tabs = listOf(WorkspacePage.HOME, WorkspacePage.STOCK, WorkspacePage.SCAN, WorkspacePage.PLAN, WorkspacePage.MORE)
     val icons: List<ImageVector> = listOf(Icons.Outlined.Home, Icons.Outlined.Inventory2,
         Icons.Outlined.QrCodeScanner, Icons.Outlined.CalendarMonth, Icons.Outlined.MoreHoriz)
@@ -98,7 +114,14 @@ fun LocalWorkspaceApp() {
         }
     }) { padding ->
         NavHost(nav, startDestination = WorkspacePage.HOME.name, modifier = Modifier.padding(padding)) {
-            WorkspacePage.entries.forEach { page -> composable(page.name) {
+            WorkspacePage.entries.forEach { page ->
+                val route = if (page == WorkspacePage.WORKOUT_SOURCE) WORKOUT_SOURCE_ROUTE else page.name
+                val arguments = if (page == WorkspacePage.WORKOUT_SOURCE) listOf(
+                    navArgument("source") { type = NavType.StringType },
+                    navArgument("record") { type = NavType.StringType },
+                    navArgument("revision") { type = NavType.LongType },
+                    navArgument("fingerprint") { type = NavType.StringType }) else emptyList()
+                composable(route, arguments = arguments) { destination ->
                 Column(Modifier.fillMaxSize().testTag("workspace_page_${page.name}")
                     .verticalScroll(rememberScrollState()).background(Warm).padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -120,12 +143,18 @@ fun LocalWorkspaceApp() {
                         val requestedDay by model.selectedDay.collectAsStateWithLifecycle()
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
                             onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
+                            onOpenSourceWindow = ::openSourceWindow,
                             onOpenTraining = { go(WorkspacePage.TRAINING) },
                             onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
                                 FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
                             })
                     } else if (page == WorkspacePage.HEALTH_EXTRA) {
                         HealthExtraScreen()
+                    } else if (page == WorkspacePage.WORKOUT_SOURCE) {
+                        val args = requireNotNull(destination.arguments)
+                        WorkoutSourceWindowScreen(WorkoutSourceTarget(requireNotNull(args.getString("source")),
+                            requireNotNull(args.getString("record")), args.getLong("revision"), requireNotNull(args.getString("fingerprint"))),
+                            onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) }, onOpenTraining = { go(WorkspacePage.TRAINING) })
                     } else if (page == WorkspacePage.OFFERS) {
                         val shopping by model.shopping.collectAsStateWithLifecycle()
                         LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report)
@@ -134,7 +163,8 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.BODY_RAW) {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
                     } else if (page == WorkspacePage.TRAINING) {
-                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) })
+                        TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
+                            onOpenSourceWindow = ::openSourceWindow)
                     } else if (page == WorkspacePage.BATCH_REVIEW) {
                         BatchReviewScreen(selectedBatch)
                     } else if (page == WorkspacePage.BACKUP) {

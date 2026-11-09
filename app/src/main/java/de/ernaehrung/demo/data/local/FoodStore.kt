@@ -138,6 +138,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     internal suspend fun fitnessRecordHistory(kind: String, id: String) = health.history(kind, id)
     internal suspend fun fitnessWorkoutDurationHistory(id: String) = health.durationHistory(id)
     private val healthExtra = HealthExtraOperations(db, now)
+    private val workoutSourceWindow = WorkoutSourceWindowReader(db, healthExtra::readCache)
+    internal fun watchWorkoutSourceWindow(target: de.ernaehrung.demo.data.fitness.WorkoutSourceTarget) = workoutSourceWindow.observe(target)
     internal fun healthExtraCache() = healthExtra.observe()
     internal suspend fun authorizeHealthExtra(key: String, selection: de.ernaehrung.demo.data.fitness.HealthExtraSelection?,
         provider: de.ernaehrung.demo.data.fitness.HealthExtraSource, confirmed: Boolean) = healthExtra.authorize(key, selection, provider, confirmed)
