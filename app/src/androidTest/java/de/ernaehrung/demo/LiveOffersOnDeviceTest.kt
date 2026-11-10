@@ -26,7 +26,7 @@ import java.net.URI
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -48,6 +48,83 @@ class LiveOffersOnDeviceTest {
     }
     private fun ready() = compose.waitUntil(25_000) {
         compose.onAllNodes(hasTestTag("live_offers_refresh") and isEnabled()).fetchSemanticsNodes().size == 1
+    }
+    @Test fun explicitKnusprRenewalRotatesPrivateCredentialsAndLateCancelledReplyCannotReplaceANewerLogin(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
+        val operations = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
+        val health = db.healthDao().history("com.sec.android.app.shealth")
+        val store = PrivateKnusprStore.forApp(context); store.clear()
+        val server = KnusprAuthorizationServer(URI("https://login.example.test"), URI("https://login.example.test/authorize"),
+            URI("https://login.example.test/token"), null, listOf("products:read"))
+        val old = KnusprToken("synthetic-expired-access", "synthetic-original-refresh", Instant.now().minusSeconds(1).toEpochMilli(),
+            "synthetic-public-client", server)
+        store.write(PrivateKnusprStore.State(token = old))
+        val release = CompletableDeferred<Unit>(); val entered = CompletableDeferred<Unit>()
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val http = OfferHttp { request ->
+            check(request.uri == server.token && request.method == "POST")
+            val number = calls.incrementAndGet()
+            if (number == 1) withContext(NonCancellable) { entered.complete(Unit); release.await() }
+            if (number == 3) OfferHttpReply(400, emptyMap(), """{"error":"invalid_grant"}""")
+            else OfferHttpReply(200, emptyMap(), """{"token_type":"Bearer","access_token":"synthetic-access-$number","refresh_token":"synthetic-rotation-$number","expires_in":3600}""")
+        }
+        var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        fun mount() = compose.runOnUiThread {
+            model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    LiveOffersViewModel(context, http = http) as T
+            })[LiveOffersViewModel::class.java]
+            compose.activity.setContent { DemoTheme {
+                Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LiveOffersScreen(providedModel = model)
+                }
+            } }
+        }
+        try {
+            mount(); ready(); tap("Angebotsanbieter"); tap("choose_KNUSPR"); ready()
+            compose.waitUntil(25_000) { model.state.value.connection?.expired == true }
+            compose.onNodeWithTag("knuspr_discover").assertIsNotEnabled()
+            compose.runOnUiThread { assertNull(model.renewConnection(false)) }
+            assertEquals(0, calls.get())
+            lateinit var abandoned: Job
+            compose.runOnUiThread { abandoned = requireNotNull(model.renewConnection(true)) }
+            withTimeout(25_000) { entered.await() }
+            compose.onNodeWithText("Abbrechen").performScrollTo().performClick(); ready()
+            tap("knuspr_disconnect"); ready()
+            assertNull(store.read().token)
+            // A new login can even return the same old credential values. Its
+            // independent renewal nonce still protects the newer rotation.
+            store.write(PrivateKnusprStore.State(token = old))
+            compose.runOnUiThread { model.readConnection() }
+            compose.waitUntil(25_000) { model.state.value.connection?.expired == true }
+            tap("knuspr_renew"); ready()
+            compose.waitUntil(25_000) { model.state.value.connection?.expired == false }
+            assertEquals(2, calls.get()); assertEquals("synthetic-access-2", store.read().token?.access)
+            release.complete(Unit); withTimeout(25_000) { abandoned.join() }
+            assertEquals("synthetic-access-2", store.read().token?.access)
+            assertEquals("synthetic-rotation-2", store.read().token?.refresh)
+            assertNull(store.read().completing)
+            val sealed = File(context.noBackupFilesDir, "knuspr-oauth-v1.bin").readBytes().toString(Charsets.ISO_8859_1)
+            assertFalse(sealed.contains("synthetic-access-2")); assertFalse(sealed.contains("synthetic-rotation-2"))
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            models = ViewModelStore(); mount(); ready()
+            compose.waitUntil(25_000) { model.state.value.connection?.expired == false }
+            assertEquals(2, calls.get()); assertNull(model.state.value.discovery)
+            tap("Angebotsanbieter"); tap("choose_KNUSPR"); ready(); tap("knuspr_renew"); ready()
+            compose.waitUntil(25_000) { model.state.value.connection == null }
+            assertNull(store.read().token); assertEquals(3, calls.get())
+            assertEquals(operations, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())
+            assertEquals(paid, dao.allPaidPrices()); assertEquals(health, db.healthDao().history("com.sec.android.app.shealth"))
+            assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("knuspr-renewal"); throw failure }
+        finally {
+            release.complete(Unit)
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            store.clear(); PrivateOfferSettings.forApp(context).clearSelection()
+        }
     }
     @Test fun embeddedNordAndKauflandHtmlReachActualUiOnlyAfterBothIndependentEndpointsArePermitted(): Unit = runBlocking {
         val context = compose.activity.applicationContext
@@ -281,6 +358,17 @@ class LiveOffersOnDeviceTest {
             assertTrue(store.stage(store.beginAttempt(), pending)); store.claim(nonce); assertTrue(store.finish(nonce, token))
             assertEquals(token, store.read().token)
             assertFalse(file.readBytes().toString(Charsets.ISO_8859_1).contains(token.access))
+            val earlierRenewal = store.claimRenewal()
+            assertTrue(runCatching { store.claimRenewal() }.isFailure)
+            store.clear(); assertFalse(store.finishRenewal(earlierRenewal, token))
+            store.write(PrivateKnusprStore.State(token = token))
+            val currentRenewal = store.claimRenewal()
+            val rotated = token.copy(access = "synthetic-rotated-access-$nonce", refresh = "synthetic-rotated-refresh-$nonce")
+            assertFalse(store.finishRenewal(earlierRenewal, rotated))
+            assertTrue(store.finishRenewal(currentRenewal, rotated))
+            assertFalse(store.rejectRenewal(earlierRenewal)); store.abortRenewal(earlierRenewal)
+            assertEquals(rotated, store.read().token)
+            assertFalse(file.readBytes().toString(Charsets.ISO_8859_1).contains(rotated.refresh!!))
             val damaged = file.readBytes(); damaged[damaged.lastIndex] = (damaged.last().toInt() xor 1).toByte(); file.writeBytes(damaged)
             assertTrue(runCatching { store.read() }.isFailure)
             store.clear(); assertFalse(file.exists()); assertNull(store.read().token)

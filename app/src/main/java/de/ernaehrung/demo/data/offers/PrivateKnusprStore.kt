@@ -25,6 +25,7 @@ internal class PrivateKnusprStore private constructor(context: Context) {
     private val file = AtomicFile(File(context.noBackupFilesDir, "knuspr-oauth-v1.bin"))
     private val alias = "eg_knuspr_oauth_private_v1"
     private var attemptGeneration = 0L
+    private var activeRenewal: String? = null
     data class State(val pending: KnusprPendingAuthorization? = null, val token: KnusprToken? = null, val completing: String? = null) {
         override fun toString() = "PrivateKnusprState(redacted)"
     }
@@ -57,7 +58,7 @@ internal class PrivateKnusprStore private constructor(context: Context) {
         catch (failure: Exception) { out?.let(file::failWrite); throw failure }
         finally { sealed.fill(0) }
     }
-    @Synchronized fun clear() { attemptGeneration++; file.delete() }
+    @Synchronized fun clear() { attemptGeneration++; activeRenewal = null; file.delete() }
     @Synchronized fun beginAttempt(): Long { clear(); return attemptGeneration }
     @Synchronized fun stage(generation: Long, pending: KnusprPendingAuthorization): Boolean {
         if (generation != attemptGeneration) return false
@@ -71,8 +72,47 @@ internal class PrivateKnusprStore private constructor(context: Context) {
         return pending
     }
     @Synchronized fun finish(state: String, token: KnusprToken): Boolean {
-        if (read().completing != state) return false
+        val current = read()
+        if (current.completing != state || current.token != null || current.pending != null) return false
         write(State(token = token)); return true
+    }
+    class Renewal internal constructor(val generation: Long, val nonce: String, val previous: KnusprToken) {
+        override fun toString() = "PrivateKnusprRenewal(redacted)"
+    }
+    private fun matches(claim: Renewal, current: State): Boolean = claim.generation == attemptGeneration &&
+        activeRenewal == claim.nonce && current.completing == claim.nonce && current.pending == null && current.token == claim.previous
+    @Synchronized fun claimRenewal(): Renewal {
+        require(activeRenewal == null) { "Renewal already running" }
+        val current = read()
+        require(current.pending == null)
+        val previous = requireNotNull(current.token)
+        require(!previous.refresh.isNullOrBlank())
+        val nonce = java.util.UUID.randomUUID().toString()
+        val claim = Renewal(++attemptGeneration, nonce, previous)
+        // An abandoned previous-process marker can be replaced only by this
+        // new explicit action. A live process permits one renewal at a time.
+        write(State(token = previous, completing = nonce))
+        activeRenewal = nonce
+        return claim
+    }
+    @Synchronized fun finishRenewal(claim: Renewal, token: KnusprToken, stillCurrent: () -> Boolean = { true }): Boolean {
+        val current = read()
+        if (!matches(claim, current) || !stillCurrent()) return false
+        require(token.clientId == claim.previous.clientId && token.server == claim.previous.server)
+        write(State(token = token)); activeRenewal = null
+        return true
+    }
+    @Synchronized fun rejectRenewal(claim: Renewal): Boolean {
+        if (!matches(claim, read())) return false
+        clear(); return true
+    }
+    @Synchronized fun abortRenewal(claim: Renewal) {
+        if (activeRenewal != claim.nonce) return
+        try {
+            val current = read()
+            if (matches(claim, current))
+                write(State(token = claim.previous))
+        } finally { activeRenewal = null }
     }
     private fun server(s: KnusprAuthorizationServer) = mapOf("issuer" to s.issuer.toString(),
         "authorization" to s.authorization.toString(), "token" to s.token.toString(), "registration" to s.registration?.toString(),
