@@ -9,7 +9,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-internal data class LiveOfferSelection(val offer: LiveOffer, val scope: LiveOfferScope)
+internal data class LiveOfferSelection(val offer: LiveOffer, val scope: LiveOfferScope, val authorization: LiveSourceGrant)
 internal data class LiveOffersUiState(val busy: Boolean = false, val scope: LiveOfferScope? = null,
     val result: LiveRefreshResult? = null, val message: String? = null, val connected: Boolean = false,
     val discovery: KnusprToolDiscovery? = null, val authorizationUrl: URI? = null,
@@ -28,7 +28,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
     private val mutable = MutableStateFlow(LiveOffersUiState())
     val state = mutable.asStateFlow()
     private var work: Job? = null
-    private var generation = 0L
+    @Volatile private var generation = 0L
     private var authTicket: Long? = null
     init {
         val expected = generation
@@ -38,6 +38,43 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
                 automatic = selection?.automatic == true, selectionLoaded = true)
                 else mutable.value.copy(selectionLoaded = true)
         }
+    }
+    override fun onCleared() { generation++; super.onCleared() }
+
+    /** Keep the exact independent authorization of each loaded observation.
+     * Replacements with the same source ID do not reauthorize old prices. */
+    private fun validated(value: LiveOffersUiState): LiveOffersUiState {
+        val validBatch = value.result?.let { result -> result.batch?.let {
+            runtime.permitsSnapshot(it.scope, it.sourceId, result.authorization)
+        } } ?: true
+        val validReference = value.reference?.let {
+            it.authorization.cachePermitted && runtime.permitsSnapshot(it.scope, it.offer.sourceId, it.authorization)
+        } ?: true
+        if (validBatch && validReference) return value
+        return value.copy(result = value.result.takeIf { validBatch }, reference = value.reference.takeIf { validReference },
+            comparison = null, authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
+            automatic = value.automatic && validBatch,
+            message = "Quellenfreigabe oder Geltungsbereich geändert. Betroffene Sitzungsdaten verworfen; diese Quelle erneut ausdrücklich aktualisieren.")
+    }
+    private fun publishValidated(value: LiveOffersUiState): Job? {
+        val checked = validated(value)
+        mutable.value = checked
+        val scope = value.scope
+        if (!value.automatic || checked.automatic || scope == null) return null
+        val expected = generation
+        return viewModelScope.launch(Dispatchers.IO) {
+            val saved = runCatching { settings.pauseAutomatic(scope) { generation == expected } }.isSuccess
+            if (!saved) withContext(Dispatchers.Main) {
+                if (generation == expected) mutable.value = mutable.value.copy(
+                    message = "Betroffene Sitzungsdaten verworfen. Automatik in dieser Sitzung ausgeschaltet; lokale Einstellung konnte nicht sicher gespeichert werden.")
+            }
+        }
+    }
+    private fun currentForAction(): LiveOffersUiState? {
+        val value = mutable.value
+        if (value.busy) return null
+        if (validated(value) !== value) { publishValidated(value); return null }
+        return value
     }
     fun selectProvider() {
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
@@ -56,29 +93,29 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
             comparison = null, authorizedEvidenceRef = null)
         work = viewModelScope.launch {
             try {
-                val (result, evidence) = withContext(Dispatchers.IO) {
+                val result = withContext(Dispatchers.IO) {
                     if (!automatic) settings.select(scope, keepAutomatic)
                     val result = runtime.refresh(scope, automatic).also {
                         if (it.status in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED)) settings.select(scope, false)
                     }
-                    result to runtime.policy(scope)?.evidenceRef
+                    result
                 }
-                if (generation == expected) mutable.value = mutable.value.copy(busy = false, result = result,
-                    authorizedEvidenceRef = evidence,
+                if (generation == expected) publishValidated(mutable.value.copy(busy = false, result = result,
+                    authorizedEvidenceRef = result.authorization?.evidenceRef,
                     automatic = keepAutomatic && result.status !in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED),
                     message = when {
                         result.fromCache -> "Letzter erlaubter Stand aus dieser Sitzung. Keine erfolgreiche neue Abfrage; Gültigkeit und Preisstand prüfen."
                         result.status == LiveRefreshStatus.LOADED -> "Abfrage abgeschlossen. Keine Buchung erzeugt."
                         result.status == LiveRefreshStatus.THROTTLED -> "Erlaubter Abrufabstand noch nicht erreicht. Nächster möglicher Abruf: ${result.refreshAfter}."
                         else -> "Keine freigegebene aktuelle Angebotsübernahme. Vorhandene Lebensmittelbuchungen bleiben erhalten."
-                    })
+                    }))
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false, message = "Auswahl oder Quelle konnte nicht geprüft werden.") }
         }
     }
     fun setAutomatic(enabled: Boolean) {
-        if (mutable.value.busy) return
-        val scope = mutable.value.scope ?: return
+        val value = currentForAction() ?: return
+        val scope = value.scope ?: return
         val expected = ++generation
         mutable.value = mutable.value.copy(busy = true)
         work = viewModelScope.launch {
@@ -88,12 +125,12 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
                     if (allowed) settings.select(scope, enabled)
                     allowed
                 }
-                if (generation == expected) mutable.value = mutable.value.copy(busy = false,
+                if (generation == expected) publishValidated(mutable.value.copy(busy = false,
                     automatic = enabled && accepted, message = when {
                         !accepted -> "Automatik gesperrt: freigegebene Quelle, genauer Geltungsbereich und erlaubter Abrufrhythmus fehlen. Kein Netzabruf gestartet."
                         enabled -> "Automatische Aktualisierung bei sichtbarer Angebotsseite eingeschaltet. Keine Hintergrundabfragen."
                         else -> "Automatische Aktualisierung ausgeschaltet."
-                    })
+                    }))
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false, automatic = false,
                 message = "Aktualisierungseinstellung konnte nicht sicher gespeichert werden.") }
@@ -102,49 +139,41 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
     suspend fun automaticTick() {
         val expected = generation; val value = mutable.value
         if (!value.selectionLoaded || value.busy) return
-        // Reauthorize visible prices/reference even with automatic HTTP disabled.
-        val validBatch = withContext(Dispatchers.IO) {
-            value.result?.batch?.let { runtime.policy(it.scope)?.sourceId == it.sourceId } ?: true
-        }
-        val validReference = withContext(Dispatchers.IO) {
-            value.reference?.let { runtime.policy(it.scope)?.let { grant -> grant.cachePermitted && grant.sourceId == it.offer.sourceId } == true } ?: true
-        }
+        // Host-only registry checks, including with HTTP automation disabled.
+        // Validate at publication as well as on each explicit compare/reference
+        // action, rather than attaching a later grant to an earlier response.
+        publishValidated(value)?.join()
         if (expected != generation || mutable.value.busy) return
-        if (!validBatch || !validReference) mutable.value = mutable.value.copy(
-            result = value.result.takeIf { validBatch }, reference = value.reference.takeIf { validReference }, comparison = null,
-            authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
-            message = "Quellfreigabe oder Geltungsbereich geändert. Nicht mehr freigegebene Sitzungsdaten verworfen.")
         val current = mutable.value
         if (current.result?.refreshAfter?.let { java.time.Instant.now() < it } == true) return
         if (current.automatic) current.scope?.let { refresh(it, automatic = true) }
     }
     fun compare(targetId: String, alternativeId: String) {
-        val value = mutable.value
+        val value = currentForAction() ?: return
         val scope = value.scope ?: return
         val batch = value.result?.batch ?: return
-        if (value.busy) return
         val target = batch.offers.singleOrNull { it.id == targetId } ?: return
         val alternative = batch.offers.singleOrNull { it.id == alternativeId } ?: return
-        mutable.value = value.copy(comparison = comparison.compare(target, scope, alternative, scope, java.time.Instant.now()))
+        publishValidated(value.copy(comparison = comparison.compare(target, scope, alternative, scope, java.time.Instant.now())))
     }
     fun rememberReference(id: String) {
-        val value = mutable.value
+        val value = currentForAction() ?: return
         val scope = value.scope ?: return
         val offer = value.result?.batch?.offers?.singleOrNull { it.id == id } ?: return
         if (value.result.cachePermitted != true) {
             mutable.value = value.copy(message = "Die Quelle erlaubt kein Behalten für einen Anbieterwechsel. Vergleich innerhalb der geladenen Liste bleibt möglich.")
             return
         }
-        mutable.value = value.copy(reference = LiveOfferSelection(offer, scope), comparison = null,
-            message = "Referenz nur für diese Sitzung gewählt. Bei jedem Vergleich werden Quelle, Gültigkeit und Artikel erneut geprüft.")
+        publishValidated(value.copy(reference = LiveOfferSelection(offer, scope, requireNotNull(value.result.authorization)), comparison = null,
+            message = "Referenz nur für diese Sitzung gewählt. Bei jedem Vergleich werden Quelle, Gültigkeit und Artikel erneut geprüft."))
     }
     fun forgetReference() { mutable.value = mutable.value.copy(reference = null, comparison = null) }
     fun compareWithReference(alternativeId: String) {
-        val value = mutable.value
+        val value = currentForAction() ?: return
         val target = value.reference ?: return
         val scope = value.scope ?: return
         val alternative = value.result?.batch?.offers?.singleOrNull { it.id == alternativeId } ?: return
-        if (!value.busy) mutable.value = value.copy(comparison = comparison.compare(target.offer, target.scope, alternative, scope, java.time.Instant.now()))
+        publishValidated(value.copy(comparison = comparison.compare(target.offer, target.scope, alternative, scope, java.time.Instant.now())))
     }
     fun connect(confirmed: Boolean) {
         if (!confirmed || mutable.value.busy) return

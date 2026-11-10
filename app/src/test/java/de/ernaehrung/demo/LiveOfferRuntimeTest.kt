@@ -124,6 +124,36 @@ class LiveOfferRuntimeTest {
         val noJournal = LiveOfferRuntime(mapOf(LiveRetailer.LIDL to source), LivePermissionRegistry { grant }, brokenJournal) { at }
         assertEquals(LiveRefreshStatus.BLOCKED, noJournal.refresh(scope).status); assertEquals(0, source.calls)
     }
+    @Test fun originalPermissionIsBoundToFreshThrottledAndFailedSnapshotsWithoutMutableHostAliasing() = runBlocking {
+        var clock = at
+        val hosts = mutableSetOf("feed.example.test")
+        var approved = grant.copy(cachePermitted = true, allowedHosts = hosts)
+        var broken = false
+        val source = Source {
+            if (broken) throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE)
+            LiveOfferBatch("synthetic", scope, clock, listOf(offer().copy(fetchedAt = clock)))
+        }
+        val runtime = LiveOfferRuntime(mapOf(scope.retailer to source), LivePermissionRegistry { approved }) { clock }
+        val fresh = runtime.refresh(scope)
+        assertEquals(approved, fresh.authorization)
+        assertTrue(runtime.permitsSnapshot(scope, "synthetic", fresh.authorization))
+        val throttled = runtime.refresh(scope)
+        assertEquals(LiveRefreshStatus.THROTTLED, throttled.status)
+        assertEquals(fresh.authorization, throttled.authorization); assertEquals(1, source.calls)
+        hosts += "new.example.test"
+        assertEquals(setOf("feed.example.test"), fresh.authorization!!.allowedHosts)
+        assertFalse(runtime.permitsSnapshot(scope, "synthetic", fresh.authorization))
+        clock = at.plusSeconds(3600)
+        val replaced = runtime.refresh(scope)
+        assertEquals(setOf("feed.example.test", "new.example.test"), replaced.authorization!!.allowedHosts)
+        assertTrue(runtime.permitsSnapshot(scope, "synthetic", replaced.authorization))
+        clock = at.plusSeconds(7200); broken = true
+        val failed = runtime.refresh(scope)
+        assertTrue(failed.fromCache); assertEquals(replaced.authorization, failed.authorization)
+        approved = approved.copy(cachePermitted = false)
+        val deniedCache = runtime.refresh(scope)
+        assertNull(deniedCache.batch); assertNull(deniedCache.authorization)
+    }
     @Test fun authorizedConcreteHttpReadPreservesSourceScopeZeroUnknownsAndRejectsUnexpectedHtml() = runBlocking {
         var calls = 0; var html = false
         val http = OfferHttp {
