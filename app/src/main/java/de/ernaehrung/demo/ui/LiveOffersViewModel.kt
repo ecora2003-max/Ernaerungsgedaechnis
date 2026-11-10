@@ -11,10 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 
 internal data class LiveOfferSelection(val offer: LiveOffer, val scope: LiveOfferScope, val authorization: LiveSourceGrant)
 internal data class LiveOffersUiState(val busy: Boolean = false, val scope: LiveOfferScope? = null,
-    val result: LiveRefreshResult? = null, val message: String? = null, val connected: Boolean = false,
+    val result: LiveRefreshResult? = null, val message: String? = null, val connection: KnusprConnectionInfo? = null,
     val discovery: KnusprToolDiscovery? = null, val authorizationUrl: URI? = null,
     val automatic: Boolean = false, val selectionLoaded: Boolean = false, val comparison: LivePriceComparison? = null,
-    val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null)
+    val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null) {
+    val connected: Boolean get() = connection != null
+}
 
 /** No FoodStore/Room writer and no health/profile export. HTTP happens only on
  * explicit connection/selection; unapproved catalogue sources never start IO. */
@@ -145,6 +147,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
         publishValidated(value)?.join()
         if (expected != generation || mutable.value.busy) return
         val current = mutable.value
+        readConnection()
         if (current.result?.refreshAfter?.let { java.time.Instant.now() < it } == true) return
         if (current.automatic) current.scope?.let { refresh(it, automatic = true) }
     }
@@ -178,7 +181,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
     fun connect(confirmed: Boolean) {
         if (!confirmed || mutable.value.busy) return
         val expected = ++generation
-        mutable.value = mutable.value.copy(busy = true, authorizationUrl = null, message = null)
+        mutable.value = mutable.value.copy(busy = true, connection = null, discovery = null, authorizationUrl = null, message = null)
         work = viewModelScope.launch {
             try {
                 val ticket = withContext(Dispatchers.IO) { privateStore.beginAttempt() }
@@ -187,7 +190,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
                 val server = oauth.discover()
                 val (pending, authorization) = oauth.begin(app.packageName, server)
                 val retained = withContext(Dispatchers.IO) { privateStore.stage(ticket, pending) }
-                if (generation == expected && retained) mutable.value = mutable.value.copy(busy = false, connected = false, authorizationUrl = authorization)
+                if (generation == expected && retained) mutable.value = mutable.value.copy(busy = false, connection = null, authorizationUrl = authorization)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: OfferSourceFailure) { if (generation == expected) mutable.value = mutable.value.copy(busy = false,
                 message = when (failure.code) {
@@ -204,9 +207,49 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
         if (mutable.value.busy) return
         val expected = generation
         viewModelScope.launch {
-            val connected = withContext(Dispatchers.IO) { runCatching { privateStore.read().token != null }.getOrDefault(false) }
-            if (generation == expected && !mutable.value.busy) mutable.value = mutable.value.copy(connected = connected)
+            val connection = withContext(Dispatchers.IO) { runCatching { privateStore.read().token?.connectionInfo() }.getOrNull() }
+            if (generation == expected && !mutable.value.busy) mutable.value = mutable.value.copy(connection = connection)
         }
+    }
+    fun renewConnection(confirmed: Boolean): Job? {
+        if (!confirmed || mutable.value.busy) return null
+        val expected = ++generation
+        mutable.value = mutable.value.copy(busy = true, discovery = null, message = null)
+        work = viewModelScope.launch {
+            var claim: PrivateKnusprStore.Renewal? = null
+            try {
+                val current = withContext(Dispatchers.IO) { privateStore.claimRenewal().also { claim = it } }
+                val token = KnusprOAuth(http).renew(current.previous)
+                currentCoroutineContext().ensureActive()
+                val retained = withContext(Dispatchers.IO) { privateStore.finishRenewal(current, token) { generation == expected } }
+                if (generation == expected) mutable.value = mutable.value.copy(
+                    connection = token.connectionInfo().takeIf { retained }, message = if (retained)
+                        "Anmeldung erneuert. Lesefunktionen und Angebotsfreigaben werden weiterhin getrennt geprüft." else
+                        "Verbindung inzwischen geändert. Keine alte Anmeldung wiederhergestellt.")
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: OfferSourceFailure) {
+                if (failure.code == OfferSourceFailureCode.LOGIN_REQUIRED) withContext(Dispatchers.IO) {
+                    claim?.let { privateStore.rejectRenewal(it) }
+                }
+                if (generation == expected) mutable.value = mutable.value.copy(
+                    connection = mutable.value.connection.takeUnless { failure.code == OfferSourceFailureCode.LOGIN_REQUIRED },
+                    message = when (failure.code) {
+                    OfferSourceFailureCode.LOGIN_REQUIRED -> "Anmeldung kann nicht erneuert werden. Erneut ausdrücklich verbinden."
+                    OfferSourceFailureCode.ACCESS_BLOCKED -> "Knuspr blockiert die Erneuerung. Kein automatischer Wiederholungsversuch."
+                    OfferSourceFailureCode.RATE_LIMITED -> "Knuspr begrenzt die Erneuerung. Später ausdrücklich erneut versuchen."
+                    else -> "Anmeldung derzeit nicht erneuerbar. Bisherige lokale Daten bleiben erhalten."
+                })
+            } catch (_: Exception) {
+                if (generation == expected) mutable.value = mutable.value.copy(
+                    message = "Anmeldung nicht sicher erneuerbar. Verbindung prüfen oder erneut ausdrücklich anmelden.")
+            } finally {
+                withContext(NonCancellable) {
+                    claim?.let { current -> withContext(Dispatchers.IO) { runCatching { privateStore.abortRenewal(current) } } }
+                    withContext(Dispatchers.Main) { if (generation == expected) mutable.value = mutable.value.copy(busy = false) }
+                }
+            }
+        }
+        return work
     }
     fun discoverTools() {
         if (mutable.value.busy) return
@@ -216,7 +259,7 @@ internal class LiveOffersViewModel(context: Context, private val runtime: LiveOf
             try {
                 val token = withContext(Dispatchers.IO) { requireNotNull(privateStore.read().token) }
                 val discovery = KnusprMcp(http, token).discover()
-                if (generation == expected) mutable.value = mutable.value.copy(busy = false, connected = true, discovery = discovery,
+                if (generation == expected) mutable.value = mutable.value.copy(busy = false, connection = token.connectionInfo(), discovery = discovery,
                     message = "Tatsächliche Lesefunktionen geprüft. Preise benötigen zusätzlich freigegebenes Antwortformat, Quelle und Liefergebiet.")
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false,

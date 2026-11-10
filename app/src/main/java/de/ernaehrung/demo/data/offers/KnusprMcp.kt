@@ -24,7 +24,7 @@ internal class KnusprMcp(private val http: OfferHttp, private val token: KnusprT
     private var discovered = emptyList<KnusprReadTool>()
     private suspend fun call(method: String, params: Map<String, Any?> = emptyMap()): Map<String, Any?> {
         require(method in setOf("initialize", "tools/list", "tools/call"))
-        require(token.expiresAt == null || token.expiresAt > now().toEpochMilli()) { "OAuth session expired" }
+        if (token.connectionInfo(now()).expired) throw OfferSourceFailure(OfferSourceFailureCode.LOGIN_REQUIRED)
         val id = nextId++
         val headers = mutableMapOf("Authorization" to "Bearer ${token.access}", "Content-Type" to "application/json", "MCP-Protocol-Version" to protocol)
         session?.let { headers["Mcp-Session-Id"] = it }

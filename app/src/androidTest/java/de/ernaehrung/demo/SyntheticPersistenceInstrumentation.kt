@@ -76,7 +76,9 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     val pending = KnusprPendingAuthorization(authServer, key, proof, "synthetic-verifier-$proof",
                         "${targetContext.packageName}://knuspr-oauth", refreshAt)
                     check(login.stage(login.beginAttempt(), pending)); login.claim(proof)
-                    check(login.finish(proof, KnusprToken("synthetic-access-$proof", null, null, key, authServer)))
+                    check(login.finish(proof, KnusprToken("synthetic-access-$proof", "synthetic-refresh-$proof", null, key, authServer)))
+                    login.claimRenewal() // Interrupted before any network request; private marker survives process death.
+                    check(login.read().completing != null)
                     val gemini = PrivateGeminiSettings.forApp(targetContext)
                     gemini.saveKey("synthetic-key-$proof"); gemini.mode(DirectRecipeMode.CLOUD)
                     gemini.model("models/gemini-synthetic-fixture")
@@ -138,9 +140,19 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
                     check(offerSettings.selection()?.let { it.automatic && it.scope.deliveryAreaId == key && it.scope.storeId == null } == true)
                     val login = PrivateKnusprStore.forApp(targetContext)
                     check(login.read().token?.let { it.access == "synthetic-access-$proof" && it.clientId == key } == true)
-                    check(login.read().pending == null && login.read().completing == null)
+                    val interrupted = login.read()
+                    check(interrupted.pending == null && interrupted.completing != null)
                     try { login.claim(proof); error("Completed OAuth nonce replay accepted after process restart") }
                     catch (_: IllegalArgumentException) { }
+                    // Only this explicit synthetic action recovers the old
+                    // marker. The restarted application made no renewal call.
+                    val resumed = login.claimRenewal()
+                    check(resumed.nonce != interrupted.completing)
+                    val renewed = resumed.previous.copy(access = "synthetic-renewed-$proof", refresh = "synthetic-rotated-$proof")
+                    check(login.finishRenewal(resumed, renewed))
+                    check(!login.finishRenewal(resumed, resumed.previous))
+                    login.abortRenewal(resumed)
+                    check(login.read().token == renewed && login.read().completing == null)
                     // Default-deny production sources cannot be activated by
                     // restored selection, automatic preference or a login token.
                     check(LiveOfferRuntime(emptyMap(), journal = offerSettings).refresh(requireNotNull(offerSettings.selection()).scope,

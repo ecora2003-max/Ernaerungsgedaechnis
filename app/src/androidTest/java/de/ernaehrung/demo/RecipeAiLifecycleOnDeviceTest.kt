@@ -108,8 +108,7 @@ class RecipeAiLifecycleOnDeviceTest {
             tag("recipe_ai_prepare")
             compose.onNodeWithTag("recipe_ai_share").assertIsNotEnabled()
             tag("recipe_ai_export_approval"); tag("recipe_ai_share")
-            val receiver = device.wait(Until.findObject(By.textContains("Synthetische Rezept-KI")), 15_000L)
-            requireNotNull(receiver) { "Actual Android chooser must offer the synthetic TEST APK receiver" }.click()
+            chooseSyntheticRecipeShareReceiver(device)
             var prompt: String? = null
             compose.waitUntil(25_000) {
                 prompt = resolver.call(capture, "peek", null, null)?.getString("prompt")
