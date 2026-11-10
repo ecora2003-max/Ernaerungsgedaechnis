@@ -147,7 +147,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         if (state.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); OutlinedButton(model::cancel) { Text("Abbrechen") } }
         state.message?.let { Hint(it) }
         state.reference?.let { reference ->
-            Text("Sitzungsreferenz: ${reference.offer.title} · ${reference.scope.retailer.title} · ${reference.scope.purchaseOn}")
+            Text("Sitzungsreferenz: ${reference.offer.title} · ${reference.scope.retailer.title} · ${reference.scope.purchaseOn}", Modifier.testTag("live_session_reference"))
             OutlinedButton(model::forgetReference) { Text("Vergleichsreferenz verwerfen") }
         }
         state.result?.let { result ->
@@ -208,8 +208,10 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     if (!offer.conditionsConfirmed) Text("Diese Quellangabe allein bestätigt keine Preisbedingungen. Ein Vergleich benötigt zusätzlich einen unabhängigen Nachweis.")
                     offer.conditions?.let { Text(it) }
                     Text("Quellenartikel ${offer.sourceProductId} · ${offer.sourceUrl}")
-                    OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy) { Text("Als Vergleichsreferenz wählen") }
-                    if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy) { Text("Mit Sitzungsreferenz vergleichen") }
+                    OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
+                        modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
+                    if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,
+                        modifier = Modifier.testTag("live_reference_compare_${offer.id}")) { Text("Mit Sitzungsreferenz vergleichen") }
                 } }
             }
         }

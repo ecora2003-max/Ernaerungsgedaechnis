@@ -25,6 +25,7 @@ import java.io.File
 import java.net.URI
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
@@ -291,8 +292,10 @@ class LiveOffersOnDeviceTest {
             assertFalse(File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText().contains(token.access))
         } finally { store.clear() }
     }
-    @Test fun authorizedSyntheticHttpPricesUseRealFoodStoreCatalogMilliunitsAndSeparateReviewsForComparisonWithoutBooking(): Unit = runBlocking {
+    @Test fun authorizedSyntheticHttpPricesUseRealCatalogReviewsAndDiscardReplacedGrantsWithoutBooking(): Unit = runBlocking {
         val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
         val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
         val day = AppCalendar.today(); val id = "synthetic-ui-${UUID.randomUUID()}"
         // Use the actual catalog editor/FoodStore quantity convention. The old
@@ -306,10 +309,11 @@ class LiveOffersOnDeviceTest {
         assertEquals(500_000L, catalog.getValue("a").packageAmount)
         assertEquals(1_000_000L, catalog.getValue("b").packageAmount)
         val operations = dao.operationCount(); val movements = dao.stockMovementSnapshotRows(); val prices = dao.allPaidPrices()
+        val health = db.healthDao().history("com.sec.android.app.shealth")
         val selection = LiveOfferScope(LiveRetailer.LIDL, "DE123", null, null, day)
         val endpoint = URI("https://offers.example.test/selected-store")
-        val grant = LiveSourceGrant(id, LiveRetailer.LIDL, "synthetic-independent-host-fixture", day, day,
-            setOf("offers.example.test"), true, 3600, selection)
+        val grant = AtomicReference(LiveSourceGrant(id, LiveRetailer.LIDL, "synthetic-independent-host-fixture-v1", day, day,
+            setOf("offers.example.test"), true, 3600, selection))
         var calls = 0
         val http = OfferHttp { request ->
             check(request.uri == endpoint); calls++
@@ -317,7 +321,7 @@ class LiveOffersOnDeviceTest {
                 """{"offers":[{"id":"a","title":"Synthetische Referenz","offerType":"StoreSpecialPriceDiscount","category":"Store","priceBox":{"largePartNumeric":1.99},"startValidityDate":"$day","endValidityDate":"$day"},{"id":"b","title":"Synthetische Alternative","offerType":"StoreSpecialPriceDiscount","category":"Store","priceBox":{"largePartNumeric":2.99},"startValidityDate":"$day","endValidityDate":"$day"}]}""")
         }
         val source = PublishedOfferHttpSource(endpoint, id, selection, PublishedOfferHttpSource.Format.LIDL_STORE_V4, http)
-        val runtime = LiveOfferRuntime(mapOf(LiveRetailer.LIDL to source), LivePermissionRegistry { if (it == selection) grant else null },
+        val runtime = LiveOfferRuntime(mapOf(LiveRetailer.LIDL to source), LivePermissionRegistry { if (it == selection) grant.get() else null },
             PrivateOfferSettings.forApp(context))
         val reviewed = mapOf("a" to 500L, "b" to 1000L).mapValues { (sku, amount) ->
             LiveArticleReview(catalog.getValue(sku).id, ShoppingComparabilityKernel.Article("synthetic-reviewed-food",
@@ -360,8 +364,47 @@ class LiveOffersOnDeviceTest {
             tap("live_automatic_toggle"); ready()
             compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik für diese angewendete Auswahl eingeschaltet")
             tap("live_offers_refresh"); ready(); assertEquals(1, calls) // same durable source interval
+            tap("live_remember_$id:a")
+            tap("live_reference_compare_$id:b")
+            compose.onNodeWithTag("live_comparison_result").assertTextEquals("Alternative hat einen geringeren Waren-Grundpreis.")
+            // A new independent review keeps the source ID but removes the
+            // automatic-read rhythm. Returning to the real Activity must remove
+            // old observations/reference/comparison, without fetching again.
+            grant.set(grant.get().copy(evidenceRef = "synthetic-independent-host-fixture-v2", minimumRefreshSeconds = null))
+            compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+            compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+            compose.waitUntil(25_000) {
+                compose.onAllNodesWithText("Synthetische Alternative").fetchSemanticsNodes().isEmpty() &&
+                    compose.onAllNodesWithTag("live_session_reference").fetchSemanticsNodes().isEmpty() &&
+                    compose.onAllNodesWithTag("live_comparison_result").fetchSemanticsNodes().isEmpty()
+            }
+            compose.waitUntil(25_000) { PrivateOfferSettings.forApp(context).selection()?.automatic == false }
+            assertEquals(1, calls); assertFalse(model.state.value.automatic)
+            // A replacement grant authorizes a genuinely new explicit read,
+            // not a relabelled old response. Cache withdrawal is checked also
+            // at the action boundary, before waiting for another timer tick.
+            tap("live_offers_refresh"); ready()
+            compose.waitUntil(25_000) { compose.onAllNodesWithText("Synthetische Alternative").fetchSemanticsNodes().size == 1 }
+            assertEquals(2, calls)
+            assertEquals("synthetic-independent-host-fixture-v2", model.state.value.authorizedEvidenceRef)
+            compose.onAllNodesWithTag("live_session_reference").assertCountEquals(0)
+            tap("live_remember_$id:a")
+            compose.runOnUiThread {
+                grant.set(grant.get().copy(cachePermitted = false))
+                model.compareWithReference("$id:b")
+            }
+            compose.waitUntil(25_000) { compose.onAllNodesWithText("Synthetische Alternative").fetchSemanticsNodes().isEmpty() }
+            compose.onAllNodesWithTag("live_session_reference").assertCountEquals(0)
+            compose.onAllNodesWithTag("live_comparison_result").assertCountEquals(0)
+            assertEquals(2, calls)
+            tap("live_offers_refresh"); ready()
+            compose.waitUntil(25_000) { compose.onAllNodesWithText("Synthetische Alternative").fetchSemanticsNodes().size == 1 }
+            tap("live_remember_$id:a")
+            compose.onAllNodesWithTag("live_session_reference").assertCountEquals(0)
+            assertEquals(3, calls)
             assertEquals(operations, dao.operationCount()); assertEquals(movements, dao.stockMovementSnapshotRows())
             assertEquals(prices, dao.allPaidPrices())
+            assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertNull(network.activeNetwork)
         } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
         finally {
             compose.runOnUiThread { compose.activity.setContent {}; models.clear() }

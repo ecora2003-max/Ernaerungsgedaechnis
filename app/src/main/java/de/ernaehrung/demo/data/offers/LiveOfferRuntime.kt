@@ -95,6 +95,9 @@ internal data class LiveSourceGrant(val sourceId: String, val retailer: LiveReta
     val cachePermitted: Boolean, val minimumRefreshSeconds: Long?, val verifiedScope: LiveOfferScope,
     val capability: RetailerPolicy.Capability = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION) {
     init { require(minimumRefreshSeconds == null || minimumRefreshSeconds > 0L) }
+    /** The host registry may replace or mutate its input collection. A loaded
+     * snapshot must keep the permission that actually authorized its read. */
+    fun snapshot(): LiveSourceGrant = copy(allowedHosts = java.util.Collections.unmodifiableSet(HashSet(allowedHosts)))
     fun permits(scope: LiveOfferScope, endpoint: URI, at: Instant): Boolean {
         val day = at.atZone(ZoneId.of("Europe/Berlin")).toLocalDate()
         return sourceId.isNotBlank() && evidenceRef.isNotBlank() && scope == verifiedScope && retailer == scope.retailer &&
@@ -116,7 +119,8 @@ internal interface AuthorizedOfferSource {
 internal enum class LiveRefreshStatus { BLOCKED, LOADED, FAILED, THROTTLED }
 internal data class LiveRefreshResult(val status: LiveRefreshStatus, val batch: LiveOfferBatch? = null, val code: String? = null,
     val cachePermitted: Boolean = false, val minimumRefreshSeconds: Long? = null,
-    val fromCache: Boolean = false, val refreshAfter: Instant? = null)
+    val fromCache: Boolean = false, val refreshAfter: Instant? = null,
+    val authorization: LiveSourceGrant? = null)
 internal enum class OfferSourceFailureCode { LOGIN_REQUIRED, ACCESS_BLOCKED, RATE_LIMITED, NETWORK_UNAVAILABLE, UNSUPPORTED_SOURCE_SCHEMA }
 internal class OfferSourceFailure(val code: OfferSourceFailureCode) : Exception(code.name)
 
@@ -142,13 +146,18 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
     fun policy(scope: LiveOfferScope): LiveSourceGrant? = try {
         scope.validate()
         val source = sources[scope.retailer]
-        val grant = permissions.grant(scope)
+        val grant = permissions.grant(scope)?.snapshot()
         grant?.takeIf { source != null && it.capability == source.capability &&
             it.capability != RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY &&
             scope.retailer.stationary?.let { retailer -> RetailerPolicy.supports(retailer, it.capability) } != false &&
             source.endpoints.isNotEmpty() && source.endpoint in source.endpoints &&
             source.endpoints.all { uri -> it.permits(scope, uri, now()) } }
     } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
+
+    /** Source ID alone cannot renew a previous observation's permissions. */
+    fun permitsSnapshot(scope: LiveOfferScope, sourceId: String, authorization: LiveSourceGrant?): Boolean =
+        authorization != null && authorization.sourceId == sourceId && authorization.verifiedScope == scope &&
+            policy(scope) == authorization
 
     /** Foreground refreshes share one in-flight read and the same source floor.
      * A changed scope never evades the source's refresh interval. Cached data is
@@ -162,7 +171,7 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
         if (source.capability == RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY ||
             scope.retailer.stationary?.let { !RetailerPolicy.supports(it, source.capability) } == true)
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "CAPABILITY_NOT_PERMITTED")
-        val grant = try { permissions.grant(scope) } catch (cancelled: CancellationException) { throw cancelled }
+        val grant = try { permissions.grant(scope)?.snapshot() } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { null } ?: return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "APP_DISPLAY_UNVERIFIED")
         val at = now()
         if (grant.capability != source.capability || source.endpoints.isEmpty() || source.endpoint !in source.endpoints ||
@@ -179,7 +188,8 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
         if (next != null && at < next) return LiveRefreshResult(LiveRefreshStatus.THROTTLED,
             batch = cached?.takeIf { grant.cachePermitted }?.second, code = "REFRESH_INTERVAL",
             cachePermitted = grant.cachePermitted, minimumRefreshSeconds = grant.minimumRefreshSeconds,
-            fromCache = cached != null && grant.cachePermitted, refreshAfter = next)
+            fromCache = cached != null && grant.cachePermitted, refreshAfter = next,
+            authorization = cached?.first)
         // Durable before IO. A crash, cancellation or provider error pauses
         // automatic reads until another explicit successful manual read.
         try { journal.record(grant.sourceId, OfferRefreshAttempt(at, automaticPaused = true)) }
@@ -201,7 +211,7 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
                 journal.record(grant.sourceId, OfferRefreshAttempt(at, automaticPaused = false))
                 LiveRefreshResult(LiveRefreshStatus.LOADED, accepted,
                     cachePermitted = grant.cachePermitted, minimumRefreshSeconds = grant.minimumRefreshSeconds,
-                    refreshAfter = grant.minimumRefreshSeconds?.let(at::plusSeconds))
+                    refreshAfter = grant.minimumRefreshSeconds?.let(at::plusSeconds), authorization = grant)
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: OfferSourceFailure) {
@@ -216,6 +226,6 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
         val old = cached?.takeIf { stillAuthorized && grant.cachePermitted && it.first == grant && it.second.scope == scope }?.second
         if (!stillAuthorized) cached = null
         return LiveRefreshResult(LiveRefreshStatus.FAILED, old, code, grant.cachePermitted,
-            grant.minimumRefreshSeconds, fromCache = old != null)
+            grant.minimumRefreshSeconds, fromCache = old != null, authorization = grant.takeIf { old != null })
     }
 }

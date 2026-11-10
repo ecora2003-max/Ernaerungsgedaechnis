@@ -43,6 +43,11 @@ internal class PrivateOfferSettings private constructor(context: Context) : Offe
             "region" to scope.regionId, "delivery" to scope.deliveryAreaId, "purchaseOn" to scope.purchaseOn.toString(), "automatic" to automatic)))
     }
     @Synchronized fun clearSelection() { write(read() - "selection") }
+    /** Pause only this still-current selection. A delayed old ViewModel must
+     * neither restore a prior scope nor disable a later explicit setting. */
+    @Synchronized fun pauseAutomatic(scope: LiveOfferScope, stillCurrent: () -> Boolean) {
+        if (selection()?.let { it.scope == scope && it.automatic } == true && stillCurrent()) select(scope, false)
+    }
     @Synchronized override fun last(sourceId: String): OfferRefreshAttempt? {
         val attempts = OfferJson.objectValue(read()["attempts"]) ?: return null
         val attempt = OfferJson.objectValue(attempts[sourceId]) ?: return null
