@@ -48,6 +48,88 @@ class LiveOffersOnDeviceTest {
     private fun ready() = compose.waitUntil(25_000) {
         compose.onAllNodes(hasTestTag("live_offers_refresh") and isEnabled()).fetchSemanticsNodes().size == 1
     }
+    @Test fun embeddedNordAndKauflandHtmlReachActualUiOnlyAfterBothIndependentEndpointsArePermitted(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
+        val food = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
+        val health = db.healthDao().history("com.sec.android.app.shealth")
+        val day = AppCalendar.today(); val prefix = "synthetic-embedded-${UUID.randomUUID()}"
+        val nord = URI("https://www.aldi-nord.de/synthetic-next-offers")
+        val kauf = URI("https://filiale.kaufland.de/synthetic-offers")
+        val availability = URI("https://availability.example.test/synthetic-store")
+        fun payload(file: String): String {
+            val text = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().context.assets
+                .open("published_sources/$file").bufferedReader().use { it.readText() }
+            return text.replace(Regex("2026-11-(09|14)")) { match ->
+                if (match.groupValues[1] == "09") day.toString() else day.plusDays(5).toString()
+            }
+        }
+        val requests = mutableListOf<OfferHttpRequest>()
+        val http = OfferHttp { request -> requests += request
+            when (request.uri) {
+                nord -> OfferHttpReply(200, mapOf("content-type" to "text/html"), payload("aldi_nord.html"))
+                kauf -> OfferHttpReply(200, mapOf("content-type" to "text/html"), payload("kaufland.html"))
+                availability -> OfferHttpReply(200, mapOf("content-type" to "application/json"), payload("kaufland_availability.json"))
+                else -> error("No resource/script/other request allowed")
+            }
+        }
+        val nordScope = LiveOfferScope(LiveRetailer.ALDI_NORD, null, null, null, day)
+        val kaufScope = LiveOfferScope(LiveRetailer.KAUFLAND, "DE1234", null, null, day)
+        val sources = mapOf(
+            LiveRetailer.ALDI_NORD to PublishedOfferHttpSource(nord, "$prefix-nord", nordScope,
+                PublishedOfferHttpSource.Format.ALDI_NORD_NEXT_DATA, http),
+            LiveRetailer.KAUFLAND to PublishedOfferHttpSource(kauf, "$prefix-kauf", kaufScope,
+                PublishedOfferHttpSource.Format.KAUFLAND_STORE, http, availabilityEndpoint = availability))
+        var permitStoreEndpoint = false
+        val registry = LivePermissionRegistry { scope -> when (scope) {
+            nordScope -> LiveSourceGrant("$prefix-nord", scope.retailer, "synthetic-independent-nord-review", day, day,
+                setOf(nord.host), true, null, scope)
+            kaufScope -> LiveSourceGrant("$prefix-kauf", scope.retailer, "synthetic-independent-store-review", day, day,
+                setOfNotNull(kauf.host, availability.host.takeIf { permitStoreEndpoint }), true, null, scope)
+            else -> null
+        } }
+        val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        try {
+            compose.runOnUiThread {
+                model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                        LiveOffersViewModel(context, LiveOfferRuntime(sources, registry), http) as T
+                })[LiveOffersViewModel::class.java]
+                compose.activity.setContent { DemoTheme {
+                    Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        LiveOffersScreen(providedModel = model)
+                    }
+                } }
+            }
+            ready(); tap("Angebotsanbieter"); tap("choose_ALDI_NORD"); ready(); tap("live_offers_refresh")
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED && !model.state.value.busy }
+            compose.onNodeWithText("Synthetisches ALDI-Nord-Angebot").performScrollTo().assertExists()
+            compose.onNodeWithText("Kettenweite Angabe · Filiale ungeprüft · keine genaue Zuordnung").performScrollTo().assertExists()
+            assertNull(model.state.value.result!!.batch!!.offers.single().quantityMilli)
+            assertEquals(listOf(nord), requests.map { it.uri })
+            tap("Angebotsanbieter"); tap("choose_KAUFLAND"); ready()
+            compose.onNodeWithTag("live_store_input").performScrollTo().performTextReplacement("DE1234")
+            tap("live_offers_refresh")
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.BLOCKED && !model.state.value.busy }
+            assertNull(model.state.value.result!!.batch); assertEquals(1, requests.size)
+            compose.onNodeWithText("Synthetisches Kaufland-Angebot } {").assertDoesNotExist()
+            permitStoreEndpoint = true; tap("live_offers_refresh")
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED && !model.state.value.busy }
+            compose.onNodeWithText("Synthetisches Kaufland-Angebot } {").performScrollTo().assertExists()
+            compose.onNodeWithText("Filialbezug bestätigt · DE1234").performScrollTo().assertExists()
+            assertEquals(listOf(nord, kauf, availability), requests.map { it.uri })
+            requests.forEach { assertEquals("GET", it.method); assertNull(it.body) }
+            assertNull(model.state.value.result!!.batch!!.offers.single().quantityMilli)
+            assertEquals(food, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
+            assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
+        finally {
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            PrivateOfferSettings.forApp(context).clearSelection()
+        }
+    }
     @Test fun suppliedReweAldiAndNettoDocumentsReachActualPriceUiWithSeparateReferenceAppDepositAndAccessFailure(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

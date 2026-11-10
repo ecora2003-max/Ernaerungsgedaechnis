@@ -70,16 +70,36 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
         require(scope == exactScope)
         val html = format == Format.NETTO_BRANCH_HTML
+        val embedded = format in setOf(Format.ALDI_NORD_NEXT_DATA, Format.KAUFLAND_STORE)
         val reply = http.execute(OfferHttpRequest(endpoint,
-            headers = if (html) mapOf("Accept" to "text/html") else emptyMap())); reply.requireSuccess()
-        require(reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase() in
-            if (html) setOf("text/html") else setOf("application/json", "application/ld+json")) { "Unexpected published source media type" }
+            headers = when { html -> mapOf("Accept" to "text/html")
+                embedded -> mapOf("Accept" to "application/json, text/html")
+                else -> emptyMap() })); reply.requireSuccess()
+        val media = reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
+        require(media in when { html -> setOf("text/html")
+            embedded -> setOf("application/json", "application/ld+json", "text/html")
+            else -> setOf("application/json", "application/ld+json") }) { "Unexpected published source media type" }
+        val availabilityText = if (format == Format.KAUFLAND_STORE) {
+            val availability = http.execute(OfferHttpRequest(requireNotNull(availabilityEndpoint)))
+            availability.requireSuccess()
+            require(availability.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase() == "application/json")
+            availability.text
+        } else null
+        // Both independently authorized replies are now available. Earlier
+        // knowledge must not include store evidence received only afterwards.
         val at = now()
+        val raw = if (media == "text/html" && embedded) withContext(Dispatchers.Default) {
+            when (format) {
+                Format.ALDI_NORD_NEXT_DATA -> EmbeddedPublishedOfferJson.aldiNord(reply.text)
+                Format.KAUFLAND_STORE -> EmbeddedPublishedOfferJson.kaufland(reply.text)
+                else -> error("Only embedded offer formats")
+            }
+        } else reply.text
         val rows = when (format) {
             Format.LIDL_STORE_V4 -> PublishedOfferDecoders.lidl(reply.text, sourceId, requireNotNull(scope.storeId), at, endpoint.toString())
             Format.EDEKA_MARKET -> PublishedOfferDecoders.edeka(reply.text, sourceId, requireNotNull(scope.storeId), at, endpoint.toString())
             Format.PENNY_REGION -> PublishedOfferDecoders.penny(reply.text, sourceId, requireNotNull(scope.regionId), requireNotNull(weekStartsOn), at, endpoint.toString())
-            Format.ALDI_NORD_NEXT_DATA -> PublishedOfferDecoders.aldiNordNext(reply.text, sourceId, at, endpoint.toString())
+            Format.ALDI_NORD_NEXT_DATA -> PublishedOfferDecoders.aldiNordNext(raw, sourceId, at, endpoint.toString())
             Format.REWE_STATIONARY -> withContext(Dispatchers.Default) {
                 StationaryCatalogueDecoders.rewe(reply.text, sourceId, requireNotNull(scope.storeId), at, endpoint.toString())
             }
@@ -90,14 +110,11 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 NettoBranchOfferDecoder.decode(reply.text, sourceId, at, endpoint.toString())
             }
             Format.KAUFLAND_STORE -> {
-                val availability = http.execute(OfferHttpRequest(requireNotNull(availabilityEndpoint)))
-                availability.requireSuccess()
-                require(availability.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase() == "application/json")
-                val array = de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.decode("{\"rows\":${availability.text}}",
+                val array = de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.decode("{\"rows\":${requireNotNull(availabilityText)}}",
                     de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.Limits(maxChars = 1_048_576, maxDepth = 24, maxNodes = 50_000))["rows"] as? List<*>
                     ?: error("Expected official store availability array")
                 val windows = array.map { requireNotNull(OfferJson.objectValue(it)) }
-                PublishedOfferDecoders.kaufland(reply.text, windows, sourceId, requireNotNull(scope.storeId), scope.purchaseOn, at, endpoint.toString())
+                PublishedOfferDecoders.kaufland(raw, windows, sourceId, requireNotNull(scope.storeId), scope.purchaseOn, at, endpoint.toString())
             }
         }
         return LiveOfferBatch(sourceId, scope, at, rows)

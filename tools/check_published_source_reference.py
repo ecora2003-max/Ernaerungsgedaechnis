@@ -2,7 +2,7 @@
 """Pinned, pure EG-Preisdaten parsers vs the SAME synthetic Kotlin/device inputs.
 
 No retailer I/O or source activation. Source bytes are checked before import;
-only the two pure parsers are loaded, never a live-probe script. Host deliberately
+only the pinned pure parsers are loaded, never a live-probe script. Host deliberately
 requires ID/title and EUR; JSON totals never establish coverage. Netto's link
 time is retained separately, not asserted as the offer's actual expiry.
 """
@@ -24,9 +24,10 @@ def load(path, name, pin):
     return module
 
 
-def main(stationary_path, netto_path, fixture_path):
+def main(stationary_path, netto_path, offers_path, fixture_path):
     stationary = load(Path(stationary_path), "eg_pinned_stationary", "ff44bc694bc875c82ca5d60c2b6b9fb99026ec8d")
     netto = load(Path(netto_path), "eg_pinned_netto", "ef69a4f624c6608cd65b0157d75af2214bae14b5")
+    offers = load(Path(offers_path), "eg_pinned_embedded_offers", "a1ede148148864f958d802686a0fd5026f64fe5f")
     directory = Path(fixture_path)
     expected = json.loads((directory / "reference_expected.json").read_text())
     actual = {}
@@ -56,10 +57,25 @@ def main(stationary_path, netto_path, fixture_path):
         return {name: [{key: row.get(key) for key in keys} for row in rows] for name, rows in groups.items()}
     assert canonical(actual) == canonical(expected), (actual, expected)
     assert sum(len(rows) for rows in actual.values()) == 10
-    print("PUBLISHED_SOURCE_REFERENCE_PASS: 10 synthetic REWE/ALDI-Sued/Netto rows; two original Git-blob pins; no live I/O")
+    embedded_expected = json.loads((directory / "embedded_reference_expected.json").read_text())
+    embedded = {
+        "aldi_nord": offers.aldi_nord_next((directory / "aldi_nord.html").read_text()),
+        "kaufland": offers.kaufland_offers((directory / "kaufland.html").read_text(),
+            json.loads((directory / "kaufland_availability.json").read_text()), store_id="DE1234",
+            first_day="2026-11-09", last_day="2026-11-14")}
+    embedded_actual = {}
+    for name, rows in embedded.items():
+        assert len(rows) == 1
+        row = rows[0]
+        embedded_actual[name] = {"id": row.product_id, "current": cents(row.price_eur), "quantityText": row.quantity,
+                                 "from": row.valid_from, "until": row.valid_to,
+                                 "scope": "CHAIN_REPORTED" if row.scope.value == "CHAIN_WIDE_REPORTED" else row.scope.value,
+                                 "store": row.scope_id}
+    assert embedded_actual == embedded_expected, (embedded_actual, embedded_expected)
+    print("PUBLISHED_SOURCE_REFERENCE_PASS: 12 synthetic price rows including embedded ALDI-Nord/Kaufland; three original Git-blob pins; no live I/O")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: check_published_source_reference.py stationary.py netto.py fixture-directory")
+    if len(sys.argv) != 5:
+        raise SystemExit("usage: check_published_source_reference.py stationary.py netto.py retailer-offers.py fixture-directory")
     main(*sys.argv[1:])

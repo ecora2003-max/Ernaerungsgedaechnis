@@ -69,7 +69,7 @@ jobs:
             app/src/test/resources/integration/recipe_schema_v1_cases.jsonl
           python3 tools/check_recipe_v1_schema.py "$RUNNER_TEMP/recipe-contract-v1.json" \
             app/src/test/resources/integration/recipe_draft_v1.json
-      - name: Verify three published price-source shapes against pinned pure references
+      - name: Verify published JSON and embedded HTML against pinned pure references
         run: |
           python3 -m pip install --quiet --disable-pip-version-check 'beautifulsoup4==4.15.0' 'soupsieve==3.0.4' 'typing_extensions==4.16.0'
           curl --fail --location --silent --show-error --max-time 30 \
@@ -78,8 +78,11 @@ jobs:
           curl --fail --location --silent --show-error --max-time 30 \
             https://raw.githubusercontent.com/ecora2003-max/EG-Preisdaten/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/catalogues/netto_branch_offers.py \
             -o "$RUNNER_TEMP/netto_branch_offers.py"
+          curl --fail --location --silent --show-error --max-time 30 \
+            https://raw.githubusercontent.com/ecora2003-max/EG-Preisdaten/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/adapters/retailer_offers.py \
+            -o "$RUNNER_TEMP/retailer_offers.py"
           python3 tools/check_published_source_reference.py "$RUNNER_TEMP/stationary_price_catalogues.py" \
-            "$RUNNER_TEMP/netto_branch_offers.py" app/src/sharedTest/assets/published_sources
+            "$RUNNER_TEMP/netto_branch_offers.py" "$RUNNER_TEMP/retailer_offers.py" app/src/sharedTest/assets/published_sources
       - name: Verify pinned product-data historical price parity fixtures
         run: |
           curl --fail --location --silent --show-error --output "$RUNNER_TEMP/eg-product-history-core.py" \
