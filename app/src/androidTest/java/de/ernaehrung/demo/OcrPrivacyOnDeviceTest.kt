@@ -74,20 +74,29 @@ class OcrPrivacyOnDeviceTest {
             assertTrue("Unknown transmit counters cannot prove privacy", tx >= 0L)
             device.executeShellCommand("cmd connectivity airplane-mode disable")
             device.executeShellCommand("svc wifi enable")
-            device.executeShellCommand("cmd wifi start-scan")
-            // A freshly enabled Wi-Fi interface can have no auto-join network
-            // (observed: disconnectedstate throughout the failed 45s wait).
-            // Select the actually advertised open network of this emulator;
-            // enabling a radio alone never establishes the privacy precondition.
-            withTimeout(15_000L) {
-                while (!device.executeShellCommand("cmd wifi list-scan-results").contains("VirtWifi")) delay(250L)
-            }
-            device.executeShellCommand("cmd wifi connect-network VirtWifi open")
+            var scanRequested = false
+            var connectionRequested = false
             withTimeout(45_000L) {
                 while (true) {
                     val caps = connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
                     if (caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
                         caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) break
+                    // Wi-Fi enable is asynchronous. An immediate scan failed
+                    // before the scanner existed in the original system log.
+                    // Ask only after the interface reports enabled. Auto-join
+                    // or the emulator's other validated network is equally a
+                    // real privacy precondition; an empty scan is not failure
+                    // when ConnectivityManager already proves usable Internet.
+                    if (!scanRequested && device.executeShellCommand("cmd wifi status")
+                            .lineSequence().any { it.trim() == "Wifi is enabled" }) {
+                        device.executeShellCommand("cmd wifi start-scan")
+                        scanRequested = true
+                    }
+                    if (scanRequested && !connectionRequested &&
+                        device.executeShellCommand("cmd wifi list-scan-results").contains("VirtWifi")) {
+                        device.executeShellCommand("cmd wifi connect-network VirtWifi open")
+                        connectionRequested = true
+                    }
                     delay(250L)
                 }
             }
@@ -106,7 +115,8 @@ class OcrPrivacyOnDeviceTest {
                 delay(5_000L)
                 val caps = connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
                 assertTrue("Connectivity must remain validated during the probe",
-                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true)
+                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
                 assertEquals("No unsolicited app-UID receive traffic", rx, TrafficStats.getUidRxBytes(uid))
                 assertEquals("No unsolicited app-UID transmit traffic", tx, TrafficStats.getUidTxBytes(uid))
                 noQueuedUpload()
