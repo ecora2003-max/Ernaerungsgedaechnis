@@ -5,6 +5,37 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from check_signed_apk_smoke import SOURCE_PATHS, source_compatible
+
+
+class SignedApkSourceTest(unittest.TestCase):
+    def metadata(self):
+        trees = {name: "a" * 40 for name in SOURCE_PATHS}
+        return dict(provenanceFormat="EG_SIGNED_APK_SOURCE_V2", applicationTreeSha=trees["app"], buildSourceTrees=trees)
+
+    def test_exact_complete_build_source_is_accepted(self):
+        meta = self.metadata()
+        self.assertTrue(source_compatible(meta, dict(meta["buildSourceTrees"])))
+
+    def test_changed_nano_or_shared_build_with_same_app_cannot_claim_an_older_apk(self):
+        meta = self.metadata()
+        for name in SOURCE_PATHS:
+            if name != "app":
+                actual = dict(meta["buildSourceTrees"])
+                actual[name] = "b" * 40
+                self.assertFalse(source_compatible(meta, actual), name)
+
+    def test_legacy_app_only_metadata_cannot_prove_the_complete_build(self):
+        self.assertFalse(source_compatible(dict(applicationTreeSha="a" * 40), self.metadata()["buildSourceTrees"]))
+
+    def test_incomplete_or_conflicting_current_provenance_is_rejected(self):
+        for change in (lambda m: m["buildSourceTrees"].pop("nano-runtime"),
+                       lambda m: m.update(applicationTreeSha="b" * 40),
+                       lambda m: m["buildSourceTrees"].update(gradle="not-a-git-object")):
+            meta = self.metadata()
+            change(meta)
+            with self.assertRaises(ValueError):
+                source_compatible(meta, self.metadata()["buildSourceTrees"])
 
 
 class SignedApkRefusalTest(unittest.TestCase):

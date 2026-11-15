@@ -21,6 +21,24 @@ import xml.etree.ElementTree as ET
 PACKAGE = "de.ernaehrung.demo.watchspike"
 CERTIFICATE = "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857"
 ADB = ["adb", "-s", "emulator-5554"]
+SOURCE_PATHS = ("app", "nano-runtime", "build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+                "gradle", "gradlew", "gradlew.bat")
+
+
+def source_trees(ref="HEAD"):
+    return {path: command(["git", "rev-parse", ref + ":" + path]) for path in SOURCE_PATHS}
+
+
+def source_compatible(meta, actual):
+    if meta.get("provenanceFormat") != "EG_SIGNED_APK_SOURCE_V2":
+        return False  # Legacy app-only evidence cannot prove the entire build.
+    expected = meta.get("buildSourceTrees")
+    if not isinstance(expected, dict) or set(expected) != set(SOURCE_PATHS) or any(
+            not isinstance(value, str) or not re.fullmatch("[0-9a-f]{40}", value) for value in expected.values()):
+        raise ValueError("Invalid signed APK build-source provenance")
+    if meta.get("applicationTreeSha") != expected["app"]:
+        raise ValueError("Conflicting signed APK application provenance")
+    return expected == actual
 
 
 def command(args, check=True, binary=False):
@@ -49,11 +67,12 @@ def main(metadata_file):
     assert Path(meta["apkFile"]).name == meta["apkFile"]
     output = Path("app/build/outputs/device-diagnostics/watch-apk")
     output.mkdir(parents=True, exist_ok=True)
-    tree = command(["git", "rev-parse", "HEAD:app"])
-    if tree != meta["applicationTreeSha"]:
+    inputs = source_trees()
+    tree = inputs["app"]
+    if not source_compatible(meta, inputs):
         # Later functional commits must not build a new APK for every step or
         # pretend an older hosted milestone tested their new application code.
-        proof = dict(status="NOT_APPLICABLE", reason="Hosted milestone has a different application tree; no installation attempted",
+        proof = dict(status="NOT_APPLICABLE", reason="Hosted milestone does not prove all current build inputs; no installation attempted",
             actualSdk=sdk, sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"])
         (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
         print("SIGNED_APK_NOT_APPLICABLE:", json.dumps(proof, sort_keys=True))
@@ -62,7 +81,7 @@ def main(metadata_file):
     # that checkout even when the APK source commit is outside shallow history.
     available = subprocess.run(["git", "cat-file", "-e", meta["sourceCommit"] + "^{commit}"], capture_output=True).returncode == 0
     if available:
-        assert tree == command(["git", "rev-parse", meta["sourceCommit"] + ":app"])
+        assert inputs == source_trees(meta["sourceCommit"])
     apk = metadata_path.parent / meta["apkFile"]
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     assert digest == meta["sha256"] and apk.stat().st_size == meta["bytes"]
@@ -88,11 +107,12 @@ def main(metadata_file):
         (output / "screen.xml").write_bytes(raw)
         return root
 
-    def tap(text, scroll=False):
+    def tap(text, scroll=False, prefix=False):
         for _ in range(6):
             root = ui()
             for node in root.iter("node"):
-                if text not in (node.get("text"), node.get("content-desc")):
+                labels = (node.get("text", ""), node.get("content-desc", ""))
+                if not any(label == text or (prefix and label.startswith(text)) for label in labels):
                     continue
                 numbers = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
                 if len(numbers) == 4 and numbers[0] < numbers[2] and numbers[1] < numbers[3]:
@@ -108,6 +128,22 @@ def main(metadata_file):
         raise RuntimeError("Signed APK control not reachable: " + text)
 
     tap("Mehr")
+    tap("Angebote & Preisvergleich", scroll=True)
+    tap("Angebotsanbieter", scroll=True, prefix=True)
+    tap("Knuspr", scroll=True)
+    for _ in range(6):
+        root = ui()
+        connect = [n for n in root.iter("node") if n.get("text") == "Knuspr verbinden"]
+        if connect:
+            # The exact install starts disconnected; neither connection nor
+            # credential renewal can be triggered by opening this page.
+            assert all(n.get("enabled") == "false" for n in connect)
+            assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in root.iter("node"))
+            break
+        time.sleep(0.3)
+    else:
+        raise RuntimeError("Signed APK Knuspr controls were not reached")
+    command(ADB + ["shell", "input", "keyevent", "KEYCODE_BACK"])
     tap("Weitere Gesundheitsdaten", scroll=True)
     for _ in range(6):
         root = ui()
@@ -141,11 +177,12 @@ def main(metadata_file):
                 "health_import_state", "health_import_runs", "health_source_record_versions", "consumption_events", "purchase_events", "stock_movements"]
             assert all(db.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0] == 0 for table in empty)
             assert not db.execute("PRAGMA foreign_key_check").fetchall()
-    proof = dict(status="PASS", format="SIGNED_APK_UI_SCHEMA_V1", actualSdk=sdk, package=PACKAGE,
+    proof = dict(status="PASS", format="SIGNED_APK_UI_SCHEMA_V2", actualSdk=sdk, package=PACKAGE,
         versionCode=meta["versionCode"], apkSha256=digest, signerCertificateSha256=meta["signerCertificateSha256"],
-        sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"], applicationTreeSha=tree,
+        sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"], applicationTreeSha=tree, buildSourceTrees=inputs,
         startedPid=pid, forceStopObserved=True, schema=version, tables=len(tables), extraScreenReached=True,
-        healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False)
+        healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False,
+        offersScreenReached=True, knusprConsentRequired=True, storedCredentialRenewalOffered=False)
     (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
     print("SIGNED_APK_UI_SCHEMA_PASS:", json.dumps(proof, sort_keys=True))
 

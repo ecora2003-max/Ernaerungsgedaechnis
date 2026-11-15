@@ -11,8 +11,8 @@ android {
         applicationId="de.ernaehrung.demo"
         minSdk=26
         targetSdk=35
-        versionCode=11
-        versionName="0.11.0-health-extra"
+        versionCode=12
+        versionName="0.12.0-offer-session"
         manifestPlaceholders["appLabel"] = "Ernährung · Demo"
         testInstrumentationRunner="de.ernaehrung.demo.SyntheticPersistenceInstrumentation"
     }
