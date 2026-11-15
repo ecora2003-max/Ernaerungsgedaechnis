@@ -107,7 +107,7 @@ def main(metadata_file):
         (output / "screen.xml").write_bytes(raw)
         return root
 
-    def tap(text, scroll=False, prefix=False):
+    def control(text, scroll=False, prefix=False):
         for _ in range(6):
             root = ui()
             for node in root.iter("node"):
@@ -116,8 +116,7 @@ def main(metadata_file):
                     continue
                 numbers = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
                 if len(numbers) == 4 and numbers[0] < numbers[2] and numbers[1] < numbers[3]:
-                    command(ADB + ["shell", "input", "tap", str((numbers[0] + numbers[2]) // 2), str((numbers[1] + numbers[3]) // 2)])
-                    return
+                    return node, numbers
             if not scroll:
                 time.sleep(0.3)
                 continue
@@ -127,22 +126,20 @@ def main(metadata_file):
             command(ADB + ["shell", "input", "swipe", str(width // 2), str(height * 3 // 4), str(width // 2), str(height // 3), "300"])
         raise RuntimeError("Signed APK control not reachable: " + text)
 
+    def tap(text, scroll=False, prefix=False):
+        _, numbers = control(text, scroll, prefix)
+        command(ADB + ["shell", "input", "tap", str((numbers[0] + numbers[2]) // 2), str((numbers[1] + numbers[3]) // 2)])
+
     tap("Mehr")
     tap("Angebote & Preisvergleich", scroll=True)
     tap("Angebotsanbieter", scroll=True, prefix=True)
     tap("Knuspr", scroll=True)
-    for _ in range(6):
-        root = ui()
-        connect = [n for n in root.iter("node") if n.get("text") == "Knuspr verbinden"]
-        if connect:
-            # The exact install starts disconnected; neither connection nor
-            # credential renewal can be triggered by opening this page.
-            assert all(n.get("enabled") == "false" for n in connect)
-            assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in root.iter("node"))
-            break
-        time.sleep(0.3)
-    else:
-        raise RuntimeError("Signed APK Knuspr controls were not reached")
+    # The supplier explanation can put connection controls below the fold.
+    # Reveal the actual control through a gesture, without pressing it or
+    # granting consent. Merely polling the current viewport cannot reach it.
+    connect, _ = control("Knuspr verbinden", scroll=True)
+    assert connect.get("enabled") == "false"
+    assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in ui().iter("node"))
     command(ADB + ["shell", "input", "keyevent", "KEYCODE_BACK"])
     tap("Weitere Gesundheitsdaten", scroll=True)
     for _ in range(6):
