@@ -30,7 +30,7 @@ internal data class LiveOfferScope(val retailer: LiveRetailer, val storeId: Stri
     }
 }
 
-internal enum class LiveSourceStatus { RIGHTS_UNVERIFIED, RIGHTS_RESTRICTED, CONNECTION_REQUIRED, READY, BLOCKED }
+internal enum class LiveSourceStatus { RIGHTS_UNVERIFIED, RIGHTS_RESTRICTED, CONNECTION_REQUIRED, READY, BLOCKED, DEFERRED }
 internal data class LiveSourceInfo(val retailer: LiveRetailer, val sourceId: String, val status: LiveSourceStatus,
     val evidenceRef: String, val explanation: String)
 
@@ -39,13 +39,26 @@ internal data class LiveSourceInfo(val retailer: LiveRetailer, val sourceId: Str
 internal object LiveSourceCatalogue {
     const val SOURCE_EVIDENCE = "https://github.com/ecora2003-max/EG-Preisdaten/blob/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/docs/SOURCES.md"
     val sources = LiveRetailer.entries.map { retailer -> when (retailer) {
-        LiveRetailer.KNUSPR -> LiveSourceInfo(retailer, "knuspr-official-mcp", LiveSourceStatus.CONNECTION_REQUIRED,
-            "https://www.knuspr.de/mcp-docs", "Offizieller OAuth-MCP-Zugang. Anmeldung, tatsächliche Lesefunktionen und Liefergebiet müssen unabhängig nachgewiesen sein.")
+        LiveRetailer.KNUSPR -> LiveSourceInfo(retailer, "knuspr-official-mcp", LiveSourceStatus.DEFERRED,
+            "https://www.knuspr.de/mcp-docs", "Für später zurückgestellt. Zuerst werden die acht stationären Händler angeschlossen. Eine vorhandene Anmeldung bleibt erhalten; es wird kein automatischer Knuspr-Abruf gestartet.")
         LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.RIGHTS_RESTRICTED,
             SOURCE_EVIDENCE, "Vorliegende Quellenbewertung erlaubt keine fortlaufende automatische App-Anzeige. Andere Händler bleiben unabhängig bedienbar.")
         else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.RIGHTS_UNVERIFIED,
             SOURCE_EVIDENCE, "Für diese Quelle fehlt ein bestätigter Nutzungsnachweis für die App-Anzeige. Es werden keine Angebotsdaten abgerufen oder erfunden.")
     } }
+    /** Browser handoff only, with no appended shopping/profile/location data.
+     * This does not authorize scraping, cache or display inside this app. */
+    fun officialWebsite(retailer: LiveRetailer): URI? = when (retailer) {
+        LiveRetailer.ALDI_NORD -> "https://www.aldi-nord.de/"
+        LiveRetailer.ALDI_SUED -> "https://www.aldi-sued.de/"
+        LiveRetailer.LIDL -> "https://www.lidl.de/"
+        LiveRetailer.REWE -> "https://www.rewe.de/"
+        LiveRetailer.PENNY -> "https://www.penny.de/"
+        LiveRetailer.KAUFLAND -> "https://filiale.kaufland.de/"
+        LiveRetailer.NETTO_MD -> "https://www.netto-online.de/"
+        LiveRetailer.EDEKA -> "https://www.edeka.de/"
+        LiveRetailer.KNUSPR -> null
+    }?.let(::URI)
 }
 
 internal enum class LiveOfferKind { PROMOTION, REGULAR, UNKNOWN }
@@ -93,7 +106,8 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
 internal data class LiveSourceGrant(val sourceId: String, val retailer: LiveRetailer, val evidenceRef: String,
     val permittedFrom: LocalDate, val permittedUntil: LocalDate?, val allowedHosts: Set<String>,
     val cachePermitted: Boolean, val minimumRefreshSeconds: Long?, val verifiedScope: LiveOfferScope,
-    val capability: RetailerPolicy.Capability = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION) {
+    val capability: RetailerPolicy.Capability = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION,
+    val hostProfileFingerprint: String? = null) {
     init { require(minimumRefreshSeconds == null || minimumRefreshSeconds > 0L) }
     /** The host registry may replace or mutate its input collection. A loaded
      * snapshot must keep the permission that actually authorized its read. */
@@ -116,6 +130,9 @@ internal interface AuthorizedOfferSource {
     val capability: RetailerPolicy.Capability get() = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
     suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch
 }
+/** Resolve the reviewed endpoint for the selected branch, region and day.
+ * A retailer can have several independent branch profiles. */
+internal fun interface LiveOfferSourceResolver { fun source(scope: LiveOfferScope): AuthorizedOfferSource? }
 internal enum class LiveRefreshStatus { BLOCKED, LOADED, FAILED, THROTTLED }
 internal data class LiveRefreshResult(val status: LiveRefreshStatus, val batch: LiveOfferBatch? = null, val code: String? = null,
     val cachePermitted: Boolean = false, val minimumRefreshSeconds: Long? = null,
@@ -137,15 +154,19 @@ internal class MemoryOfferRefreshJournal : OfferRefreshJournal {
 
 /** No Room/actual writes. Both capability and permission are checked BEFORE I/O.
  * The adapter cannot bless its own rights, scope or stale cached data. */
-internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, AuthorizedOfferSource>,
+internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
     private val permissions: LivePermissionRegistry = LivePermissionRegistry { null },
     private val journal: OfferRefreshJournal = MemoryOfferRefreshJournal(),
     private val now: () -> Instant = Instant::now) {
+    constructor(sources: Map<LiveRetailer, AuthorizedOfferSource>,
+        permissions: LivePermissionRegistry = LivePermissionRegistry { null },
+        journal: OfferRefreshJournal = MemoryOfferRefreshJournal(), now: () -> Instant = Instant::now) :
+        this(LiveOfferSourceResolver { sources[it.retailer] }, permissions, journal, now)
     private val mutex = Mutex()
     private var cached: Pair<LiveSourceGrant, LiveOfferBatch>? = null
     fun policy(scope: LiveOfferScope): LiveSourceGrant? = try {
         scope.validate()
-        val source = sources[scope.retailer]
+        val source = sources.source(scope)
         val grant = permissions.grant(scope)?.snapshot()
         grant?.takeIf { source != null && it.capability == source.capability &&
             it.capability != RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY &&
@@ -167,7 +188,9 @@ internal class LiveOfferRuntime(private val sources: Map<LiveRetailer, Authorize
     }
     private suspend fun refreshLocked(scope: LiveOfferScope, automatic: Boolean): LiveRefreshResult {
         scope.validate()
-        val source = sources[scope.retailer] ?: return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "SOURCE_NOT_CONFIGURED")
+        val source = try { sources.source(scope) } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "SOURCE_CONFIGURATION_INVALID") }
+            ?: return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "SOURCE_NOT_CONFIGURED")
         if (source.capability == RetailerPolicy.Capability.PUBLISHED_OFFER_CATALOG_DISCOVERY ||
             scope.retailer.stationary?.let { !RetailerPolicy.supports(it, source.capability) } == true)
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "CAPABILITY_NOT_PERMITTED")

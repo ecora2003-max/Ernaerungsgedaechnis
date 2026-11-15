@@ -1,5 +1,7 @@
 # Weiterarbeit am Ernährungsgedächtnis
 
+> **Neueste Nutzerpriorität 15.11.2026:** Liveintegration der **acht stationären Händler** fertigstellen; **Knuspr für später ausklammern (DEFERRED)**. Das ersetzt die älteren Formulierungen „Knuspr sofort P0“ unten. Picnic bleibt DEFERRED, der langfristige Umfang beider Anbieter erhalten. Bestehende Quellen-/APP_DISPLAY-/Filial-/Artikel-/Kosten-/Datenschutzgates gelten weiter. Keine neue Knuspr-Anmeldung als Voraussetzung für die Fortsetzung verlangen.
+
 > **Aktiver Betriebsmodus ab 05.11.2026: ausschließlich Codex, ohne GitHub-Sperrdateien und ohne automatische Lock-Recovery.** Vom Nutzer ausdrücklich autorisiert. A/B/III/IV bleiben pausiert und dürfen nicht eigenständig reaktiviert werden. Keine alten A/B-Zeitfenster oder Rollen übernehmen. Der Wegfall der Sperren erlaubt keine parallelen Codex-Schreibsitzungen; jeweils nur eine aktive integrierende Sitzung.
 
 - Einziges Schreibrepository: `ecora2003-max/Ernaerungsgedaechnis`. EG-Architecture, alle vier EG-Fachmodule und das zusätzliche Recherche-Repository [`ecora2003-max/piknik`](https://github.com/ecora2003-max/piknik) ausnahmslos nur lesen.

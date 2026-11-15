@@ -44,13 +44,18 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
     var filter by remember { mutableStateOf("") }
     var connectionConsent by remember { mutableStateOf(false) }
     var selectionError by remember { mutableStateOf<String?>(null) }
+    var selectedProfile by rememberSaveable { mutableStateOf("") }
     val retailer = LiveRetailer.valueOf(selected)
     val source = LiveSourceCatalogue.sources.single { it.retailer == retailer }
+    val profiles = model.configuredSources.filter { it.retailer == retailer }
     val owner = LocalLifecycleOwner.current
     LaunchedEffect(state.selectionLoaded) {
         if (state.selectionLoaded) state.scope?.let {
             selected = it.retailer.name; store = it.storeId.orEmpty(); region = it.regionId.orEmpty()
             delivery = it.deliveryAreaId.orEmpty(); purchaseOn = it.purchaseOn.toString()
+            selectedProfile = model.configuredSources.singleOrNull { profile ->
+                profile.retailer == it.retailer && profile.storeId == it.storeId && profile.regionId == it.regionId
+            }?.id.orEmpty()
         }
     }
     LaunchedEffect(owner, model) {
@@ -83,6 +88,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         }
         IdPicker("Angebotsanbieter", LiveRetailer.entries.map { it.name to it.title }, selected) {
             model.selectProvider(); selected = it; store = ""; region = ""; delivery = ""
+            selectedProfile = ""
             connectionConsent = false; selectionError = null
         }
         val appliedEvidence = state.authorizedEvidenceRef.takeIf { state.scope?.retailer == retailer }
@@ -92,10 +98,19 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             LiveSourceStatus.CONNECTION_REQUIRED -> if (state.connected) "Anmeldung gespeichert · Preisanschluss separat prüfen" else "Offizieller Zugang muss verbunden werden"
             LiveSourceStatus.READY -> "Quelle eingerichtet"
             LiveSourceStatus.BLOCKED -> "Quelle derzeit gesperrt"
+            LiveSourceStatus.DEFERRED -> "Für später zurückgestellt"
         })
         Text(if (appliedEvidence != null) "Quellennachweis: $appliedEvidence · gilt ausschließlich für den angewendeten Geltungsbereich. Keine vollständige Marktabdeckung." else source.explanation,
             Modifier.testTag("live_source_status"))
         OutlinedButton({ context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.evidenceRef))) }) { Text("Beleg zur Quelle öffnen") }
+        if (model.invalidSourceProfiles > 0) Text("Ein Quellenprofil konnte nicht sicher geladen werden. Andere bestätigte Filialprofile bleiben auswählbar.")
+        LiveSourceCatalogue.officialWebsite(retailer)?.let { website ->
+            OutlinedButton({
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(website.toString()))) }
+                    .onFailure { selectionError = "Die Händlerseite konnte nicht geöffnet werden." }
+            }, modifier = Modifier.testTag("live_official_website")) { Text("Offizielle Händlerseite öffnen") }
+            Text("Öffnet den Browser. Angebote und Filiale dort prüfen; daraus werden keine Preise in die App übernommen.")
+        }
         if (retailer == LiveRetailer.KNUSPR) {
             state.connection?.let { connection ->
                 Text(when {
@@ -130,6 +145,16 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 Text("Eine Anmeldung oder gefundene Funktion bestätigt noch keine Angebotsquelle, Artikelzuordnung, Preisbedingungen oder Liefergebietsabdeckung.")
             }
             Field("Liefergebiet-Kennung · falls unabhängig bestätigt", delivery, { delivery = it }, modifier = Modifier.testTag("live_delivery_input"))
+        } else if (profiles.isNotEmpty()) {
+            IdPicker("Bestätigte Filiale oder Angebotsregion", profiles.map { it.id to it.label }, selectedProfile) { id ->
+                model.selectProvider(); selectedProfile = id
+                val profile = profiles.single { it.id == id }
+                store = profile.storeId.orEmpty(); region = profile.regionId.orEmpty(); selectionError = null
+            }
+            profiles.singleOrNull { it.id == selectedProfile }?.let { profile ->
+                Text("${profile.label} · Freigabe ${profile.permittedFrom} bis ${profile.permittedUntil}", Modifier.testTag("live_profile_details"))
+                Text("${profile.storeId ?: "keine Filialkennung"} · ${profile.regionId ?: "keine Regionskennung"}")
+            }
         } else {
             Field("Filialkennung · falls unabhängig bestätigt", store, { store = it }, modifier = Modifier.testTag("live_store_input"))
             Field("Regionskennung · optional", region, { region = it }, modifier = Modifier.testTag("live_region_input"))
@@ -143,7 +168,8 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 .also { require(it.purchaseOn.toString() == purchaseOn); it.validate() } }
                 .onSuccess { selectionError = null; model.refresh(it) }
                 .onFailure { selectionError = "Datum und Anbieter-/Filialauswahl prüfen." }
-        }, enabled = !state.busy, modifier = Modifier.testTag("live_offers_refresh")) { Text("Auswahl anwenden und aktualisieren") }
+        }, enabled = !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
+            modifier = Modifier.testTag("live_offers_refresh")) { Text("Auswahl anwenden und aktualisieren") }
         selectionError?.let { Hint(it) }
         state.scope?.let { applied -> Text("Angewendet: ${applied.retailer.title} · ${applied.purchaseOn} · ${applied.storeId ?: applied.deliveryAreaId ?: applied.regionId ?: "kein bestätigter Filial-/Liefergebietsbezug"}", Modifier.testTag("live_applied_scope")) }
         if (state.scope != null) {
@@ -162,6 +188,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         state.result?.let { result ->
             if (result.code != null && result.code != "REFRESH_INTERVAL") Text(when (result.code) {
                 "SOURCE_NOT_CONFIGURED" -> "Für diesen Anbieter ist noch keine freigegebene Datenquelle eingerichtet."
+                "SOURCE_CONFIGURATION_INVALID" -> "Das Quellenprofil konnte nicht sicher angewendet werden. Kein Netzabruf gestartet."
                 "APP_DISPLAY_UNVERIFIED" -> "Der konkrete Nachweis zur Quellenanzeige fehlt."
                 "SOURCE_SCOPE_OR_PERMISSION_CHANGED" -> "Quellenfreigabe oder gewählter Geltungsbereich ist nicht mehr bestätigt."
                 "CAPABILITY_NOT_PERMITTED" -> "Diese Quelle unterstützt die gewählte Abfrage nicht."
@@ -239,6 +266,6 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             }
         }
         if (onOpenShopping != null) OutlinedButton(onOpenShopping, modifier = Modifier.testTag("live_open_shopping")) { Text("Zu den Einkaufsvorschlägen") }
-        Text("Automatik prüft ausschließlich bei sichtbarer Angebotsseite und respektiert den belegten Quellenrhythmus, auch nach Neustart. Nach Fehlern ist eine erfolgreiche ausdrückliche neue Abfrage nötig. Preise werden nicht dauerhaft gespeichert. Gesperrte Quellen starten keinen Abruf. Picnic ist vorläufig zurückgestellt.")
+        Text("Automatik prüft ausschließlich bei sichtbarer Angebotsseite und respektiert den belegten Quellenrhythmus, auch nach Neustart. Nach Fehlern ist eine erfolgreiche ausdrückliche neue Abfrage nötig. Preise werden nicht dauerhaft gespeichert. Gesperrte Quellen starten keinen Abruf. Knuspr und Picnic sind vorläufig zurückgestellt.")
     }
 }
