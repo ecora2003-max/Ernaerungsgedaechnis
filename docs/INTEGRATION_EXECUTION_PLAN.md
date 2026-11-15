@@ -1,5 +1,9 @@
 # Funktionsorientierter Ausführungsplan für die Gesamt-App
 
+**Neueste Nutzerentscheidung 15.11.2026:** Die acht stationären Händler sind der laufende P0-Livemeilenstein. **Knuspr wird für später ausgeklammert (DEFERRED)**; Picnic bleibt DEFERRED. Ältere Knuspr-Sofortprioritäten unten sind ersetzt. Vorhandene OAuth-Arbeit/Anmeldungen erhalten, keine erneute Anmeldung als Voraussetzung verlangen. Quellen-/APP_DISPLAY-/Scope-/Artikelgates bleiben bestehen.
+
+**Aktueller funktionaler Anschluss:** Die Standard-App lädt den release-eigenen [Quellenprofilbestand](LIVE_OFFERS.md#release-eigene-quellen--und-filialprofile). Daraus werden der konkrete HTTP-Adapter und die unabhängige Host-Freigabe für ausgewählte Filiale/Region und Einkaufstag aufgelöst; mehrere Filialen derselben Kette sind möglich. Leere/ungültige oder mehrdeutige Profile starten keinen Abruf. Keine freigegebenen realen Profile erfinden; die acht vorhandenen Quellenbewertungen bleiben BLOCKED. Bei Blockade ist die offizielle Händlerseite ausdrücklich im Browser erreichbar, ohne lokale Einkaufs-/Standortdaten anzuhängen; das ersetzt keine Liveanzeige in EG. Nächster externer Anschluss bleibt ein tatsächlich belegtes Quellen-/Filialprofil und authentifizierter Artikelreview; anschließend echte Android-Antwort und Vergleich abnehmen.
+
 Stand: 08.11.2026. **Ausschließlich Codex als Einzelentwickler, ohne Sperrdateien oder automatische Lock-Recovery**, vom Nutzer ausdrücklich autorisiert. Die früheren A/B-Zeitfenster und getrennten Zuständigkeiten sind außer Kraft; A/B/III/IV bleiben pausiert. [Umstellung des Betriebsmodus](INTEGRATION_IDLE_RECOVERY.md). Keine Automatisierung reaktivieren und keine A/B-Identität verwenden. Auch ohne Locks keine parallelen schreibenden Codex-Sitzungen.
 
 ## Aktueller physischer Rücklauf (09.11.2026)

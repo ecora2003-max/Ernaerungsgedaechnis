@@ -49,6 +49,67 @@ class LiveOffersOnDeviceTest {
     private fun ready() = compose.waitUntil(25_000) {
         compose.onAllNodes(hasTestTag("live_offers_refresh") and isEnabled()).fetchSemanticsNodes().size == 1
     }
+    @Test fun reviewedHostProfilesDriveActualBranchPickerAndDefaultRuntimeAcrossReopenWithoutFactsOrNetwork(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
+        val operations = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
+        val body = db.bodyDao().versions(); val health = db.healthDao().history("com.sec.android.app.shealth")
+        val day = AppCalendar.today()
+        val directory = ReviewedOfferSources.decode(ReviewedOfferSourceFixtures.document(
+            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE123"),
+            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE456")))
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val http = OfferHttp { request ->
+            val store = request.uri.path.substringAfterLast('/')
+            check(store in setOf("DE123", "DE456")); calls.incrementAndGet()
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                """{"offers":[{"id":"synthetic-$store","title":"Synthetisches Angebot $store","offerType":"StoreSpecialPriceDiscount","category":"Store","priceBox":{"largePartNumeric":1.99},"startValidityDate":"$day","endValidityDate":"$day"}]}""")
+        }
+        var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        fun mount() = compose.runOnUiThread {
+            model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    LiveOffersViewModel(context, http = http, sources = directory) as T
+            })[LiveOffersViewModel::class.java]
+            compose.activity.setContent { DemoTheme {
+                Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LiveOffersScreen(providedModel = model)
+                }
+            } }
+        }
+        try {
+            mount(); ready(); tap("Angebotsanbieter"); tap("choose_LIDL")
+            compose.onNodeWithTag("live_offers_refresh").assertIsNotEnabled()
+            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_synthetic-LIDL-DE123"); ready()
+            compose.onNodeWithTag("live_store_input").assertDoesNotExist()
+            tap("live_offers_refresh"); ready()
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
+            compose.onNodeWithText("Synthetisches Angebot DE123").assertExists(); assertEquals(1, calls.get())
+            assertEquals("DE123", model.state.value.result!!.batch!!.offers.single().storeId)
+            tap("live_automatic_toggle"); ready(); assertTrue(model.state.value.automatic)
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
+            models = ViewModelStore(); mount(); ready()
+            compose.onNodeWithTag("live_profile_details").assertTextContains("DE123")
+            assertTrue(model.state.value.automatic); assertEquals(1, calls.get())
+            tap("live_offers_refresh"); ready()
+            assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
+            assertNull(model.state.value.result?.batch); assertEquals(1, calls.get())
+            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_synthetic-LIDL-DE456"); ready()
+            assertNull(model.state.value.result); assertFalse(model.state.value.automatic)
+            tap("live_offers_refresh"); ready()
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
+            compose.onNodeWithText("Synthetisches Angebot DE456").assertExists()
+            compose.onNodeWithText("Synthetisches Angebot DE123").assertDoesNotExist(); assertEquals(2, calls.get())
+            val controls = File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText()
+            assertFalse(controls.contains("Synthetisches Angebot")); assertFalse(controls.contains("1.99"))
+            assertEquals(operations, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())
+            assertEquals(paid, dao.allPaidPrices()); assertEquals(body, db.bodyDao().versions())
+            assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
+        finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; PrivateOfferSettings.forApp(context).clearSelection() }
+    }
     @Test fun explicitKnusprRenewalRotatesPrivateCredentialsAndLateCancelledReplyCannotReplaceANewerLogin(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

@@ -1,5 +1,7 @@
 # Prüfe mich, ob du dran bist und was du machen sollst und darfst
 
+> **Aktualisierung durch Nutzer am 15.11.2026:** Zuerst Liveangebote der acht stationären Händler; **Knuspr wie Picnic vorläufig DEFERRED**, keine Voraussetzung für diesen Meilenstein. Ältere Sofort-P0-Angaben zu Knuspr unten sind dadurch ersetzt. Bestehende Arbeit und spätere Anbieterziele erhalten, Quellen-/Anzeige- und Datenintegritätsgates unverändert.
+
 ## Aktiver Auftrag und Schreibgrenze (Nutzerentscheidung 05.11.2026)
 
 **Ausschließlich Codex** entwickelt und integriert die Android-App im Hauptrepository `ecora2003-max/Ernaerungsgedaechnis`. Die früheren A/B/III/IV-Automatisierungen bleiben pausiert und dürfen nicht selbständig reaktiviert werden. Die GitHub-Sperrdateien, Token-/Heartbeat-Protokolle und automatische Lock-Recovery sind abgeschafft; niemals erneut anlegen oder als Schreibvoraussetzung verwenden.

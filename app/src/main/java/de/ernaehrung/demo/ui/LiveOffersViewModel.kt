@@ -20,11 +20,15 @@ internal data class LiveOffersUiState(val busy: Boolean = false, val scope: Live
 
 /** No FoodStore/Room writer and no health/profile export. HTTP happens only on
  * explicit connection/selection; unapproved catalogue sources never start IO. */
-internal class LiveOffersViewModel(context: Context, private val runtime: LiveOfferRuntime = LiveOfferRuntime(emptyMap(),
-    journal = PrivateOfferSettings.forApp(context)),
-    private val http: OfferHttp = HttpsOfferHttp(), private val comparison: LiveOfferComparison = LiveOfferComparison(
-        sourceStillPermitted = { scope, offer -> runtime.policy(scope)?.sourceId == offer.sourceId })) : ViewModel() {
+internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? = null,
+    private val http: OfferHttp = HttpsOfferHttp(), comparison: LiveOfferComparison? = null,
+    private val sources: ReviewedOfferSources = ReviewedOfferSources.bundled(context)) : ViewModel() {
     private val app = context.applicationContext
+    private val runtime = runtime ?: sources.runtime(http, PrivateOfferSettings.forApp(app))
+    private val comparison = comparison ?: LiveOfferComparison(
+        sourceStillPermitted = { scope, offer -> this.runtime.policy(scope)?.sourceId == offer.sourceId })
+    val configuredSources: List<ReviewedOfferSources.Profile> get() = sources.profiles
+    val invalidSourceProfiles: Int get() = sources.invalidProfiles
     private val privateStore = PrivateKnusprStore.forApp(app)
     private val settings = PrivateOfferSettings.forApp(app)
     private val mutable = MutableStateFlow(LiveOffersUiState())
