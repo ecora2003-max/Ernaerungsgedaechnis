@@ -17,7 +17,11 @@ internal data class KnusprPendingAuthorization(val server: KnusprAuthorizationSe
 internal data class KnusprToken(val access: String, val refresh: String?, val expiresAt: Long?, val clientId: String,
     val server: KnusprAuthorizationServer) {
     override fun toString() = "KnusprToken(redacted)"
+    fun connectionInfo(at: Instant = Instant.now()) = KnusprConnectionInfo(expiresAt,
+        expiresAt?.let { it <= at.toEpochMilli() } == true, !refresh.isNullOrBlank())
 }
+/** UI metadata only. Credentials never enter ViewModel/SavedState output. */
+internal data class KnusprConnectionInfo(val expiresAt: Long?, val expired: Boolean, val renewable: Boolean)
 
 /** Actual official OAuth/PKCE discovery. No fixed tool names, credentials,
  * catalogue request, cookie/login scraping or alternative Knuspr endpoint. */
@@ -38,6 +42,13 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
             }
             return uri
         }
+        private fun officialResource(value: String): URI {
+            val uri = URI(value)
+            requirePublicHttps(uri)
+            require(uri.host == RESOURCE.host && uri.rawQuery == null &&
+                uri.path in setOf("", "/", "/mcp")) { "OAuth resource mismatch" }
+            return uri
+        }
     }
 
     suspend fun discover(): KnusprAuthorizationServer {
@@ -53,10 +64,7 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
         require(metadataUri.host == RESOURCE.host) { "Resource metadata must belong to official Knuspr host" }
         val resourceReply = http.execute(OfferHttpRequest(metadataUri)); resourceReply.requireSuccess()
         val resource = OfferJson.read(resourceReply.text)
-        val resourceId = URI(requireNotNull(OfferJson.text(resource["resource"])))
-        requirePublicHttps(resourceId)
-        require(resourceId.host == RESOURCE.host && resourceId.rawQuery == null &&
-            resourceId.path in setOf("", "/", "/mcp")) { "OAuth resource mismatch" }
+        val resourceId = officialResource(requireNotNull(OfferJson.text(resource["resource"])))
         val issuers = resource["authorization_servers"] as? List<*> ?: error("OAuth issuer missing")
         require(issuers.size == 1) { "Ambiguous OAuth issuer" }
         val issuer = URI(requireNotNull(OfferJson.text(issuers.single())))
@@ -114,13 +122,39 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
             "grant_type" to "authorization_code", "code" to code, "client_id" to pending.clientId,
             "redirect_uri" to pending.redirect, "code_verifier" to pending.verifier, "resource" to pending.server.resource.toString())),
             mapOf("Content-Type" to "application/x-www-form-urlencoded")))
+        return parseToken(reply, pending.clientId, pending.server)
+    }
+    /** Explicit user renewal of the already discovered public OAuth client.
+     * No browser, discovery, product call, fallback or implicit retry. */
+    suspend fun renew(previous: KnusprToken): KnusprToken {
+        val refresh = requireNotNull(previous.refresh).also { require(it.isNotBlank() && it.length <= 16384) }
+        require(previous.clientId.isNotBlank() && previous.clientId.length <= 8192)
+        // Refresh the exact audience granted at login, including a valid
+        // advertised root URI or explicit default port. Never silently switch
+        // to the client's default /mcp audience or widen the trusted resource.
+        val resourceId = officialResource(previous.server.resource.toString())
+        requirePublicHttps(previous.server.issuer)
+        val target = endpoint(previous.server.token.toString(), previous.server.issuer)
+        val reply = http.execute(OfferHttpRequest(target, "POST", form(mapOf("grant_type" to "refresh_token",
+            "refresh_token" to refresh, "client_id" to previous.clientId, "resource" to resourceId.toString())),
+            mapOf("Content-Type" to "application/x-www-form-urlencoded")))
+        return parseToken(reply, previous.clientId, previous.server, refresh)
+    }
+    private fun parseToken(reply: OfferHttpReply, clientId: String, server: KnusprAuthorizationServer,
+        previousRefresh: String? = null): KnusprToken {
+        if (reply.status == 400 && runCatching { OfferJson.read(reply.text)["error"] }.getOrNull() in
+            setOf("invalid_grant", "invalid_client", "unauthorized_client"))
+            throw OfferSourceFailure(OfferSourceFailureCode.LOGIN_REQUIRED)
         reply.requireSuccess(); val token = OfferJson.read(reply.text)
         require((token["token_type"] as? String)?.equals("Bearer", ignoreCase = true) == true)
         val access = requireNotNull(token["access_token"] as? String); require(access.length in 1..16384 && '\r' !in access && '\n' !in access)
-        val expiry = OfferJson.integer(token["expires_in"])?.let { seconds ->
+        val seconds = OfferJson.integer(token["expires_in"])
+        require("expires_in" !in token || seconds != null)
+        val expiry = seconds?.let { seconds ->
             require(seconds > 0); Math.addExact(now().toEpochMilli(), Math.multiplyExact(seconds, 1000L))
         }
-        val refresh = (token["refresh_token"] as? String)?.also { require(it.length in 1..16384) }
-        return KnusprToken(access, refresh, expiry, pending.clientId, pending.server)
+        val refresh = if ("refresh_token" in token) requireNotNull(token["refresh_token"] as? String)
+            .also { require(it.isNotBlank() && it.length <= 16384) } else previousRefresh
+        return KnusprToken(access, refresh, expiry, clientId, server)
     }
 }

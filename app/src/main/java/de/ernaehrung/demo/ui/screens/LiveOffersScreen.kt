@@ -97,11 +97,20 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             Modifier.testTag("live_source_status"))
         OutlinedButton({ context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.evidenceRef))) }) { Text("Beleg zur Quelle öffnen") }
         if (retailer == LiveRetailer.KNUSPR) {
+            state.connection?.let { connection ->
+                Text(when {
+                    connection.expired -> "Gespeicherte Knuspr-Anmeldung abgelaufen. Erneuern oder erneut verbinden."
+                    connection.expiresAt == null -> "Knuspr-Anmeldung gespeichert. Ablaufzeit unbekannt; der Anbieter kann die Anmeldung widerrufen."
+                    else -> "Knuspr-Anmeldung gespeichert. Gemeldeter Ablauf: ${java.time.Instant.ofEpochMilli(connection.expiresAt)}."
+                }, Modifier.testTag("knuspr_connection_status"))
+                if (connection.renewable) OutlinedButton({ model.renewConnection(true) }, enabled = !state.busy,
+                    modifier = Modifier.testTag("knuspr_renew")) { Text("Gespeicherte Anmeldung erneuern") }
+            }
             Text("Anmeldung über den offiziellen Knuspr-OAuth-Zugang im Browser. Nur Verbindungsmetadaten und ausdrücklich gewählte Suchdaten sind vorgesehen; keine Ernährungs-, Körper- oder Trainingshistorie. Kein Warenkorb und keine Bestellung.")
             Check("Diese Knuspr-Verbindung ausdrücklich beginnen", connectionConsent) { connectionConsent = it }
             Button({ model.connect(connectionConsent); connectionConsent = false }, enabled = connectionConsent && !state.busy,
                 modifier = Modifier.testTag("knuspr_connect")) { Text("Knuspr verbinden") }
-            if (state.connected) OutlinedButton(model::discoverTools, enabled = !state.busy,
+            if (state.connected) OutlinedButton(model::discoverTools, enabled = !state.busy && state.connection?.expired != true,
                 modifier = Modifier.testTag("knuspr_discover")) { Text("Verfügbare Lesefunktionen prüfen") }
             OutlinedButton(model::disconnect, enabled = !state.busy, modifier = Modifier.testTag("knuspr_disconnect")) { Text("Verbindung verwerfen") }
             state.discovery?.let { discovery ->

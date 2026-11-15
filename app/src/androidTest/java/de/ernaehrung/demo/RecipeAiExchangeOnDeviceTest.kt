@@ -79,9 +79,7 @@ class RecipeAiExchangeOnDeviceTest {
             assertNull(resolver.call(capture, "peek", null, null)?.getString("prompt"))
             tap("recipe_ai_export_approval"); tap("recipe_ai_share")
             val device = UiDevice.getInstance(instrumentation)
-            val receiver = device.wait(Until.findObject(By.textContains("Synthetische Rezept-KI")), 15_000L)
-            assertNotNull("Real Android share chooser must offer the explicit synthetic test recipient", receiver)
-            requireNotNull(receiver).click()
+            chooseSyntheticRecipeShareReceiver(device)
             var prompt: String? = null
             compose.waitUntil(25_000) {
                 prompt = resolver.call(capture, "peek", null, null)?.getString("prompt")

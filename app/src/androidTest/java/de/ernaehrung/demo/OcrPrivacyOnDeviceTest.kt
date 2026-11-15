@@ -67,19 +67,39 @@ class OcrPrivacyOnDeviceTest {
         }
         try {
             noUploadComponents() // Do not run this probe against an unprotected SDK.
+            // Observe the app UID before connectivity, including any SDK that
+            // might try to flush immediately when a network becomes usable.
+            val rx = TrafficStats.getUidRxBytes(uid); val tx = TrafficStats.getUidTxBytes(uid)
+            assertTrue("Unknown receive counters cannot prove privacy", rx >= 0L)
+            assertTrue("Unknown transmit counters cannot prove privacy", tx >= 0L)
             device.executeShellCommand("cmd connectivity airplane-mode disable")
             device.executeShellCommand("svc wifi enable")
+            var scanRequested = false
+            var connectionRequested = false
             withTimeout(45_000L) {
                 while (true) {
                     val caps = connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
                     if (caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
                         caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) break
+                    // Wi-Fi enable is asynchronous. An immediate scan failed
+                    // before the scanner existed in the original system log.
+                    // Ask only after the interface reports enabled. Auto-join
+                    // or the emulator's other validated network is equally a
+                    // real privacy precondition; an empty scan is not failure
+                    // when ConnectivityManager already proves usable Internet.
+                    if (!scanRequested && device.executeShellCommand("cmd wifi status")
+                            .lineSequence().any { it.trim() == "Wifi is enabled" }) {
+                        device.executeShellCommand("cmd wifi start-scan")
+                        scanRequested = true
+                    }
+                    if (scanRequested && !connectionRequested &&
+                        device.executeShellCommand("cmd wifi list-scan-results").contains("VirtWifi")) {
+                        device.executeShellCommand("cmd wifi connect-network VirtWifi open")
+                        connectionRequested = true
+                    }
                     delay(250L)
                 }
             }
-            val rx = TrafficStats.getUidRxBytes(uid); val tx = TrafficStats.getUidTxBytes(uid)
-            assertTrue("Unknown receive counters cannot prove privacy", rx >= 0L)
-            assertTrue("Unknown transmit counters cannot prove privacy", tx >= 0L)
             target.contentResolver.openOutputStream(files.uri(image))!!.use { output ->
                 instrumentation.context.assets.open("recognition/receipt-test.png").use { it.copyTo(output) }
             }
@@ -95,13 +115,17 @@ class OcrPrivacyOnDeviceTest {
                 delay(5_000L)
                 val caps = connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
                 assertTrue("Connectivity must remain validated during the probe",
-                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true)
+                    caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
                 assertEquals("No unsolicited app-UID receive traffic", rx, TrafficStats.getUidRxBytes(uid))
                 assertEquals("No unsolicited app-UID transmit traffic", tx, TrafficStats.getUidTxBytes(uid))
                 noQueuedUpload()
             }
             assertEquals(operationsBefore, db.foodDao().operationCount())
             Log.i("EG_SYNTHETIC_PRIVACY", "validatedNetwork=true observationMs=40000 ocrCalls=2 uidRxDelta=0 uidTxDelta=0 queuedSdkEvents=0")
+        } catch (failure: Throwable) {
+            captureDeviceFailureEvidence("ocr-privacy-online")
+            throw failure
         } finally {
             files.remove(image)
             device.executeShellCommand("cmd connectivity airplane-mode enable")
