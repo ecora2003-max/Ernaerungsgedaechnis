@@ -57,9 +57,10 @@ class LiveOffersOnDeviceTest {
         val operations = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
         val body = db.bodyDao().versions(); val health = db.healthDao().history("com.sec.android.app.shealth")
         val day = AppCalendar.today()
+        val profileRun = "synthetic-profile-${UUID.randomUUID()}"
         val directory = ReviewedOfferSources.decode(ReviewedOfferSourceFixtures.document(
-            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE123"),
-            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE456")))
+            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE123", "$profileRun-DE123"),
+            ReviewedOfferSourceFixtures.row(LiveRetailer.LIDL, day, "DE456", "$profileRun-DE456")))
         val calls = java.util.concurrent.atomic.AtomicInteger()
         val http = OfferHttp { request ->
             val store = request.uri.path.substringAfterLast('/')
@@ -68,21 +69,24 @@ class LiveOffersOnDeviceTest {
                 """{"offers":[{"id":"synthetic-$store","title":"Synthetisches Angebot $store","offerType":"StoreSpecialPriceDiscount","category":"Store","priceBox":{"largePartNumeric":1.99},"startValidityDate":"$day","endValidityDate":"$day"}]}""")
         }
         var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
-        fun mount() = compose.runOnUiThread {
-            model = ViewModelProvider(models, object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    LiveOffersViewModel(context, http = http, sources = directory) as T
-            })[LiveOffersViewModel::class.java]
-            compose.activity.setContent { DemoTheme {
-                Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    LiveOffersScreen(providedModel = model)
-                }
-            } }
+        fun mount() {
+            compose.runOnUiThread {
+                model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                        LiveOffersViewModel(context, http = http, sources = directory) as T
+                })[LiveOffersViewModel::class.java]
+                compose.activity.setContent { DemoTheme {
+                    Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        LiveOffersScreen(providedModel = model)
+                    }
+                } }
+            }
+            compose.waitUntil(25_000) { model.state.value.selectionLoaded }
         }
         try {
             mount(); ready(); tap("Angebotsanbieter"); tap("choose_LIDL")
             compose.onNodeWithTag("live_offers_refresh").assertIsNotEnabled()
-            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_synthetic-LIDL-DE123"); ready()
+            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_$profileRun-DE123"); ready()
             compose.onNodeWithTag("live_store_input").assertDoesNotExist()
             tap("live_offers_refresh"); ready()
             compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
@@ -91,12 +95,15 @@ class LiveOffersOnDeviceTest {
             tap("live_automatic_toggle"); ready(); assertTrue(model.state.value.automatic)
             compose.runOnUiThread { compose.activity.setContent {}; models.clear() }
             models = ViewModelStore(); mount(); ready()
+            compose.waitUntil(25_000) {
+                compose.onAllNodes(hasTestTag("live_profile_details") and hasText("DE123", substring = true)).fetchSemanticsNodes().size == 1
+            }
             compose.onNodeWithTag("live_profile_details").assertTextContains("DE123")
             assertTrue(model.state.value.automatic); assertEquals(1, calls.get())
             tap("live_offers_refresh"); ready()
             assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
             assertNull(model.state.value.result?.batch); assertEquals(1, calls.get())
-            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_synthetic-LIDL-DE456"); ready()
+            tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_$profileRun-DE456"); ready()
             assertNull(model.state.value.result); assertFalse(model.state.value.automatic)
             tap("live_offers_refresh"); ready()
             compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
