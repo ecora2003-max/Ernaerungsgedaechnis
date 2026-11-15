@@ -1,8 +1,8 @@
 # Ernährungsgedächtnis · Android-Entwicklung
 
-[**Aktuelle Android-Test-APK herunterladen**](downloads/EG-Watch-Test-extra-bae0044.apk?raw=true) · [GitHub Releases](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.11.0) · [Installation und genaue Nachweise](downloads/README.md)
+[**Aktuelle Android-Test-APK herunterladen**](downloads/EG-Watch-Test-v0.12.0.apk?raw=true) · [GitHub Releases](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.12.0) · [Installation und genaue Nachweise](downloads/README.md)
 
-Android-App mit Kotlin, Jetpack Compose und Material 3. Testversion **0.11.0-health-extra** verbindet lokale Daten, bestätigte Buchungen, Ernährung/Rezepte, Planung/Einkauf, Erkennung und Fitness. Weiterhin Entwicklungs-/Testbetrieb; die vollständige App-Abnahme ist offen. Aktuelle Funktionen und Belege stehen im [STATUS](docs/STATUS.md); die frühere starre Phasenfolge beschreibt historische Meilensteine.
+Android-App mit Kotlin, Jetpack Compose und Material 3. Testversion **0.12.0-offer-session** verbindet lokale Daten, bestätigte Buchungen, Ernährung/Rezepte, Planung/Einkauf, Erkennung und Fitness. Weiterhin Entwicklungs-/Testbetrieb; die vollständige App-Abnahme ist offen. Aktuelle Funktionen und Belege stehen im [STATUS](docs/STATUS.md); die frühere starre Phasenfolge beschreibt historische Meilensteine.
 
 **Scan** öffnet jetzt die lokale Erkennung: Barcode fotografieren/Bild wählen/manuell eingeben, offline im Katalog prüfen, optional Open Food Facts abfragen und bearbeitbare Produktangaben bestätigen. EAN-/GTIN-Prüfziffern, konkrete Artikelversionen, Quellen und unbekannte Werte bleiben erhalten. Produktanlage bucht keinen Vorrat. Unter **Bon & OCR** Kamera/System-Fotoauswahl oder mehrzeiligen Text verwenden, einen Entwurf speichern und Vorschläge prüfen. Erst eine ausdrückliche Zahlungsbestätigung erzeugt einen Einkauf; geklärte Lagerzugänge werden separat bestätigt. Händleraliase lassen sich ausdrücklich lernen, korrigieren und zurücknehmen. Anleitung/Grenzen: [docs/RECOGNITION.md](docs/RECOGNITION.md).
 

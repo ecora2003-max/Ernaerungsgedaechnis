@@ -1,0 +1,50 @@
+{
+  "provenanceFormat": "EG_SIGNED_APK_SOURCE_V2",
+  "sourceCommit": "a9ba708a13a6285bc662aad96d97b6ccdac518dd",
+  "package": "de.ernaehrung.demo.watchspike",
+  "label": "EG \u00b7 Watch-Test",
+  "versionCode": 12,
+  "versionName": "0.12.0-offer-session",
+  "sha256": "7b03b01e14875853cca33f20399268cde8d04483e9422367346191cbe314829a",
+  "bytes": 67252003,
+  "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
+  "schema": 20,
+  "staticChecks": [
+    "V2/V3",
+    "16KiB ZIP alignment",
+    "unchanged signed payload",
+    "no test components/price fixtures/credential fixtures",
+    "four 64bit ELF libraries PT_LOAD >=0x4000"
+  ],
+  "lintErrors": {
+    "app": 0,
+    "nano-runtime": 0
+  },
+  "nativeCi": "Final exact-head default-package suites, original artifact digests, separate exact signed-variant UI/schema execution26+35 and controlled Main merge are recorded in the APK PR and release notes. Source/build trees must match this source commit.",
+  "physicalPixelAndroid17WatchStepsAndWorkout": "NOT_YET_TESTED",
+  "applicationTreeSha": "7004091ebaafb660de19df8a7f1e7eab5818d737",
+  "buildSourceTrees": {
+    "app": "7004091ebaafb660de19df8a7f1e7eab5818d737",
+    "nano-runtime": "ddd27a1c1eb36c14b81478bea1592579a44569c1",
+    "build.gradle.kts": "8bb424681e9bc051cb8379cb3b93f6afe0857da1",
+    "settings.gradle.kts": "3dbfd9a762210943e94f45bd2796558d454cc179",
+    "gradle.properties": "a87e07697e50e8f71f4e237c4fcff7c005ae1d0c",
+    "gradle": "2cb49d2434cc6ac4d8c70328352135e604642f7f",
+    "gradlew": "f5feea6d6b116baaca5a2642d4d9fa1f47d574a7",
+    "gradlew.bat": "9b42019c7915b971238526075306ffba3b666dd5"
+  },
+  "apkFile": "EG-Watch-Test-v0.12.0.apk",
+  "buildArguments": [
+    "-PegWatchSpike=true",
+    ":app:assembleDebug"
+  ],
+  "localTests": {
+    "sourceCommit": "6d5b49dc3c86997a5d8338ad232d9ac545e77609",
+    "jvm": 941,
+    "migrations": 19,
+    "lintErrors": 0,
+    "watchVariantAssemblyAndLint": "PASS3m29"
+  },
+  "apkVariantExecution": "Standard-package suites, exact signed-variant emulator UI/schema smoke and physical Pixel/Watch execution are distinct. Physical execution of this signed version remains open.",
+  "release": "https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.12.0"
+}

@@ -49,7 +49,7 @@ jobs:
           ./gradlew --no-daemon --max-workers=2 --continue :app:lintDebug :nano-runtime:lintDebug :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac
       - name: Verify process-proof shell rejection and physical-device refusal
         run: python3 -m unittest discover -s tools -p 'test_android_process_restart.py'
-      - name: Verify signed-APK smoke refuses physical or existing installations
+      - name: Verify complete signed-APK provenance and refusal of physical or existing installations
         run: python3 -m unittest discover -s tools -p 'test_signed_apk_smoke.py'
       - name: Verify fresh JUnit XML and migration regression counts
         run: python3 tools/check_junit_xml.py app/build/test-results/testDebugUnitTest
