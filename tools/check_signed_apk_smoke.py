@@ -41,6 +41,20 @@ def source_compatible(meta, actual):
     return expected == actual
 
 
+def interaction_owner(root, node):
+    """Android may expose an enabled TextView inside a disabled Compose button.
+
+    Inspect its nearest actual interactive control, never an unrelated outer
+    container or the label's own enabled flag.
+    """
+    parents = {child: parent for parent in root.iter() for child in parent}
+    while node is not None:
+        if node.get("clickable") == "true":
+            return node
+        node = parents.get(node)
+    raise ValueError("Signed APK label has no interactive control")
+
+
 def command(args, check=True, binary=False):
     result = subprocess.run(args, capture_output=True, timeout=30, check=check)
     return result.stdout if binary else result.stdout.decode().strip()
@@ -137,9 +151,15 @@ def main(metadata_file):
     # The supplier explanation can put connection controls below the fold.
     # Reveal the actual control through a gesture, without pressing it or
     # granting consent. Merely polling the current viewport cannot reach it.
-    connect, _ = control("Knuspr verbinden", scroll=True)
-    assert connect.get("enabled") == "false"
-    assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in ui().iter("node"))
+    control("Knuspr verbinden", scroll=True)
+    root = ui()
+    connect = next(n for n in root.iter("node") if n.get("text") == "Knuspr verbinden")
+    button = interaction_owner(root, connect)
+    assert button.get("package") == PACKAGE and button.get("enabled") == "false"
+    consent = next(n for n in root.iter("node") if n.get("text") == "Diese Knuspr-Verbindung ausdrücklich beginnen")
+    checkbox = interaction_owner(root, consent)
+    assert checkbox.get("package") == PACKAGE and checkbox.get("checkable") == "true" and checkbox.get("checked") == "false"
+    assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in root.iter("node"))
     command(ADB + ["shell", "input", "keyevent", "KEYCODE_BACK"])
     tap("Weitere Gesundheitsdaten", scroll=True)
     for _ in range(6):

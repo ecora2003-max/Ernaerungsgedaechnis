@@ -5,7 +5,25 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from check_signed_apk_smoke import SOURCE_PATHS, source_compatible
+import xml.etree.ElementTree as ET
+from check_signed_apk_smoke import SOURCE_PATHS, source_compatible, interaction_owner
+
+
+class SignedApkControlTest(unittest.TestCase):
+    def test_enabled_android_label_does_not_reenable_its_disabled_compose_button(self):
+        root = ET.fromstring('<node enabled="true"><node clickable="true" enabled="false"><node text="Knuspr verbinden" clickable="false" enabled="true"/></node></node>')
+        label = next(n for n in root.iter() if n.get("text"))
+        self.assertEqual("false", interaction_owner(root, label).get("enabled"))
+
+    def test_nearest_interactive_control_wins_over_unrelated_disabled_outer_container(self):
+        root = ET.fromstring('<node clickable="true" enabled="false"><node clickable="true" enabled="true"><node text="Knuspr verbinden" enabled="false"/></node></node>')
+        label = next(n for n in root.iter() if n.get("text"))
+        self.assertEqual("true", interaction_owner(root, label).get("enabled"))
+
+    def test_plain_disabled_text_cannot_prove_a_disabled_interactive_control(self):
+        root = ET.fromstring('<node><node text="Knuspr verbinden" enabled="false"/></node>')
+        with self.assertRaises(ValueError):
+            interaction_owner(root, root[0])
 
 
 class SignedApkSourceTest(unittest.TestCase):
