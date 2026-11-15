@@ -42,6 +42,13 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
             }
             return uri
         }
+        private fun officialResource(value: String): URI {
+            val uri = URI(value)
+            requirePublicHttps(uri)
+            require(uri.host == RESOURCE.host && uri.rawQuery == null &&
+                uri.path in setOf("", "/", "/mcp")) { "OAuth resource mismatch" }
+            return uri
+        }
     }
 
     suspend fun discover(): KnusprAuthorizationServer {
@@ -57,10 +64,7 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
         require(metadataUri.host == RESOURCE.host) { "Resource metadata must belong to official Knuspr host" }
         val resourceReply = http.execute(OfferHttpRequest(metadataUri)); resourceReply.requireSuccess()
         val resource = OfferJson.read(resourceReply.text)
-        val resourceId = URI(requireNotNull(OfferJson.text(resource["resource"])))
-        requirePublicHttps(resourceId)
-        require(resourceId.host == RESOURCE.host && resourceId.rawQuery == null &&
-            resourceId.path in setOf("", "/", "/mcp")) { "OAuth resource mismatch" }
+        val resourceId = officialResource(requireNotNull(OfferJson.text(resource["resource"])))
         val issuers = resource["authorization_servers"] as? List<*> ?: error("OAuth issuer missing")
         require(issuers.size == 1) { "Ambiguous OAuth issuer" }
         val issuer = URI(requireNotNull(OfferJson.text(issuers.single())))
@@ -125,11 +129,14 @@ internal class KnusprOAuth(private val http: OfferHttp, private val now: () -> I
     suspend fun renew(previous: KnusprToken): KnusprToken {
         val refresh = requireNotNull(previous.refresh).also { require(it.isNotBlank() && it.length <= 16384) }
         require(previous.clientId.isNotBlank() && previous.clientId.length <= 8192)
-        require(previous.server.resource == RESOURCE)
+        // Refresh the exact audience granted at login, including a valid
+        // advertised root URI or explicit default port. Never silently switch
+        // to the client's default /mcp audience or widen the trusted resource.
+        val resourceId = officialResource(previous.server.resource.toString())
         requirePublicHttps(previous.server.issuer)
         val target = endpoint(previous.server.token.toString(), previous.server.issuer)
         val reply = http.execute(OfferHttpRequest(target, "POST", form(mapOf("grant_type" to "refresh_token",
-            "refresh_token" to refresh, "client_id" to previous.clientId, "resource" to RESOURCE.toString())),
+            "refresh_token" to refresh, "client_id" to previous.clientId, "resource" to resourceId.toString())),
             mapOf("Content-Type" to "application/x-www-form-urlencoded")))
         return parseToken(reply, previous.clientId, previous.server, refresh)
     }

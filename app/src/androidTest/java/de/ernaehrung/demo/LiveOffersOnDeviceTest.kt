@@ -58,7 +58,7 @@ class LiveOffersOnDeviceTest {
         val health = db.healthDao().history("com.sec.android.app.shealth")
         val store = PrivateKnusprStore.forApp(context); store.clear()
         val server = KnusprAuthorizationServer(URI("https://login.example.test"), URI("https://login.example.test/authorize"),
-            URI("https://login.example.test/token"), null, listOf("products:read"))
+            URI("https://login.example.test/token"), null, listOf("products:read"), URI("https://mcp.knuspr.de/"))
         val old = KnusprToken("synthetic-expired-access", "synthetic-original-refresh", Instant.now().minusSeconds(1).toEpochMilli(),
             "synthetic-public-client", server)
         store.write(PrivateKnusprStore.State(token = old))
@@ -66,6 +66,11 @@ class LiveOffersOnDeviceTest {
         val calls = java.util.concurrent.atomic.AtomicInteger()
         val http = OfferHttp { request ->
             check(request.uri == server.token && request.method == "POST")
+            val form = String(requireNotNull(request.body)).split('&').associate {
+                val field = it.split('=', limit = 2)
+                java.net.URLDecoder.decode(field[0], "UTF-8") to java.net.URLDecoder.decode(field[1], "UTF-8")
+            }
+            check(form["resource"] == server.resource.toString())
             val number = calls.incrementAndGet()
             if (number == 1) withContext(NonCancellable) { entered.complete(Unit); release.await() }
             if (number == 3) OfferHttpReply(400, emptyMap(), """{"error":"invalid_grant"}""")
@@ -113,6 +118,7 @@ class LiveOffersOnDeviceTest {
             models = ViewModelStore(); mount(); ready()
             compose.waitUntil(25_000) { model.state.value.connection?.expired == false }
             assertEquals(2, calls.get()); assertNull(model.state.value.discovery)
+            assertEquals(server.resource, store.read().token?.server?.resource)
             tap("Angebotsanbieter"); tap("choose_KNUSPR"); ready(); tap("knuspr_renew"); ready()
             compose.waitUntil(25_000) { model.state.value.connection == null }
             assertNull(store.read().token); assertEquals(3, calls.get())

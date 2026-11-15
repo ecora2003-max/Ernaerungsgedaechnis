@@ -19,6 +19,34 @@ class KnusprRenewalTest {
         val pair = it.split('=', limit = 2); URLDecoder.decode(pair[0], "UTF-8") to URLDecoder.decode(pair[1], "UTF-8")
     }
 
+    @Test fun renewalPreservesTheExactOfficialResourceAlreadyDiscoveredAndGrantedDuringLogin(): Unit = runBlocking {
+        for (resource in listOf("https://mcp.knuspr.de", "https://mcp.knuspr.de/",
+            "https://mcp.knuspr.de/mcp", "https://mcp.knuspr.de:443/mcp")) {
+            val replies = mutableListOf(
+                OfferHttpReply(401, emptyMap(), ""),
+                OfferHttpReply(200, emptyMap(), """{"resource":"$resource","authorization_servers":["https://auth.example.test"]}"""),
+                OfferHttpReply(200, emptyMap(), """{"issuer":"https://auth.example.test","authorization_endpoint":"https://auth.example.test/authorize","token_endpoint":"https://auth.example.test/token","registration_endpoint":"https://auth.example.test/register","code_challenge_methods_supported":["S256"]}"""),
+                OfferHttpReply(200, emptyMap(), """{"client_id":"synthetic-client","token_endpoint_auth_method":"none"}"""),
+                OfferHttpReply(200, emptyMap(), """{"token_type":"Bearer","access_token":"synthetic-access","refresh_token":"synthetic-refresh"}"""),
+                OfferHttpReply(200, emptyMap(), """{"token_type":"Bearer","access_token":"synthetic-next","refresh_token":"synthetic-rotated"}"""))
+            val calls = mutableListOf<OfferHttpRequest>()
+            val oauth = KnusprOAuth(OfferHttp { calls += it; replies.removeAt(0) }) { at }
+            val discovered = oauth.discover()
+            assertEquals(URI(resource), discovered.resource)
+            val (pending, authorization) = oauth.begin("de.ernaehrung.demo.watchspike", discovered)
+            assertEquals(resource, URLDecoder.decode(authorization.rawQuery.split('&')
+                .single { it.startsWith("resource=") }.substringAfter('='), "UTF-8"))
+            val granted = oauth.complete(pending, "${pending.redirect}?state=${pending.state}&code=synthetic-code")
+            val renewed = oauth.renew(granted)
+            assertEquals(discovered, renewed.server)
+            assertEquals("synthetic-rotated", renewed.refresh)
+            assertEquals(6, calls.size); assertTrue(replies.isEmpty())
+            assertEquals(resource, form(calls[4])["resource"])
+            assertEquals(resource, form(calls[5])["resource"])
+            assertEquals(discovered.token, calls[5].uri)
+        }
+    }
+
     @Test fun explicitRenewalUsesOnlyOriginalPublicClientResourceAndTokenEndpointAndHandlesRotationOrOmission(): Unit = runBlocking {
         val requests = mutableListOf<OfferHttpRequest>()
         val replies = mutableListOf(
@@ -46,8 +74,10 @@ class KnusprRenewalTest {
     @Test fun missingRefreshAndUntrustedIssuerResourceOrTokenEndpointCannotSendCredentials(): Unit = runBlocking {
         var calls = 0
         val oauth = KnusprOAuth(OfferHttp { calls++; error("Must stop before IO") }) { at }
-        val invalid = listOf(previous.copy(refresh = null), previous.copy(server = server.copy(token = URI("https://other.example.test/token"))),
-            previous.copy(server = server.copy(resource = URI("https://other.example.test/mcp"))))
+        val invalid = listOf(previous.copy(refresh = null), previous.copy(server = server.copy(token = URI("https://other.example.test/token")))) +
+            listOf("https://other.example.test/mcp", "https://mcp.knuspr.de/other", "https://mcp.knuspr.de/mcp?extra=1",
+                "https://mcp.knuspr.de:8443/mcp", "http://mcp.knuspr.de/mcp", "https://mcp.knuspr.de/mcp#fragment")
+                .map { previous.copy(server = server.copy(resource = URI(it))) }
         invalid.forEach { assertTrue(runCatching { oauth.renew(it) }.isFailure) }
         assertEquals(0, calls)
     }
