@@ -7,6 +7,7 @@ package is launched, navigated, stopped and inspected. No database is exported
 as an artifact; only empty-fact counts and schema/provenance evidence survive.
 """
 import hashlib
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -53,6 +54,31 @@ def interaction_owner(root, node):
             return node
         node = parents.get(node)
     raise ValueError("Signed APK label has no interactive control")
+
+
+def schema_snapshot(base, schema):
+    """Read a copied synthetic snapshot without creating or changing a DB.
+
+    A rendered screen is independent of Room's asynchronous first open. Only
+    the committed schema/version/identity constitutes database readiness.
+    """
+    observed = dict(ready=False, version=None, identity=None, tables=None)
+    if not base.exists() or not base.stat().st_size:
+        return observed
+    try:
+        with closing(sqlite3.connect(base.as_uri() + "?mode=ro", uri=True)) as db:
+            observed["version"] = db.execute("PRAGMA user_version").fetchone()[0]
+            if observed["version"] != schema["version"]:
+                return observed
+            row = db.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()
+            observed["identity"] = row[0] if row else None
+            observed["tables"] = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table')").fetchone()[0]
+            observed["ready"] = observed["identity"] == schema["identityHash"] and observed["tables"] == len(schema["entities"])
+    except sqlite3.Error as failure:
+        # A live copy can precede SQLite's creation transaction commit. This
+        # bounded readiness probe never treats an unreadable snapshot as PASS.
+        observed["readError"] = type(failure).__name__
+    return observed
 
 
 def command(args, check=True, binary=False):
@@ -169,23 +195,48 @@ def main(metadata_file):
         time.sleep(0.3)
     else:
         raise RuntimeError("Signed APK additional-health screen was not reached")
-    pid = command(ADB + ["shell", "pidof", PACKAGE])
-    assert pid and all(part.isdigit() for part in pid.split())
-    command(ADB + ["shell", "am", "force-stop", PACKAGE])
-    assert not command(ADB + ["shell", "pidof", PACKAGE], check=False)
-    with tempfile.TemporaryDirectory(prefix="eg-empty-apk-") as tmp:
-        base = Path(tmp) / "empty.db"
+
+    schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/" + str(meta["schema"]) + ".json").read_text())["database"]
+
+    def copy_private_snapshot(base, required=False):
         for suffix in ("", "-wal", "-shm"):
             result = subprocess.run(ADB + ["exec-out", "run-as", PACKAGE, "cat", "databases/food-local-sandbox.db" + suffix],
                 capture_output=True, timeout=20)
             if result.returncode == 0:
                 Path(str(base) + suffix).write_bytes(result.stdout)
             elif not suffix:
-                raise RuntimeError("New signed APK did not create its local Room database")
-        with sqlite3.connect(base) as db:
+                if required:
+                    raise RuntimeError("New signed APK did not create its local Room database")
+                return False
+        return True
+
+    # Keep this newly installed application alive until its actual database
+    # initialization is committed. Never kill a still-opening Room database
+    # merely because its independently rendered UI already appeared.
+    readiness = dict(ready=False)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        with tempfile.TemporaryDirectory(prefix="eg-empty-apk-ready-") as tmp:
+            base = Path(tmp) / "empty.db"
+            if copy_private_snapshot(base):
+                readiness = schema_snapshot(base, schema)
+        if readiness["ready"]:
+            break
+        time.sleep(0.2)
+    (output / "room-readiness.json").write_text(json.dumps(readiness, indent=2) + "\n")
+    if not readiness["ready"]:
+        raise RuntimeError("New signed APK Room schema was not committed before stop: " + json.dumps(readiness, sort_keys=True))
+
+    pid = command(ADB + ["shell", "pidof", PACKAGE])
+    assert pid and all(part.isdigit() for part in pid.split())
+    command(ADB + ["shell", "am", "force-stop", PACKAGE])
+    assert not command(ADB + ["shell", "pidof", PACKAGE], check=False)
+    with tempfile.TemporaryDirectory(prefix="eg-empty-apk-") as tmp:
+        base = Path(tmp) / "empty.db"
+        copy_private_snapshot(base, required=True)
+        with closing(sqlite3.connect(base.as_uri() + "?mode=ro", uri=True)) as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            assert version == meta["schema"]
-            schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/" + str(version) + ".json").read_text())["database"]
+            assert version == meta["schema"], (version, meta["schema"])
             identity = db.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()[0]
             assert identity == schema["identityHash"]
             tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table')").fetchall()
@@ -200,6 +251,7 @@ def main(metadata_file):
         startedPid=pid, forceStopObserved=True, schema=version, tables=len(tables), extraScreenReached=True,
         healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False,
         offersScreenReached=True, knusprConsentRequired=True, storedCredentialRenewalOffered=False)
+    proof["schemaReadyBeforeStop"] = True
     (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
     print("SIGNED_APK_UI_SCHEMA_PASS:", json.dumps(proof, sort_keys=True))
 

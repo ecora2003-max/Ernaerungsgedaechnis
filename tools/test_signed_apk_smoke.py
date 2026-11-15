@@ -5,8 +5,68 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import sqlite3
+import shutil
 import xml.etree.ElementTree as ET
-from check_signed_apk_smoke import SOURCE_PATHS, source_compatible, interaction_owner
+from check_signed_apk_smoke import SOURCE_PATHS, source_compatible, interaction_owner, schema_snapshot
+
+
+class SignedApkSchemaReadinessTest(unittest.TestCase):
+    schema = dict(version=20, identityHash="synthetic-room-identity", entities=[dict(tableName="synthetic_facts")])
+
+    def test_missing_or_empty_copy_is_not_a_database_and_is_never_created_by_the_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "empty.db"
+            self.assertFalse(schema_snapshot(base, self.schema)["ready"])
+            self.assertFalse(base.exists())
+            base.touch()
+            self.assertFalse(schema_snapshot(base, self.schema)["ready"])
+            self.assertEqual(0, base.stat().st_size)
+
+    def test_real_wal_creation_transaction_is_not_ready_until_committed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); original = root / "live.db"
+            db = sqlite3.connect(original)
+            try:
+                db.execute("PRAGMA journal_mode=WAL")
+                db.execute("BEGIN")
+                db.execute("CREATE TABLE room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+                db.execute("INSERT INTO room_master_table VALUES (42, 'synthetic-room-identity')")
+                db.execute("CREATE TABLE synthetic_facts (id INTEGER PRIMARY KEY)")
+                db.execute("PRAGMA user_version=20")
+                def copy(name):
+                    target = root / name
+                    for suffix in ("", "-wal", "-shm"):
+                        path = Path(str(original) + suffix)
+                        if path.exists():
+                            shutil.copyfile(path, Path(str(target) + suffix))
+                    return target
+                self.assertFalse(schema_snapshot(copy("before.db"), self.schema)["ready"])
+                db.commit()
+                state = schema_snapshot(copy("after.db"), self.schema)
+                self.assertTrue(state["ready"])
+                self.assertEqual(20, state["version"])
+            finally:
+                db.close()
+
+    def test_wrong_schema_version_identity_or_table_set_cannot_become_ready(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "empty.db"
+            db = sqlite3.connect(base)
+            try:
+                db.execute("CREATE TABLE room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+                db.execute("INSERT INTO room_master_table VALUES (42, 'synthetic-room-identity')")
+                db.execute("CREATE TABLE synthetic_facts (id INTEGER PRIMARY KEY)")
+                db.execute("PRAGMA user_version=19"); db.commit()
+                self.assertFalse(schema_snapshot(base, self.schema)["ready"])
+                db.execute("PRAGMA user_version=20")
+                db.execute("UPDATE room_master_table SET identity_hash='wrong'"); db.commit()
+                self.assertFalse(schema_snapshot(base, self.schema)["ready"])
+                db.execute("UPDATE room_master_table SET identity_hash='synthetic-room-identity'")
+                db.execute("DROP TABLE synthetic_facts"); db.commit()
+                self.assertFalse(schema_snapshot(base, self.schema)["ready"])
+            finally:
+                db.close()
 
 
 class SignedApkControlTest(unittest.TestCase):
