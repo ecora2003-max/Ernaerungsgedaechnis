@@ -7,6 +7,7 @@ package is launched, navigated, stopped and inspected. No database is exported
 as an artifact; only empty-fact counts and schema/provenance evidence survive.
 """
 import hashlib
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,63 @@ import xml.etree.ElementTree as ET
 PACKAGE = "de.ernaehrung.demo.watchspike"
 CERTIFICATE = "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857"
 ADB = ["adb", "-s", "emulator-5554"]
+SOURCE_PATHS = ("app", "nano-runtime", "build.gradle.kts", "settings.gradle.kts", "gradle.properties",
+                "gradle", "gradlew", "gradlew.bat")
+
+
+def source_trees(ref="HEAD"):
+    return {path: command(["git", "rev-parse", ref + ":" + path]) for path in SOURCE_PATHS}
+
+
+def source_compatible(meta, actual):
+    if meta.get("provenanceFormat") != "EG_SIGNED_APK_SOURCE_V2":
+        return False  # Legacy app-only evidence cannot prove the entire build.
+    expected = meta.get("buildSourceTrees")
+    if not isinstance(expected, dict) or set(expected) != set(SOURCE_PATHS) or any(
+            not isinstance(value, str) or not re.fullmatch("[0-9a-f]{40}", value) for value in expected.values()):
+        raise ValueError("Invalid signed APK build-source provenance")
+    if meta.get("applicationTreeSha") != expected["app"]:
+        raise ValueError("Conflicting signed APK application provenance")
+    return expected == actual
+
+
+def interaction_owner(root, node):
+    """Android may expose an enabled TextView inside a disabled Compose button.
+
+    Inspect its nearest actual interactive control, never an unrelated outer
+    container or the label's own enabled flag.
+    """
+    parents = {child: parent for parent in root.iter() for child in parent}
+    while node is not None:
+        if node.get("clickable") == "true":
+            return node
+        node = parents.get(node)
+    raise ValueError("Signed APK label has no interactive control")
+
+
+def schema_snapshot(base, schema):
+    """Read a copied synthetic snapshot without creating or changing a DB.
+
+    A rendered screen is independent of Room's asynchronous first open. Only
+    the committed schema/version/identity constitutes database readiness.
+    """
+    observed = dict(ready=False, version=None, identity=None, tables=None)
+    if not base.exists() or not base.stat().st_size:
+        return observed
+    try:
+        with closing(sqlite3.connect(base.as_uri() + "?mode=ro", uri=True)) as db:
+            observed["version"] = db.execute("PRAGMA user_version").fetchone()[0]
+            if observed["version"] != schema["version"]:
+                return observed
+            row = db.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()
+            observed["identity"] = row[0] if row else None
+            observed["tables"] = db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table')").fetchone()[0]
+            observed["ready"] = observed["identity"] == schema["identityHash"] and observed["tables"] == len(schema["entities"])
+    except sqlite3.Error as failure:
+        # A live copy can precede SQLite's creation transaction commit. This
+        # bounded readiness probe never treats an unreadable snapshot as PASS.
+        observed["readError"] = type(failure).__name__
+    return observed
 
 
 def command(args, check=True, binary=False):
@@ -49,11 +107,12 @@ def main(metadata_file):
     assert Path(meta["apkFile"]).name == meta["apkFile"]
     output = Path("app/build/outputs/device-diagnostics/watch-apk")
     output.mkdir(parents=True, exist_ok=True)
-    tree = command(["git", "rev-parse", "HEAD:app"])
-    if tree != meta["applicationTreeSha"]:
+    inputs = source_trees()
+    tree = inputs["app"]
+    if not source_compatible(meta, inputs):
         # Later functional commits must not build a new APK for every step or
         # pretend an older hosted milestone tested their new application code.
-        proof = dict(status="NOT_APPLICABLE", reason="Hosted milestone has a different application tree; no installation attempted",
+        proof = dict(status="NOT_APPLICABLE", reason="Hosted milestone does not prove all current build inputs; no installation attempted",
             actualSdk=sdk, sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"])
         (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
         print("SIGNED_APK_NOT_APPLICABLE:", json.dumps(proof, sort_keys=True))
@@ -62,7 +121,7 @@ def main(metadata_file):
     # that checkout even when the APK source commit is outside shallow history.
     available = subprocess.run(["git", "cat-file", "-e", meta["sourceCommit"] + "^{commit}"], capture_output=True).returncode == 0
     if available:
-        assert tree == command(["git", "rev-parse", meta["sourceCommit"] + ":app"])
+        assert inputs == source_trees(meta["sourceCommit"])
     apk = metadata_path.parent / meta["apkFile"]
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     assert digest == meta["sha256"] and apk.stat().st_size == meta["bytes"]
@@ -88,16 +147,16 @@ def main(metadata_file):
         (output / "screen.xml").write_bytes(raw)
         return root
 
-    def tap(text, scroll=False):
+    def control(text, scroll=False, prefix=False):
         for _ in range(6):
             root = ui()
             for node in root.iter("node"):
-                if text not in (node.get("text"), node.get("content-desc")):
+                labels = (node.get("text", ""), node.get("content-desc", ""))
+                if not any(label == text or (prefix and label.startswith(text)) for label in labels):
                     continue
                 numbers = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
                 if len(numbers) == 4 and numbers[0] < numbers[2] and numbers[1] < numbers[3]:
-                    command(ADB + ["shell", "input", "tap", str((numbers[0] + numbers[2]) // 2), str((numbers[1] + numbers[3]) // 2)])
-                    return
+                    return node, numbers
             if not scroll:
                 time.sleep(0.3)
                 continue
@@ -107,7 +166,27 @@ def main(metadata_file):
             command(ADB + ["shell", "input", "swipe", str(width // 2), str(height * 3 // 4), str(width // 2), str(height // 3), "300"])
         raise RuntimeError("Signed APK control not reachable: " + text)
 
+    def tap(text, scroll=False, prefix=False):
+        _, numbers = control(text, scroll, prefix)
+        command(ADB + ["shell", "input", "tap", str((numbers[0] + numbers[2]) // 2), str((numbers[1] + numbers[3]) // 2)])
+
     tap("Mehr")
+    tap("Angebote & Preisvergleich", scroll=True)
+    tap("Angebotsanbieter", scroll=True, prefix=True)
+    tap("Knuspr", scroll=True)
+    # The supplier explanation can put connection controls below the fold.
+    # Reveal the actual control through a gesture, without pressing it or
+    # granting consent. Merely polling the current viewport cannot reach it.
+    control("Knuspr verbinden", scroll=True)
+    root = ui()
+    connect = next(n for n in root.iter("node") if n.get("text") == "Knuspr verbinden")
+    button = interaction_owner(root, connect)
+    assert button.get("package") == PACKAGE and button.get("enabled") == "false"
+    consent = next(n for n in root.iter("node") if n.get("text") == "Diese Knuspr-Verbindung ausdrücklich beginnen")
+    checkbox = interaction_owner(root, consent)
+    assert checkbox.get("package") == PACKAGE and checkbox.get("checkable") == "true" and checkbox.get("checked") == "false"
+    assert not any(n.get("text") == "Gespeicherte Anmeldung erneuern" for n in root.iter("node"))
+    command(ADB + ["shell", "input", "keyevent", "KEYCODE_BACK"])
     tap("Weitere Gesundheitsdaten", scroll=True)
     for _ in range(6):
         root = ui()
@@ -116,23 +195,48 @@ def main(metadata_file):
         time.sleep(0.3)
     else:
         raise RuntimeError("Signed APK additional-health screen was not reached")
-    pid = command(ADB + ["shell", "pidof", PACKAGE])
-    assert pid and all(part.isdigit() for part in pid.split())
-    command(ADB + ["shell", "am", "force-stop", PACKAGE])
-    assert not command(ADB + ["shell", "pidof", PACKAGE], check=False)
-    with tempfile.TemporaryDirectory(prefix="eg-empty-apk-") as tmp:
-        base = Path(tmp) / "empty.db"
+
+    schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/" + str(meta["schema"]) + ".json").read_text())["database"]
+
+    def copy_private_snapshot(base, required=False):
         for suffix in ("", "-wal", "-shm"):
             result = subprocess.run(ADB + ["exec-out", "run-as", PACKAGE, "cat", "databases/food-local-sandbox.db" + suffix],
                 capture_output=True, timeout=20)
             if result.returncode == 0:
                 Path(str(base) + suffix).write_bytes(result.stdout)
             elif not suffix:
-                raise RuntimeError("New signed APK did not create its local Room database")
-        with sqlite3.connect(base) as db:
+                if required:
+                    raise RuntimeError("New signed APK did not create its local Room database")
+                return False
+        return True
+
+    # Keep this newly installed application alive until its actual database
+    # initialization is committed. Never kill a still-opening Room database
+    # merely because its independently rendered UI already appeared.
+    readiness = dict(ready=False)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        with tempfile.TemporaryDirectory(prefix="eg-empty-apk-ready-") as tmp:
+            base = Path(tmp) / "empty.db"
+            if copy_private_snapshot(base):
+                readiness = schema_snapshot(base, schema)
+        if readiness["ready"]:
+            break
+        time.sleep(0.2)
+    (output / "room-readiness.json").write_text(json.dumps(readiness, indent=2) + "\n")
+    if not readiness["ready"]:
+        raise RuntimeError("New signed APK Room schema was not committed before stop: " + json.dumps(readiness, sort_keys=True))
+
+    pid = command(ADB + ["shell", "pidof", PACKAGE])
+    assert pid and all(part.isdigit() for part in pid.split())
+    command(ADB + ["shell", "am", "force-stop", PACKAGE])
+    assert not command(ADB + ["shell", "pidof", PACKAGE], check=False)
+    with tempfile.TemporaryDirectory(prefix="eg-empty-apk-") as tmp:
+        base = Path(tmp) / "empty.db"
+        copy_private_snapshot(base, required=True)
+        with closing(sqlite3.connect(base.as_uri() + "?mode=ro", uri=True)) as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            assert version == meta["schema"]
-            schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/" + str(version) + ".json").read_text())["database"]
+            assert version == meta["schema"], (version, meta["schema"])
             identity = db.execute("SELECT identity_hash FROM room_master_table WHERE id=42").fetchone()[0]
             assert identity == schema["identityHash"]
             tables = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('android_metadata','room_master_table')").fetchall()
@@ -141,11 +245,13 @@ def main(metadata_file):
                 "health_import_state", "health_import_runs", "health_source_record_versions", "consumption_events", "purchase_events", "stock_movements"]
             assert all(db.execute('SELECT COUNT(*) FROM "' + table + '"').fetchone()[0] == 0 for table in empty)
             assert not db.execute("PRAGMA foreign_key_check").fetchall()
-    proof = dict(status="PASS", format="SIGNED_APK_UI_SCHEMA_V1", actualSdk=sdk, package=PACKAGE,
+    proof = dict(status="PASS", format="SIGNED_APK_UI_SCHEMA_V2", actualSdk=sdk, package=PACKAGE,
         versionCode=meta["versionCode"], apkSha256=digest, signerCertificateSha256=meta["signerCertificateSha256"],
-        sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"], applicationTreeSha=tree,
+        sourceCommit=command(["git", "rev-parse", "HEAD"]), apkSourceCommit=meta["sourceCommit"], applicationTreeSha=tree, buildSourceTrees=inputs,
         startedPid=pid, forceStopObserved=True, schema=version, tables=len(tables), extraScreenReached=True,
-        healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False)
+        healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False,
+        offersScreenReached=True, knusprConsentRequired=True, storedCredentialRenewalOffered=False)
+    proof["schemaReadyBeforeStop"] = True
     (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
     print("SIGNED_APK_UI_SCHEMA_PASS:", json.dumps(proof, sort_keys=True))
 
