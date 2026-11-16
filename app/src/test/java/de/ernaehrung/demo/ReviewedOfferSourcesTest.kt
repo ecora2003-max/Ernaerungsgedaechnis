@@ -92,6 +92,31 @@ class ReviewedOfferSourcesTest {
         assertNotEquals(old, changedEndpoint); assertNotEquals(old.hostProfileFingerprint, changedEndpoint.hostProfileFingerprint)
         assertNotEquals(old, changedCache)
     }
+    @Test fun publicSourceProvenanceCanBeReviewedWithoutInventingADealerPermission(): Unit = runBlocking {
+        val public = row().toMutableMap()
+        val approval = requireNotNull(OfferJson.objectValue(public["approval"])).toMutableMap()
+        approval.remove("appDisplayEvidence")
+        approval["sourceEvidence"] = "https://www.lidl.de/angebote/"
+        public["approval"] = approval
+        val directory = decode(public)
+        assertEquals(0, directory.invalidProfiles)
+        val grant = directory.profiles.single().grant(scope("DE123"))
+        assertTrue(grant.evidenceRef.startsWith("PUBLIC_SOURCE "))
+        assertTrue(grant.evidenceRef.contains("https://www.lidl.de/angebote/"))
+        val calls = mutableListOf<String>()
+        val runtime = directory.runtime(OfferHttp {
+            calls += it.uri.toString()
+            OfferHttpReply(200, mapOf("content-type" to "application/json"), response())
+        }, MemoryOfferRefreshJournal()) { at }
+        assertEquals(LiveRefreshStatus.LOADED, runtime.refresh(scope("DE123")).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(scope("DE999")).status)
+        assertEquals(1, calls.size)
+        // A source citation is not a blanket capability or a grant for other branches.
+        val withBoth = approval + ("appDisplayEvidence" to "https://review.example.test/extra")
+        assertEquals(1, decode(public + ("approval" to withBoth)).invalidProfiles)
+        assertEquals(1, decode(public + ("approval" to (approval - "scopeEvidence"))).invalidProfiles)
+    }
+
     @Test fun bundledProductionProfilesStayEmptyAndOfficialBrowserLinksNeverAppendPrivateOrScopeParameters() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
         assertEquals(0, bundled.invalidProfiles); assertTrue(bundled.profiles.isEmpty())
