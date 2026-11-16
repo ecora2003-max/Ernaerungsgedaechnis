@@ -1,5 +1,7 @@
 # P0: Supermarktangebote technisch zuerst – P1 bei externer Liveblockade fortsetzen
 
+> **Quellenregel 16.11.2026:** [RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md). Die interne generelle Pflicht zum expliziten Händler-`APP_DISPLAY`-Genehmigungsbeleg entfällt. Stattdessen reale öffentlich belegte Händler-/Filial-/Endpoint- und Nutzungskontexte überprüfen und technisch umsetzen; kein erfundener Live-PASS und keine Umgehung tatsächlicher Zugriffsgrenzen.
+
 > **Verbindliche Ergänzung 16.11.2026:** [Codex-Fortsetzungsregel](CODEX_CONTINUATION_2026-11-16.md) hat Vorrang vor dem bisherigen absoluten „erst vollständiger P0-Live-PASS, dann P1“. Die umsetzbaren Händler-, Artikelreview-, UI- und Testarbeiten zuerst fertigstellen. Sind Livequellen ausschließlich extern gesperrt und die umsetzbare P0-Technik ausgereizt, **P1 ohne weitere Freigabewartezeit starten**. P0 bleibt als Livefunktion BLOCKED, nicht DONE. Keine Abschwächung von Datenschutz, Produktidentität oder Quellen-/Anzeigerechten.
 
 
