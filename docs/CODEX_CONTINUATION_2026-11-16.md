@@ -1,5 +1,7 @@
 # Verbindliche Codex-Fortsetzungsregel bei externen Livequellen-Blockaden
 
+> **Ergänzende jüngste Quellenentscheidung 16.11.2026:** [RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md) hebt die pauschale Pflicht eines ausdrücklichen Händler-`APP_DISPLAY`-Genehmigungsbelegs auf. `UNVERIFIED` allein ist kein Verbot. Für konkrete öffentlich zugängliche Daten sind stattdessen Herkunft/Endpoint, Filial-/Regionscope, tatsächliche Zugriffszulässigkeit und Nutzungsbedingungen maßgeblich; keine Drittberechtigungen erfinden. Alle entgegenstehenden Aussagen weiter unten gelten insoweit als überholt.
+
 **Nutzerentscheidung vom 16.11.2026. Gilt ab sofort vorrangig** vor älteren P0→P1-Abfolgen in `AGENTS.md`, Ausführungsplan, Roadmap und Issue #286. Sie **ändert die Arbeitspriorisierung, nicht die Quellen-, Datenschutz-, Vertrags-, Sicherheits- oder Abnahmeregeln**. Knuspr und Picnic bleiben DEFERRED. Ein einzelner Codex-Integrator schreibt ausschließlich in `ecora2003-max/Ernaerungsgedaechnis`; andere Repositories nur lesen. Keine alten A/B/III/IV-Automationen oder Lock-Dateien reaktivieren.
 
 ## 1. Blockaden korrekt klassifizieren
