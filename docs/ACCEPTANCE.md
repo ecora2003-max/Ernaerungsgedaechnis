@@ -1,5 +1,8 @@
 # Haupt-App: verbindliche modulübergreifende Integrationsabnahme
 
+**Arbeitssteuerung 16.11.2026:** [Fortsetzungsregel](CODEX_CONTINUATION_2026-11-16.md). Fehlende **externe** Livequellen- oder Gerätebelege bleiben offene Abnahmekriterien, **blockieren aber nicht mehr die eigenständig umsetzbaren Code-/Testaufgaben der nächsten Phase**. Nach technisch ausgeschöpftem, rein extern blockiertem P0 ist P1-Rezept-KI freigegeben; nicht erfüllte P0-Kriterien werden nicht zu PASS umetikettiert. Keine Rechte-/Consent-/Schema-/Datenintegritätsgate-Abschwächung.
+
+
 **Nutzerentscheidung 15.11.2026:** Im aktuellen P0-Meilenstein zuerst die acht stationären Händler. **Knuspr für später DEFERRED**, ebenso weiterhin Picnic; ältere Knuspr-Sofort-P0-Angaben unten sind ersetzt. Langfristige Anbieterabnahmen bleiben offen. Keine Lockerung der Quellen-/APP_DISPLAY-/Filial-/Artikel-/Privacygates.
 
 Stand 08.11.2026; aktive Priorisierung gemäß [Ausführungsplan](INTEGRATION_EXECUTION_PLAN.md) und [P0-Multimodell/Knuspr](P0_GEMINI_KNUSPR.md). Die Haupt-App ist das **einzige** Schreibrepository; ausschließlich Codex entwickelt, ohne GitHub-Sperren oder automatische Lock-Recovery. A/B/III/IV bleiben pausiert; parallele Schreibsitzungen sind weiterhin zu vermeiden. Dieses Dokument definiert **zusätzliche** Gates; es ersetzt weder `AGENTS.md` noch die bestehende Phase-5-Regression noch die fachlichen Modulkriterien. Der Stand je Gate steht in `docs/STATUS.md`. **Keine dieser Gates darf aus einem Statusbericht allein als bestanden gelten.**
