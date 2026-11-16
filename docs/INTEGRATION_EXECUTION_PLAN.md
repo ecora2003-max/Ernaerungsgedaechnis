@@ -1,5 +1,8 @@
 # Funktionsorientierter Ausführungsplan für die Gesamt-App
 
+**Vorrangige Fortsetzungsregel 16.11.2026:** [CODEX_CONTINUATION_2026-11-16.md](CODEX_CONTINUATION_2026-11-16.md). P0-Technik einschließlich echter Host-Artikelreview-Verdrahtung und unabhängiger Tests selbstständig fertigstellen; externe Händler-/Filial-/APP_DISPLAY-Gates nicht fälschlich als interne Implementierungsblockade behandeln. Wenn alle acht Feeds weiterhin extern BLOCKED sind und keine ohne Freigaben umsetzbare P0-Arbeit mehr offen ist, **sofort P1-Rezept-KI fortsetzen**, unabhängig davon, dass P0-Liveabnahme offen bleibt. Nach P1 weitere umsetzbare Roadmap-Arbeit. Alte „P1 erst nach P0-Liveabschluss“-Sätze gelten dann nicht. Keine Live-Rechte fingieren, keine Schutzregeln lockern.
+
+
 **Neueste Nutzerentscheidung 15.11.2026:** Die acht stationären Händler sind der laufende P0-Livemeilenstein. **Knuspr wird für später ausgeklammert (DEFERRED)**; Picnic bleibt DEFERRED. Ältere Knuspr-Sofortprioritäten unten sind ersetzt. Vorhandene OAuth-Arbeit/Anmeldungen erhalten, keine erneute Anmeldung als Voraussetzung verlangen. Quellen-/APP_DISPLAY-/Scope-/Artikelgates bleiben bestehen.
 
 **Aktueller geprüfter Anschluss:** PR302/Main`859e363996895850590b71824ef823d60b6b600e`, exakt`b0faf48e5037617944f7f07b0df1afcc50c46ee1`: Originale949 JVM/19 Migrationen/57 API35/33 API26 und beide tatsächlichen Prozess-/Netz-/0-8-Belege PASS; genaue Artefakte im [STATUS](STATUS.md). Keine Wiederholung dieser belegten Suiten ohne neue Code-/Teständerung oder reproduzierten Fehler.
