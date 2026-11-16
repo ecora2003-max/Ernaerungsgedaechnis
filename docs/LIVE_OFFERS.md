@@ -1,5 +1,7 @@
 # Angebote und Preisvergleich – P0-Anschluss
 
+> **NEUE VERBINDLICHE QUELLENREGEL 16.11.2026:** [Öffentliche Angebotsquellen](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md). Die allgemeine interne Pflicht zum ausdrücklichen Händler-`APP_DISPLAY`-Nachweis entfällt. Das Android-Quellenprofil akzeptiert alternativ `approval.sourceEvidence` als öffentliches Herkunftsdokument statt `approval.appDisplayEvidence` (Legacy weiterhin lesbar), dazu konkrete `scopeEvidence`, Hostallowlist und Daten-/Abrufbedingungen. `profiles: []` bedeutet fehlende Konfiguration, **nicht** automatisch eine Händlerablehnung oder eine pauschale gesetzliche Genehmigungspflicht. Die bisherige Quellenrechtsmatrix ist historisch, neue konkrete Beschränkungen sind dennoch zu beachten. Gegenwärtig keine realen produktiven Profile: kein automatischer Livezugriff allein durch diese Regeländerung.
+
 **Fortsetzung 16.11.2026:** [Codex-Regel zur externen Blockade](CODEX_CONTINUATION_2026-11-16.md). Für `profiles: []` und `denyAll` fehlt die produktive Liveabnahme, **nicht** zwingend die Möglichkeit, den Host-Artikelreview-/SKU-/Gebinde-Provider, die UI und Tests weiter zu implementieren. Diese intern umsetzbaren Teile zuerst vervollständigen; ohne externe Quellenbelege die Realfeeds weiterhin gesperrt lassen und anschließend P1 bearbeiten. Keine provisorischen „Freigaben“ oder falschen Livepreise.
 
 
