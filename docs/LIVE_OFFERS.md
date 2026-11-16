@@ -1,5 +1,8 @@
 # Angebote und Preisvergleich – P0-Anschluss
 
+**Fortsetzung 16.11.2026:** [Codex-Regel zur externen Blockade](CODEX_CONTINUATION_2026-11-16.md). Für `profiles: []` und `denyAll` fehlt die produktive Liveabnahme, **nicht** zwingend die Möglichkeit, den Host-Artikelreview-/SKU-/Gebinde-Provider, die UI und Tests weiter zu implementieren. Diese intern umsetzbaren Teile zuerst vervollständigen; ohne externe Quellenbelege die Realfeeds weiterhin gesperrt lassen und anschließend P1 bearbeiten. Keine provisorischen „Freigaben“ oder falschen Livepreise.
+
+
 Stand 08.11.2026. Verbindlicher Auftrag: [Issue 286](https://github.com/ecora2003-max/Ernaerungsgedaechnis/issues/286), [P0 vor P1](P0_GEMINI_KNUSPR.md). **Implementierter Anschluss ist keine Liveabnahme und keine Quellfreigabe.**
 
 **Nutzeränderung 15.11.2026:** Zuerst die acht stationären Händler. **Knuspr vorläufig DEFERRED**, wie weiterhin Picnic; vorhandene Anmeldungen/Connectorarbeit bleiben erhalten. Kein Knuspr-Zugang als Voraussetzung für die Fortsetzung.
