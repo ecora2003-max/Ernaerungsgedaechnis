@@ -134,8 +134,7 @@ class PublicRetailerLiveOnDeviceTest {
                 .put("uidRxDelta", rxDelta).put("uidTxDelta", txDelta)
                 .put("defaultProductionHttp", true).put("sourceRepliesInjected", false).put("actualFactsUnchanged", true)
             // connectedAndroidTest uninstalls its disposable subject before the
-            // workflow can pull app-owned files. Android 15 also denies shell
-            // reads of Android/data. Use the same shell-owned RW pipe already
+            // workflow can pull app-owned files. Use the shell-owned RW pipe
             // exercised by the existing device diagnostic harness, metadata
             // only. No app storage permission or personal device is involved.
             check(Build.VERSION.SDK_INT >= 31) { "The explicit API35 live harness requires shell RW pipes" }
@@ -147,8 +146,11 @@ class PublicRetailerLiveOnDeviceTest {
                 ParcelFileDescriptor.AutoCloseOutputStream(pipes[1]).use { it.write(bytes) }
                 ParcelFileDescriptor.AutoCloseInputStream(pipes[0]).use { it.readBytes() }
             } finally { pipes.forEach { runCatching { it.close() } } }
-            val retained = device.executeShellCommand("test -s /sdcard/Download/eg-public-retailer-live/proof.json && echo EG_LIVE_PROOF_RETAINED")
-            assertTrue("Public live metadata was not retained for independent verification", retained.contains("EG_LIVE_PROOF_RETAINED"))
+            // UiAutomation executes an argv command, not a shell script: &&
+            // must never be passed as though it were interpreted by sh.
+            val retained = device.executeShellCommand("wc -c /sdcard/Download/eg-public-retailer-live/proof.json")
+                .trim().split(Regex("\\s+"), limit = 2).firstOrNull()?.toIntOrNull()
+            assertEquals("Public live metadata byte count differs from the emitted proof", bytes.size, retained)
         } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
         finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; settings.clearSelection() }
     }
