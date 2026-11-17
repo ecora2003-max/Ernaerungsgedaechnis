@@ -157,7 +157,8 @@ fun LocalWorkspaceApp() {
                             onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) }, onOpenTraining = { go(WorkspacePage.TRAINING) })
                     } else if (page == WorkspacePage.OFFERS) {
                         val shopping by model.shopping.collectAsStateWithLifecycle()
-                        LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report)
+                        LiveOffersScreen(onOpenShopping = { go(WorkspacePage.SHOPPING) }, shopping = shopping.report,
+                            onOpenCatalog = { go(WorkspacePage.CATALOG) })
                     } else if (page == WorkspacePage.BODY) {
                         BodyMeasurementScreen()
                     } else if (page == WorkspacePage.BODY_RAW) {

@@ -15,6 +15,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.data.integration.*
@@ -49,6 +52,84 @@ class LiveOffersOnDeviceTest {
     private fun ready() = compose.waitUntil(25_000) {
         compose.onAllNodes(hasTestTag("live_offers_screen") and SemanticsMatcher.expectValue(
             androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Bereit")).fetchSemanticsNodes().size == 1
+    }
+    @Test fun actualCredentialReviewConnectsLivePriceToKnownNeedAndComparisonWithoutAnyPurchaseAndIsLostOnReopen(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao(); val id = "synthetic-article-${UUID.randomUUID()}"
+        val versionId = FoodStore(db).rememberProduct(id, ProductInput("Synthetic reviewed 250g article", packageAmount = 250_000,
+            source = Source.USER, quality = Quality.CONFIRMED))
+        val day = AppCalendar.today()
+        val need = ShoppingNeed(versionId, "Synthetic reviewed 250g article", BaseUnit.GRAM, 600_000, 1)
+        val line = ShoppingLine(need, null, emptyList(), day.toString(), day.toString(), null, null, null, null, null,
+            setOf(ShoppingIssue.UNKNOWN_REQUIREMENT, ShoppingIssue.NO_OFFER), false, false, id, id)
+        val report = ShoppingReport(ShoppingScope(day.toString(), day.toString(), day.toString()), Instant.now().toString(),
+            listOf(line), emptyList(), emptyList(), null, null, true, ShoppingBudget(null, null, null, null))
+        val before = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
+        val health = db.healthDao().history("com.sec.android.app.shealth"); val bodies = db.bodyDao().versions()
+        val config = PennyPublicSourceFixtures.configuration(day, id)
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val http = OfferHttp { request -> calls.incrementAndGet(); OfferHttpReply(200, mapOf("content-type" to "application/json"),
+            if (request.uri.path == "/.rest/market") PennyPublicSourceFixtures.markets() else PennyPublicSourceFixtures.offers()) }
+        var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        fun mount() = compose.runOnUiThread {
+            model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    LiveOffersViewModel(context, http = http, sources = config) as T // Real review registry, default Keystore verifier.
+            })[LiveOffersViewModel::class.java]
+            compose.activity.setContent { DemoTheme {
+                Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LiveOffersScreen(providedModel = model, shopping = report)
+                }
+            } }
+        }
+        fun check(text: String) { finishDeviceTextEditing(compose); compose.onNodeWithText(text).performScrollTo().performClick() }
+        fun authenticate(sku: String) {
+            tap("live_review_$sku")
+            compose.waitUntil(25_000) { model.state.value.articleCatalog.any { it.id == versionId } }
+            tap("Eigene Produktfassung"); tap("choose_$versionId")
+            compose.onNodeWithTag("article_review_type").performScrollTo().performTextReplacement("Selbst geprüfter synthetischer Artikel")
+            tap("Bestätigte Mengenbasis"); tap("choose_NET"); tap("article_review_today")
+            check("Genau diese Produktfassung und Variante im Originalangebot geprüft")
+            check("Einzelmenge, Packungszahl und Mengenbasis geprüft")
+            check("Preisbedingungen, Filiale und Gültigkeit für diesen Einkauf geprüft")
+            tap("article_review_confirm")
+            val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            var editor: androidx.test.uiautomator.UiObject2? = null
+            compose.waitUntil(20_000) {
+                if (device.currentPackageName in setOf("com.android.systemui", "com.android.settings")) {
+                    editor = device.findObject(By.res("com.android.systemui", "lockPassword"))
+                        ?: device.findObject(By.res("com.android.settings", "password_entry"))
+                        ?: device.findObject(By.clazz("android.widget.EditText"))
+                }
+                editor != null
+            }
+            requireNotNull(editor).click(); device.waitForIdle(); device.executeShellCommand("input text 2468"); device.pressEnter()
+            compose.waitUntil(25_000) { "$id:$sku" in model.state.value.reviewedOffers && !model.state.value.busy }
+        }
+        try {
+            mount(); ready(); tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_$id"); ready(); tap("live_offers_refresh"); ready()
+            assertEquals(2, calls.get()); assertTrue(model.state.value.reviewedOffers.isEmpty())
+            compose.onNodeWithTag("live_need_synthetic-a").assertIsNotEnabled()
+            authenticate("synthetic-a")
+            tap("live_need_synthetic-a"); ready()
+            compose.onNodeWithTag("live_need_quantity").assertTextContains("3 Angebotsgebinde")
+            compose.onNodeWithTag("live_need_cost").assertTextContains("4,77 €")
+            assertEquals(150_000L, model.state.value.needPreviews.single().packs.surplus)
+            authenticate("synthetic-zero")
+            tap("Referenzangebot dieser Liste"); tap("choose_$id:synthetic-a")
+            tap("Alternativangebot dieser Liste"); tap("choose_$id:synthetic-zero")
+            check("Waren-Grundpreise geprüft vergleichen"); ready()
+            compose.onNodeWithTag("live_comparison_result").assertTextContains("Alternative hat einen geringeren")
+            assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
+            assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(bodies, db.bodyDao().versions())
+            assertTrue(model.state.value.result!!.batch!!.offers.all { it.quantityMilli == null && it.validFrom == null })
+            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; models = ViewModelStore(); mount(); ready()
+            assertTrue(model.state.value.reviewedOffers.isEmpty()); assertTrue(model.state.value.needPreviews.isEmpty())
+            assertNull(model.state.value.comparison); assertNull(model.state.value.result); assertEquals(2, calls.get()); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
+        finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; PrivateOfferSettings.forApp(context).clearSelection() }
     }
     @Test fun pennyCanonicalRegionAndUnconfirmedArticleDatesReachUiWithoutCachingOrActualBookings(): Unit = runBlocking {
         val context = compose.activity.applicationContext

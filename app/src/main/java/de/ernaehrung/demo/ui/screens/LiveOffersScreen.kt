@@ -31,7 +31,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpenShopping: (() -> Unit)? = null,
-    shopping: ShoppingReport? = null) {
+    shopping: ShoppingReport? = null, onOpenCatalog: (() -> Unit)? = null) {
     val context = LocalContext.current
     val factory = remember(context.applicationContext) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>) = LiveOffersViewModel(context.applicationContext) as T
@@ -220,15 +220,24 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 }
                 Field("Geladene Angebote filtern · bleibt lokal", filter, { filter = it }, modifier = Modifier.testTag("live_offer_filter"))
                 val rows = batch.offers.filter { it.title.contains(filter, ignoreCase = true) }
+                var page by remember(batch, filter) { mutableIntStateOf(0) }
+                val pageCount = (rows.size + 24) / 25
+                Text("${rows.size} geladene Treffer · Seite ${if (rows.isEmpty()) 0 else page + 1}/$pageCount", Modifier.testTag("live_offer_page"))
+                if (pageCount > 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton({ page-- }, enabled = page > 0, modifier = Modifier.testTag("live_offer_previous")) { Text("Vorherige Angebote") }
+                    OutlinedButton({ page++ }, enabled = page + 1 < pageCount, modifier = Modifier.testTag("live_offer_next")) { Text("Weitere Angebote") }
+                }
                 var target by remember(batch) { mutableStateOf("") }
                 var alternative by remember(batch) { mutableStateOf("") }
+                var articleToReview by remember(batch) { mutableStateOf<String?>(null) }
+                LaunchedEffect(articleToReview) { if (articleToReview != null) model.loadArticleCatalog() }
                 if (batch.offers.size > 1) {
                     IdPicker("Referenzangebot dieser Liste", batch.offers.map { it.id to it.title }, target) { target = it }
                     IdPicker("Alternativangebot dieser Liste", batch.offers.map { it.id to it.title }, alternative) { alternative = it }
                     OutlinedButton({ model.compare(target, alternative) }, enabled = target.isNotBlank() && alternative.isNotBlank() && !state.busy) { Text("Waren-Grundpreise geprüft vergleichen") }
                 }
                 if (rows.isEmpty()) Text("Keine passenden geladenen Angebote. Keine Aussage über das gesamte Sortiment.")
-                rows.forEach { offer -> Panel {
+                rows.drop(page * 25).take(25).forEach { offer -> Panel {
                     Section(offer.title, when (offer.kind) { LiveOfferKind.PROMOTION -> "Aktionsangabe"; LiveOfferKind.REGULAR -> "Normalpreisangabe"; else -> "Preisart ungeklärt" })
                     fun cents(value: Long?) = value?.let { BigDecimal.valueOf(it, 2).toPlainString().replace('.', ',') + " €" } ?: "unbekannt"
                     Text("Warenpreis: ${cents(offer.merchandiseCents)} · Pfand: ${cents(offer.depositCents)} · zusammen: ${cents(offer.checkoutCents)}")
@@ -264,6 +273,15 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                                 .onFailure { selectionError = "Originalangebot konnte nicht geöffnet werden." }
                         }, modifier = Modifier.testTag("live_product_page_${offer.sourceProductId}")) { Text("Originalangebot öffnen") }
                     }
+                    Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
+                        else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
+                    OutlinedButton({ articleToReview = offer.id }, enabled = !state.busy,
+                        modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
+                    if (articleToReview == offer.id) OfferArticleReviewPanel(model, offer, batch.scope,
+                        state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }
+                    if (shopping != null) OutlinedButton({ model.previewShoppingNeed(offer.id, shopping) },
+                        enabled = !state.busy && offer.id in state.reviewedOffers,
+                        modifier = Modifier.testTag("live_need_${offer.sourceProductId}")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
                     OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
                         modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
                     if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,
@@ -271,6 +289,18 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 } }
             }
         }
+        state.needPreviews.filter { it.report == shopping && state.result?.batch?.offers?.any { offer -> offer.id == it.offerId } == true }
+            .forEach { preview -> Panel {
+                Section("Livepreis für ${preview.line.need.name}", "Nur bekannte Bedarfsmenge · keine Buchung")
+                val need = preview.line.need; val quote = preview.packs
+                Text("${Amounts.format(need.knownMissing)} ${need.unit.label} bekannt fehlend · ${quote.count} Angebotsgebinde", Modifier.testTag("live_need_quantity"))
+                Text("Kaufmenge ${Amounts.format(quote.amount)} ${need.unit.label} · Überschuss ${Amounts.format(quote.surplus)} ${need.unit.label}")
+                Text("Warenkosten für diesen Bedarf: ${quote.costCents?.let(de.ernaehrung.demo.data.local.Money::format) ?: "unbekannt"}", Modifier.testTag("live_need_cost"))
+                if (need.unknownRequirements > 0) Text("${need.unknownRequirements} weitere Bedarfsmenge(n) unbekannt; kein vollständiger Einkaufsbetrag.")
+                if (preview.line.firstNeededOn?.let { it < preview.report.scope.purchaseOn } == true) Text("Einkauf liegt nach dem ersten Bedarfstermin ${preview.line.firstNeededOn}.")
+                Text("Bekannter Budgetrest vor dieser Live-Vorschau: ${preview.report.budget.remainingBudgetCents?.let(de.ernaehrung.demo.data.local.Money::format) ?: "unbekannt"}")
+                Text("Pfand, weitere Artikel und unbekannte Mengen sind darin nicht abschließend bewertet. Keine Budgetreservierung, kein Marktbestpreis und keine Übernahme als bezahlter historischer Preis.")
+            } }
         state.comparison?.let { comparison ->
             Panel {
                 Section("Geprüfter Waren-Grundpreisvergleich", "Keine vollständige Marktprüfung")
