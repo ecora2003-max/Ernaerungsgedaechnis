@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.ui.DemoTheme
@@ -26,6 +27,8 @@ import de.ernaehrung.demo.ui.screens.LiveOffersScreen
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import org.junit.*
 import org.junit.Assert.*
@@ -43,10 +46,29 @@ class PublicRetailerLiveOnDeviceTest {
         prepareUnlockedTestDevice()
         val context = compose.activity.applicationContext
         val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        compose.waitUntil(45_000) {
-            val caps = network.activeNetwork?.let { network.getNetworkCapabilities(it) }
-            caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        // The shared credential preparation deliberately leaves the other
+        // suites offline. Restore networking only inside this explicit live
+        // test, after preparation; the workflow's earlier Wi-Fi switch is not
+        // enough. Require validated Wi-Fi before constructing the real model.
+        device.executeShellCommand("cmd connectivity airplane-mode disable")
+        device.executeShellCommand("svc wifi enable")
+        device.executeShellCommand("svc data disable")
+        var scanned = false; var joined = false
+        withTimeout(45_000) {
+            while (true) {
+                val caps = network.activeNetwork?.let { network.getNetworkCapabilities(it) }
+                if (caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) break
+                if (!scanned && device.executeShellCommand("cmd wifi status").lineSequence().any { it.trim() == "Wifi is enabled" }) {
+                    device.executeShellCommand("cmd wifi start-scan"); scanned = true
+                }
+                if (scanned && !joined && device.executeShellCommand("cmd wifi list-scan-results").contains("VirtWifi")) {
+                    device.executeShellCommand("cmd wifi connect-network VirtWifi open"); joined = true
+                }
+                delay(250)
+            }
         }
         val config = ReviewedOfferSources.bundled(context)
         assertEquals(0, config.invalidProfiles)
@@ -82,7 +104,7 @@ class PublicRetailerLiveOnDeviceTest {
             compose.onNodeWithTag("live_offers_refresh").performScrollTo().performClick()
             compose.waitUntil(90_000) { !model.state.value.busy && model.state.value.result != null }
             val result = requireNotNull(model.state.value.result)
-            assertEquals("Actual source failure: ${result.code}", LiveRefreshStatus.LOADED, result.status)
+            assertEquals("Actual source failure: ${result.code}/${result.transportDiagnostic}", LiveRefreshStatus.LOADED, result.status)
             val batch = requireNotNull(result.batch)
             assertTrue(batch.offers.isNotEmpty()); assertTrue(batch.offers.size <= 256)
             assertTrue(batch.offers.any { it.merchandiseCents != null })

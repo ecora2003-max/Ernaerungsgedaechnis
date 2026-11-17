@@ -20,6 +20,8 @@ internal class PennyStoreOfferSource(override val endpoint: URI, private val mar
     private val sourceId: String, private val exactScope: LiveOfferScope, private val http: OfferHttp,
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     override val endpoints = setOf(endpoint, marketEndpoint)
+    private val headers = mapOf("Accept" to "application/json", "User-Agent" to
+        "Ernaehrungsgedaechtnis public-offers (+https://github.com/ecora2003-max/Ernaerungsgedaechnis)")
     init {
         require(endpoint.toString() == "https://www.penny.de/.rest/offers/by-category/")
         require(marketEndpoint.toString() == "https://www.penny.de/.rest/market")
@@ -33,7 +35,7 @@ internal class PennyStoreOfferSource(override val endpoint: URI, private val mar
         val week = scope.purchaseOn.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
         if (week != currentWeek && week != currentWeek.plusWeeks(1))
             throw OfferSourceFailure(OfferSourceFailureCode.SCOPE_UNAVAILABLE)
-        val markets = http.execute(OfferHttpRequest(marketEndpoint, maximumResponseBytes = 6_291_456))
+        val markets = http.execute(OfferHttpRequest(marketEndpoint, headers = headers, maximumResponseBytes = 6_291_456))
         markets.requireSuccess(); requireJson(markets)
         val market = withContext(Dispatchers.Default) { market(markets.text, requireNotNull(scope.storeId)) }
         val region = if (week == currentWeek) market.currentRegion else market.nextRegion
@@ -42,7 +44,7 @@ internal class PennyStoreOfferSource(override val endpoint: URI, private val mar
         val offerEndpoint = URI(endpoint.toString() + week.get(IsoFields.WEEK_BASED_YEAR) + "-" +
             week.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR).toString().padStart(2, '0') +
             "/top-angebote?region=" + URLEncoder.encode(region, "UTF-8"))
-        val offers = http.execute(OfferHttpRequest(offerEndpoint)); offers.requireSuccess(); requireJson(offers)
+        val offers = http.execute(OfferHttpRequest(offerEndpoint, headers = headers)); offers.requireSuccess(); requireJson(offers)
         val fetchedAt = now()
         val evidence = LiveStoreScopeEvidence(requireNotNull(scope.storeId), market.name, market.address,
             region, week, marketEndpoint.toString(), scopedAt)

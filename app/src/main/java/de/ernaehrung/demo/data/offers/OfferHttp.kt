@@ -71,7 +71,16 @@ internal class HttpsOfferHttp : OfferHttp {
             throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)
         } catch (failure: java.io.IOException) {
             currentCoroutineContext().ensureActive()
-            throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE)
+            val diagnostic = when (failure) {
+                is java.net.UnknownHostException -> OfferTransportDiagnostic.DNS
+                is java.net.SocketTimeoutException -> OfferTransportDiagnostic.TIMEOUT
+                is javax.net.ssl.SSLException -> OfferTransportDiagnostic.TLS
+                is java.net.SocketException -> OfferTransportDiagnostic.CONNECTION
+                else -> OfferTransportDiagnostic.IO
+            }
+            // Closed vocabulary only: never retain/log exception messages,
+            // URLs, request bodies, tokens or supplier responses.
+            throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE, diagnostic)
         } finally { connection.disconnect() }
     }
 }

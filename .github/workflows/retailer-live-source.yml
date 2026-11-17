@@ -45,6 +45,26 @@ jobs:
         run: |
           test -e /dev/kvm
           sudo chmod 666 /dev/kvm
+      - name: Check the same public origin from the runner without a response archive
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from urllib.robotparser import RobotFileParser
+          ua='Ernaehrungsgedaechtnis public-offers (+https://github.com/ecora2003-max/Ernaerungsgedaechnis)'
+          url='https://www.penny.de/.rest/market'
+          with urlopen(Request('https://www.penny.de/robots.txt',headers={'User-Agent':ua}),timeout=25) as reply:
+              robot=reply.read(300000).decode('utf8')
+          rules=RobotFileParser();rules.parse(robot.splitlines());assert rules.can_fetch(ua,url)
+          with urlopen(Request(url,headers={'User-Agent':ua,'Accept':'application/json'}),timeout=25) as reply:
+              payload=reply.read(6291457);assert len(payload)<=6291456
+              rows=json.loads(payload);selected=[r for r in rows if r.get('wwIdent')=='4030085'];assert len(selected)==1
+              evidence={'status':reply.status,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest(),'canonicalMarketId':'4030085','robotsAllowed':True}
+          target=Path('app/build/outputs/live-source-evidence');target.mkdir(parents=True,exist_ok=True)
+          (target/'runner-origin.json').write_text(json.dumps(evidence)+'\n')
+          print('RUNNER_PUBLIC_ORIGIN',json.dumps(evidence))
+          PY
       - name: Compile the actual production and instrumentation APKs
         run: ./gradlew --no-daemon --max-workers=2 :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Read the public source through the production Android UI
@@ -63,6 +83,7 @@ jobs:
             adb shell wm dismiss-keyguard
             adb shell cmd connectivity airplane-mode disable
             adb shell svc wifi enable
+            adb shell svc data disable
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.ernaehrung.demo.PublicRetailerLiveOnDeviceTest -Pandroid.testInstrumentationRunnerArguments.eg_live_source=true -Pandroid.testInstrumentationRunnerArguments.source_sha=$EG_SOURCE_COMMIT
             mkdir -p app/build/outputs/live-source-evidence
             adb pull /sdcard/Android/data/de.ernaehrung.demo/files/real-public-retailer-proof.json app/build/outputs/live-source-evidence/proof.json

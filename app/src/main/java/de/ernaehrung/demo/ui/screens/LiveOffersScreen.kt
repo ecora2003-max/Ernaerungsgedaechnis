@@ -207,6 +207,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 else -> "Quelle derzeit nicht nutzbar."
             })
             if (result.status == LiveRefreshStatus.BLOCKED) Text("Kein freigegebener Liveabruf. Fehlende Angebote bedeuten keine vollständige Marktprüfung.", Modifier.testTag("live_offers_blocked"))
+            result.transportDiagnostic?.let { diagnostic ->
+                Fold("Verbindungsdetails") { Text("NETWORK_${diagnostic.name} · Keine Zugangsdaten oder Antwortinhalte in dieser Diagnose.") }
+            }
             result.batch?.let { batch ->
                 Text("${if (result.fromCache) "Letzter Sitzungsstand" else "Abgerufen"} ${batch.fetchedAt} · Quelle ${batch.sourceId} · Abdeckung unvollständig")
                 batch.offers.mapNotNull { it.storeEvidence }.distinct().forEach { evidence ->

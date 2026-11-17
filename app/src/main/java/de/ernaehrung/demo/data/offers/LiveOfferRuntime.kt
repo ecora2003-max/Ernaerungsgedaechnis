@@ -144,9 +144,11 @@ internal enum class LiveRefreshStatus { BLOCKED, LOADED, FAILED, THROTTLED }
 internal data class LiveRefreshResult(val status: LiveRefreshStatus, val batch: LiveOfferBatch? = null, val code: String? = null,
     val cachePermitted: Boolean = false, val minimumRefreshSeconds: Long? = null,
     val fromCache: Boolean = false, val refreshAfter: Instant? = null,
-    val authorization: LiveSourceGrant? = null)
+    val authorization: LiveSourceGrant? = null, val transportDiagnostic: OfferTransportDiagnostic? = null)
 internal enum class OfferSourceFailureCode { LOGIN_REQUIRED, ACCESS_BLOCKED, RATE_LIMITED, NETWORK_UNAVAILABLE, UNSUPPORTED_SOURCE_SCHEMA, SCOPE_UNAVAILABLE }
-internal class OfferSourceFailure(val code: OfferSourceFailureCode) : Exception(code.name)
+internal enum class OfferTransportDiagnostic { DNS, TIMEOUT, TLS, CONNECTION, IO }
+internal class OfferSourceFailure(val code: OfferSourceFailureCode,
+    val transportDiagnostic: OfferTransportDiagnostic? = null) : Exception(code.name)
 
 internal data class OfferRefreshAttempt(val at: Instant, val automaticPaused: Boolean)
 internal interface OfferRefreshJournal {
@@ -252,17 +254,19 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: OfferSourceFailure) {
-            failed(scope, grant, failure.code.name)
+            failed(scope, grant, failure.code.name, failure.transportDiagnostic)
         }
         catch (_: Exception) {
             failed(scope, grant, "SOURCE_READ_OR_CONTRACT_FAILED")
         }
     }
-    private fun failed(scope: LiveOfferScope, grant: LiveSourceGrant, code: String): LiveRefreshResult {
+    private fun failed(scope: LiveOfferScope, grant: LiveSourceGrant, code: String,
+        diagnostic: OfferTransportDiagnostic? = null): LiveRefreshResult {
         val stillAuthorized = policy(scope) == grant
         val old = cached?.takeIf { stillAuthorized && grant.cachePermitted && it.first == grant && it.second.scope == scope }?.second
         if (!stillAuthorized) cached = null
         return LiveRefreshResult(LiveRefreshStatus.FAILED, old, code, grant.cachePermitted,
-            grant.minimumRefreshSeconds, fromCache = old != null, authorization = grant.takeIf { old != null })
+            grant.minimumRefreshSeconds, fromCache = old != null, authorization = grant.takeIf { old != null },
+            transportDiagnostic = diagnostic)
     }
 }
