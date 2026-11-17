@@ -98,7 +98,7 @@ class LiveOffersOnDeviceTest {
             compose.waitUntil(25_000) {
                 compose.onAllNodes(hasTestTag("live_profile_details") and hasText("DE123", substring = true)).fetchSemanticsNodes().size == 1
             }
-            compose.onNodeWithTag("live_profile_details").assertTextEquals("Synthetische Filiale DE123 · Freigabe $day bis ${day.plusDays(6)}")
+            compose.onNodeWithTag("live_profile_details").assertTextEquals("Synthetische Filiale DE123 · Geltung $day bis ${day.plusDays(6)}")
             assertTrue(model.state.value.automatic); assertEquals(1, calls.get())
             tap("live_offers_refresh"); ready()
             assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
