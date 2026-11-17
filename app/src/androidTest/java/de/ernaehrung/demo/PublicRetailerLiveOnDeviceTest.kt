@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,7 +25,6 @@ import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.ui.DemoTheme
 import de.ernaehrung.demo.ui.LiveOffersViewModel
 import de.ernaehrung.demo.ui.screens.LiveOffersScreen
-import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
@@ -133,14 +133,21 @@ class PublicRetailerLiveOnDeviceTest {
                 .put("offerFingerprint", digest).put("sourceHost", "www.penny.de").put("actualNetworkValidated", true)
                 .put("uidRxDelta", rxDelta).put("uidTxDelta", txDelta)
                 .put("defaultProductionHttp", true).put("sourceRepliesInjected", false).put("actualFactsUnchanged", true)
-            val out = File(context.getExternalFilesDir(null), "real-public-retailer-proof.json")
-            out.writeText(report.toString(2)) // Metadata/hash only; no response archive or private catalogue.
             // connectedAndroidTest uninstalls its disposable subject before the
-            // workflow can pull app-owned files. Preserve only this bounded
-            // public-source metadata in the shell-owned CI proof directory.
-            val retained = device.executeShellCommand("mkdir -p /sdcard/Download/eg-public-retailer-live && " +
-                "cp '${out.absolutePath}' /sdcard/Download/eg-public-retailer-live/proof.json && " +
-                "test -s /sdcard/Download/eg-public-retailer-live/proof.json && echo EG_LIVE_PROOF_RETAINED")
+            // workflow can pull app-owned files. Android 15 also denies shell
+            // reads of Android/data. Use the same shell-owned RW pipe already
+            // exercised by the existing device diagnostic harness, metadata
+            // only. No app storage permission or personal device is involved.
+            check(Build.VERSION.SDK_INT >= 31) { "The explicit API35 live harness requires shell RW pipes" }
+            val bytes = report.toString(2).toByteArray(Charsets.UTF_8).also { require(it.size <= 16_384) }
+            device.executeShellCommand("mkdir -p /sdcard/Download/eg-public-retailer-live")
+            val pipes = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommandRw(
+                "dd of=/sdcard/Download/eg-public-retailer-live/proof.json")
+            try {
+                ParcelFileDescriptor.AutoCloseOutputStream(pipes[1]).use { it.write(bytes) }
+                ParcelFileDescriptor.AutoCloseInputStream(pipes[0]).use { it.readBytes() }
+            } finally { pipes.forEach { runCatching { it.close() } } }
+            val retained = device.executeShellCommand("test -s /sdcard/Download/eg-public-retailer-live/proof.json && echo EG_LIVE_PROOF_RETAINED")
             assertTrue("Public live metadata was not retained for independent verification", retained.contains("EG_LIVE_PROOF_RETAINED"))
         } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
         finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; settings.clearSelection() }
