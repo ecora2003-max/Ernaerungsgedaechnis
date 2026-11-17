@@ -9,13 +9,14 @@ import kotlinx.coroutines.withContext
 
 /** Exact, independently configured endpoint/scope, not an URL supplied by an
  * offer or user text. Runtime authorization always precedes this HTTP adapter.
- * No production endpoints are activated while APP_DISPLAY is unverified. */
+ * Public source provenance is checked by the host before any request. */
 internal class PublishedOfferHttpSource(override val endpoint: URI, private val sourceId: String,
     private val exactScope: LiveOfferScope, private val format: Format, private val http: OfferHttp,
     private val availabilityEndpoint: URI? = null, private val weekStartsOn: java.time.LocalDate? = null,
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     enum class Format { LIDL_STORE_V4, EDEKA_MARKET, PENNY_REGION, ALDI_NORD_NEXT_DATA, KAUFLAND_STORE,
-        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK }
+        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC }
+    override val maximumOffers get() = if (format == Format.ALDI_NORD_NEXT_DATA) 512 else 256
     override val capability = when (format) {
         Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN -> RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY
         else -> RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
@@ -29,7 +30,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             Format.PENNY_REGION -> LiveRetailer.PENNY; Format.ALDI_NORD_NEXT_DATA -> LiveRetailer.ALDI_NORD
             Format.KAUFLAND_STORE -> LiveRetailer.KAUFLAND
             Format.REWE_STATIONARY -> LiveRetailer.REWE
-            Format.ALDI_SUED_WALK_IN -> LiveRetailer.ALDI_SUED
+            Format.ALDI_SUED_WALK_IN, Format.ALDI_SUED_NUXT_PUBLIC -> LiveRetailer.ALDI_SUED
             Format.NETTO_BRANCH_HTML -> LiveRetailer.NETTO_MD
             Format.PENNY_STORE_WEEK -> LiveRetailer.PENNY
         })
@@ -41,6 +42,8 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
         if (format in setOf(Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN)) validateTargetedEndpoint()
         if (format == Format.NETTO_BRANCH_HTML) require(endpoint.host == "www.netto-online.de" &&
             endpoint.rawPath in setOf("/angebote/c-N07", "/lebensmittel-angebote/c-N07941") && endpoint.rawQuery == null)
+        if (format == Format.ALDI_SUED_NUXT_PUBLIC) require(endpoint.toString() == "https://www.aldi-sued.de/angebote" &&
+            exactScope.storeId == null && exactScope.regionId == null && exactScope.deliveryAreaId == null)
     }
 
     /** Exactly one bounded, explicitly configured search. No private shopping
@@ -71,12 +74,14 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     }
     override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
         require(scope == exactScope)
-        val html = format == Format.NETTO_BRANCH_HTML
+        val html = format in setOf(Format.NETTO_BRANCH_HTML, Format.ALDI_SUED_NUXT_PUBLIC)
         val embedded = format in setOf(Format.ALDI_NORD_NEXT_DATA, Format.KAUFLAND_STORE)
         val reply = http.execute(OfferHttpRequest(endpoint,
             headers = when { html -> mapOf("Accept" to "text/html")
                 embedded -> mapOf("Accept" to "application/json, text/html")
-                else -> emptyMap() })); reply.requireSuccess()
+                else -> emptyMap() } + mapOf("User-Agent" to
+                    "Ernaehrungsgedaechtnis public-offers (+https://github.com/ecora2003-max/Ernaerungsgedaechnis)"),
+            maximumResponseBytes = if (format == Format.ALDI_SUED_NUXT_PUBLIC) 2_097_152 else 1_048_576)); reply.requireSuccess()
         val media = reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
         require(media in when { html -> setOf("text/html")
             embedded -> setOf("application/json", "application/ld+json", "text/html")
@@ -110,6 +115,9 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             }
             Format.NETTO_BRANCH_HTML -> withContext(Dispatchers.Default) {
                 NettoBranchOfferDecoder.decode(reply.text, sourceId, at, endpoint.toString())
+            }
+            Format.ALDI_SUED_NUXT_PUBLIC -> withContext(Dispatchers.Default) {
+                AldiSuedPublicOfferDecoder.decode(reply.text, sourceId, at, endpoint.toString())
             }
             Format.KAUFLAND_STORE -> {
                 val array = de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.decode("{\"rows\":${requireNotNull(availabilityText)}}",

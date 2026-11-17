@@ -124,7 +124,9 @@ internal object PublishedOfferDecoders {
         }
         val response = responses.single()
         val products = requireNotNull(OfferJson.objectValue(OfferJson.objectValue(response["res"])?.get("algoliaDataMap")))
-        require(products.size <= 256)
+        // Actual public next-week pages contain ~292 products. Keep a concrete
+        // source bound; Android displays only 25 cards per page.
+        require(products.size <= 512)
         return products.mapNotNull { (key, value) ->
             val row = OfferJson.objectValue(value) ?: return@mapNotNull null
             val id = OfferJson.text(row["objectID"]) ?: key.takeIf(String::isNotBlank) ?: return@mapNotNull null

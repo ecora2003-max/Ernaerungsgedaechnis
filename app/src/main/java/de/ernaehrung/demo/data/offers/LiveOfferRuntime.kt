@@ -133,6 +133,7 @@ internal data class LiveOfferBatch(val sourceId: String, val scope: LiveOfferSco
     val offers: List<LiveOffer>, val coverageComplete: Boolean = false)
 internal interface AuthorizedOfferSource {
     val endpoint: URI
+    val maximumOffers: Int get() = 256
     val endpoints: Set<URI> get() = setOf(endpoint)
     val capability: RetailerPolicy.Capability get() = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
     suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch
@@ -234,8 +235,9 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
         try { journal.record(grant.sourceId, OfferRefreshAttempt(at, automaticPaused = true)) }
         catch (_: Exception) { return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "REFRESH_JOURNAL_UNAVAILABLE") }
         return try {
+            val maximum = source.maximumOffers.also { require(it in 1..1024) }
             val data = source.fetch(scope)
-            require(data.scope == scope && data.sourceId == grant.sourceId && data.fetchedAt <= now() && data.offers.size <= 256)
+            require(data.scope == scope && data.sourceId == grant.sourceId && data.fetchedAt <= now() && data.offers.size <= maximum)
             require(data.offers.map { it.id }.distinct().size == data.offers.size)
             require(data.offers.all { it.sourceId == grant.sourceId && it.retailer == scope.retailer && it.fetchedAt == data.fetchedAt &&
                 (source.capability != RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION || it.kind != LiveOfferKind.REGULAR) &&

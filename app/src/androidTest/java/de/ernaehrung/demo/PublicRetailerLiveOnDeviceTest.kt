@@ -40,6 +40,9 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PublicRetailerLiveOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @Test fun publicNationalListingsUseActualProductionAndroidUiAndKeepTheirUnconfirmedBranchScope(): Unit = runBlocking {
+        publicChainLiveFlow(compose)
+    }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         assertEquals("true", InstrumentationRegistry.getArguments().getString("eg_live_source"))

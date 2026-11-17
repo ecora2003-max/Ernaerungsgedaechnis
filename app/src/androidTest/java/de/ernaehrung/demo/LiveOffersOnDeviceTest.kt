@@ -503,23 +503,25 @@ class LiveOffersOnDeviceTest {
             PrivateOfferSettings.forApp(context).clearSelection()
         }
     }
-    @Test fun unconfiguredRetailersStayBlockedAndPublicPennyFailsOfflineWithoutLosingFactsOrReplayingConsent(): Unit = runBlocking {
+    @Test fun unconfiguredRetailersStayBlockedAndConfiguredPublicSourcesFailOfflineWithoutLosingFactsOrReplayingConsent(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         assertNull(connectivity.activeNetwork)
         val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
         val operations = dao.operationCount(); val movements = dao.stockMovementSnapshotRows()
         val prices = dao.allPaidPrices(); val bodies = db.bodyDao().versions(); val health = db.healthDao().history("com.sec.android.app.shealth")
+        val profiles = ReviewedOfferSources.bundled(context).profiles
         try {
             compose.onNodeWithTag("workspace_tab_MORE").performClick(); tap("workspace_go_SHOPPING")
             tap("shopping_open_live_offers"); ready()
             for (retailer in LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }) {
                 tap("Angebotsanbieter"); tap("choose_${retailer.name}"); ready()
-                if (retailer == LiveRetailer.PENNY) {
-                    tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_penny-4030085-top-angebote"); ready()
+                val profile = profiles.singleOrNull { it.retailer == retailer }
+                if (profile != null) {
+                    tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_${profile.id}"); ready()
                 }
                 tap("live_offers_refresh")
-                if (retailer == LiveRetailer.PENNY) compose.waitUntil(25_000) {
+                if (profile != null) compose.waitUntil(25_000) {
                     compose.onAllNodesWithText("Netzabruf konnte nicht abgeschlossen werden.").fetchSemanticsNodes().size == 1
                 } else compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_offers_blocked").fetchSemanticsNodes().size == 1 }
                 tap("live_automatic_toggle"); ready()

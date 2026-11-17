@@ -156,7 +156,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 store = profile.storeId.orEmpty(); region = profile.regionId.orEmpty(); selectionError = null
             }
             profiles.singleOrNull { it.id == selectedProfile }?.let { profile ->
-                Text("${profile.label} · Geltung ${profile.permittedFrom} bis ${profile.permittedUntil}", Modifier.testTag("live_profile_details"))
+                Text("${profile.label} · Quellenprofil ${profile.permittedFrom} bis ${profile.permittedUntil}; Artikelgültigkeit jeweils am Angebot prüfen.", Modifier.testTag("live_profile_details"))
                 Text("${profile.storeId ?: "keine Filialkennung"} · ${profile.regionId ?: "keine Regionskennung"}")
             }
         } else {
@@ -275,7 +275,10 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     }
                     Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
                         else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
-                    OutlinedButton({ articleToReview = offer.id }, enabled = !state.busy,
+                    val scopeConfirmed = offer.applicability in setOf(LiveOfferApplicability.STORE_CONFIRMED,
+                        LiveOfferApplicability.REGION_CONFIRMED, LiveOfferApplicability.DELIVERY_CONFIRMED)
+                    if (!scopeConfirmed) Text("Für den Filialpreisvergleich fehlt eine bestätigte Zuordnung dieser Angabe zu einer Filiale oder Region.")
+                    OutlinedButton({ articleToReview = offer.id }, enabled = !state.busy && scopeConfirmed,
                         modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
                     if (articleToReview == offer.id) OfferArticleReviewPanel(model, offer, batch.scope,
                         state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }

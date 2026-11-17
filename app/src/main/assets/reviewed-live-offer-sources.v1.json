@@ -19,7 +19,84 @@
         "reviewedAt": "2026-11-17T20:29:08Z",
         "from": "2026-11-17",
         "until": "2027-02-15",
-        "allowedHosts": ["www.penny.de"],
+        "allowedHosts": [
+          "www.penny.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "aldi-nord-public-next",
+      "revision": 1,
+      "label": "ALDI Nord · veröffentlichte Vorschau nächste Woche · Filiale ungeprüft",
+      "retailer": "ALDI_NORD",
+      "storeId": null,
+      "regionId": null,
+      "format": "ALDI_NORD_NEXT_DATA",
+      "sourceId": "aldi-nord-public-next",
+      "endpoint": "https://www.aldi-nord.de/angebote-vorschau.html",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.aldi-nord.de/angebote-vorschau.html",
+        "scopeEvidence": "https://www.aldi-nord.de/angebote-vorschau.html",
+        "reviewedAt": "2026-11-17T20:28:00Z",
+        "from": "2026-11-17",
+        "until": "2027-02-15",
+        "allowedHosts": [
+          "www.aldi-nord.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "netto-public-weekly",
+      "revision": 1,
+      "label": "Netto Marken-Discount · öffentliche Filialwerbung · konkrete Filiale ungeprüft",
+      "retailer": "NETTO_MD",
+      "storeId": null,
+      "regionId": null,
+      "format": "NETTO_BRANCH_HTML",
+      "sourceId": "netto-public-weekly",
+      "endpoint": "https://www.netto-online.de/angebote/c-N07",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.netto-online.de/angebote/c-N07",
+        "scopeEvidence": "https://www.netto-online.de/angebote/c-N07",
+        "reviewedAt": "2026-11-17T20:29:00Z",
+        "from": "2026-11-17",
+        "until": "2027-02-15",
+        "allowedHosts": [
+          "www.netto-online.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "aldi-sued-public-offers",
+      "revision": 1,
+      "label": "ALDI Süd · öffentliche Angebotsseite · konkrete Filiale ungeprüft",
+      "retailer": "ALDI_SUED",
+      "storeId": null,
+      "regionId": null,
+      "format": "ALDI_SUED_NUXT_PUBLIC",
+      "sourceId": "aldi-sued-public-offers",
+      "endpoint": "https://www.aldi-sued.de/angebote",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.aldi-sued.de/angebote",
+        "scopeEvidence": "https://www.aldi-sued.de/angebote",
+        "reviewedAt": "2026-11-17T21:51:15Z",
+        "from": "2026-11-17",
+        "until": "2027-02-15",
+        "allowedHosts": [
+          "www.aldi-sued.de"
+        ],
         "cachePermitted": false,
         "minimumRefreshSeconds": 600
       }
