@@ -86,7 +86,7 @@ jobs:
             adb shell svc data disable
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.ernaehrung.demo.PublicRetailerLiveOnDeviceTest -Pandroid.testInstrumentationRunnerArguments.eg_live_source=true -Pandroid.testInstrumentationRunnerArguments.source_sha=$EG_SOURCE_COMMIT
             mkdir -p app/build/outputs/live-source-evidence
-            adb pull /sdcard/Android/data/de.ernaehrung.demo/files/real-public-retailer-proof.json app/build/outputs/live-source-evidence/proof.json
+            adb pull /sdcard/Download/eg-public-retailer-live/proof.json app/build/outputs/live-source-evidence/proof.json
       - name: Verify live metadata, exact source and original executed test
         run: |
           python3 - <<'PY'
