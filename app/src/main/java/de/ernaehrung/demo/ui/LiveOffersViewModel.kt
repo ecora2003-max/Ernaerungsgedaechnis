@@ -127,13 +127,13 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         work = viewModelScope.launch {
             try {
                 val accepted = withContext(Dispatchers.IO) {
-                    val allowed = !enabled || runtime.policy(scope)?.minimumRefreshSeconds != null
+                    val allowed = !enabled || runtime.automaticAllowed(scope)
                     if (allowed) settings.select(scope, enabled)
                     allowed
                 }
                 if (generation == expected) publishValidated(mutable.value.copy(busy = false,
                     automatic = enabled && accepted, message = when {
-                        !accepted -> "Automatik gesperrt: freigegebene Quelle, genauer Geltungsbereich und erlaubter Abrufrhythmus fehlen. Kein Netzabruf gestartet."
+                        !accepted -> "Automatik pausiert: Quelle, Geltungsbereich oder Abrufrhythmus nicht nutzbar, oder die letzte Abfrage ist fehlgeschlagen. Zuerst ausdrücklich erfolgreich aktualisieren."
                         enabled -> "Automatische Aktualisierung bei sichtbarer Angebotsseite eingeschaltet. Keine Hintergrundabfragen."
                         else -> "Automatische Aktualisierung ausgeschaltet."
                     }))

@@ -9,6 +9,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -36,7 +38,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
     } }
     val model = providedModel ?: viewModel<LiveOffersViewModel>(key = "live-offers", factory = factory)
     val state by model.state.collectAsStateWithLifecycle()
-    var selected by rememberSaveable { mutableStateOf(LiveRetailer.ALDI_NORD.name) }
+    var selected by rememberSaveable { mutableStateOf(model.configuredSources.firstOrNull()?.retailer?.name ?: LiveRetailer.ALDI_NORD.name) }
     var store by rememberSaveable { mutableStateOf("") }
     var region by rememberSaveable { mutableStateOf("") }
     var delivery by rememberSaveable { mutableStateOf("") }
@@ -75,7 +77,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             model.authorizationOpened()
         }
     }
-    Column(Modifier.fillMaxWidth().testTag("live_offers_screen"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().testTag("live_offers_screen").semantics {
+        stateDescription = if (state.selectionLoaded && !state.busy) "Bereit" else "Wird geladen"
+    }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Heading("Angebote & Preisvergleich", "Quelle, Gültigkeit und Filiale getrennt prüfen")
         Text("Angebote sind keine Einkäufe. Es wird nichts bestellt, bezahlt oder in den Vorrat gebucht. Unbekannte Preise und fehlende Mengen bleiben unbekannt.")
         if (shopping != null) Fold("Aktueller Einkaufsbedarf · nur lokaler Abgleich") {
@@ -168,7 +172,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 .also { require(it.purchaseOn.toString() == purchaseOn); it.validate() } }
                 .onSuccess { selectionError = null; model.refresh(it) }
                 .onFailure { selectionError = "Datum und Anbieter-/Filialauswahl prüfen." }
-        }, enabled = !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
+        }, enabled = state.selectionLoaded && !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
             modifier = Modifier.testTag("live_offers_refresh")) { Text("Auswahl anwenden und aktualisieren") }
         selectionError?.let { Hint(it) }
         state.scope?.let { applied -> Text("Angewendet: ${applied.retailer.title} · ${applied.purchaseOn} · ${applied.storeId ?: applied.deliveryAreaId ?: applied.regionId ?: "kein bestätigter Filial-/Liefergebietsbezug"}", Modifier.testTag("live_applied_scope")) }
@@ -196,6 +200,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 "ACCESS_BLOCKED" -> "Anbieter sperrt den Zugriff. Kein automatischer Wiederholungsversuch."
                 "RATE_LIMITED" -> "Anbieter begrenzt die Abfragen. Später ausdrücklich erneut versuchen."
                 "NETWORK_UNAVAILABLE" -> "Netzabruf konnte nicht abgeschlossen werden."
+                "SCOPE_UNAVAILABLE" -> "Für diese Filiale oder Angebotswoche ist keine belastbare Zuordnung verfügbar. Keine Preisübernahme."
                 "UNSUPPORTED_SOURCE_SCHEMA", "SOURCE_READ_OR_CONTRACT_FAILED" -> "Antwort nicht zuverlässig als Angebot auswertbar; keine neue Preisübernahme."
                 "REFRESH_JOURNAL_UNAVAILABLE" -> "Lokale Abrufsteuerung nicht sicher lesbar oder speicherbar. Kein Netzabruf gestartet."
                 "AUTOMATIC_REFRESH_NOT_PERMITTED" -> "Automatischer Abruf ist nicht freigegeben oder nach einem Fehler pausiert."
@@ -204,6 +209,12 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             if (result.status == LiveRefreshStatus.BLOCKED) Text("Kein freigegebener Liveabruf. Fehlende Angebote bedeuten keine vollständige Marktprüfung.", Modifier.testTag("live_offers_blocked"))
             result.batch?.let { batch ->
                 Text("${if (result.fromCache) "Letzter Sitzungsstand" else "Abgerufen"} ${batch.fetchedAt} · Quelle ${batch.sourceId} · Abdeckung unvollständig")
+                batch.offers.mapNotNull { it.storeEvidence }.distinct().forEach { evidence ->
+                    Text("Markt: ${evidence.marketName} · ${evidence.address}", Modifier.testTag("live_canonical_market"))
+                    Text("Offizielle Verkaufsregion ${evidence.sourceRegionId} · Angebotswoche ab ${evidence.weekStartsOn}. Einzelne Artikelzeiträume sind damit nicht bestätigt.")
+                    Text("Marktzuordnung geprüft ${evidence.checkedAt} · ${evidence.scopeSourceUrl}")
+                    Text("Gelesen werden die veröffentlichten Top-Angebote dieser Woche; keine vollständige Sortiments- oder Angebotsabdeckung.")
+                }
                 Field("Geladene Angebote filtern · bleibt lokal", filter, { filter = it }, modifier = Modifier.testTag("live_offer_filter"))
                 val rows = batch.offers.filter { it.title.contains(filter, ignoreCase = true) }
                 var target by remember(batch) { mutableStateOf("") }
@@ -244,6 +255,12 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     if (!offer.conditionsConfirmed) Text("Diese Quellangabe allein bestätigt keine Preisbedingungen. Ein Vergleich benötigt zusätzlich einen unabhängigen Nachweis.")
                     offer.conditions?.let { Text(it) }
                     Text("Quellenartikel ${offer.sourceProductId} · ${offer.sourceUrl}")
+                    offer.productPageUrl?.let { page ->
+                        OutlinedButton({
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) }
+                                .onFailure { selectionError = "Originalangebot konnte nicht geöffnet werden." }
+                        }, modifier = Modifier.testTag("live_product_page_${offer.sourceProductId}")) { Text("Originalangebot öffnen") }
+                    }
                     OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
                         modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
                     if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,

@@ -117,9 +117,13 @@ class ReviewedOfferSourcesTest {
         assertEquals(1, decode(public + ("approval" to (approval - "scopeEvidence"))).invalidProfiles)
     }
 
-    @Test fun bundledProductionProfilesStayEmptyAndOfficialBrowserLinksNeverAppendPrivateOrScopeParameters() {
+    @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertTrue(bundled.profiles.isEmpty())
+        assertEquals(0, bundled.invalidProfiles); assertEquals(1, bundled.profiles.size)
+        val penny = bundled.profiles.single()
+        assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
+        assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
+        assertTrue(penny.grant(penny.scope(LocalDate.parse("2026-11-17"))).evidenceRef.startsWith("PUBLIC_SOURCE "))
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
             assertEquals("https", url.scheme); assertNull(url.rawQuery); assertNull(url.rawUserInfo); assertNull(url.fragment)

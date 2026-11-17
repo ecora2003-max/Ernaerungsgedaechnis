@@ -15,7 +15,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     private val availabilityEndpoint: URI? = null, private val weekStartsOn: java.time.LocalDate? = null,
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     enum class Format { LIDL_STORE_V4, EDEKA_MARKET, PENNY_REGION, ALDI_NORD_NEXT_DATA, KAUFLAND_STORE,
-        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML }
+        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK }
     override val capability = when (format) {
         Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN -> RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY
         else -> RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
@@ -23,6 +23,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     override val endpoints: Set<URI> get() = setOfNotNull(endpoint, availabilityEndpoint)
     init {
         requirePublicHttps(endpoint); exactScope.validate(); require(sourceId.isNotBlank())
+        require(format != Format.PENNY_STORE_WEEK) { "Use the separate canonical market/offer reader" }
         require(exactScope.retailer == when (format) {
             Format.LIDL_STORE_V4 -> LiveRetailer.LIDL; Format.EDEKA_MARKET -> LiveRetailer.EDEKA
             Format.PENNY_REGION -> LiveRetailer.PENNY; Format.ALDI_NORD_NEXT_DATA -> LiveRetailer.ALDI_NORD
@@ -30,6 +31,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             Format.REWE_STATIONARY -> LiveRetailer.REWE
             Format.ALDI_SUED_WALK_IN -> LiveRetailer.ALDI_SUED
             Format.NETTO_BRANCH_HTML -> LiveRetailer.NETTO_MD
+            Format.PENNY_STORE_WEEK -> LiveRetailer.PENNY
         })
         if (format in setOf(Format.LIDL_STORE_V4, Format.EDEKA_MARKET, Format.KAUFLAND_STORE,
                 Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN)) require(!exactScope.storeId.isNullOrBlank())
@@ -116,6 +118,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 val windows = array.map { requireNotNull(OfferJson.objectValue(it)) }
                 PublishedOfferDecoders.kaufland(raw, windows, sourceId, requireNotNull(scope.storeId), scope.purchaseOn, at, endpoint.toString())
             }
+            Format.PENNY_STORE_WEEK -> error("Use the canonical market/offer reader")
         }
         return LiveOfferBatch(sourceId, scope, at, rows)
     }

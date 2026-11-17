@@ -47,7 +47,52 @@ class LiveOffersOnDeviceTest {
         compose.onNodeWithTag(tag).performScrollTo().performClick()
     }
     private fun ready() = compose.waitUntil(25_000) {
-        compose.onAllNodes(hasTestTag("live_offers_refresh") and isEnabled()).fetchSemanticsNodes().size == 1
+        compose.onAllNodes(hasTestTag("live_offers_screen") and SemanticsMatcher.expectValue(
+            androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Bereit")).fetchSemanticsNodes().size == 1
+    }
+    @Test fun pennyCanonicalRegionAndUnconfirmedArticleDatesReachUiWithoutCachingOrActualBookings(): Unit = runBlocking {
+        val context = compose.activity.applicationContext
+        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        assertNull(network.activeNetwork)
+        val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
+        val before = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val prices = dao.allPaidPrices()
+        val source = "synthetic-penny-${UUID.randomUUID()}"
+        val config = PennyPublicSourceFixtures.configuration(AppCalendar.today(), source)
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val http = OfferHttp { request ->
+            calls.incrementAndGet()
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                if (request.uri.path == "/.rest/market") PennyPublicSourceFixtures.markets() else PennyPublicSourceFixtures.offers())
+        }
+        val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
+        try {
+            compose.runOnUiThread {
+                model = ViewModelProvider(models, object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                        LiveOffersViewModel(context, http = http, sources = config) as T
+                })[LiveOffersViewModel::class.java]
+                compose.activity.setContent { DemoTheme {
+                    Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                        LiveOffersScreen(providedModel = model)
+                    }
+                } }
+            }
+            ready(); tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_$source"); ready()
+            tap("live_offers_refresh"); ready()
+            compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
+            compose.onNodeWithTag("live_canonical_market").assertTextEquals("Markt: Synthetic PENNY · Teststraße 1, 00000 Teststadt")
+            compose.onNodeWithText("Synthetic first offer").assertExists()
+            compose.onNodeWithText("Synthetic online price").assertDoesNotExist()
+            assertEquals(2, calls.get()); assertEquals(3, model.state.value.result!!.batch!!.offers.size)
+            assertTrue(model.state.value.result!!.batch!!.offers.all { it.validFrom == null && it.validUntil == null })
+            assertFalse(model.state.value.result!!.cachePermitted)
+            tap("live_offers_refresh"); ready()
+            assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
+            assertNull(model.state.value.result?.batch); assertEquals(2, calls.get())
+            assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())
+            assertEquals(prices, dao.allPaidPrices()); assertNull(network.activeNetwork)
+        } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
+        finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; PrivateOfferSettings.forApp(context).clearSelection() }
     }
     @Test fun reviewedHostProfilesDriveActualBranchPickerAndDefaultRuntimeAcrossReopenWithoutFactsOrNetwork(): Unit = runBlocking {
         val context = compose.activity.applicationContext
@@ -377,7 +422,7 @@ class LiveOffersOnDeviceTest {
             PrivateOfferSettings.forApp(context).clearSelection()
         }
     }
-    @Test fun eightRetailersStayIndependentlyBlockedAndKnusprConsentDoesNotSurviveRecreationWithoutAnyActualBooking(): Unit = runBlocking {
+    @Test fun unconfiguredRetailersStayBlockedAndPublicPennyFailsOfflineWithoutLosingFactsOrReplayingConsent(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         assertNull(connectivity.activeNetwork)
@@ -389,8 +434,13 @@ class LiveOffersOnDeviceTest {
             tap("shopping_open_live_offers"); ready()
             for (retailer in LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }) {
                 tap("Angebotsanbieter"); tap("choose_${retailer.name}"); ready()
+                if (retailer == LiveRetailer.PENNY) {
+                    tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_penny-4030085-top-angebote"); ready()
+                }
                 tap("live_offers_refresh")
-                compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_offers_blocked").fetchSemanticsNodes().size == 1 }
+                if (retailer == LiveRetailer.PENNY) compose.waitUntil(25_000) {
+                    compose.onAllNodesWithText("Netzabruf konnte nicht abgeschlossen werden.").fetchSemanticsNodes().size == 1
+                } else compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_offers_blocked").fetchSemanticsNodes().size == 1 }
                 tap("live_automatic_toggle"); ready()
                 compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
             }

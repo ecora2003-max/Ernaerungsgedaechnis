@@ -11,7 +11,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 internal data class OfferHttpRequest(val uri: URI, val method: String = "GET", val body: ByteArray? = null,
-    val headers: Map<String, String> = emptyMap(), val rpcId: Long? = null) {
+    val headers: Map<String, String> = emptyMap(), val rpcId: Long? = null,
+    val maximumResponseBytes: Int = 1_048_576) {
     override fun toString() = "OfferHttpRequest(method=$method, credentials/body redacted)"
 }
 internal data class OfferHttpReply(val status: Int, val headers: Map<String, String>, val text: String) {
@@ -26,6 +27,7 @@ internal class HttpsOfferHttp : OfferHttp {
         requirePublicHttps(request.uri)
         require(request.method in setOf("GET", "POST"))
         require(request.body == null || request.body.size <= 262_144)
+        require(request.maximumResponseBytes in 1..6_291_456)
         require(request.headers.all { (name, value) -> name.matches(Regex("[A-Za-z0-9-]+")) && value.length <= 16_384 && '\r' !in value && '\n' !in value })
         currentCoroutineContext().ensureActive()
         val connection = request.uri.toURL().openConnection() as HttpsURLConnection
@@ -57,7 +59,7 @@ internal class HttpsOfferHttp : OfferHttp {
                 while (true) {
                     currentCoroutineContext().ensureActive()
                     val count = stream.read(buffer); if (count < 0) break
-                    require(output.size() + count <= 1_048_576) { "Source response exceeds limit" }
+                    require(output.size() + count <= request.maximumResponseBytes) { "Source response exceeds limit" }
                     output.write(buffer, 0, count)
                 }
             }
@@ -65,6 +67,11 @@ internal class HttpsOfferHttp : OfferHttp {
             val text = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(output.toByteArray())).toString()
             OfferHttpReply(status, headers, text)
+        } catch (failure: java.nio.charset.CharacterCodingException) {
+            throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)
+        } catch (failure: java.io.IOException) {
+            currentCoroutineContext().ensureActive()
+            throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE)
         } finally { connection.disconnect() }
     }
 }
