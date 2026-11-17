@@ -1,5 +1,7 @@
 # Funktionsorientierter Ausführungsplan für die Gesamt-App
 
+> **NEUE Quellenregel 16.11.2026:** [Öffentliche Händlerquellen](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md): kein pauschal zwingender Händler-Genehmigungsnachweis. Herkunft, zulässiger Zugang, echte Filiale/Region und Aktualität konkret prüfen; vorhandene Parser mit realen zulässigen Profilen aktivieren, ohne fehlende Freigabe-Checkbox als generellen Blocker zu behandeln. Quellenbezogene reale Einschränkungen und unabhängige Artikel-/Gebindeverifikation bleiben bestehen. Bei externen Blockaden gemäß [Fortsetzungsregel](CODEX_CONTINUATION_2026-11-16.md) P1 bearbeiten.
+
 **Vorrangige Fortsetzungsregel 16.11.2026:** [CODEX_CONTINUATION_2026-11-16.md](CODEX_CONTINUATION_2026-11-16.md). P0-Technik einschließlich echter Host-Artikelreview-Verdrahtung und unabhängiger Tests selbstständig fertigstellen; externe Händler-/Filial-/APP_DISPLAY-Gates nicht fälschlich als interne Implementierungsblockade behandeln. Wenn alle acht Feeds weiterhin extern BLOCKED sind und keine ohne Freigaben umsetzbare P0-Arbeit mehr offen ist, **sofort P1-Rezept-KI fortsetzen**, unabhängig davon, dass P0-Liveabnahme offen bleibt. Nach P1 weitere umsetzbare Roadmap-Arbeit. Alte „P1 erst nach P0-Liveabschluss“-Sätze gelten dann nicht. Keine Live-Rechte fingieren, keine Schutzregeln lockern.
 
 

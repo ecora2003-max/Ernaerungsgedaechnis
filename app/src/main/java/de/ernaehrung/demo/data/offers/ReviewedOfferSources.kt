@@ -9,9 +9,9 @@ import java.time.Instant
 import java.time.LocalDate
 import java.util.Collections
 
-/** Release-owned host configuration, independent of supplier replies and UI
- * input. Only already reviewed APP_DISPLAY/scope evidence belongs in this asset;
- * parsing a document is not a legal review or a new permission grant. */
+/** Release-owned source configuration, independent of supplier replies and UI input.
+ * A public-source provenance assessment does not require an invented vendor licence.
+ * Parsing a document never grants third-party rights or overrides access restrictions. */
 internal class ReviewedOfferSources private constructor(
     val profiles: List<Profile>, val invalidProfiles: Int
 ) {
@@ -86,10 +86,14 @@ internal class ReviewedOfferSources private constructor(
             fun text(key: String) = requireNotNull(OfferJson.text(row[key]))
             fun optional(key: String): String? = row[key]?.let { requireNotNull(OfferJson.text(it)) }
             val approval = requireNotNull(OfferJson.objectValue(row["approval"]))
-            require(approval.keys == setOf("appDisplayEvidence", "scopeEvidence", "reviewedAt", "from", "until",
-                "allowedHosts", "cachePermitted", "minimumRefreshSeconds"))
+            val common = setOf("scopeEvidence", "reviewedAt", "from", "until",
+                "allowedHosts", "cachePermitted", "minimumRefreshSeconds")
+            val legacy = common + "appDisplayEvidence"
+            val publicSource = common + "sourceEvidence"
+            require(approval.keys == legacy || approval.keys == publicSource)
             fun proof(key: String): String = requireNotNull(OfferJson.text(approval[key])).also { requirePublicHttps(URI(it)) }
-            val displayEvidence = proof("appDisplayEvidence"); val scopeEvidence = proof("scopeEvidence")
+            val sourceEvidence = if (approval.keys == publicSource) proof("sourceEvidence") else proof("appDisplayEvidence")
+            val scopeEvidence = proof("scopeEvidence")
             require(OfferJson.integer(row["revision"])?.let { it > 0 } == true)
             val hosts = (approval["allowedHosts"] as? List<*>)?.map {
                 val host = it as? String ?: error("Host must be a string")
@@ -110,7 +114,8 @@ internal class ReviewedOfferSources private constructor(
                 requireNotNull(OfferJson.instant(approval["reviewedAt"])),
                 PublishedOfferHttpSource.Format.valueOf(text("format")), URI(text("endpoint")),
                 optional("availabilityEndpoint")?.let(::URI), week, text("sourceId"),
-                "APP_DISPLAY $displayEvidence · Scope $scopeEvidence", digest,
+                (if (approval.keys == publicSource) "PUBLIC_SOURCE" else "APP_DISPLAY") +
+                    " $sourceEvidence · Scope $scopeEvidence", digest,
                 Collections.unmodifiableSet(hosts), approval["cachePermitted"] as Boolean, floor)
             require(result.retailer != LiveRetailer.KNUSPR)
             val scope = result.scope(from)

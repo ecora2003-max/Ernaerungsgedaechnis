@@ -92,15 +92,15 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             connectionConsent = false; selectionError = null
         }
         val appliedEvidence = state.authorizedEvidenceRef.takeIf { state.scope?.retailer == retailer }
-        Section(retailer.title, if (appliedEvidence != null) "Quellenfreigabe für die angewendete Auswahl geprüft" else when (source.status) {
+        Section(retailer.title, if (appliedEvidence != null) "Quellenprofil für die angewendete Auswahl geprüft" else if (profiles.isNotEmpty()) "Konkrete Quellenprofile eingerichtet" else when (source.status) {
             LiveSourceStatus.RIGHTS_UNVERIFIED -> "Automatischer Abruf noch nicht freigegeben"
             LiveSourceStatus.RIGHTS_RESTRICTED -> "Fortlaufende Nutzung dieser Quelle eingeschränkt"
             LiveSourceStatus.CONNECTION_REQUIRED -> if (state.connected) "Anmeldung gespeichert · Preisanschluss separat prüfen" else "Offizieller Zugang muss verbunden werden"
             LiveSourceStatus.READY -> "Quelle eingerichtet"
-            LiveSourceStatus.BLOCKED -> "Quelle derzeit gesperrt"
+            LiveSourceStatus.BLOCKED -> "Noch kein konkretes Quellenprofil eingerichtet"
             LiveSourceStatus.DEFERRED -> "Für später zurückgestellt"
         })
-        Text(if (appliedEvidence != null) "Quellennachweis: $appliedEvidence · gilt ausschließlich für den angewendeten Geltungsbereich. Keine vollständige Marktabdeckung." else source.explanation,
+        Text(if (appliedEvidence != null) "Quellenbeleg: $appliedEvidence · gilt ausschließlich für den angewendeten Geltungsbereich. Keine vollständige Marktabdeckung." else if (profiles.isNotEmpty()) "Konkrete Quelle eingerichtet. Filiale und Zeitraum auswählen; kein Beweis vollständiger Preisabdeckung oder gesetzlicher Nutzungsrechte." else source.explanation,
             Modifier.testTag("live_source_status"))
         OutlinedButton({ context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.evidenceRef))) }) { Text("Beleg zur Quelle öffnen") }
         if (model.invalidSourceProfiles > 0) Text("Ein Quellenprofil konnte nicht sicher geladen werden. Andere bestätigte Filialprofile bleiben auswählbar.")
@@ -152,7 +152,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 store = profile.storeId.orEmpty(); region = profile.regionId.orEmpty(); selectionError = null
             }
             profiles.singleOrNull { it.id == selectedProfile }?.let { profile ->
-                Text("${profile.label} · Freigabe ${profile.permittedFrom} bis ${profile.permittedUntil}", Modifier.testTag("live_profile_details"))
+                Text("${profile.label} · Geltung ${profile.permittedFrom} bis ${profile.permittedUntil}", Modifier.testTag("live_profile_details"))
                 Text("${profile.storeId ?: "keine Filialkennung"} · ${profile.regionId ?: "keine Regionskennung"}")
             }
         } else {
@@ -187,9 +187,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         }
         state.result?.let { result ->
             if (result.code != null && result.code != "REFRESH_INTERVAL") Text(when (result.code) {
-                "SOURCE_NOT_CONFIGURED" -> "Für diesen Anbieter ist noch keine freigegebene Datenquelle eingerichtet."
+                "SOURCE_NOT_CONFIGURED" -> "Für diesen Anbieter ist noch kein konkretes Quellen-/Filialprofil eingerichtet."
                 "SOURCE_CONFIGURATION_INVALID" -> "Das Quellenprofil konnte nicht sicher angewendet werden. Kein Netzabruf gestartet."
-                "APP_DISPLAY_UNVERIFIED" -> "Der konkrete Nachweis zur Quellenanzeige fehlt."
+                "APP_DISPLAY_UNVERIFIED" -> "Quellenprofil oder geltender Abrufkontext fehlt. Keine pauschale Händlergenehmigung erforderlich."
                 "SOURCE_SCOPE_OR_PERMISSION_CHANGED" -> "Quellenfreigabe oder gewählter Geltungsbereich ist nicht mehr bestätigt."
                 "CAPABILITY_NOT_PERMITTED" -> "Diese Quelle unterstützt die gewählte Abfrage nicht."
                 "LOGIN_REQUIRED" -> "Anmeldung erforderlich oder abgelaufen; Verbindung erneut prüfen."

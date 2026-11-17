@@ -1,5 +1,7 @@
 # Integrations-Zielmatrix: vier Fachmodule und Android-E2E
 
+> **Aktuelle Quellenregel 16.11.2026:** [Öffentliche Händlerquellen](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md) statt genereller Pflicht zu schriftlichen Händlerfreigaben. Quellbezogene tatsächliche Grenzen bleiben erhalten. Acht Händler einzeln über echte veröffentlichte Endpoints/Filialscopes anschließen; keine automatische LIVE_VERIFIED-Einstufung aus dem Wegfall eines internen Papiernachweises.
+
 **Arbeitsreihenfolge ab 16.11.2026:** [Verbindliche Codex-Fortsetzungsregel](CODEX_CONTINUATION_2026-11-16.md). P0 umfasst zuerst die **eigenständig implementierbaren** acht-Händler-/Host-Artikelreview-/Android-Teile. Sind produktive Feeds ausschließlich extern blockiert, P0-Live-Abnahme **offen** lassen und P1-Rezept-KI **trotzdem** fortsetzen; danach unabhängig ausführbare Roadmap-Funktionen. Die bisherigen Quellen-/APP_DISPLAY-/Geräte-/Modellgates bleiben bestehen; Tests mit synthetischen Quellen belegen keinen Livezugang.
 
 

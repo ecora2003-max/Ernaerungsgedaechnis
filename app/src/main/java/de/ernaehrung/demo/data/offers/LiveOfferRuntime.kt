@@ -34,17 +34,17 @@ internal enum class LiveSourceStatus { RIGHTS_UNVERIFIED, RIGHTS_RESTRICTED, CON
 internal data class LiveSourceInfo(val retailer: LiveRetailer, val sourceId: String, val status: LiveSourceStatus,
     val evidenceRef: String, val explanation: String)
 
-/** Existing dated assessments are carried forward, not silently promoted by a
- * successful GET, a supplier field or a checkbox. OAuth metadata is not a price. */
+/** Source states are configuration diagnostics, not universal licence requirements.
+ * A real source/branch profile is still required for HTTP. GET success cannot create one. */
 internal object LiveSourceCatalogue {
     const val SOURCE_EVIDENCE = "https://github.com/ecora2003-max/EG-Preisdaten/blob/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/docs/SOURCES.md"
     val sources = LiveRetailer.entries.map { retailer -> when (retailer) {
         LiveRetailer.KNUSPR -> LiveSourceInfo(retailer, "knuspr-official-mcp", LiveSourceStatus.DEFERRED,
             "https://www.knuspr.de/mcp-docs", "Für später zurückgestellt. Zuerst werden die acht stationären Händler angeschlossen. Eine vorhandene Anmeldung bleibt erhalten; es wird kein automatischer Knuspr-Abruf gestartet.")
-        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.RIGHTS_RESTRICTED,
-            SOURCE_EVIDENCE, "Vorliegende Quellenbewertung erlaubt keine fortlaufende automatische App-Anzeige. Andere Händler bleiben unabhängig bedienbar.")
-        else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.RIGHTS_UNVERIFIED,
-            SOURCE_EVIDENCE, "Für diese Quelle fehlt ein bestätigter Nutzungsnachweis für die App-Anzeige. Es werden keine Angebotsdaten abgerufen oder erfunden.")
+        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.BLOCKED,
+            SOURCE_EVIDENCE, "Noch kein konkretes EDEKA-Quellen-/Filialprofil hinterlegt. Frühere Einschränkungen quellenbezogen beachten; keine pauschale Händlergenehmigung als universelle Voraussetzung.")
+        else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.BLOCKED,
+            SOURCE_EVIDENCE, "Noch kein konkretes Quellen-/Filialprofil hinterlegt. Eine ausdrückliche Händlergenehmigung ist keine pauschale technische Voraussetzung; ein realer zulässiger Endpoint und korrekter Filialbezug fehlen noch.")
     } }
     /** Browser handoff only, with no appended shopping/profile/location data.
      * This does not authorize scraping, cache or display inside this app. */

@@ -1,5 +1,7 @@
 # Haupt-App: verbindliche modulübergreifende Integrationsabnahme
 
+> **Neue Freigabelogik 16.11.2026:** [RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md](RETAILER_PUBLIC_SOURCE_POLICY_2026-11-16.md). Ein ausdrücklicher Händler-`APP_DISPLAY`-Lizenz-/Genehmigungsbeleg ist **kein universelles Abnahme-Pflichtfeld** mehr. Ein öffentliches Quellenprofil benötigt belegte Herkunft, zulässige konkrete Nutzungsart/Endpoint, korrekten Filial-/Regionscope und echte Livefunktion. Bekannte Rechts-/Technikgrenzen bleiben einzuhalten. Vergleich/Buchung erfordern weiterhin unabhängig bestätigte Artikelidentität und alle bisher geltenden FoodStore-/Privacy-Gates.
+
 **Arbeitssteuerung 16.11.2026:** [Fortsetzungsregel](CODEX_CONTINUATION_2026-11-16.md). Fehlende **externe** Livequellen- oder Gerätebelege bleiben offene Abnahmekriterien, **blockieren aber nicht mehr die eigenständig umsetzbaren Code-/Testaufgaben der nächsten Phase**. Nach technisch ausgeschöpftem, rein extern blockiertem P0 ist P1-Rezept-KI freigegeben; nicht erfüllte P0-Kriterien werden nicht zu PASS umetikettiert. Keine Rechte-/Consent-/Schema-/Datenintegritätsgate-Abschwächung.
 
 
