@@ -126,6 +126,7 @@ class DirectRecipeAiOnDeviceTest {
         config.saveKey("synthetic-ui-key-${UUID.randomUUID()}"); config.mode(DirectRecipeMode.CLOUD)
         val id = "models/gemini-synthetic-ui"
         val metadata = mapOf("name" to id, "displayName" to "Synthetisches UI-Modell",
+            "baseModelId" to "gemini-synthetic-ui", "version" to "001",
             "supportedGenerationMethods" to listOf("generateContent"))
         val posts = AtomicInteger(); val requests = CopyOnWriteArrayList<OfferHttpRequest>()
         val releaseFirst = CompletableDeferred<Unit>()
@@ -143,7 +144,8 @@ class DirectRecipeAiOnDeviceTest {
                 val payload = template["payload"] as Map<*, *>
                 val raw = JsonOutput.encode(template + ("payload" to (payload + ("title" to "Synthetischer direkter Entwurf $number"))))
                 if (number == 1) releaseFirst.await()
-                mapOf("modelVersion" to "gemini-synthetic-ui-001", "candidates" to listOf(mapOf(
+                val version = if (number == 3) "gemini-synthetic-other" else "gemini-synthetic-ui-001"
+                mapOf("modelVersion" to version, "candidates" to listOf(mapOf(
                     "finishReason" to "STOP", "content" to mapOf("parts" to listOf(mapOf("text" to raw))))))
             }
             OfferHttpReply(200, mapOf("content-type" to "application/json"), JsonOutput.encode(response))
@@ -182,6 +184,12 @@ class DirectRecipeAiOnDeviceTest {
             assertEquals("Synthetischer direkter Entwurf 2", accepted.single().draft.title)
             assertEquals(2, accepted.single().draft.portions); assertEquals(2, posts.get())
             assertEquals(listOf("GET", "GET", "POST", "GET", "POST"), requests.map { it.method })
+            compose.onNodeWithTag("direct_ai_generate").assertIsNotEnabled()
+            text(consent); tap("direct_ai_generate")
+            compose.waitUntil(25_000) { model.state.value.info.code == "CLOUD_MODEL_VERSION_MISMATCH" && !model.state.value.busy }
+            assertEquals(3, posts.get()); assertEquals(1, accepted.size)
+            compose.onNodeWithTag("direct_ai_message").assertTextContains("Gemini meldet eine Modellversion", substring = true)
+            assertEquals(listOf("GET", "GET", "POST", "GET", "POST", "GET", "POST"), requests.map { it.method })
             compose.onNodeWithTag("direct_ai_generate").assertIsNotEnabled()
             assertEquals("", compose.onNodeWithTag("direct_ai_key").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
             compose.onNodeWithTag("recipe_ai_share").assertIsNotEnabled()

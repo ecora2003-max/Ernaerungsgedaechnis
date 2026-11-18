@@ -17,7 +17,9 @@ class DirectRecipeModelsTest {
         emptySet(), RecipeRequestPreferences(), emptyList(), Gate.Flags(false, false, false)), "synthetic-direct-request", now)
     private val id = "models/gemini-synthetic-test"
     private val key = "synthetic-not-a-real-api-key"
-    private fun consent() = GeminiCloudConsent(prepared.requestId, prepared.inputBinding, "revision", id, true)
+    private fun consent(requestId: String = prepared.requestId, inputBinding: String = prepared.inputBinding,
+        configurationRevision: String = "revision", model: String = id, approved: Boolean = true) =
+        GeminiCloudConsent(requestId, inputBinding, configurationRevision, model, approved)
     private fun draft() = JsonOutput.encode(prepared.responseTemplate)
     private fun model() = mapOf("name" to id, "displayName" to "Synthetic Gemini", "supportedGenerationMethods" to listOf("generateContent"))
     private class Wire(val answer: String, val status: Int = 200) : OfferHttp {
@@ -25,6 +27,7 @@ class DirectRecipeModelsTest {
         override suspend fun execute(request: OfferHttpRequest): OfferHttpReply {
             requests += request
             val body = if (request.method == "GET") JsonOutput.encode(mapOf("name" to "models/gemini-synthetic-test",
+                "baseModelId" to "gemini-synthetic-test", "version" to "001",
                 "supportedGenerationMethods" to listOf("generateContent"))) else answer
             return OfferHttpReply(if (request.method == "GET") 200 else status, emptyMap(), body)
         }
@@ -42,12 +45,33 @@ class DirectRecipeModelsTest {
         assertFalse(NanoModelIdentity.matches(DirectRecipeMode.NANO3, "unknown-3"))
     }
     @Test fun missingOrChangedDataCostKeyModelRequestConsentPerformsNoNetworkIo(): Unit = runBlocking {
-        for (approval in listOf(consent().copy(approved = false), consent().copy(configurationRevision = "old"),
-            consent().copy(inputBinding = "old"), consent().copy(requestId = "old"), consent().copy(model = "models/gemini-other"))) {
+        for (approval in listOf(consent(approved = false), consent(configurationRevision = "old"),
+            consent(inputBinding = "old"), consent(requestId = "old"), consent(model = "models/gemini-other"))) {
             val wire = Wire(envelope()); val client = GeminiCloudClient(wire)
             assertTrue(runCatching { client.generate(key, prepared, prepared.inputBinding, "revision", id, approval) }.isFailure)
             assertEquals(0, wire.requests.size)
         }
+    }
+    @Test fun oneConsentCannotStartAnotherProviderCallAfterFailureOrCompletion(): Unit = runBlocking {
+        for (status in listOf(200, 429)) {
+            val wire = Wire(envelope(), status)
+            val approval = consent()
+            val first = runCatching { GeminiCloudClient(wire).generate(key, prepared, prepared.inputBinding, "revision", id, approval) }
+            assertEquals(status == 200, first.isSuccess)
+            val reused = runCatching { GeminiCloudClient(wire).generate(key, prepared, prepared.inputBinding, "revision", id, approval) }
+            assertEquals("CLOUD_CONSENT_ALREADY_USED", (reused.exceptionOrNull() as? DirectModelFailure)?.code)
+            assertEquals(listOf("GET", "POST"), wire.requests.map { it.method })
+        }
+    }
+    @Test fun actualApiModelVersionMustMatchTheRequestedIdOrItsOfficialReleaseMetadata(): Unit = runBlocking {
+        val wrong = Wire(envelope().replace("gemini-synthetic-test-001", "gemini-other-fast"))
+        val result = runCatching { GeminiCloudClient(wrong).generate(key, prepared, prepared.inputBinding, "revision", id, consent()) }
+        assertEquals("CLOUD_MODEL_VERSION_MISMATCH", (result.exceptionOrNull() as? DirectModelFailure)?.code)
+        assertEquals(2, wrong.requests.size)
+        val exactRelease = GeminiCloudModel("models/gemini-example-001", "Example", "gemini-example", "001")
+        assertTrue(exactRelease.matchesReportedVersion("gemini-example-001"))
+        assertFalse(exactRelease.matchesReportedVersion("gemini-example"))
+        assertFalse(exactRelease.matchesReportedVersion("gemini-example-002"))
     }
     @Test fun officialModelListRequiresRealSupportedGeminiNamesAndDoesNotSendRecipeOrPutKeyInUrl(): Unit = runBlocking {
         val requests = mutableListOf<OfferHttpRequest>()

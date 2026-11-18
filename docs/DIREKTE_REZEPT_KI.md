@@ -25,6 +25,8 @@ Eigener nutzerseitig eingegebener Schlüssel, ausdrücklich optional. Kein einge
 
 Nur ausgewählter Wunsch und freigegebener eigener strukturierter Kontext verlassen das Gerät. Keine angehängten Bons, fremden Angebotsdaten, Preise, Health-/Körper-/Trainingshistorien oder Zugangsdaten. Verfügbare Angebotsrechte würden nicht automatisch einen LLM-Export erlauben. Ausschließlich finale Textantwort mit vollständigem Abschluss wird an den v1-Import gegeben; Gedanken-/Signaturmetadaten werden nicht als Rezept verarbeitet, Tools/Funktionsaufrufe nicht ausgeführt. Angeforderte ID und vom Anbieter gemeldete Antwortversion bleiben getrennt nachvollziehbar. Quota-/Zugriffs-/Format-/Timeoutfehler führen nicht zu versteckten Wiederholungen.
 
+Die App verbraucht die Zustimmung vor dem ersten API-Aufruf. Auch nach einem Fehler braucht die nächste Anfrage eine neue Zustimmung. Meldet Gemini eine Antwortversion, gleicht die App sie mit der gewählten ID und den frisch abgefragten Modellmetadaten ab. Eine abweichende Version gelangt nicht in die Rezeptvorschau.
+
 ## SDK und Build-Kompatibilität
 
 Offizielles ML Kit `com.google.mlkit:genai-prompt:1.0.0-beta4`, AAR-SHA256 `675192b6ba91334ddbfb8cc429a8afb94cba370d927d7dba79525818b7186f6d`, minSdk26. Echte Java-API im kleinen `nano-runtime`-Modul, ohne Reflexion oder Modellattrappe. SDK2.3-Kotlinmetadaten bleiben hinter dieser Java-ABI; bestehende Kotlin-/Compose-/KSP2.0-Compiler behalten ihre passende Compile-Standardbibliothek, die vom SDK benötigte neuere Runtime wird ausdrücklich nicht heruntergestuft. Vollständige Regression ist dafür erforderlich. Kein `-Xskip-metadata-version-check`.

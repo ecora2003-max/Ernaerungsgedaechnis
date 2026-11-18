@@ -3,11 +3,22 @@ package de.ernaehrung.demo.data.ai
 import de.eg.recipe.JsonOutput
 import de.ernaehrung.demo.data.offers.*
 import java.net.URI
-import kotlinx.coroutines.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
 
-internal data class GeminiCloudModel(val name: String, val title: String)
-internal data class GeminiCloudConsent(val requestId: String, val inputBinding: String, val configurationRevision: String,
-    val model: String, val approved: Boolean)
+internal data class GeminiCloudModel(val name: String, val title: String,
+    val baseModelId: String?, val version: String?) {
+    fun matchesReportedVersion(reported: String): Boolean {
+        val requested = name.removePrefix("models/")
+        val actual = reported.removePrefix("models/")
+        val release = if (baseModelId != null && version != null) "$baseModelId-$version" else null
+        return actual == requested || actual == release || (requested != release && actual == baseModelId)
+    }
+}
+internal class GeminiCloudConsent(val requestId: String, val inputBinding: String, val configurationRevision: String,
+    val model: String, val approved: Boolean) {
+    private val used = AtomicBoolean()
+    fun consume(): Boolean = approved && used.compareAndSet(false, true)
+}
 
 /** Optional BYOK, explicit per-request data/cost approval, one bounded request.
  * No key in URL, model guess, tools, automatic retry, cloud fallback or booking.
@@ -31,7 +42,10 @@ internal class GeminiCloudClient(private val http: OfferHttp = HttpsOfferHttp())
         val row = OfferJson.objectValue(value) ?: return null
         val name = OfferJson.text(row["name"]) ?: return null
         if (!validModelName(name) || (row["supportedGenerationMethods"] as? List<*>)?.contains("generateContent") != true) return null
-        return GeminiCloudModel(name, OfferJson.text(row["displayName"]) ?: name)
+        val base = OfferJson.text(row["baseModelId"])?.removePrefix("models/")
+            ?.takeIf { validModelName("models/$it") }
+        val version = OfferJson.text(row["version"])?.takeIf { it.matches(Regex("[A-Za-z0-9._-]{1,120}")) }
+        return GeminiCloudModel(name, OfferJson.text(row["displayName"]) ?: name, base, version)
     }
     suspend fun listModels(key: String): List<GeminiCloudModel> {
         require(key.isNotBlank())
@@ -56,13 +70,19 @@ internal class GeminiCloudClient(private val http: OfferHttp = HttpsOfferHttp())
             currentBinding != prepared.inputBinding || consent.configurationRevision != revision || consent.model != modelName)
             throw DirectModelFailure("CLOUD_CONSENT_CHANGED") // before ANY network IO
         if (!validModelName(modelName)) throw DirectModelFailure("CLOUD_MODEL_INVALID")
-        if (model(get(modelName, key))?.name != modelName) throw DirectModelFailure("CLOUD_MODEL_NOT_AVAILABLE")
+        if (!consent.consume()) throw DirectModelFailure("CLOUD_CONSENT_ALREADY_USED")
+        val selected = model(get(modelName, key))?.takeIf { it.name == modelName }
+            ?: throw DirectModelFailure("CLOUD_MODEL_NOT_AVAILABLE")
         val payload = mapOf("contents" to listOf(mapOf("role" to "user", "parts" to listOf(mapOf("text" to prepared.prompt)))),
             "generationConfig" to mapOf("candidateCount" to 1, "maxOutputTokens" to 2048, "responseMimeType" to "application/json"))
         val reply = http.execute(OfferHttpRequest(URI(ROOT + modelName + ":generateContent"), "POST",
             JsonOutput.encode(payload).toByteArray(), mapOf("Content-Type" to "application/json", "x-goog-api-key" to key)))
         checkStatus(reply.status)
         val response = OfferJson.read(reply.text)
+        val version = OfferJson.text(response["modelVersion"])
+        if (response["modelVersion"] != null &&
+            (version == null || version.length > 160 || !selected.matchesReportedVersion(version)))
+            throw DirectModelFailure("CLOUD_MODEL_VERSION_MISMATCH")
         val candidate = (response["candidates"] as? List<*>)?.singleOrNull()?.let(OfferJson::objectValue)
             ?: throw DirectModelFailure("CLOUD_EMPTY_OR_AMBIGUOUS")
         if (candidate["finishReason"] != "STOP") throw DirectModelFailure("INCOMPLETE_REPLY")
@@ -78,7 +98,6 @@ internal class GeminiCloudClient(private val http: OfferHttp = HttpsOfferHttp())
             value["text"] as? String ?: throw DirectModelFailure("CLOUD_NON_TEXT_REPLY")
         }
         if (text.isBlank() || text.length > 262144) throw DirectModelFailure("REPLY_LIMIT")
-        val version = OfferJson.text(response["modelVersion"])?.takeIf { it.length <= 160 && it.matches(Regex("[A-Za-z0-9._/-]+")) }
         return DirectModelReply(text, "$modelName · API-Version ${version ?: "nicht gemeldet"}")
     }
 }
