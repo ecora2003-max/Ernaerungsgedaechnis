@@ -58,8 +58,21 @@ internal class DirectRecipeAiViewModel(context: Context,
             finally { if (generation == expected) mutable.value = mutable.value.copy(busy = false, configurationBusy = false) }
         }
     }
-    private fun fail(code: String) { mutable.value = mutable.value.copy(info = DirectModelInfo(DirectModelStatus.ERROR, code = code),
-        message = "Modellaufruf nicht abgeschlossen ($code). Keine automatische Wiederholung oder andere Modellwahl, nichts gespeichert oder gebucht.") }
+    private fun fail(code: String) {
+        val message = when (code) {
+            "CLOUD_CONSENT_ALREADY_USED" -> "Für eine weitere Cloud-Anfrage brauchst du eine neue Zustimmung."
+            "CLOUD_MODEL_VERSION_MISMATCH" -> "Gemini meldet eine Modellversion, die nicht zur geprüften Auswahl passt. Prüfe die offizielle Modellliste erneut."
+            "CLOUD_MODEL_NOT_AVAILABLE" -> "Das gewählte Modell steht über die API nicht mehr zur Verfügung. Prüfe die Modellliste erneut."
+            "CLOUD_KEY_OR_ACCESS" -> "Gemini hat den Zugriff abgewiesen. Prüfe den Schlüssel und den API-Zugriff in deinem Google-Konto."
+            "CLOUD_QUOTA" -> "Gemini meldet ein erreichtes Abfragelimit. Prüfe das Kontingent deines Tarifs vor einem erneuten Versuch."
+            "MODEL_TIMEOUT" -> "Der Modellaufruf hat zu lange gedauert. Prüfe den Status vor einem erneuten Versuch."
+            "REQUEST_TOO_LARGE" -> "Der vorbereitete Auftrag ist für das lokale Modell zu lang. Wähle weniger Produktversionen oder kürze den Wunsch."
+            "INCOMPLETE_REPLY" -> "Das Modell hat keine vollständige Antwort geliefert. Versuch es bei Bedarf mit einem kürzeren Auftrag."
+            else -> "Der Modellaufruf konnte nicht abgeschlossen werden."
+        }
+        mutable.value = mutable.value.copy(info = DirectModelInfo(DirectModelStatus.ERROR, code = code),
+            message = "$message Fehlercode $code.")
+    }
     fun choose(mode: DirectRecipeMode) = action(configuration = true) { expected ->
         val settings = withContext(Dispatchers.IO) { store.mode(mode) }
         if (generation == expected) applySettings(settings)

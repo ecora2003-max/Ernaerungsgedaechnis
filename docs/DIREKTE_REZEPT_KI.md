@@ -1,6 +1,6 @@
 # Direkte Rezeptgenerierung mit Gemini
 
-Stand 08.11.2026; P1 nach technisch geprüftem P0-Anschluss #288. Reale Händler-/Knuspr-Daten sind weiter extern blockiert, siehe [LIVE_OFFERS](LIVE_OFFERS.md). **Technischer Anschluss als #289 auf Main `592abafd83e57cc488bf7ec1584e790c1fa18196` nativ geprüft; reale Modell-/Gesamt-App-Abnahme bleibt offen.**
+Der technische Anschluss der drei Modi wurde auf Main `592abafd83e57cc488bf7ec1584e790c1fa18196` nativ geprüft. Die Abnahme mit tatsächlichen Modellantworten ist offen. Die Händlernachweise stehen im Angebotskapitel. [PR #289](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/289), [Liveangebote](LIVE_OFFERS.md)
 
 ## Bedienung und gemeinsame Prüfung
 
@@ -24,6 +24,8 @@ Eigener nutzerseitig eingegebener Schlüssel, ausdrücklich optional. Kein einge
 **Offizielle Gemini-Modellliste prüfen** sendet ausschließlich den Schlüssel im Header und liest echte vom API-Endpunkt gelieferte `generateContent`-fähige Gemini-IDs. Keine geratenen Modellnamen. Modell ausdrücklich auswählen; vor Inferenz noch einmal tatsächlich prüfen. Angezeigter Auftragsbezug bindet Mode, Modell, private Konfigurationsrevision, aktuelle Anfrage und Datenfreigabe. Jede Generierung braucht eine neue Geste für genau den angezeigten Text und mögliche Google-Kosten; Ausgabetokenlimit ist kein Geldlimit. Keine automatische Cloudübertragung nach Neustart, Fehler oder fehlendem lokalen Modell.
 
 Nur ausgewählter Wunsch und freigegebener eigener strukturierter Kontext verlassen das Gerät. Keine angehängten Bons, fremden Angebotsdaten, Preise, Health-/Körper-/Trainingshistorien oder Zugangsdaten. Verfügbare Angebotsrechte würden nicht automatisch einen LLM-Export erlauben. Ausschließlich finale Textantwort mit vollständigem Abschluss wird an den v1-Import gegeben; Gedanken-/Signaturmetadaten werden nicht als Rezept verarbeitet, Tools/Funktionsaufrufe nicht ausgeführt. Angeforderte ID und vom Anbieter gemeldete Antwortversion bleiben getrennt nachvollziehbar. Quota-/Zugriffs-/Format-/Timeoutfehler führen nicht zu versteckten Wiederholungen.
+
+Die App verbraucht die Zustimmung vor dem ersten API-Aufruf. Auch nach einem Fehler braucht die nächste Anfrage eine neue Zustimmung. Meldet Gemini eine Antwortversion, gleicht die App sie mit der gewählten ID und den frisch abgefragten Modellmetadaten ab. Eine abweichende Version gelangt nicht in die Rezeptvorschau.
 
 ## SDK und Build-Kompatibilität
 
