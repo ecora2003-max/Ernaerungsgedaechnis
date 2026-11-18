@@ -552,12 +552,21 @@ class LiveOffersOnDeviceTest {
                 if (profile != null) {
                     tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_${profile.id}"); ready()
                 }
+                if (profile?.interactiveSearch == true) {
+                    compose.onNodeWithTag("live_offers_refresh").assertIsNotEnabled()
+                    compose.onNodeWithTag("live_search_term").performScrollTo().performTextInput("Synthetischer Offline-Suchbegriff")
+                }
                 tap("live_offers_refresh")
                 if (profile != null) compose.waitUntil(25_000) {
                     compose.onAllNodesWithText("Netzabruf konnte nicht abgeschlossen werden.").fetchSemanticsNodes().size == 1
                 } else compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_offers_blocked").fetchSemanticsNodes().size == 1 }
-                tap("live_automatic_toggle"); ready()
-                compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
+                if (profile?.interactiveSearch == true) {
+                    compose.onNodeWithTag("live_automatic_toggle").assertDoesNotExist()
+                    assertNull(PrivateOfferSettings.forApp(context).selection())
+                } else {
+                    tap("live_automatic_toggle"); ready()
+                    compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
+                }
             }
             tap("Angebotsanbieter"); tap("choose_KNUSPR"); ready()
             compose.onNodeWithTag("knuspr_connect").assertIsNotEnabled()
