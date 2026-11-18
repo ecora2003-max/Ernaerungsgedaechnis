@@ -29,6 +29,8 @@ Die positiven Profil-/Quellantworten in JVM- und Gerätetests sind ausdrücklich
 
 In der Standard-App: **Mehr → Angebote & Preisvergleich**, ebenso aus **Einkaufsvorschläge → Aktuelle Angebote & Preisvergleich**. Anbieter, getrennte Filiale/Region bzw. Knuspr-Liefergebiet und Einkaufstag wählen, Auswahl anwenden. Namen aus der aktuellen lokalen Bedarfsliste filtern ausschließlich bereits geladene Angebote; sie werden dadurch nicht übertragen. Angebot, Vergleich und Navigation buchen keine Lebensmittel und ändern keine bezahlten Preise.
 
+Bei einem geladenen Angebot mit Filial- oder Regionsbezug lässt sich auf derselben Seite ein zweiter Markt für denselben Einkaufstag laden. Beide Angebote bleiben bis zum Schließen im sichtbaren Vergleich. Die App prüft jede Produktfassung, das Gebinde und die Gültigkeit separat über die Gerätesperre. Danach lassen sich die Waren-Grundpreise und die Gebindekosten für den bekannten Einkaufsbedarf prüfen. Die zweite Abfrage wechselt die gespeicherte Anbieterauswahl nicht. Beim Schließen, Anbieterwechsel oder Neuabruf verwirft die App die betroffenen No-Store-Preise und Preisvorschauen.
+
 ## Tatsächlicher Quellenstand
 
 Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](https://github.com/ecora2003-max/EG-Preisdaten/blob/5c52bf708a3bfa91e5bfd309bbddc308b3d6766a/docs/SOURCES.md) wird übernommen. Keine erneute pauschale Rechtsrecherche und kein Freigabe-Checkbox-Ersatz. Der aktuelle PENNY-Anschluss oben ersetzt den früher vollständig leeren Profilbestand. Die übrigen Händler werden einzeln konkret angeschlossen; fehlende alte Genehmigungscheckboxen sind keine pauschale Blockade:
@@ -37,8 +39,8 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 |---|---|---|
 | ALDI Nord | Öffentliches Profil, Liveabnahme offen | Kettenweite Vorschau für die nächste Woche. Der vorhandene Parser verarbeitet bis zu 512 Einträge. Die Filialzuordnung fehlt. |
 | ALDI Süd | Öffentliches Profil, Liveabnahme offen | Nuxt-Angebotsseite mit sichtbaren Produktkarten und SKU-/Centabgleich. Die veröffentlichte Seite belegt keine konkrete Filiale. |
-| Lidl | BLOCKED / UNVERIFIED | Gepinnter Store-v4-Parser und HTTP-Anschluss; unabhängig bestätigte offizielle storeKey-Zuordnung und Anzeigefreigabe fehlen. Online-/Coupon-/Mehrkaufformen werden nicht in Regalpreise umgedeutet. |
-| REWE | Filialprofil, Liveabnahme offen | Leipziger Platz 12, Berlin, Markt 1356345. Öffentliche Top-Angebote mit Seiten- und Artikelabgleich der Filialkennung. Individuelle Gültigkeit bleibt ohne eigenen Beleg offen. |
+| Lidl | BLOCKED | Die offizielle Prospektseite verlinkt einen Viewer ohne direkt lesbare Preise. Die Verbindung zwischen Store-v4-Kennung und veröffentlichten Preisen konnte an der aktuellen Quelle nicht belegt werden. |
+| REWE | BLOCKED für die geprüfte Angebotsseite | Der Android-Abruf für Markt 1356345 wurde mit HTTP 403 abgewiesen. Der getestete Reader bleibt erhalten. Die separate Produktsuche desselben Markts lieferte reguläre Filialpreise im Host-Test und braucht eine eigene Android-Abnahme. |
 | PENNY | Android-Liveabruf bestanden | Zehn reale Top-Angebote für Markt 4030085 und Region 15A-01-56 wurden über die Standard-App geladen. Das unabhängige Marktverzeichnis wird vor jedem Abruf ausgewertet. |
 | Kaufland | Filialprofil, Liveabnahme offen | Markt DE5220 in Konstanz-Petershausen. Gerenderte Filialkarten, unabhängiges Marktverzeichnis sowie datierte Verfügbarkeit je Artikel. Separater XTRA-Preis und separat ausgewiesene Gewichtsrate. |
 | Netto Marken-Discount | Abruf aus Android mit HTTP 403 abgewiesen | HTML-Reader und Tests erhalten. Die App bietet vorerst den Aufruf der offiziellen Händlerseite an. |

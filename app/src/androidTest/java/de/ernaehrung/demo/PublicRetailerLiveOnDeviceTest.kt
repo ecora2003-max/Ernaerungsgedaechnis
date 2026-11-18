@@ -34,8 +34,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PublicRetailerLiveOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
-    @Test fun publicAdditionalListingsMatchTheirChainOrMarketScopeInTheProductionAndroidUi(): Unit = runBlocking {
-        publicChainLiveFlow(compose)
+    @Test fun publicAldiNordOffersReachTheAndroidUi(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.ALDI_NORD, expectedStore = null)
+    }
+    @Test fun publicAldiSuedOffersReachTheAndroidUi(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.ALDI_SUED, expectedStore = null)
+    }
+    @Test fun publicKauflandOffersAndExactMarketValidityReachTheAndroidUi(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.KAUFLAND, expectedStore = "DE5220")
     }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))

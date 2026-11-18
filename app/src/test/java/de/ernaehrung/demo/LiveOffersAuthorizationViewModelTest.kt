@@ -32,7 +32,7 @@ class LiveOffersAuthorizationViewModelTest {
     private val first = LiveOfferScope(LiveRetailer.LIDL, "DE123", null, null, day)
     private val second = LiveOfferScope(LiveRetailer.KAUFLAND, "DE456", null, null, day)
     @Volatile private var firstGrant = grant(first, "synthetic-lidl")
-    private val secondGrant = grant(second, "synthetic-kaufland")
+    @Volatile private var secondGrant = grant(second, "synthetic-kaufland")
     private val reads = AtomicInteger()
     private val articleReads = AtomicInteger()
     private lateinit var runtime: LiveOfferRuntime
@@ -139,6 +139,61 @@ class LiveOffersAuthorizationViewModelTest {
         vm.compare("synthetic-lidl:a", "synthetic-lidl:b")
         assertNull(vm.state.value.result); assertNull(vm.state.value.comparison)
         assertEquals(checkedArticles, articleReads.get()); assertEquals(2, reads.get())
+    }
+
+    @Test fun noStorePricesCanBeComparedOnTheSamePageWithIndependentGrants(): Unit = runBlocking {
+        firstGrant = firstGrant.copy(cachePermitted = false)
+        secondGrant = secondGrant.copy(cachePermitted = false)
+        val vm = model(); idle(vm); load(vm, first)
+        vm.setAutomatic(true); idle(vm)
+        vm.loadComparison(second.copy(purchaseOn = day.plusDays(1)))
+        assertNull(vm.state.value.comparisonSource); assertEquals(1, reads.get())
+        vm.loadComparison(second); idle(vm)
+        val state = vm.state.value
+        assertEquals(first, state.result!!.batch!!.scope)
+        assertEquals(second, state.comparisonSource!!.result!!.batch!!.scope)
+        assertFalse(state.result.cachePermitted); assertFalse(state.comparisonSource.result!!.cachePermitted)
+        assertEquals(first, PrivateOfferSettings.forApp(context).selection()!!.scope)
+        assertTrue(PrivateOfferSettings.forApp(context).selection()!!.automatic)
+        vm.automaticTick()
+        assertEquals(2, reads.get())
+        vm.compareSources("synthetic-lidl:a", "synthetic-kaufland:b")
+        assertTrue(vm.state.value.comparison!!.rateOrder!! > 0)
+        assertEquals("synthetic-lidl:a" to "synthetic-kaufland:b", vm.state.value.comparedOfferIds)
+        val checkedArticles = articleReads.get()
+        secondGrant = secondGrant.copy(evidenceRef = "synthetic-kaufland-replacement")
+        vm.compareSources("synthetic-lidl:a", "synthetic-kaufland:b")
+        assertNull(vm.state.value.comparisonSource)
+        assertNull(vm.state.value.comparison)
+        assertEquals(state.result, vm.state.value.result)
+        assertEquals(checkedArticles, articleReads.get())
+        assertEquals(2, reads.get())
+    }
+
+    @Test fun leavingTheOfferPageCancelsTheSecondMarketAndDropsNoStorePrices(): Unit = runBlocking {
+        firstGrant = firstGrant.copy(cachePermitted = false)
+        secondGrant = secondGrant.copy(cachePermitted = false)
+        val entered = CompletableDeferred<Unit>()
+        val cancelled = CompletableDeferred<Unit>()
+        val delayed = object : AuthorizedOfferSource {
+            override val endpoint = URI("https://feed.example.test/offers")
+            override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
+                entered.complete(Unit)
+                try { awaitCancellation() }
+                finally { cancelled.complete(Unit) }
+            }
+        }
+        runtime = LiveOfferRuntime(mapOf(first.retailer to source(firstGrant.sourceId), second.retailer to delayed),
+            LivePermissionRegistry { when (it) { first -> firstGrant; second -> secondGrant; else -> null } }) { clock }
+        val vm = model(); idle(vm); load(vm, first)
+        vm.loadComparison(second)
+        withTimeout(10_000) { entered.await() }
+        vm.leaveOfferPage()
+        withTimeout(10_000) { cancelled.await() }
+        val state = idle(vm)
+        assertNull(state.result); assertNull(state.comparisonSource); assertNull(state.comparison)
+        assertTrue(state.reviewedOffers.isEmpty()); assertTrue(state.needPreviews.isEmpty())
+        assertEquals(first, PrivateOfferSettings.forApp(context).selection()!!.scope)
     }
 
     @Test fun permissionChangedAfterTheDurableReadButBeforeMainPublicationCannotRelabelTheOldResponse(): Unit = runBlocking {

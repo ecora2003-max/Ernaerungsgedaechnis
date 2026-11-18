@@ -1,3 +1,9 @@
+## Codex – händlerübergreifender Vergleich und REWE-Zugriffsgrenze (18.11.2026)
+
+- [PR #307](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/307) auf `cc8148d2e953a2ade56ef1b1ae6eeca46975132d` erreichte die Angebote von PENNY, ALDI Nord und ALDI Süd im Android-Livejob. REWE lehnte die Marktseite mit HTTP 403 ab. Kaufland lag in der Reihenfolge danach und wurde in diesem Lauf nicht aufgerufen. Im originalen Lauf 44289735652 bestand der separate PENNY-Test. Das Originalartefakt 14420933660 hat SHA-256 `b6fc37adb696d8dfca5d0d947483a960c91da8ddb5cf76b7c56d2afb5de733bd`. REWE-HTML und Netto bleiben aus der aktiven Konfiguration entfernt.
+- Für den Einkaufstag kann auf derselben Angebotsseite ein zweiter Markt geladen werden. Beide Quellen und die unabhängigen Produkt- und Gebindebestätigungen werden für Vergleich und Bedarfsvorschau einzeln geprüft. No-Store-Preise bleiben auf der Angebotsseite und werden beim Verlassen verworfen. Die App speichert weiter nur die erste Anbieterauswahl und hält sich für beide Quellen an deren Abrufabstand.
+- Die separat veröffentlichte REWE-Suche mit `wwIdent=1356345` und der öffentlichen Stichprobe „Haferflocken“ lieferte am 18.11. um 11:01 UTC HTTP 200 mit 12 ganzzahligen Warenpreisen und getrennten Pfandwerten. robots.txt ließ den gezielten Pfad zu. Nächster Anschluss nach der Angebots- und Vergleichsprüfung ist die ausdrücklich ausgelöste Produktsuche mit separat bestätigtem Filialscope und echtem Gerätetest.
+
 ## Codex – öffentliche Angebote an fünf Händlerprofile angeschlossen (18.11.2026)
 
 - [PR #307](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/307) führt die PENNY-Integration auf dem vorhandenen Arbeitsbranch fort. Die veröffentlichte ALDI-Nord-Antwort vom 17.11. ließ sich mit dem korrigierten Textlimit in `f3c2a372900830f14f8770a98d5ce042333087b3` vollständig auswerten. 292/292 Preise samt veröffentlichtem Datumsfenster. Größere Listen zeigen 25 Karten je Seite.

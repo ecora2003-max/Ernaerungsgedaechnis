@@ -47,6 +47,9 @@ internal object LiveSourceCatalogue {
         LiveRetailer.NETTO_MD -> LiveSourceInfo(retailer, "netto-published-offers", LiveSourceStatus.BLOCKED,
             "https://www.netto-online.de/angebote/c-N07",
             "Der geprüfte Angebotsabruf wurde auf Android mit HTTP 403 abgewiesen. Die Händlerseite ist im Browser verfügbar.")
+        LiveRetailer.REWE -> LiveSourceInfo(retailer, "rewe-market-offers", LiveSourceStatus.BLOCKED,
+            "https://www.rewe.de/angebote/berlin-mitte/1356345/rewe-leipziger-platz-12/",
+            "Die Angebotsseite dieses Markts hat den Android-Abruf mit HTTP 403 abgewiesen. Du kannst sie im Browser öffnen.")
         else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.BLOCKED,
             SOURCE_EVIDENCE, "Noch kein konkretes Quellen-/Filialprofil hinterlegt. Eine ausdrückliche Händlergenehmigung ist keine pauschale technische Voraussetzung; ein realer zulässiger Endpoint und korrekter Filialbezug fehlen noch.")
     } }
@@ -101,7 +104,7 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
         return BigDecimal(numerator).divide(BigDecimal.valueOf(amount).multiply(BigDecimal(100)), 2, RoundingMode.HALF_UP)
             .toPlainString() + if (basis == OfferMassUnit.GRAM) " €/kg" else " €/l"
     }
-    fun applicable(scope: LiveOfferScope): Boolean = retailer == scope.retailer &&
+    fun matchesLocation(scope: LiveOfferScope): Boolean = retailer == scope.retailer &&
         when (applicability) {
             LiveOfferApplicability.STORE_CONFIRMED -> storeId != null && storeId == scope.storeId
             LiveOfferApplicability.REGION_CONFIRMED -> regionId != null && regionId == scope.regionId
@@ -109,8 +112,13 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
             else -> false
         } &&
         (storeId == null || storeId == scope.storeId) && (regionId == null || regionId == scope.regionId) &&
-        (deliveryAreaId == null || deliveryAreaId == scope.deliveryAreaId) &&
+        (deliveryAreaId == null || deliveryAreaId == scope.deliveryAreaId)
+
+    fun applicable(scope: LiveOfferScope): Boolean = matchesLocation(scope) &&
         validFrom != null && validUntil != null && scope.purchaseOn in validFrom..validUntil
+
+    fun isComparisonCandidate(scope: LiveOfferScope): Boolean = merchandiseCents != null && matchesLocation(scope) &&
+        (validFrom == null || validFrom <= scope.purchaseOn) && (validUntil == null || scope.purchaseOn <= validUntil)
 }
 
 /** These facts come from an independent host registry, never the HTTP result. */
