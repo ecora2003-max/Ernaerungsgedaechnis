@@ -9,6 +9,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -29,14 +31,14 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpenShopping: (() -> Unit)? = null,
-    shopping: ShoppingReport? = null) {
+    shopping: ShoppingReport? = null, onOpenCatalog: (() -> Unit)? = null) {
     val context = LocalContext.current
     val factory = remember(context.applicationContext) { object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>) = LiveOffersViewModel(context.applicationContext) as T
     } }
     val model = providedModel ?: viewModel<LiveOffersViewModel>(key = "live-offers", factory = factory)
     val state by model.state.collectAsStateWithLifecycle()
-    var selected by rememberSaveable { mutableStateOf(LiveRetailer.ALDI_NORD.name) }
+    var selected by rememberSaveable { mutableStateOf(model.configuredSources.firstOrNull()?.retailer?.name ?: LiveRetailer.ALDI_NORD.name) }
     var store by rememberSaveable { mutableStateOf("") }
     var region by rememberSaveable { mutableStateOf("") }
     var delivery by rememberSaveable { mutableStateOf("") }
@@ -75,7 +77,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
             model.authorizationOpened()
         }
     }
-    Column(Modifier.fillMaxWidth().testTag("live_offers_screen"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().testTag("live_offers_screen").semantics {
+        stateDescription = if (state.selectionLoaded && !state.busy) "Bereit" else "Wird geladen"
+    }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Heading("Angebote & Preisvergleich", "Quelle, Gültigkeit und Filiale getrennt prüfen")
         Text("Angebote sind keine Einkäufe. Es wird nichts bestellt, bezahlt oder in den Vorrat gebucht. Unbekannte Preise und fehlende Mengen bleiben unbekannt.")
         if (shopping != null) Fold("Aktueller Einkaufsbedarf · nur lokaler Abgleich") {
@@ -168,7 +172,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 .also { require(it.purchaseOn.toString() == purchaseOn); it.validate() } }
                 .onSuccess { selectionError = null; model.refresh(it) }
                 .onFailure { selectionError = "Datum und Anbieter-/Filialauswahl prüfen." }
-        }, enabled = !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
+        }, enabled = state.selectionLoaded && !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
             modifier = Modifier.testTag("live_offers_refresh")) { Text("Auswahl anwenden und aktualisieren") }
         selectionError?.let { Hint(it) }
         state.scope?.let { applied -> Text("Angewendet: ${applied.retailer.title} · ${applied.purchaseOn} · ${applied.storeId ?: applied.deliveryAreaId ?: applied.regionId ?: "kein bestätigter Filial-/Liefergebietsbezug"}", Modifier.testTag("live_applied_scope")) }
@@ -196,25 +200,44 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 "ACCESS_BLOCKED" -> "Anbieter sperrt den Zugriff. Kein automatischer Wiederholungsversuch."
                 "RATE_LIMITED" -> "Anbieter begrenzt die Abfragen. Später ausdrücklich erneut versuchen."
                 "NETWORK_UNAVAILABLE" -> "Netzabruf konnte nicht abgeschlossen werden."
+                "SCOPE_UNAVAILABLE" -> "Für diese Filiale oder Angebotswoche ist keine belastbare Zuordnung verfügbar. Keine Preisübernahme."
                 "UNSUPPORTED_SOURCE_SCHEMA", "SOURCE_READ_OR_CONTRACT_FAILED" -> "Antwort nicht zuverlässig als Angebot auswertbar; keine neue Preisübernahme."
                 "REFRESH_JOURNAL_UNAVAILABLE" -> "Lokale Abrufsteuerung nicht sicher lesbar oder speicherbar. Kein Netzabruf gestartet."
                 "AUTOMATIC_REFRESH_NOT_PERMITTED" -> "Automatischer Abruf ist nicht freigegeben oder nach einem Fehler pausiert."
                 else -> "Quelle derzeit nicht nutzbar."
             })
             if (result.status == LiveRefreshStatus.BLOCKED) Text("Kein freigegebener Liveabruf. Fehlende Angebote bedeuten keine vollständige Marktprüfung.", Modifier.testTag("live_offers_blocked"))
+            result.transportDiagnostic?.let { diagnostic ->
+                Fold("Verbindungsdetails") { Text("NETWORK_${diagnostic.name} · Keine Zugangsdaten oder Antwortinhalte in dieser Diagnose.") }
+            }
             result.batch?.let { batch ->
                 Text("${if (result.fromCache) "Letzter Sitzungsstand" else "Abgerufen"} ${batch.fetchedAt} · Quelle ${batch.sourceId} · Abdeckung unvollständig")
+                batch.offers.mapNotNull { it.storeEvidence }.distinct().forEach { evidence ->
+                    Text("Markt: ${evidence.marketName} · ${evidence.address}", Modifier.testTag("live_canonical_market"))
+                    Text("Offizielle Verkaufsregion ${evidence.sourceRegionId} · Angebotswoche ab ${evidence.weekStartsOn}. Einzelne Artikelzeiträume sind damit nicht bestätigt.")
+                    Text("Marktzuordnung geprüft ${evidence.checkedAt} · ${evidence.scopeSourceUrl}")
+                    Text("Gelesen werden die veröffentlichten Top-Angebote dieser Woche; keine vollständige Sortiments- oder Angebotsabdeckung.")
+                }
                 Field("Geladene Angebote filtern · bleibt lokal", filter, { filter = it }, modifier = Modifier.testTag("live_offer_filter"))
                 val rows = batch.offers.filter { it.title.contains(filter, ignoreCase = true) }
+                var page by remember(batch, filter) { mutableIntStateOf(0) }
+                val pageCount = (rows.size + 24) / 25
+                Text("${rows.size} geladene Treffer · Seite ${if (rows.isEmpty()) 0 else page + 1}/$pageCount", Modifier.testTag("live_offer_page"))
+                if (pageCount > 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton({ page-- }, enabled = page > 0, modifier = Modifier.testTag("live_offer_previous")) { Text("Vorherige Angebote") }
+                    OutlinedButton({ page++ }, enabled = page + 1 < pageCount, modifier = Modifier.testTag("live_offer_next")) { Text("Weitere Angebote") }
+                }
                 var target by remember(batch) { mutableStateOf("") }
                 var alternative by remember(batch) { mutableStateOf("") }
+                var articleToReview by remember(batch) { mutableStateOf<String?>(null) }
+                LaunchedEffect(articleToReview) { if (articleToReview != null) model.loadArticleCatalog() }
                 if (batch.offers.size > 1) {
                     IdPicker("Referenzangebot dieser Liste", batch.offers.map { it.id to it.title }, target) { target = it }
                     IdPicker("Alternativangebot dieser Liste", batch.offers.map { it.id to it.title }, alternative) { alternative = it }
                     OutlinedButton({ model.compare(target, alternative) }, enabled = target.isNotBlank() && alternative.isNotBlank() && !state.busy) { Text("Waren-Grundpreise geprüft vergleichen") }
                 }
                 if (rows.isEmpty()) Text("Keine passenden geladenen Angebote. Keine Aussage über das gesamte Sortiment.")
-                rows.forEach { offer -> Panel {
+                rows.drop(page * 25).take(25).forEach { offer -> Panel {
                     Section(offer.title, when (offer.kind) { LiveOfferKind.PROMOTION -> "Aktionsangabe"; LiveOfferKind.REGULAR -> "Normalpreisangabe"; else -> "Preisart ungeklärt" })
                     fun cents(value: Long?) = value?.let { BigDecimal.valueOf(it, 2).toPlainString().replace('.', ',') + " €" } ?: "unbekannt"
                     Text("Warenpreis: ${cents(offer.merchandiseCents)} · Pfand: ${cents(offer.depositCents)} · zusammen: ${cents(offer.checkoutCents)}")
@@ -244,6 +267,21 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     if (!offer.conditionsConfirmed) Text("Diese Quellangabe allein bestätigt keine Preisbedingungen. Ein Vergleich benötigt zusätzlich einen unabhängigen Nachweis.")
                     offer.conditions?.let { Text(it) }
                     Text("Quellenartikel ${offer.sourceProductId} · ${offer.sourceUrl}")
+                    offer.productPageUrl?.let { page ->
+                        OutlinedButton({
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) }
+                                .onFailure { selectionError = "Originalangebot konnte nicht geöffnet werden." }
+                        }, modifier = Modifier.testTag("live_product_page_${offer.sourceProductId}")) { Text("Originalangebot öffnen") }
+                    }
+                    Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
+                        else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
+                    OutlinedButton({ articleToReview = offer.id }, enabled = !state.busy,
+                        modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
+                    if (articleToReview == offer.id) OfferArticleReviewPanel(model, offer, batch.scope,
+                        state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }
+                    if (shopping != null) OutlinedButton({ model.previewShoppingNeed(offer.id, shopping) },
+                        enabled = !state.busy && offer.id in state.reviewedOffers,
+                        modifier = Modifier.testTag("live_need_${offer.sourceProductId}")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
                     OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
                         modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
                     if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,
@@ -251,6 +289,18 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 } }
             }
         }
+        state.needPreviews.filter { it.report == shopping && state.result?.batch?.offers?.any { offer -> offer.id == it.offerId } == true }
+            .forEach { preview -> Panel {
+                Section("Livepreis für ${preview.line.need.name}", "Nur bekannte Bedarfsmenge · keine Buchung")
+                val need = preview.line.need; val quote = preview.packs
+                Text("${Amounts.format(need.knownMissing)} ${need.unit.label} bekannt fehlend · ${quote.count} Angebotsgebinde", Modifier.testTag("live_need_quantity"))
+                Text("Kaufmenge ${Amounts.format(quote.amount)} ${need.unit.label} · Überschuss ${Amounts.format(quote.surplus)} ${need.unit.label}")
+                Text("Warenkosten für diesen Bedarf: ${quote.costCents?.let(de.ernaehrung.demo.data.local.Money::format) ?: "unbekannt"}", Modifier.testTag("live_need_cost"))
+                if (need.unknownRequirements > 0) Text("${need.unknownRequirements} weitere Bedarfsmenge(n) unbekannt; kein vollständiger Einkaufsbetrag.")
+                if (preview.line.firstNeededOn?.let { it < preview.report.scope.purchaseOn } == true) Text("Einkauf liegt nach dem ersten Bedarfstermin ${preview.line.firstNeededOn}.")
+                Text("Bekannter Budgetrest vor dieser Live-Vorschau: ${preview.report.budget.remainingBudgetCents?.let(de.ernaehrung.demo.data.local.Money::format) ?: "unbekannt"}")
+                Text("Pfand, weitere Artikel und unbekannte Mengen sind darin nicht abschließend bewertet. Keine Budgetreservierung, kein Marktbestpreis und keine Übernahme als bezahlter historischer Preis.")
+            } }
         state.comparison?.let { comparison ->
             Panel {
                 Section("Geprüfter Waren-Grundpreisvergleich", "Keine vollständige Marktprüfung")

@@ -4,17 +4,22 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.ernaehrung.demo.data.offers.*
+import de.ernaehrung.demo.data.local.*
 import java.net.URI
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 internal data class LiveOfferSelection(val offer: LiveOffer, val scope: LiveOfferScope, val authorization: LiveSourceGrant)
+internal data class LiveNeedPreview(val offerId: String, val report: ShoppingReport,
+    val line: ShoppingLine, val packs: PackCalculation)
 internal data class LiveOffersUiState(val busy: Boolean = false, val scope: LiveOfferScope? = null,
     val result: LiveRefreshResult? = null, val message: String? = null, val connection: KnusprConnectionInfo? = null,
     val discovery: KnusprToolDiscovery? = null, val authorizationUrl: URI? = null,
     val automatic: Boolean = false, val selectionLoaded: Boolean = false, val comparison: LivePriceComparison? = null,
-    val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null) {
+    val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null,
+    val articleCatalog: List<ProductVersionEntity> = emptyList(), val reviewedOffers: Set<String> = emptySet(),
+    val needPreviews: List<LiveNeedPreview> = emptyList()) {
     val connected: Boolean get() = connection != null
 }
 
@@ -22,11 +27,15 @@ internal data class LiveOffersUiState(val busy: Boolean = false, val scope: Live
  * explicit connection/selection; unapproved catalogue sources never start IO. */
 internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? = null,
     private val http: OfferHttp = HttpsOfferHttp(), comparison: LiveOfferComparison? = null,
-    private val sources: ReviewedOfferSources = ReviewedOfferSources.bundled(context)) : ViewModel() {
+    private val sources: ReviewedOfferSources = ReviewedOfferSources.bundled(context),
+    private val readCatalog: suspend () -> List<ProductVersionEntity> = {
+        FoodDatabase.localSandbox(context.applicationContext).foodDao().allVersions()
+    }, proofVerifier: OfferArticleProofVerifier = AndroidOfferArticleProof) : ViewModel() {
     private val app = context.applicationContext
     private val runtime = runtime ?: sources.runtime(http, PrivateOfferSettings.forApp(app))
-    private val comparison = comparison ?: LiveOfferComparison(
-        sourceStillPermitted = { scope, offer -> this.runtime.policy(scope)?.sourceId == offer.sourceId })
+    private val suppliedComparison = comparison
+    private val articles = LiveArticleReviewSession({ scope, id, grant -> this.runtime.permitsSnapshot(scope, id, grant) }, proofVerifier)
+    private var pendingArticle: Pair<String, Long>? = null
     val configuredSources: List<ReviewedOfferSources.Profile> get() = sources.profiles
     val invalidSourceProfiles: Int get() = sources.invalidProfiles
     private val privateStore = PrivateKnusprStore.forApp(app)
@@ -45,7 +54,100 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
                 else mutable.value.copy(selectionLoaded = true)
         }
     }
-    override fun onCleared() { generation++; super.onCleared() }
+    override fun onCleared() { generation++; articles.clear(); super.onCleared() }
+
+    private fun cancelArticlePrompt() { pendingArticle = null; articles.cancel() }
+    fun cancelArticleReview(challengeId: String) {
+        if (pendingArticle?.first == challengeId) cancelArticlePrompt()
+    }
+    private fun eligibleCatalog(versions: List<ProductVersionEntity>): List<ProductVersionEntity> {
+        val now = System.currentTimeMillis()
+        return versions.filter { version ->
+            version.source != Source.DEMO && version.quality in setOf(Quality.CONFIRMED, Quality.SOURCED) &&
+                version.baseUnit in setOf(BaseUnit.GRAM, BaseUnit.MILLILITRE) && version.recordedAt <= now &&
+                versions.filter { it.productId == version.productId && it.recordedAt <= now }
+                    .let { known -> known.filter { it.revision == known.maxOfOrNull { row -> row.revision } }.singleOrNull()?.id == version.id }
+        }.sortedBy { it.name }
+    }
+    private fun reviewedIds(value: LiveOffersUiState, versions: List<ProductVersionEntity>): Set<String> =
+        value.result?.batch?.let { batch -> batch.offers.filter { articles.reviewed(it, batch.scope, versions) != null }.map { it.id }.toSet() } ?: emptySet()
+
+    fun loadArticleCatalog() {
+        if (mutable.value.busy) return
+        val expected = generation
+        viewModelScope.launch {
+            val versions = withContext(Dispatchers.IO) { runCatching { readCatalog() }.getOrNull() }
+            if (expected == generation && versions != null) mutable.value = mutable.value.copy(
+                articleCatalog = eligibleCatalog(versions), reviewedOffers = reviewedIds(mutable.value, versions))
+            else if (expected == generation) mutable.value = mutable.value.copy(message = "Eigener Katalog konnte nicht gelesen werden. Keine Artikelzuordnung bestätigt.")
+        }
+    }
+    fun prepareArticleReview(offerId: String, draft: LiveArticleReviewDraft,
+        onPrepared: (LiveArticleReviewSession.Challenge) -> Unit) {
+        val value = currentForAction() ?: return
+        val batch = value.result?.batch ?: return
+        val offer = batch.offers.singleOrNull { it.id == offerId } ?: return
+        val grant = value.result.authorization ?: return
+        cancelArticlePrompt(); val expected = ++generation
+        mutable.value = value.copy(busy = true, comparison = null, needPreviews = emptyList())
+        work = viewModelScope.launch {
+            try {
+                val versions = withContext(Dispatchers.IO) { readCatalog() }
+                if (generation != expected) return@launch
+                val challenge = articles.prepare(offer, batch.scope, grant, draft, versions)
+                pendingArticle = challenge.id to expected
+                publishValidated(mutable.value.copy(busy = false, articleCatalog = eligibleCatalog(versions)))
+                onPrepared(challenge)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { if (generation == expected) {
+                cancelArticlePrompt()
+                mutable.value = mutable.value.copy(busy = false,
+                    message = "Artikelreview nicht bereit: ${failure.message?.take(240) ?: "Katalog, Gebinde oder Quelle erneut prüfen."}")
+            } }
+        }
+    }
+    fun acceptArticleReview(challengeId: String, proof: OfferArticleProof) {
+        val expected = generation
+        if (pendingArticle != (challengeId to expected) || mutable.value.busy) return
+        mutable.value = mutable.value.copy(busy = true)
+        work = viewModelScope.launch {
+            try {
+                val versions = withContext(Dispatchers.IO) { readCatalog() }
+                if (generation != expected || pendingArticle != (challengeId to expected)) return@launch
+                articles.accept(challengeId, proof, versions); pendingArticle = null
+                publishValidated(mutable.value.copy(busy = false, articleCatalog = eligibleCatalog(versions),
+                    reviewedOffers = reviewedIds(mutable.value, versions), comparison = null, needPreviews = emptyList(),
+                    message = "Genau dieser Artikel und dieses Gebinde gerätegebunden für die Sitzung bestätigt. Keine Buchung erzeugt."))
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (generation == expected) {
+                cancelArticlePrompt(); mutable.value = mutable.value.copy(busy = false,
+                    message = "Gerätebestätigung, Produktfassung oder Angebotsstand nicht mehr gültig. Artikel erneut prüfen.")
+            } }
+        }
+    }
+    fun previewShoppingNeed(offerId: String, report: ShoppingReport) {
+        val value = currentForAction() ?: return
+        val batch = value.result?.batch ?: return
+        val offer = batch.offers.singleOrNull { it.id == offerId } ?: return
+        if (report.scope.purchaseOn != batch.scope.purchaseOn.toString()) {
+            mutable.value = value.copy(needPreviews = emptyList(), message = "Einkaufsliste und Angebot müssen denselben Einkaufstag verwenden."); return
+        }
+        val expected = generation; mutable.value = value.copy(busy = true)
+        work = viewModelScope.launch {
+            try {
+                val versions = withContext(Dispatchers.IO) { readCatalog() }
+                if (generation != expected) return@launch
+                val quotes = report.items.mapNotNull { line -> articles.previewNeed(offer, batch.scope, line.need, versions)
+                    ?.let { LiveNeedPreview(offerId, report, line, it) } }
+                publishValidated(mutable.value.copy(busy = false, needPreviews = quotes,
+                    reviewedOffers = reviewedIds(mutable.value, versions),
+                    message = if (quotes.isEmpty()) "Kein passender bestätigter Artikel mit bekanntem Bedarf. Produktfassung, Einheit und Datum prüfen."
+                        else "Live-Warenpreis auf den bekannten Bedarf angewendet. Teilvorschau, keine Kauf- oder Budgetbuchung."))
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false,
+                needPreviews = emptyList(), message = "Aktueller Bedarfsabgleich nicht möglich; keine Einkaufsposition geändert.") }
+        }
+    }
 
     /** Keep the exact independent authorization of each loaded observation.
      * Replacements with the same source ID do not reauthorize old prices. */
@@ -57,8 +159,11 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
             it.authorization.cachePermitted && runtime.permitsSnapshot(it.scope, it.offer.sourceId, it.authorization)
         } ?: true
         if (validBatch && validReference) return value
+        cancelArticlePrompt()
+        articles.retainOnly(setOfNotNull(value.reference?.takeIf { validReference }?.offer?.id))
         return value.copy(result = value.result.takeIf { validBatch }, reference = value.reference.takeIf { validReference },
-            comparison = null, authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
+            comparison = null, needPreviews = emptyList(), reviewedOffers = emptySet(),
+            authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
             automatic = value.automatic && validBatch,
             message = "Quellenfreigabe oder Geltungsbereich geändert. Betroffene Sitzungsdaten verworfen; diese Quelle erneut ausdrücklich aktualisieren.")
     }
@@ -83,9 +188,12 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         return value
     }
     fun selectProvider() {
+        cancelArticlePrompt()
+        articles.retainOnly(setOfNotNull(mutable.value.reference?.takeIf { it.authorization.cachePermitted }?.offer?.id))
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
         mutable.value = mutable.value.copy(scope = null, result = null, discovery = null, message = null,
-            automatic = false, comparison = null, authorizationUrl = null, busy = true, authorizedEvidenceRef = null)
+            automatic = false, comparison = null, authorizationUrl = null, busy = true, authorizedEvidenceRef = null,
+            reviewedOffers = emptySet(), needPreviews = emptyList())
         work = viewModelScope.launch {
             try { withContext(Dispatchers.IO) { ticket?.let(privateStore::cancelAttempt); settings.clearSelection() } }
             finally { if (generation == expected) mutable.value = mutable.value.copy(busy = false) }
@@ -93,10 +201,11 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     }
     fun refresh(scope: LiveOfferScope, automatic: Boolean = false) {
         if (automatic && (mutable.value.busy || !mutable.value.automatic)) return
-        work?.cancel(); val expected = ++generation
+        articles.retainOnly(setOfNotNull(mutable.value.reference?.takeIf { it.authorization.cachePermitted }?.offer?.id))
+        cancelArticlePrompt(); work?.cancel(); val expected = ++generation
         val keepAutomatic = mutable.value.scope == scope && mutable.value.automatic
         mutable.value = mutable.value.copy(scope = scope, busy = true, result = null, message = null, automatic = keepAutomatic,
-            comparison = null, authorizedEvidenceRef = null)
+            comparison = null, authorizedEvidenceRef = null, reviewedOffers = emptySet(), needPreviews = emptyList())
         work = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
@@ -122,18 +231,18 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     fun setAutomatic(enabled: Boolean) {
         val value = currentForAction() ?: return
         val scope = value.scope ?: return
-        val expected = ++generation
+        cancelArticlePrompt(); val expected = ++generation
         mutable.value = mutable.value.copy(busy = true)
         work = viewModelScope.launch {
             try {
                 val accepted = withContext(Dispatchers.IO) {
-                    val allowed = !enabled || runtime.policy(scope)?.minimumRefreshSeconds != null
+                    val allowed = !enabled || runtime.automaticAllowed(scope)
                     if (allowed) settings.select(scope, enabled)
                     allowed
                 }
                 if (generation == expected) publishValidated(mutable.value.copy(busy = false,
                     automatic = enabled && accepted, message = when {
-                        !accepted -> "Automatik gesperrt: freigegebene Quelle, genauer Geltungsbereich und erlaubter Abrufrhythmus fehlen. Kein Netzabruf gestartet."
+                        !accepted -> "Automatik pausiert: Quelle, Geltungsbereich oder Abrufrhythmus nicht nutzbar, oder die letzte Abfrage ist fehlgeschlagen. Zuerst ausdrücklich erfolgreich aktualisieren."
                         enabled -> "Automatische Aktualisierung bei sichtbarer Angebotsseite eingeschaltet. Keine Hintergrundabfragen."
                         else -> "Automatische Aktualisierung ausgeschaltet."
                     }))
@@ -150,6 +259,14 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         // action, rather than attaching a later grant to an earlier response.
         publishValidated(value)?.join()
         if (expected != generation || mutable.value.busy) return
+        if (suppliedComparison == null && (mutable.value.reviewedOffers.isNotEmpty() || mutable.value.needPreviews.isNotEmpty())) {
+            val versions = withContext(Dispatchers.IO) { runCatching { readCatalog() }.getOrNull() }
+            if (expected != generation || mutable.value.busy) return
+            val ids = versions?.let { reviewedIds(mutable.value, it) } ?: emptySet()
+            mutable.value = mutable.value.copy(reviewedOffers = ids,
+                comparison = mutable.value.comparison.takeIf { ids == mutable.value.reviewedOffers },
+                needPreviews = mutable.value.needPreviews.filter { it.offerId in ids })
+        }
         val current = mutable.value
         readConnection()
         if (current.result?.refreshAfter?.let { java.time.Instant.now() < it } == true) return
@@ -161,7 +278,25 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         val batch = value.result?.batch ?: return
         val target = batch.offers.singleOrNull { it.id == targetId } ?: return
         val alternative = batch.offers.singleOrNull { it.id == alternativeId } ?: return
-        publishValidated(value.copy(comparison = comparison.compare(target, scope, alternative, scope, java.time.Instant.now())))
+        compareReviewed(value, target, scope, alternative, scope)
+    }
+    private fun compareReviewed(value: LiveOffersUiState, target: LiveOffer, targetScope: LiveOfferScope,
+        alternative: LiveOffer, alternativeScope: LiveOfferScope) {
+        suppliedComparison?.let {
+            publishValidated(value.copy(comparison = it.compare(target, targetScope, alternative, alternativeScope, java.time.Instant.now())))
+            return
+        }
+        val expected = generation; mutable.value = value.copy(busy = true)
+        work = viewModelScope.launch {
+            try {
+                val versions = withContext(Dispatchers.IO) { readCatalog() }
+                if (generation == expected) publishValidated(mutable.value.copy(busy = false,
+                    reviewedOffers = reviewedIds(mutable.value, versions),
+                    comparison = articles.compare(target, targetScope, alternative, alternativeScope, versions)))
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false,
+                comparison = LivePriceComparison(null, "Aktuelle Artikel-/Katalogprüfung nicht möglich.")) }
+        }
     }
     fun rememberReference(id: String) {
         val value = currentForAction() ?: return
@@ -180,7 +315,7 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         val target = value.reference ?: return
         val scope = value.scope ?: return
         val alternative = value.result?.batch?.offers?.singleOrNull { it.id == alternativeId } ?: return
-        publishValidated(value.copy(comparison = comparison.compare(target.offer, target.scope, alternative, scope, java.time.Instant.now())))
+        compareReviewed(value, target.offer, target.scope, alternative, scope)
     }
     fun connect(confirmed: Boolean) {
         if (!confirmed || mutable.value.busy) return
@@ -284,6 +419,7 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         }
     }
     fun cancel() {
+        cancelArticlePrompt()
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
         mutable.value = mutable.value.copy(busy = true, authorizationUrl = null, message = "Abgebrochen. Keine Buchung erzeugt.")
         work = viewModelScope.launch {

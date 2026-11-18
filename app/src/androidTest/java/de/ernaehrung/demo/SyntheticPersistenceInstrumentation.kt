@@ -29,7 +29,13 @@ class SyntheticPersistenceInstrumentation : AndroidJUnitRunner() {
     private lateinit var request: Bundle
     override fun onCreate(arguments: Bundle?) {
         request = Bundle(arguments ?: Bundle())
-        super.onCreate(arguments)
+        // Real supplier traffic is opt-in and isolated from the offline suite.
+        // Filtering does not skip a failed test or count a compile as a pass.
+        val liveClass = "de.ernaehrung.demo.PublicRetailerLiveOnDeviceTest"
+        if (request.getString("eg_live_source") == "true") {
+            require(request.getString("class") == liveClass) { "Explicit live test class required" }
+        } else request.putString("notClass", listOfNotNull(request.getString("notClass"), liveClass).filter { it.isNotBlank() }.joinToString(","))
+        super.onCreate(request)
     }
 
     override fun onStart() {

@@ -65,13 +65,19 @@ internal enum class LiveOfferKind { PROMOTION, REGULAR, UNKNOWN }
 internal enum class LiveOfferApplicability { STORE_CONFIRMED, REGION_CONFIRMED, CHAIN_REPORTED, DELIVERY_CONFIRMED, UNKNOWN }
 internal enum class OfferMassUnit(val label: String) { GRAM("g"), MILLILITRE("ml") }
 internal enum class OfferQuantityBasis { NET, DRAINED, GROSS }
+/** Scope metadata is fetched separately from the price tiles. An advertised
+ * calendar week does not establish an individual product's validity dates. */
+internal data class LiveStoreScopeEvidence(val marketId: String, val marketName: String,
+    val address: String, val sourceRegionId: String, val weekStartsOn: LocalDate,
+    val scopeSourceUrl: String, val checkedAt: Instant)
 internal data class LiveOffer(val id: String, val sourceId: String, val retailer: LiveRetailer, val title: String,
     val sourceProductId: String, val gtin: String?, val merchandiseCents: Long?, val depositCents: Long?,
     val quantityMilli: Long?, val unit: OfferMassUnit?, val quantityBasis: OfferQuantityBasis?, val kind: LiveOfferKind,
     val validFrom: LocalDate?, val validUntil: LocalDate?, val sourceObservedAt: Instant?, val fetchedAt: Instant,
     val storeId: String?, val regionId: String?, val deliveryAreaId: String?, val applicability: LiveOfferApplicability,
     val conditions: String?, val conditionsConfirmed: Boolean, val sourceUrl: String, val packageDescription: String? = null,
-    val priceDetails: LivePriceDetails? = null) {
+    val priceDetails: LivePriceDetails? = null, val storeEvidence: LiveStoreScopeEvidence? = null,
+    val productPageUrl: String? = null) {
     init {
         require(id.isNotBlank() && sourceId.isNotBlank() && sourceProductId.isNotBlank() && title.isNotBlank() && title.length <= 1000)
         require(merchandiseCents == null || merchandiseCents in 0L..1_000_000_000_000L)
@@ -80,6 +86,7 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
         require(validFrom == null || validUntil == null || validFrom <= validUntil)
         require(fetchedAt.toEpochMilli() >= 0L && (sourceObservedAt == null || sourceObservedAt <= fetchedAt))
         require(URI(sourceUrl).let { it.scheme == "https" && it.host != null && it.rawUserInfo == null && it.fragment == null })
+        require(storeEvidence == null || (storeEvidence.marketId == storeId && storeEvidence.checkedAt <= fetchedAt))
     }
     val checkoutCents: Long? get() = if (merchandiseCents == null || depositCents == null) null else Math.addExact(merchandiseCents, depositCents)
     /** Display rounding only. Stored money remains integer cents; no mass/volume conversion. */
@@ -137,9 +144,11 @@ internal enum class LiveRefreshStatus { BLOCKED, LOADED, FAILED, THROTTLED }
 internal data class LiveRefreshResult(val status: LiveRefreshStatus, val batch: LiveOfferBatch? = null, val code: String? = null,
     val cachePermitted: Boolean = false, val minimumRefreshSeconds: Long? = null,
     val fromCache: Boolean = false, val refreshAfter: Instant? = null,
-    val authorization: LiveSourceGrant? = null)
-internal enum class OfferSourceFailureCode { LOGIN_REQUIRED, ACCESS_BLOCKED, RATE_LIMITED, NETWORK_UNAVAILABLE, UNSUPPORTED_SOURCE_SCHEMA }
-internal class OfferSourceFailure(val code: OfferSourceFailureCode) : Exception(code.name)
+    val authorization: LiveSourceGrant? = null, val transportDiagnostic: OfferTransportDiagnostic? = null)
+internal enum class OfferSourceFailureCode { LOGIN_REQUIRED, ACCESS_BLOCKED, RATE_LIMITED, NETWORK_UNAVAILABLE, UNSUPPORTED_SOURCE_SCHEMA, SCOPE_UNAVAILABLE }
+internal enum class OfferTransportDiagnostic { DNS, TIMEOUT, TLS, CONNECTION, IO }
+internal class OfferSourceFailure(val code: OfferSourceFailureCode,
+    val transportDiagnostic: OfferTransportDiagnostic? = null) : Exception(code.name)
 
 internal data class OfferRefreshAttempt(val at: Instant, val automaticPaused: Boolean)
 internal interface OfferRefreshJournal {
@@ -179,6 +188,13 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
     fun permitsSnapshot(scope: LiveOfferScope, sourceId: String, authorization: LiveSourceGrant?): Boolean =
         authorization != null && authorization.sourceId == sourceId && authorization.verifiedScope == scope &&
             policy(scope) == authorization
+
+    /** An explicit toggle cannot undo the durable pause left by a failed read.
+     * A successful explicit refresh must clear that pause first. */
+    fun automaticAllowed(scope: LiveOfferScope): Boolean = try {
+        val grant = policy(scope)
+        grant?.minimumRefreshSeconds != null && journal.last(grant.sourceId)?.automaticPaused != true
+    } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { false }
 
     /** Foreground refreshes share one in-flight read and the same source floor.
      * A changed scope never evades the source's refresh interval. Cached data is
@@ -238,17 +254,19 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: OfferSourceFailure) {
-            failed(scope, grant, failure.code.name)
+            failed(scope, grant, failure.code.name, failure.transportDiagnostic)
         }
         catch (_: Exception) {
             failed(scope, grant, "SOURCE_READ_OR_CONTRACT_FAILED")
         }
     }
-    private fun failed(scope: LiveOfferScope, grant: LiveSourceGrant, code: String): LiveRefreshResult {
+    private fun failed(scope: LiveOfferScope, grant: LiveSourceGrant, code: String,
+        diagnostic: OfferTransportDiagnostic? = null): LiveRefreshResult {
         val stillAuthorized = policy(scope) == grant
         val old = cached?.takeIf { stillAuthorized && grant.cachePermitted && it.first == grant && it.second.scope == scope }?.second
         if (!stillAuthorized) cached = null
         return LiveRefreshResult(LiveRefreshStatus.FAILED, old, code, grant.cachePermitted,
-            grant.minimumRefreshSeconds, fromCache = old != null, authorization = grant.takeIf { old != null })
+            grant.minimumRefreshSeconds, fromCache = old != null, authorization = grant.takeIf { old != null },
+            transportDiagnostic = diagnostic)
     }
 }

@@ -1,4 +1,28 @@
 {
   "format": "eg-reviewed-published-sources-1",
-  "profiles": []
+  "profiles": [
+    {
+      "id": "penny-4030085-top-angebote",
+      "revision": 1,
+      "label": "PENNY Winterfeldtstr. 74, 10781 Berlin · Top-Angebote",
+      "retailer": "PENNY",
+      "storeId": "4030085",
+      "regionId": null,
+      "format": "PENNY_STORE_WEEK",
+      "sourceId": "penny-public-top-angebote",
+      "endpoint": "https://www.penny.de/.rest/offers/by-category/",
+      "availabilityEndpoint": "https://www.penny.de/.rest/market",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.penny.de/angebote",
+        "scopeEvidence": "https://www.penny.de/.rest/market",
+        "reviewedAt": "2026-11-17T20:29:08Z",
+        "from": "2026-11-17",
+        "until": "2027-02-15",
+        "allowedHosts": ["www.penny.de"],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    }
+  ]
 }

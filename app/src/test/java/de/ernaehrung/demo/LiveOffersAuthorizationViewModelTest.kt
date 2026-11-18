@@ -74,6 +74,26 @@ class LiveOffersAuthorizationViewModelTest {
     }
     @After fun close() { models.clear(); Dispatchers.resetMain() }
 
+    @Test fun failedReadCannotBeReenabledByAnAutomaticToggleUntilAnExplicitSuccessfulRetry(): Unit = runBlocking {
+        var failing = true
+        val supplied = source(firstGrant.sourceId)
+        val failingSource = object : AuthorizedOfferSource {
+            override val endpoint = supplied.endpoint
+            override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
+                if (failing) throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE)
+                return supplied.fetch(scope)
+            }
+        }
+        runtime = LiveOfferRuntime(mapOf(first.retailer to failingSource), LivePermissionRegistry { firstGrant }) { clock }
+        val vm = model(); idle(vm); vm.refresh(first); idle(vm)
+        assertEquals(LiveRefreshStatus.FAILED, vm.state.value.result?.status)
+        vm.setAutomatic(true); idle(vm)
+        assertFalse(vm.state.value.automatic)
+        assertFalse(PrivateOfferSettings.forApp(context).selection()!!.automatic)
+        failing = false; clock = clock.plusSeconds(2); load(vm, first)
+        vm.setAutomatic(true); idle(vm); assertTrue(vm.state.value.automatic)
+    }
+
     @Test fun changedGrantWithSameSourceIdDiscardsSessionPricesReferenceAndComparisonAndPausesAutomationAcrossReopen(): Unit = runBlocking {
         var vm = model(); idle(vm); load(vm, first)
         vm.rememberReference("synthetic-lidl:a"); vm.compare("synthetic-lidl:a", "synthetic-lidl:b")
