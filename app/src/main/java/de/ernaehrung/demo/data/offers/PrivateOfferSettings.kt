@@ -39,6 +39,7 @@ internal class PrivateOfferSettings private constructor(context: Context) : Offe
     }
     @Synchronized fun select(scope: LiveOfferScope, automatic: Boolean) {
         scope.validate()
+        require(scope.searchTerm == null) { "Suchbegriffe sind keine gespeicherte Auswahl." }
         write(read() + ("selection" to mapOf("retailer" to scope.retailer.name, "store" to scope.storeId,
             "region" to scope.regionId, "delivery" to scope.deliveryAreaId, "purchaseOn" to scope.purchaseOn.toString(), "automatic" to automatic)))
     }

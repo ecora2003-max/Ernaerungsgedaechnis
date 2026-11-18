@@ -62,7 +62,7 @@ internal suspend fun preparePublicRetailerLiveNetwork(context: Context): UiDevic
 /** Read one listing through the production Android UI. Each provider has its
  * own test and proof, so a blocked source cannot suppress the other results. */
 internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>,
-    retailer: LiveRetailer, expectedStore: String?) {
+    retailer: LiveRetailer, expectedStore: String?, searchTerm: String? = null) {
     val context = compose.activity.applicationContext
     val device = preparePublicRetailerLiveNetwork(context)
     val config = ReviewedOfferSources.bundled(context); assertEquals(0, config.invalidProfiles)
@@ -72,6 +72,7 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
     val settings = PrivateOfferSettings.forApp(context)
     val profile = config.profiles.single { it.retailer == retailer }
     assertEquals(expectedStore, profile.storeId); assertNull(profile.regionId)
+    assertEquals(searchTerm != null, profile.interactiveSearch)
     settings.clearSelection()
     val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
     val rx = TrafficStats.getUidRxBytes(context.applicationInfo.uid); val tx = TrafficStats.getUidTxBytes(context.applicationInfo.uid)
@@ -94,6 +95,10 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         }
         ready(); tap("Angebotsanbieter"); tap("choose_${retailer.name}"); ready()
         tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_${profile.id}"); ready()
+        if (searchTerm != null) {
+            compose.onNodeWithTag("live_offers_refresh").assertIsNotEnabled()
+            compose.onNodeWithTag("live_search_term").performScrollTo().performTextInput(searchTerm)
+        }
         tap("live_offers_refresh")
         compose.waitUntil(90_000) { !model.state.value.busy && model.state.value.result != null }
         val result = requireNotNull(model.state.value.result)
@@ -105,13 +110,27 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val expectedScope = if (expectedStore == null) LiveOfferApplicability.CHAIN_REPORTED else LiveOfferApplicability.STORE_CONFIRMED
         assertTrue(batch.offers.all { it.retailer == retailer && it.applicability == expectedScope &&
             it.storeId == expectedStore && it.regionId == null && URI(it.sourceUrl).host == profile.endpoint.host })
-        if (expectedStore != null) {
+        if (searchTerm != null) {
+            assertEquals(searchTerm, batch.scope.searchTerm)
+            assertNull(settings.selection())
+            assertFalse(model.state.value.automatic)
+            val price = batch.offers.first { it.priceDetails?.regularCents != null && it.merchandiseCents != null }
+            assertEquals("/api/stationary-product-search/products", URI(price.sourceUrl).rawPath)
+            assertNull(price.validFrom); assertNull(price.validUntil)
+            compose.onNodeWithTag("live_applied_search").assertTextEquals("Geladene Suche · $searchTerm")
+            compose.onNodeWithTag("live_regular_${price.sourceProductId}").assertExists()
+        } else if (expectedStore != null) {
             val market = requireNotNull(batch.offers.first().storeEvidence)
             assertEquals(expectedStore, market.marketId)
             compose.onNodeWithTag("live_canonical_market").assertTextEquals("Markt: ${market.marketName} · ${market.address}")
             if (retailer == LiveRetailer.KAUFLAND) {
                 assertTrue(batch.offers.all { it.validFrom != null && it.validUntil != null && it.applicable(batch.scope) })
             }
+        }
+        if (retailer == LiveRetailer.ALDI_NORD) {
+            assertTrue(batch.offers.all { URI(it.sourceUrl).rawPath == "/angebote.html" })
+            assertTrue(batch.offers.any { row -> row.validFrom?.let { it <= batch.scope.purchaseOn } == true &&
+                row.validUntil?.let { batch.scope.purchaseOn <= it } == true && row.merchandiseCents != null })
         }
         val pages = (batch.offers.size + 24) / 25
         compose.onNodeWithTag("live_offer_page").assertTextEquals("${batch.offers.size} geladene Treffer · Seite 1/$pages")
@@ -130,6 +149,7 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val proof = JSONObject().put("retailer", retailer.name).put("sourceId", batch.sourceId).put("sourceHost", profile.endpoint.host)
             .put("offerCount", batch.offers.size).put("offerFingerprint", digest).put("uidRxDelta", received).put("uidTxDelta", sent)
             .put("branchConfirmed", expectedStore != null).put("storeId", expectedStore ?: JSONObject.NULL)
+            .put("productSearch", searchTerm != null)
             .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
             .put("observedAt", batch.fetchedAt.toString())
         assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())

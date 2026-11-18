@@ -27,23 +27,24 @@
       }
     },
     {
-      "id": "aldi-nord-public-next",
-      "revision": 1,
-      "label": "ALDI Nord · veröffentlichte Vorschau nächste Woche · Filiale ungeprüft",
+      "id": "aldi-nord-public-week",
+      "revision": 2,
+      "label": "ALDI Nord · laufende und nächste Angebotswoche · Filiale ungeprüft",
       "retailer": "ALDI_NORD",
       "storeId": null,
       "regionId": null,
-      "format": "ALDI_NORD_NEXT_DATA",
-      "sourceId": "aldi-nord-public-next",
-      "endpoint": "https://www.aldi-nord.de/angebote-vorschau.html",
+      "format": "ALDI_NORD_CURRENT_DATA",
+      "sourceId": "aldi-nord-public-week",
+      "endpoint": "https://www.aldi-nord.de/angebote.html",
+      "nextWeekEndpoint": "https://www.aldi-nord.de/angebote-vorschau.html",
       "availabilityEndpoint": null,
       "weekStartsOn": null,
       "approval": {
-        "sourceEvidence": "https://www.aldi-nord.de/angebote-vorschau.html",
-        "scopeEvidence": "https://www.aldi-nord.de/angebote-vorschau.html",
-        "reviewedAt": "2026-11-17T20:28:00Z",
-        "from": "2026-11-17",
-        "until": "2027-02-15",
+        "sourceEvidence": "https://www.aldi-nord.de/angebote.html",
+        "scopeEvidence": "https://www.aldi-nord.de/angebote.html",
+        "reviewedAt": "2026-11-18T11:12:45Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
         "allowedHosts": [
           "www.aldi-nord.de"
         ],
@@ -71,6 +72,32 @@
         "until": "2027-02-15",
         "allowedHosts": [
           "www.aldi-sued.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "rewe-1356345-product-search",
+      "revision": 1,
+      "label": "REWE Leipziger Platz 12, 10117 Berlin · Produktsuche",
+      "retailer": "REWE",
+      "storeId": "1356345",
+      "regionId": null,
+      "format": "REWE_STATIONARY",
+      "sourceId": "rewe-1356345-product-search",
+      "endpoint": "https://www.rewe.de/api/stationary-product-search/products",
+      "interactiveSearch": true,
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.rewe.de/api/stationary-product-search/products?query=Haferflocken&wwIdent=1356345",
+        "scopeEvidence": "https://www.rewe.de/marktseite/berlin-mitte/1356345/rewe-markt-leipziger-platz-12/",
+        "reviewedAt": "2026-11-18T11:12:45Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "www.rewe.de"
         ],
         "cachePermitted": false,
         "minimumRefreshSeconds": 600

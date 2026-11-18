@@ -37,10 +37,10 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 
 | Anbieter | App-Anzeige | Technischer Anschluss / konkreter fehlender Nachweis |
 |---|---|---|
-| ALDI Nord | Öffentliches Profil, Liveabnahme offen | Kettenweite Vorschau für die nächste Woche. Der vorhandene Parser verarbeitet bis zu 512 Einträge. Die Filialzuordnung fehlt. |
+| ALDI Nord | Öffentliches Wochenprofil | Für den Einkaufstag in der laufenden oder nächsten Woche wird die passende veröffentlichte Liste geladen. Beide Abrufe teilen denselben Mindestabstand. Die Filialzuordnung fehlt. |
 | ALDI Süd | Öffentliches Profil, Liveabnahme offen | Nuxt-Angebotsseite mit sichtbaren Produktkarten und SKU-/Centabgleich. Die veröffentlichte Seite belegt keine konkrete Filiale. |
 | Lidl | BLOCKED | Die offizielle Prospektseite verlinkt einen Viewer ohne direkt lesbare Preise. Die Verbindung zwischen Store-v4-Kennung und veröffentlichten Preisen konnte an der aktuellen Quelle nicht belegt werden. |
-| REWE | BLOCKED für die geprüfte Angebotsseite | Der Android-Abruf für Markt 1356345 wurde mit HTTP 403 abgewiesen. Der getestete Reader bleibt erhalten. Die separate Produktsuche desselben Markts lieferte reguläre Filialpreise im Host-Test und braucht eine eigene Android-Abnahme. |
+| REWE | Gezielte Filialpreissuche in Prüfung | Beim Markt 1356345, Leipziger Platz 12, sendet ausschließlich die ausdrückliche Suchaktion den eingegebenen Produktnamen an REWE. Die App zeigt den beobachteten Warenpreis, den separat veröffentlichten Normalpreis und Pfand. Suchtext und Ergebnisse bleiben bis zum Verlassen auf der Angebotsseite. Die getrennte automatische Angebotsseite bleibt nach HTTP 403 gesperrt. |
 | PENNY | Android-Liveabruf bestanden | Zehn reale Top-Angebote für Markt 4030085 und Region 15A-01-56 wurden über die Standard-App geladen. Das unabhängige Marktverzeichnis wird vor jedem Abruf ausgewertet. |
 | Kaufland | Filialprofil, Liveabnahme offen | Markt DE5220 in Konstanz-Petershausen. Gerenderte Filialkarten, unabhängiges Marktverzeichnis sowie datierte Verfügbarkeit je Artikel. Separater XTRA-Preis und separat ausgewiesene Gewichtsrate. |
 | Netto Marken-Discount | Abruf aus Android mit HTTP 403 abgewiesen | HTML-Reader und Tests erhalten. Die App bietet vorerst den Aufruf der offiziellen Händlerseite an. |

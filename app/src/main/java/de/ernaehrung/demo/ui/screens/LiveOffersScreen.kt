@@ -50,6 +50,8 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
     val retailer = LiveRetailer.valueOf(selected)
     val source = LiveSourceCatalogue.sources.single { it.retailer == retailer }
     val profiles = model.configuredSources.filter { it.retailer == retailer }
+    val searching = profiles.singleOrNull { it.id == selectedProfile }?.interactiveSearch == true
+    var searchTerm by remember(retailer, selectedProfile) { mutableStateOf("") }
     val owner = LocalLifecycleOwner.current
     LaunchedEffect(state.selectionLoaded) {
         if (state.selectionLoaded) state.scope?.let {
@@ -168,18 +170,31 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         }
         Text("Eine eingegebene Kennung allein ist kein Filial- oder Liefergebietsbeleg. Kettenweite und nationale Ersatzangebote gelten nicht automatisch für diese Filiale.")
         Field("Einkaufstag JJJJ-MM-TT", purchaseOn, { purchaseOn = it }, modifier = Modifier.testTag("live_purchase_day"))
+        if (searching) {
+            Field("Produktname für REWE", searchTerm, { if (it.length <= 200) searchTerm = it },
+                modifier = Modifier.testTag("live_search_term"))
+            Text("Der eingegebene Suchbegriff wird erst mit deiner Abfrage an REWE gesendet. Die Ergebnisse zeigen beobachtete Preise dieses Markts für heute.")
+        }
         Button({
             runCatching { LiveOfferScope(retailer, store.takeIf { retailer != LiveRetailer.KNUSPR && it.isNotBlank() },
                 region.takeIf { retailer != LiveRetailer.KNUSPR && it.isNotBlank() },
-                delivery.takeIf { retailer == LiveRetailer.KNUSPR && it.isNotBlank() }, LocalDate.parse(purchaseOn))
+                delivery.takeIf { retailer == LiveRetailer.KNUSPR && it.isNotBlank() }, LocalDate.parse(purchaseOn),
+                searchTerm.trim().takeIf { searching })
                 .also { require(it.purchaseOn.toString() == purchaseOn); it.validate() } }
                 .onSuccess { selectionError = null; model.refresh(it) }
                 .onFailure { selectionError = "Datum und Anbieter-/Filialauswahl prüfen." }
-        }, enabled = state.selectionLoaded && !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()),
-            modifier = Modifier.testTag("live_offers_refresh")) { Text("Auswahl anwenden und aktualisieren") }
+        }, enabled = state.selectionLoaded && !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()) &&
+            (!searching || searchTerm.isNotBlank() && purchaseOn == AppCalendar.today().toString()),
+            modifier = Modifier.testTag("live_offers_refresh")) {
+            Text(if (searching) "Suchbegriff an REWE senden" else "Auswahl anwenden und aktualisieren")
+        }
+        if (searching && purchaseOn != AppCalendar.today().toString()) Text("Wähle das heutige Datum, um Produktpreise abzufragen.")
         selectionError?.let { Hint(it) }
+        state.scope?.searchTerm?.takeIf { state.result?.status == LiveRefreshStatus.LOADED }?.let {
+            Text("Geladene Suche · $it", Modifier.testTag("live_applied_search"))
+        }
         state.scope?.let { applied -> Text("Angewendet: ${applied.retailer.title} · ${applied.purchaseOn} · ${applied.storeId ?: applied.deliveryAreaId ?: applied.regionId ?: "kein bestätigter Filial-/Liefergebietsbezug"}", Modifier.testTag("live_applied_scope")) }
-        if (state.scope != null) {
+        if (state.scope?.let { it.searchTerm == null } == true) {
             Text(if (state.automatic) "Automatik für diese angewendete Auswahl eingeschaltet" else "Automatik ausgeschaltet", Modifier.testTag("live_automatic_status"))
             OutlinedButton({ model.setAutomatic(!state.automatic) }, enabled = !state.busy,
                 modifier = Modifier.testTag("live_automatic_toggle")) {

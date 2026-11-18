@@ -117,7 +117,14 @@ internal object PublishedOfferDecoders {
     }
 
     /** Next-week response at the pinned reference, never a guessed current/store catalogue. */
-    fun aldiNordNext(rawNextData: String, sourceId: String, fetchedAt: Instant, sourceUrl: String): List<LiveOffer> {
+    fun aldiNordNext(rawNextData: String, sourceId: String, fetchedAt: Instant, sourceUrl: String): List<LiveOffer> =
+        aldiNordWeek(rawNextData, sourceId, fetchedAt, sourceUrl, "next")
+
+    fun aldiNordCurrent(rawNextData: String, sourceId: String, fetchedAt: Instant, sourceUrl: String): List<LiveOffer> =
+        aldiNordWeek(rawNextData, sourceId, fetchedAt, sourceUrl, "current")
+
+    private fun aldiNordWeek(rawNextData: String, sourceId: String, fetchedAt: Instant, sourceUrl: String,
+        week: String): List<LiveOffer> {
         val root = OfferJson.readAldiNordEnvelope(rawNextData)
         val props = requireNotNull(OfferJson.objectValue(root["props"]))
         val page = requireNotNull(OfferJson.objectValue(props["pageProps"]))
@@ -129,14 +136,14 @@ internal object PublishedOfferDecoders {
             if (pair.size != 2 || pair[0] != "OFFER_GET") return@mapNotNull null
             val response = OfferJson.objectValue(pair[1]) ?: return@mapNotNull null
             val request = OfferJson.objectValue(response["req"]) ?: return@mapNotNull null
-            if (request["week"] != "next") return@mapNotNull null
+            if (request["week"] != week) return@mapNotNull null
             require(request.keys.none { it in setOf("storeId", "marketId", "region", "zipCode", "store") })
             response
         }
         val response = responses.single()
         val products = requireNotNull(OfferJson.objectValue(OfferJson.objectValue(response["res"])?.get("algoliaDataMap")))
-        // Actual public next-week pages contain ~292 products. Keep a concrete
-        // source bound; Android displays only 25 cards per page.
+        // The current and next official lists each contain hundreds of rows.
+        // Android displays only 25 cards per page.
         require(products.size <= 512)
         return products.mapNotNull { (key, value) ->
             val row = OfferJson.objectValue(value) ?: return@mapNotNull null

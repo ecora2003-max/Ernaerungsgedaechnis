@@ -22,11 +22,16 @@ internal enum class LiveRetailer(val title: String, val stationary: RetailerPoli
 }
 
 internal data class LiveOfferScope(val retailer: LiveRetailer, val storeId: String?, val regionId: String?,
-    val deliveryAreaId: String?, val purchaseOn: LocalDate) {
+    val deliveryAreaId: String?, val purchaseOn: LocalDate, val searchTerm: String? = null) {
     fun validate() {
         require(listOfNotNull(storeId, regionId, deliveryAreaId).all { it.isNotBlank() && it.length <= 160 })
         if (retailer == LiveRetailer.KNUSPR) require(storeId == null && regionId == null) { "Knuspr-Liefergebiet ist keine stationäre Filiale oder Verkaufsregion." }
         else require(deliveryAreaId == null) { "Stationäre Filiale und Liefergebiet getrennt wählen." }
+        if (searchTerm != null) {
+            require(retailer == LiveRetailer.REWE && storeId != null && regionId == null)
+            require(searchTerm.isNotBlank() && searchTerm.length <= 200 && searchTerm == searchTerm.trim() &&
+                searchTerm.none(Char::isISOControl)) { "Einen Suchbegriff mit höchstens 200 Zeichen eingeben." }
+        }
     }
 }
 
@@ -206,7 +211,7 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
      * A successful explicit refresh must clear that pause first. */
     fun automaticAllowed(scope: LiveOfferScope): Boolean = try {
         val grant = policy(scope)
-        grant?.minimumRefreshSeconds != null && journal.last(grant.sourceId)?.automaticPaused != true
+        scope.searchTerm == null && grant?.minimumRefreshSeconds != null && journal.last(grant.sourceId)?.automaticPaused != true
     } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { false }
 
     /** Foreground refreshes share one in-flight read and the same source floor.
@@ -232,7 +237,7 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
         val previous = try { journal.last(grant.sourceId) } catch (_: Exception) {
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "REFRESH_JOURNAL_UNAVAILABLE")
         }
-        if (automatic && (grant.minimumRefreshSeconds == null || previous?.automaticPaused == true))
+        if (automatic && (scope.searchTerm != null || grant.minimumRefreshSeconds == null || previous?.automaticPaused == true))
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "AUTOMATIC_REFRESH_NOT_PERMITTED")
         // An expired/revoked/differently scoped grant cannot revive old prices.
         if (cached?.first != grant || cached?.second?.scope != scope) cached = null

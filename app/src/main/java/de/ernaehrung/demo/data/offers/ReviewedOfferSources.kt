@@ -3,8 +3,11 @@ package de.ernaehrung.demo.data.offers
 import android.content.Context
 import de.eg.recipe.JsonOutput
 import de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson
+import de.ernaehrung.demo.data.local.AppCalendar
 import java.net.URI
+import java.net.URLEncoder
 import java.security.MessageDigest
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.util.Collections
@@ -23,19 +26,37 @@ internal class ReviewedOfferSources private constructor(
         val endpoint: URI, val availabilityEndpoint: URI?, val weekStartsOn: LocalDate?,
         private val sourceId: String, private val evidence: String, private val fingerprint: String,
         private val hosts: Set<String>, private val cachePermitted: Boolean,
-        private val minimumRefreshSeconds: Long?
+        private val minimumRefreshSeconds: Long?, val interactiveSearch: Boolean, private val nextWeekEndpoint: URI?
     ) {
-        fun scope(day: LocalDate) = LiveOfferScope(retailer, storeId, regionId, null, day)
-        fun supports(scope: LiveOfferScope, at: Instant) = scope.retailer == retailer &&
-            scope.storeId == storeId && scope.regionId == regionId && scope.deliveryAreaId == null &&
-            scope.purchaseOn in permittedFrom..permittedUntil && at >= reviewedAt &&
-            (weekStartsOn == null || scope.purchaseOn in weekStartsOn..weekStartsOn.plusDays(6))
+        fun scope(day: LocalDate, searchTerm: String? = null) = LiveOfferScope(retailer, storeId, regionId, null, day, searchTerm)
+        fun supports(scope: LiveOfferScope, at: Instant): Boolean {
+            val today = AppCalendar.today(at)
+            val monday = today.with(DayOfWeek.MONDAY)
+            return scope.retailer == retailer && scope.storeId == storeId && scope.regionId == regionId &&
+                scope.deliveryAreaId == null && scope.purchaseOn in permittedFrom..permittedUntil && at >= reviewedAt &&
+                interactiveSearch == (scope.searchTerm != null) && (!interactiveSearch || scope.purchaseOn == today) &&
+                (nextWeekEndpoint == null || scope.purchaseOn in monday..monday.plusDays(13)) &&
+                (weekStartsOn == null || scope.purchaseOn in weekStartsOn..weekStartsOn.plusDays(6))
+        }
         fun source(scope: LiveOfferScope, http: OfferHttp, now: () -> Instant): AuthorizedOfferSource = when (format) {
             PublishedOfferHttpSource.Format.PENNY_STORE_WEEK ->
                 PennyStoreOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             PublishedOfferHttpSource.Format.KAUFLAND_MARKET_HTML ->
                 KauflandMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
-            else -> PublishedOfferHttpSource(endpoint, sourceId, scope, format, http, availabilityEndpoint, weekStartsOn, now)
+            else -> {
+                val nextWeek = nextWeekEndpoint != null && scope.purchaseOn.with(DayOfWeek.MONDAY) ==
+                    AppCalendar.today(now()).with(DayOfWeek.MONDAY).plusWeeks(1)
+                val request = when {
+                    interactiveSearch -> {
+                        val encoded = URLEncoder.encode(requireNotNull(scope.searchTerm), "UTF-8")
+                        URI("$endpoint?query=$encoded&wwIdent=${scope.storeId}")
+                    }
+                    nextWeek -> requireNotNull(nextWeekEndpoint)
+                    else -> endpoint
+                }
+                val reader = if (nextWeek) PublishedOfferHttpSource.Format.ALDI_NORD_NEXT_DATA else format
+                PublishedOfferHttpSource(request, sourceId, scope, reader, http, availabilityEndpoint, weekStartsOn, now)
+            }
         }
         fun grant(scope: LiveOfferScope) = LiveSourceGrant(sourceId, retailer, evidence, permittedFrom,
             permittedUntil, hosts, cachePermitted, minimumRefreshSeconds, scope,
@@ -86,8 +107,9 @@ internal class ReviewedOfferSources private constructor(
             return ReviewedOfferSources(Collections.unmodifiableList(parsed.filterNot { it.id in duplicates }), invalid)
         }
         private fun decodeProfile(row: Map<String, Any?>): Profile {
-            require(row.keys == setOf("id", "revision", "label", "retailer", "storeId", "regionId", "format",
-                "sourceId", "endpoint", "availabilityEndpoint", "weekStartsOn", "approval"))
+            val fields = setOf("id", "revision", "label", "retailer", "storeId", "regionId", "format",
+                "sourceId", "endpoint", "availabilityEndpoint", "weekStartsOn", "approval")
+            require(row.keys.containsAll(fields) && (row.keys - fields).all { it in setOf("interactiveSearch", "nextWeekEndpoint") })
             fun text(key: String) = requireNotNull(OfferJson.text(row[key]))
             fun optional(key: String): String? = row[key]?.let { requireNotNull(OfferJson.text(it)) }
             val approval = requireNotNull(OfferJson.objectValue(row["approval"]))
@@ -112,6 +134,8 @@ internal class ReviewedOfferSources private constructor(
             val floor = approval["minimumRefreshSeconds"]?.let { requireNotNull(OfferJson.integer(it)).also { seconds -> require(seconds > 0) } }
             val week = optional("weekStartsOn")?.let { requireNotNull(OfferJson.date(it)) }
             if (week != null) require(week.dayOfWeek == java.time.DayOfWeek.MONDAY)
+            val search = if ("interactiveSearch" in row) row["interactiveSearch"] as? Boolean ?: error("Invalid search flag") else false
+            val nextWeek = optional("nextWeekEndpoint")?.let(::URI)
             val digest = MessageDigest.getInstance("SHA-256").digest(JsonOutput.encode(row).toByteArray())
                 .joinToString("") { "%02x".format(it.toInt() and 255) }
             val result = Profile(text("id"), text("label"), LiveRetailer.valueOf(text("retailer")),
@@ -121,9 +145,17 @@ internal class ReviewedOfferSources private constructor(
                 optional("availabilityEndpoint")?.let(::URI), week, text("sourceId"),
                 (if (approval.keys == publicSource) "PUBLIC_SOURCE" else "APP_DISPLAY") +
                     " $sourceEvidence · Scope $scopeEvidence", digest,
-                Collections.unmodifiableSet(hosts), approval["cachePermitted"] as Boolean, floor)
+                Collections.unmodifiableSet(hosts), approval["cachePermitted"] as Boolean, floor, search, nextWeek)
             require(result.retailer != LiveRetailer.KNUSPR)
-            val scope = result.scope(from)
+            if (search) require(result.format == PublishedOfferHttpSource.Format.REWE_STATIONARY &&
+                result.endpoint.toString() == "https://www.rewe.de/api/stationary-product-search/products" &&
+                result.storeId?.matches(Regex("[0-9]{4,10}")) == true && result.regionId == null &&
+                approval["cachePermitted"] == false && floor != null)
+            if (nextWeek != null) require(result.format == PublishedOfferHttpSource.Format.ALDI_NORD_CURRENT_DATA &&
+                result.endpoint.toString() == "https://www.aldi-nord.de/angebote.html" &&
+                nextWeek.toString() == "https://www.aldi-nord.de/angebote-vorschau.html" && nextWeek.host in hosts &&
+                result.storeId == null && result.regionId == null)
+            val scope = result.scope(from, "example".takeIf { search })
             val source = result.source(scope, noHttp) { result.reviewedAt }
             require(source.endpoints.all { endpoint -> endpoint.host?.lowercase() in hosts })
             require(result.format == PublishedOfferHttpSource.Format.PENNY_REGION || week == null)

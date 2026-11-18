@@ -106,7 +106,7 @@ jobs:
           assert proof['uidRxDelta']>0 and proof['uidTxDelta']>0
           assert proof['sourceHost']=='www.penny.de' and proof['storeId']=='4030085'
           expected={'ALDI_NORD':('www.aldi-nord.de',None),'ALDI_SUED':('www.aldi-sued.de',None),
-                    'KAUFLAND':('filiale.kaufland.de','DE5220')}
+                    'KAUFLAND':('filiale.kaufland.de','DE5220'),'REWE':('www.rewe.de','1356345')}
           sources=[]
           for retailer,(host,store) in expected.items():
               source=json.loads((root/f'device/market-{retailer}.json').read_text())
@@ -114,6 +114,7 @@ jobs:
               assert source['retailer']==retailer and source['sourceCommit']==os.environ['EG_SOURCE_COMMIT']
               assert source['actualSdk']==35 and source['actualNetworkValidated'] and source['actualFactsUnchanged']
               assert source['sourceHost']==host and source['storeId']==store and source['branchConfirmed']==(store is not None)
+              assert source['productSearch']==(retailer=='REWE')
               assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False
               assert source['uidRxDelta']>0 and source['uidTxDelta']>0
               assert 0<source['offerCount']<=(512 if retailer=='ALDI_NORD' else 256)

@@ -27,12 +27,15 @@ internal object StationaryCatalogueDecoders {
         is BigInteger -> value.takeIf { it.signum() >= 0 }?.toString()?.takeIf { it.length <= 200 }
         else -> null
     }
-    private fun rows(raw: String, key: String): List<*> = (OfferJson.read(raw)[key] as? List<*>
+    private fun rows(root: Map<String, Any?>, key: String): List<*> = (root[key] as? List<*>
         ?: throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)).also { require(it.size <= 256) }
 
-    fun rewe(raw: String, sourceId: String, storeId: String, at: Instant, url: String): List<LiveOffer> {
+    fun rewe(raw: String, sourceId: String, storeId: String, at: Instant, url: String, searchTerm: String? = null): List<LiveOffer> {
         require(storeId.isNotBlank())
-        return rows(raw, "products").mapNotNull { item ->
+        val root = OfferJson.read(raw)
+        if (searchTerm != null && !searchTerm.equals(OfferJson.text(root["term"]), ignoreCase = true))
+            throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)
+        return rows(root, "products").mapNotNull { item ->
             val p = OfferJson.objectValue(item) ?: return@mapNotNull null
             val price = OfferJson.objectValue(p["pricing"]) ?: return@mapNotNull null
             val current = cents(price["current"]) ?: return@mapNotNull null
@@ -47,13 +50,14 @@ internal object StationaryCatalogueDecoders {
             LiveOffer("$sourceId:$id", sourceId, LiveRetailer.REWE, title, id, null,
                 current, cents(price["refund"]), null, null, null, kind,
                 null, null, null, at, storeId, null, null, LiveOfferApplicability.STORE_CONFIRMED,
-                null, false, url, priceDetails = LivePriceDetails(regularCents = regular, brand = OfferJson.text(p["brand"])))
+                null, false, url, packageDescription = OfferJson.text(price["grammage"]),
+                priceDetails = LivePriceDetails(regularCents = regular, brand = OfferJson.text(p["brand"])))
         }
     }
 
     fun aldiSued(raw: String, sourceId: String, storeId: String, at: Instant, url: String): List<LiveOffer> {
         require(storeId.isNotBlank())
-        return rows(raw, "data").mapNotNull { item ->
+        return rows(OfferJson.read(raw), "data").mapNotNull { item ->
             val p = OfferJson.objectValue(item) ?: return@mapNotNull null
             val price = OfferJson.objectValue(p["price"]) ?: return@mapNotNull null
             if (price["currencyCode"] != "EUR") return@mapNotNull null

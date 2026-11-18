@@ -43,6 +43,9 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicKauflandOffersAndExactMarketValidityReachTheAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.KAUFLAND, expectedStore = "DE5220")
     }
+    @Test fun publicReweSearchShowsCurrentAndRegularPricesForTheChosenMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.REWE, expectedStore = "1356345", searchTerm = "Haferflocken")
+    }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         assertEquals("true", InstrumentationRegistry.getArguments().getString("eg_live_source"))

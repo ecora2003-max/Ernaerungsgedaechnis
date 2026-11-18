@@ -119,7 +119,7 @@ class ReviewedOfferSourcesTest {
 
     @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertEquals(4, bundled.profiles.size)
+        assertEquals(0, bundled.invalidProfiles); assertEquals(5, bundled.profiles.size)
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
@@ -128,11 +128,83 @@ class ReviewedOfferSourcesTest {
         assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED), national.map { it.retailer }.toSet())
         assertTrue(national.all { it.storeId == null && it.regionId == null && !it.grant(it.scope(LocalDate.parse("2026-11-17"))).cachePermitted })
         assertEquals("DE5220", bundled.profiles.single { it.retailer == LiveRetailer.KAUFLAND }.storeId)
-        assertTrue(bundled.profiles.none { it.retailer == LiveRetailer.REWE || it.retailer == LiveRetailer.NETTO_MD })
+        val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE }
+        assertEquals("1356345", rewe.storeId); assertTrue(rewe.interactiveSearch)
+        assertEquals(PublishedOfferHttpSource.Format.REWE_STATIONARY, rewe.format)
+        assertTrue(bundled.profiles.none { it.retailer == LiveRetailer.NETTO_MD })
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
             assertEquals("https", url.scheme); assertNull(url.rawQuery); assertNull(url.rawUserInfo); assertNull(url.fragment)
         }
         assertEquals(LiveSourceStatus.DEFERRED, LiveSourceCatalogue.sources.single { it.retailer == LiveRetailer.KNUSPR }.status)
+    }
+
+    @Test fun interactiveReweSearchKeepsTheStoreTermAndRequestFloorBoundWithoutSavingTheTerm(): Unit = runBlocking {
+        val row = ReviewedOfferSourceFixtures.row(LiveRetailer.REWE, day, "1356345").toMutableMap()
+        row["interactiveSearch"] = true
+        row["endpoint"] = "https://www.rewe.de/api/stationary-product-search/products"
+        row["approval"] = requireNotNull(OfferJson.objectValue(row["approval"])) + ("cachePermitted" to false)
+        val directory = decode(row)
+        assertEquals(0, directory.invalidProfiles)
+        assertEquals(1, decode(row + ("endpoint" to "https://www.rewe.de/api/stationary-product-search/products?query=ungueltig")).invalidProfiles)
+        val profile = directory.profiles.single()
+        val requests = mutableListOf<OfferHttpRequest>()
+        val term = "Käse & Öl"
+        var now = at
+        var echoedTerm = term
+        val runtime = directory.runtime(OfferHttp {
+            requests += it
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                """{"term":"$echoedTerm","products":[{"id":101,"title":"Synthetic regular price","pricing":{"current":129,"regular":129,"refund":0,"grammage":"250 g"}}]}""")
+        }, MemoryOfferRefreshJournal()) { now }
+        val search = profile.scope(day, term)
+        assertFalse(runtime.automaticAllowed(search))
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(search, automatic = true).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(day)).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(search.copy(storeId = "1356346")).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(search.copy(purchaseOn = day.plusDays(1))).status)
+        assertTrue(requests.isEmpty())
+        val result = runtime.refresh(search)
+        assertEquals(LiveRefreshStatus.LOADED, result.status)
+        assertEquals("query=K%C3%A4se+%26+%C3%96l&wwIdent=1356345", requests.single().uri.rawQuery)
+        val offer = result.batch!!.offers.single()
+        assertEquals(LiveOfferKind.REGULAR, offer.kind); assertEquals(129L, offer.merchandiseCents)
+        assertEquals(0L, offer.depositCents); assertNull(offer.validFrom); assertNull(offer.quantityMilli)
+        assertFalse(result.cachePermitted)
+        val otherTerm = search.copy(searchTerm = "Hafer")
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(otherTerm).status)
+        assertEquals(1, requests.size)
+        now = now.plusSeconds(3601)
+        assertEquals("UNSUPPORTED_SOURCE_SCHEMA", runtime.refresh(otherTerm).code)
+        assertEquals(2, requests.size)
+        val settings = PrivateOfferSettings.forApp(ApplicationProvider.getApplicationContext())
+        assertTrue(runCatching { settings.select(search, false) }.isFailure)
+    }
+
+    @Test fun aldiNordSelectsThePublishedWeekByBerlinPurchaseDateAtTheSameSourceFloor(): Unit = runBlocking {
+        val directory = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
+        val profile = directory.profiles.single { it.retailer == LiveRetailer.ALDI_NORD }
+        val today = LocalDate.parse("2026-11-18")
+        var now = Instant.parse("2026-11-18T12:00:00Z")
+        val calls = mutableListOf<String>()
+        val runtime = directory.runtime(OfferHttp { request ->
+            val path = request.uri.rawPath
+            calls += path
+            val week = when (path) {
+                "/angebote.html" -> "current"
+                "/angebote-vorschau.html" -> "next"
+                else -> error("Unexpected endpoint")
+            }
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                """{"props":{"pageProps":{"apiData":[["OFFER_GET",{"req":{"week":"$week"},"res":{"algoliaDataMap":{"item":{"name":"Synthetic $week","currentPrice":"1.99"}}}}]]}}}""")
+        }, MemoryOfferRefreshJournal()) { now }
+        val current = profile.scope(today)
+        val next = profile.scope(today.plusWeeks(1))
+        assertEquals(LiveRefreshStatus.LOADED, runtime.refresh(current).status)
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(next).status)
+        now = now.plusSeconds(601)
+        assertEquals("Synthetic next", runtime.refresh(next).batch!!.offers.single().title)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(today.plusWeeks(2))).status)
+        assertEquals(listOf("/angebote.html", "/angebote-vorschau.html"), calls)
     }
 }
