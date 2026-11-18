@@ -546,9 +546,12 @@ class LiveOffersOnDeviceTest {
         try {
             compose.onNodeWithTag("workspace_tab_MORE").performClick(); tap("workspace_go_SHOPPING")
             tap("shopping_open_live_offers"); ready()
-            for (retailer in LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }) {
+            val selections = LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.flatMap { retailer ->
+                val configured = profiles.filter { it.retailer == retailer }
+                if (configured.isEmpty()) listOf(retailer to null) else configured.map { retailer to it }
+            }
+            for ((retailer, profile) in selections) {
                 tap("Angebotsanbieter"); tap("choose_${retailer.name}"); ready()
-                val profile = profiles.singleOrNull { it.retailer == retailer }
                 if (profile != null) {
                     tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_${profile.id}"); ready()
                 }

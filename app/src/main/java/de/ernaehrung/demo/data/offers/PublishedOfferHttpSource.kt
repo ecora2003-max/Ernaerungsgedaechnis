@@ -18,7 +18,11 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
         REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC, REWE_MARKET_HTML,
         KAUFLAND_MARKET_HTML }
     private val aldiNord get() = format == Format.ALDI_NORD_NEXT_DATA || format == Format.ALDI_NORD_CURRENT_DATA
-    override val maximumOffers get() = if (aldiNord) 512 else 256
+    override val maximumOffers get() = when {
+        aldiNord -> 512
+        format == Format.ALDI_SUED_WALK_IN && exactScope.searchTerm != null -> 12
+        else -> 256
+    }
     override val capability = when (format) {
         Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN -> RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY
         else -> RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
@@ -43,7 +47,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
         if (format == Format.KAUFLAND_STORE) requireNotNull(availabilityEndpoint).also(::requirePublicHttps)
         else require(availabilityEndpoint == null)
         if (format in setOf(Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN)) validateTargetedEndpoint()
-        if (exactScope.searchTerm != null) require(format == Format.REWE_STATIONARY)
+        if (exactScope.searchTerm != null) require(capability == RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY)
         if (format == Format.ALDI_NORD_CURRENT_DATA) require(endpoint.toString() == "https://www.aldi-nord.de/angebote.html" &&
             exactScope.storeId == null && exactScope.regionId == null)
         if (format == Format.NETTO_BRANCH_HTML) require(endpoint.host == "www.netto-online.de" &&
@@ -79,6 +83,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 require(q["servicePoint"] == exactScope.storeId && q["serviceType"] == "walk-in" &&
                     q["q"]?.let { it.isNotBlank() && it.length <= 200 } == true && q["offset"] == "0" &&
                     q["limit"]?.toIntOrNull()?.let { it in 1..12 } == true && (q["currency"] == null || q["currency"] == "EUR"))
+                require(exactScope.searchTerm == null || q["q"] == exactScope.searchTerm)
             }
             else -> error("Only targeted catalogue formats")
         }

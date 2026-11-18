@@ -171,9 +171,9 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         Text("Eine eingegebene Kennung allein ist kein Filial- oder Liefergebietsbeleg. Kettenweite und nationale Ersatzangebote gelten nicht automatisch für diese Filiale.")
         Field("Einkaufstag JJJJ-MM-TT", purchaseOn, { purchaseOn = it }, modifier = Modifier.testTag("live_purchase_day"))
         if (searching) {
-            Field("Produktname für REWE", searchTerm, { if (it.length <= 200) searchTerm = it },
+            Field("Produktname für ${retailer.title}", searchTerm, { if (it.length <= 200) searchTerm = it },
                 modifier = Modifier.testTag("live_search_term"))
-            Text("Der eingegebene Suchbegriff wird erst mit deiner Abfrage an REWE gesendet. Die Ergebnisse zeigen beobachtete Preise dieses Markts für heute.")
+            Text("Der eingegebene Suchbegriff wird erst mit deiner Abfrage an ${retailer.title} gesendet. Die Ergebnisse zeigen beobachtete Preise dieses Markts für heute.")
         }
         Button({
             runCatching { LiveOfferScope(retailer, store.takeIf { retailer != LiveRetailer.KNUSPR && it.isNotBlank() },
@@ -186,7 +186,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
         }, enabled = state.selectionLoaded && !state.busy && (profiles.isEmpty() || selectedProfile.isNotBlank()) &&
             (!searching || searchTerm.isNotBlank() && purchaseOn == AppCalendar.today().toString()),
             modifier = Modifier.testTag("live_offers_refresh")) {
-            Text(if (searching) "Suchbegriff an REWE senden" else "Auswahl anwenden und aktualisieren")
+            Text(if (searching) "Suchbegriff an ${retailer.title} senden" else "Auswahl anwenden und aktualisieren")
         }
         if (searching && purchaseOn != AppCalendar.today().toString()) Text("Wähle das heutige Datum, um Produktpreise abzufragen.")
         selectionError?.let { Hint(it) }

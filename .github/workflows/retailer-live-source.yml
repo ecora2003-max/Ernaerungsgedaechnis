@@ -105,19 +105,26 @@ jobs:
           assert proof['sourceRepliesInjected'] is False and 0<proof['offerCount']<=256
           assert proof['uidRxDelta']>0 and proof['uidTxDelta']>0
           assert proof['sourceHost']=='www.penny.de' and proof['storeId']=='4030085'
-          expected={'ALDI_NORD':('www.aldi-nord.de',None),'ALDI_SUED':('www.aldi-sued.de',None),
-                    'KAUFLAND':('filiale.kaufland.de','DE5220'),'REWE':('www.rewe.de','1356345')}
+          expected={
+              'aldi-nord-public-week':('ALDI_NORD','www.aldi-nord.de',None,False),
+              'aldi-sued-public-offers':('ALDI_SUED','www.aldi-sued.de',None,False),
+              'aldi-sued-bl16-product-search':('ALDI_SUED','api.aldi-sued.de','BL16',True),
+              'kaufland-de5220-public':('KAUFLAND','filiale.kaufland.de','DE5220',False),
+              'rewe-1356345-product-search':('REWE','www.rewe.de','1356345',True),
+          }
           sources=[]
-          for retailer,(host,store) in expected.items():
-              source=json.loads((root/f'device/market-{retailer}.json').read_text())
+          for profile,(retailer,host,store,search) in expected.items():
+              source=json.loads((root/f'device/market-{profile}.json').read_text())
               assert source['format']=='EG_REAL_PUBLIC_CHAIN_UI_V1' and source['status']=='PASS'
-              assert source['retailer']==retailer and source['sourceCommit']==os.environ['EG_SOURCE_COMMIT']
+              assert source['profileId']==profile and source['retailer']==retailer
+              assert source['sourceCommit']==os.environ['EG_SOURCE_COMMIT']
               assert source['actualSdk']==35 and source['actualNetworkValidated'] and source['actualFactsUnchanged']
               assert source['sourceHost']==host and source['storeId']==store and source['branchConfirmed']==(store is not None)
-              assert source['productSearch']==(retailer=='REWE')
+              assert source['productSearch']==search
               assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False
               assert source['uidRxDelta']>0 and source['uidTxDelta']>0
-              assert 0<source['offerCount']<=(512 if retailer=='ALDI_NORD' else 256)
+              maximum=12 if retailer=='ALDI_SUED' and search else 512 if retailer=='ALDI_NORD' else 256
+              assert 0<source['offerCount']<=maximum
               sources.append(source)
           reports=list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))
           suites=[E.parse(p).getroot() for p in reports]
@@ -128,7 +135,7 @@ jobs:
           (root/'bound-proof.json').write_text(json.dumps(proof,indent=2)+'\n')
           for source in sources:
               source.update({key:proof[key] for key in ('subjectApkSha256','testApkSha256')})
-              (root/f"bound-{source['retailer']}.json").write_text(json.dumps(source,indent=2)+'\n')
+              (root/f"bound-{source['profileId']}.json").write_text(json.dumps(source,indent=2)+'\n')
           print('REAL_PUBLIC_RETAILER_UI_PASS',json.dumps(proof))
           PY
       - name: Upload original evidence only; no supplier response archive or APK

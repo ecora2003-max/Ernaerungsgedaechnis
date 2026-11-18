@@ -119,7 +119,7 @@ class ReviewedOfferSourcesTest {
 
     @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertEquals(5, bundled.profiles.size)
+        assertEquals(0, bundled.invalidProfiles); assertEquals(6, bundled.profiles.size)
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
@@ -131,6 +131,9 @@ class ReviewedOfferSourcesTest {
         val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE }
         assertEquals("1356345", rewe.storeId); assertTrue(rewe.interactiveSearch)
         assertEquals(PublishedOfferHttpSource.Format.REWE_STATIONARY, rewe.format)
+        val south = bundled.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
+        assertEquals("BL16", south.storeId)
+        assertEquals(PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN, south.format)
         assertTrue(bundled.profiles.none { it.retailer == LiveRetailer.NETTO_MD })
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
@@ -206,5 +209,37 @@ class ReviewedOfferSourcesTest {
         assertEquals("Synthetic next", runtime.refresh(next).batch!!.offers.single().title)
         assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(today.plusWeeks(2))).status)
         assertEquals(listOf("/angebote.html", "/angebote-vorschau.html"), calls)
+    }
+
+    @Test fun aldiSuedWalkInSearchUsesOnlyTheApprovedShopAndKeepsAnAdvertisedRateSeparate(): Unit = runBlocking {
+        val directory = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
+        val profile = directory.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
+        val date = LocalDate.parse("2026-11-19")
+        val captured = Instant.parse("2026-11-19T09:00:00Z")
+        val requests = mutableListOf<OfferHttpRequest>()
+        val runtime = directory.runtime(OfferHttp { request ->
+            requests += request
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                """{"data":[{"sku":"synthetic-1","name":"Synthetic item","price":{"amountRelevant":119,"bottleDeposit":0,
+                    "currencyCode":"EUR","comparisonDisplay":"1,59 €/1 kg"}}]}""")
+        }, MemoryOfferRefreshJournal()) { captured }
+        val scope = profile.scope(date, "Brot & Käse")
+        assertFalse(runtime.automaticAllowed(scope))
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(scope, automatic = true).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(scope.copy(storeId = "BL11")).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(date)).status)
+        assertTrue(requests.isEmpty())
+        val result = runtime.refresh(scope)
+        assertEquals(LiveRefreshStatus.LOADED, result.status)
+        assertEquals("q=Brot+%26+K%C3%A4se&servicePoint=BL16&serviceType=walk-in&limit=12&offset=0&currency=EUR",
+            requests.single().uri.rawQuery)
+        assertEquals("api.aldi-sued.de", requests.single().uri.host)
+        val offer = result.batch!!.offers.single()
+        assertEquals("BL16", offer.storeId); assertEquals(119L, offer.merchandiseCents); assertEquals(0L, offer.depositCents)
+        assertEquals("1,59 €/1 kg", offer.priceDetails?.unitPriceDisplay)
+        assertNull(offer.priceDetails?.regularCents); assertNull(offer.unitPriceText()); assertNull(offer.validFrom)
+        assertFalse(result.cachePermitted)
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(scope.copy(searchTerm = "Toast")).status)
+        assertEquals(1, requests.size)
     }
 }

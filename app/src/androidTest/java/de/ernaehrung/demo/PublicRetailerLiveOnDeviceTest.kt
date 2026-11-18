@@ -40,6 +40,9 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicAldiSuedOffersReachTheAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.ALDI_SUED, expectedStore = null)
     }
+    @Test fun publicAldiSuedSearchShowsPricesForTheChosenWalkInMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.ALDI_SUED, expectedStore = "BL16", searchTerm = "Sandwichtoast")
+    }
     @Test fun publicKauflandOffersAndExactMarketValidityReachTheAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.KAUFLAND, expectedStore = "DE5220")
     }

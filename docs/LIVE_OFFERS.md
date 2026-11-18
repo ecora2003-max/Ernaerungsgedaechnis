@@ -38,7 +38,7 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 | Anbieter | App-Anzeige | Technischer Anschluss / konkreter fehlender Nachweis |
 |---|---|---|
 | ALDI Nord | Live für die laufende Woche geprüft | Für den Einkaufstag in der laufenden oder nächsten Woche wird die passende veröffentlichte Liste geladen. Beide Abrufe teilen denselben Mindestabstand. Die Filialzuordnung fehlt. |
-| ALDI Süd | Live auf Android geprüft | Nuxt-Angebotsseite mit sichtbaren Produktkarten und SKU-/Centabgleich. Die Filialzuordnung bleibt offen. |
+| ALDI Süd | Öffentliche Angebotsseite live geprüft. Filialsuche in Geräteprüfung. | Die Nuxt-Angebotsseite zeigt veröffentlichte Aktionskarten mit ungeprüfter Filialgültigkeit. Für die separat bestätigte Filiale BL16, Bodanstraße 1 in Konstanz, gibt es eine ausdrücklich ausgelöste Produktsuche. Sie zeigt den Warenpreis und veröffentlichte Vergleichsangaben getrennt. |
 | Lidl | BLOCKED für Filialpreise | Der offizielle Viewer liefert verlinkte Shopartikel mit numerischen Preisen und Gebietscode 0. Die Zuordnung dieser Preise zu einer konkreten Filiale ist offen. |
 | REWE | Gezielte Filialpreissuche live geprüft | Beim Markt 1356345, Leipziger Platz 12, sendet ausschließlich die ausdrückliche Suchaktion den eingegebenen Produktnamen an REWE. Die App zeigt den beobachteten Warenpreis, den separat veröffentlichten Normalpreis und Pfand. Suchtext und Ergebnisse bleiben bis zum Verlassen auf der Angebotsseite. Die getrennte automatische Angebotsseite bleibt nach HTTP 403 gesperrt. |
 | PENNY | Android-Liveabruf bestanden | Zehn reale Top-Angebote für Markt 4030085 und Region 15A-01-56 wurden über die Standard-App geladen. Das unabhängige Marktverzeichnis wird vor jedem Abruf ausgewertet. |
