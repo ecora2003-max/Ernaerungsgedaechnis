@@ -11,6 +11,12 @@ import java.time.LocalDate
 internal object OfferJson {
     fun read(text: String): Map<String, Any?> = RecipeDraftBoundedJson.decode(text,
         RecipeDraftBoundedJson.Limits(maxChars = 1_048_576, maxDepth = 24, maxNodes = 50_000))
+
+    /** The public Next.js page puts the entire offer document in one escaped
+     * apiData string. Only the outer retailer envelope needs the larger limit. */
+    fun readAldiNordEnvelope(text: String): Map<String, Any?> = RecipeDraftBoundedJson.decode(text,
+        RecipeDraftBoundedJson.Limits(maxChars = 1_048_576, maxDepth = 24, maxNodes = 50_000,
+            maxStringChars = 786_432))
     fun text(value: Any?): String? = (value as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 1000 }
     fun objectValue(value: Any?): Map<String, Any?>? {
         if (value !is Map<*, *> || value.keys.any { it !is String }) return null
@@ -107,7 +113,7 @@ internal object PublishedOfferDecoders {
 
     /** Next-week response at the pinned reference, never a guessed current/store catalogue. */
     fun aldiNordNext(rawNextData: String, sourceId: String, fetchedAt: Instant, sourceUrl: String): List<LiveOffer> {
-        val root = OfferJson.read(rawNextData)
+        val root = OfferJson.readAldiNordEnvelope(rawNextData)
         val props = requireNotNull(OfferJson.objectValue(root["props"]))
         val page = requireNotNull(OfferJson.objectValue(props["pageProps"]))
         val data = page["apiData"]

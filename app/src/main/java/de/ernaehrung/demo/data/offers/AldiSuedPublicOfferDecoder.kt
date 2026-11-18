@@ -7,8 +7,8 @@ import org.jsoup.nodes.Element
 
 /** Public /angebote HTML observed 17 Nov 2026. This is a NEW source format,
  * separate from the pinned walk-in search API. Its Nuxt price integers are
- * CENTS (179 corroborated by rendered/display "1,79 €"), not that API's euro
- * values. Read flat indexed JSON and visible product tiles only; execute no JS,
+ * CENTS (179 corroborated by rendered/display "1,79 €"). Read flat indexed
+ * JSON and visible product tiles only; execute no JS,
  * hydrate no graph and fetch no scripts/images, cookies or private context. */
 internal object AldiSuedPublicOfferDecoder {
     private fun invalid(): Nothing = throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)
