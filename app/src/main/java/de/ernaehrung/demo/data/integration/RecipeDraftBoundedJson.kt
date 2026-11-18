@@ -19,7 +19,7 @@ internal object RecipeDraftBoundedJson {
             require(maxChars in 1..1_048_576)
             require(maxDepth in 1..128)
             require(maxNodes in 1..100_000)
-            require(maxStringChars in 1..262_144)
+            require(maxStringChars in 1..1_048_576)
         }
     }
 

@@ -22,11 +22,16 @@ internal enum class LiveRetailer(val title: String, val stationary: RetailerPoli
 }
 
 internal data class LiveOfferScope(val retailer: LiveRetailer, val storeId: String?, val regionId: String?,
-    val deliveryAreaId: String?, val purchaseOn: LocalDate) {
+    val deliveryAreaId: String?, val purchaseOn: LocalDate, val searchTerm: String? = null) {
     fun validate() {
         require(listOfNotNull(storeId, regionId, deliveryAreaId).all { it.isNotBlank() && it.length <= 160 })
         if (retailer == LiveRetailer.KNUSPR) require(storeId == null && regionId == null) { "Knuspr-Liefergebiet ist keine stationäre Filiale oder Verkaufsregion." }
         else require(deliveryAreaId == null) { "Stationäre Filiale und Liefergebiet getrennt wählen." }
+        if (searchTerm != null) {
+            require(retailer == LiveRetailer.REWE && storeId != null && regionId == null)
+            require(searchTerm.isNotBlank() && searchTerm.length <= 200 && searchTerm == searchTerm.trim() &&
+                searchTerm.none(Char::isISOControl)) { "Einen Suchbegriff mit höchstens 200 Zeichen eingeben." }
+        }
     }
 }
 
@@ -41,8 +46,15 @@ internal object LiveSourceCatalogue {
     val sources = LiveRetailer.entries.map { retailer -> when (retailer) {
         LiveRetailer.KNUSPR -> LiveSourceInfo(retailer, "knuspr-official-mcp", LiveSourceStatus.DEFERRED,
             "https://www.knuspr.de/mcp-docs", "Für später zurückgestellt. Zuerst werden die acht stationären Händler angeschlossen. Eine vorhandene Anmeldung bleibt erhalten; es wird kein automatischer Knuspr-Abruf gestartet.")
-        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.BLOCKED,
-            SOURCE_EVIDENCE, "Noch kein konkretes EDEKA-Quellen-/Filialprofil hinterlegt. Frühere Einschränkungen quellenbezogen beachten; keine pauschale Händlergenehmigung als universelle Voraussetzung.")
+        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.RIGHTS_RESTRICTED,
+            "https://www.edeka.de/services/nutzungsbedingungen/",
+            "Die Bedingungen von EDEKA.de beschränken den automatisierten Abruf der Angebotsseite. Die Händlerseite ist im Browser verfügbar.")
+        LiveRetailer.NETTO_MD -> LiveSourceInfo(retailer, "netto-published-offers", LiveSourceStatus.BLOCKED,
+            "https://www.netto-online.de/angebote/c-N07",
+            "Der geprüfte Angebotsabruf wurde auf Android mit HTTP 403 abgewiesen. Die Händlerseite ist im Browser verfügbar.")
+        LiveRetailer.REWE -> LiveSourceInfo(retailer, "rewe-market-offers", LiveSourceStatus.BLOCKED,
+            "https://www.rewe.de/angebote/berlin-mitte/1356345/rewe-leipziger-platz-12/",
+            "Die Angebotsseite dieses Markts hat den Android-Abruf mit HTTP 403 abgewiesen. Du kannst sie im Browser öffnen.")
         else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.BLOCKED,
             SOURCE_EVIDENCE, "Noch kein konkretes Quellen-/Filialprofil hinterlegt. Eine ausdrückliche Händlergenehmigung ist keine pauschale technische Voraussetzung; ein realer zulässiger Endpoint und korrekter Filialbezug fehlen noch.")
     } }
@@ -68,8 +80,8 @@ internal enum class OfferQuantityBasis { NET, DRAINED, GROSS }
 /** Scope metadata is fetched separately from the price tiles. An advertised
  * calendar week does not establish an individual product's validity dates. */
 internal data class LiveStoreScopeEvidence(val marketId: String, val marketName: String,
-    val address: String, val sourceRegionId: String, val weekStartsOn: LocalDate,
-    val scopeSourceUrl: String, val checkedAt: Instant)
+    val address: String, val sourceRegionId: String?, val weekStartsOn: LocalDate?,
+    val scopeSourceUrl: String, val checkedAt: Instant, val availabilitySourceUrl: String? = null)
 internal data class LiveOffer(val id: String, val sourceId: String, val retailer: LiveRetailer, val title: String,
     val sourceProductId: String, val gtin: String?, val merchandiseCents: Long?, val depositCents: Long?,
     val quantityMilli: Long?, val unit: OfferMassUnit?, val quantityBasis: OfferQuantityBasis?, val kind: LiveOfferKind,
@@ -97,7 +109,7 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
         return BigDecimal(numerator).divide(BigDecimal.valueOf(amount).multiply(BigDecimal(100)), 2, RoundingMode.HALF_UP)
             .toPlainString() + if (basis == OfferMassUnit.GRAM) " €/kg" else " €/l"
     }
-    fun applicable(scope: LiveOfferScope): Boolean = retailer == scope.retailer &&
+    fun matchesLocation(scope: LiveOfferScope): Boolean = retailer == scope.retailer &&
         when (applicability) {
             LiveOfferApplicability.STORE_CONFIRMED -> storeId != null && storeId == scope.storeId
             LiveOfferApplicability.REGION_CONFIRMED -> regionId != null && regionId == scope.regionId
@@ -105,8 +117,13 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
             else -> false
         } &&
         (storeId == null || storeId == scope.storeId) && (regionId == null || regionId == scope.regionId) &&
-        (deliveryAreaId == null || deliveryAreaId == scope.deliveryAreaId) &&
+        (deliveryAreaId == null || deliveryAreaId == scope.deliveryAreaId)
+
+    fun applicable(scope: LiveOfferScope): Boolean = matchesLocation(scope) &&
         validFrom != null && validUntil != null && scope.purchaseOn in validFrom..validUntil
+
+    fun isComparisonCandidate(scope: LiveOfferScope): Boolean = merchandiseCents != null && matchesLocation(scope) &&
+        (validFrom == null || validFrom <= scope.purchaseOn) && (validUntil == null || scope.purchaseOn <= validUntil)
 }
 
 /** These facts come from an independent host registry, never the HTTP result. */
@@ -133,6 +150,7 @@ internal data class LiveOfferBatch(val sourceId: String, val scope: LiveOfferSco
     val offers: List<LiveOffer>, val coverageComplete: Boolean = false)
 internal interface AuthorizedOfferSource {
     val endpoint: URI
+    val maximumOffers: Int get() = 256
     val endpoints: Set<URI> get() = setOf(endpoint)
     val capability: RetailerPolicy.Capability get() = RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION
     suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch
@@ -193,7 +211,7 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
      * A successful explicit refresh must clear that pause first. */
     fun automaticAllowed(scope: LiveOfferScope): Boolean = try {
         val grant = policy(scope)
-        grant?.minimumRefreshSeconds != null && journal.last(grant.sourceId)?.automaticPaused != true
+        scope.searchTerm == null && grant?.minimumRefreshSeconds != null && journal.last(grant.sourceId)?.automaticPaused != true
     } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { false }
 
     /** Foreground refreshes share one in-flight read and the same source floor.
@@ -219,7 +237,7 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
         val previous = try { journal.last(grant.sourceId) } catch (_: Exception) {
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "REFRESH_JOURNAL_UNAVAILABLE")
         }
-        if (automatic && (grant.minimumRefreshSeconds == null || previous?.automaticPaused == true))
+        if (automatic && (scope.searchTerm != null || grant.minimumRefreshSeconds == null || previous?.automaticPaused == true))
             return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "AUTOMATIC_REFRESH_NOT_PERMITTED")
         // An expired/revoked/differently scoped grant cannot revive old prices.
         if (cached?.first != grant || cached?.second?.scope != scope) cached = null
@@ -234,8 +252,9 @@ internal class LiveOfferRuntime(private val sources: LiveOfferSourceResolver,
         try { journal.record(grant.sourceId, OfferRefreshAttempt(at, automaticPaused = true)) }
         catch (_: Exception) { return LiveRefreshResult(LiveRefreshStatus.BLOCKED, code = "REFRESH_JOURNAL_UNAVAILABLE") }
         return try {
+            val maximum = source.maximumOffers.also { require(it in 1..1024) }
             val data = source.fetch(scope)
-            require(data.scope == scope && data.sourceId == grant.sourceId && data.fetchedAt <= now() && data.offers.size <= 256)
+            require(data.scope == scope && data.sourceId == grant.sourceId && data.fetchedAt <= now() && data.offers.size <= maximum)
             require(data.offers.map { it.id }.distinct().size == data.offers.size)
             require(data.offers.all { it.sourceId == grant.sourceId && it.retailer == scope.retailer && it.fetchedAt == data.fetchedAt &&
                 (source.capability != RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION || it.kind != LiveOfferKind.REGULAR) &&

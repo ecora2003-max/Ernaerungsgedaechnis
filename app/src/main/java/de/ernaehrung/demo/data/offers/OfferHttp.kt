@@ -10,6 +10,9 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
+internal const val PUBLIC_OFFER_AGENT =
+    "Ernaehrungsgedaechtnis public-offers (+https://github.com/ecora2003-max/Ernaerungsgedaechnis)"
+
 internal data class OfferHttpRequest(val uri: URI, val method: String = "GET", val body: ByteArray? = null,
     val headers: Map<String, String> = emptyMap(), val rpcId: Long? = null,
     val maximumResponseBytes: Int = 1_048_576) {

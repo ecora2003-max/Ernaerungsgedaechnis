@@ -19,7 +19,111 @@
         "reviewedAt": "2026-11-17T20:29:08Z",
         "from": "2026-11-17",
         "until": "2027-02-15",
-        "allowedHosts": ["www.penny.de"],
+        "allowedHosts": [
+          "www.penny.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "aldi-nord-public-week",
+      "revision": 2,
+      "label": "ALDI Nord · laufende und nächste Angebotswoche · Filiale ungeprüft",
+      "retailer": "ALDI_NORD",
+      "storeId": null,
+      "regionId": null,
+      "format": "ALDI_NORD_CURRENT_DATA",
+      "sourceId": "aldi-nord-public-week",
+      "endpoint": "https://www.aldi-nord.de/angebote.html",
+      "nextWeekEndpoint": "https://www.aldi-nord.de/angebote-vorschau.html",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.aldi-nord.de/angebote.html",
+        "scopeEvidence": "https://www.aldi-nord.de/angebote.html",
+        "reviewedAt": "2026-11-18T11:12:45Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "www.aldi-nord.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "aldi-sued-public-offers",
+      "revision": 1,
+      "label": "ALDI Süd · öffentliche Angebotsseite · konkrete Filiale ungeprüft",
+      "retailer": "ALDI_SUED",
+      "storeId": null,
+      "regionId": null,
+      "format": "ALDI_SUED_NUXT_PUBLIC",
+      "sourceId": "aldi-sued-public-offers",
+      "endpoint": "https://www.aldi-sued.de/angebote",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.aldi-sued.de/angebote",
+        "scopeEvidence": "https://www.aldi-sued.de/angebote",
+        "reviewedAt": "2026-11-17T21:51:15Z",
+        "from": "2026-11-17",
+        "until": "2027-02-15",
+        "allowedHosts": [
+          "www.aldi-sued.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "rewe-1356345-product-search",
+      "revision": 1,
+      "label": "REWE Leipziger Platz 12, 10117 Berlin · Produktsuche",
+      "retailer": "REWE",
+      "storeId": "1356345",
+      "regionId": null,
+      "format": "REWE_STATIONARY",
+      "sourceId": "rewe-1356345-product-search",
+      "endpoint": "https://www.rewe.de/api/stationary-product-search/products",
+      "interactiveSearch": true,
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.rewe.de/api/stationary-product-search/products?query=Haferflocken&wwIdent=1356345",
+        "scopeEvidence": "https://www.rewe.de/marktseite/berlin-mitte/1356345/rewe-markt-leipziger-platz-12/",
+        "reviewedAt": "2026-11-18T11:12:45Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "www.rewe.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "kaufland-de5220-public",
+      "revision": 1,
+      "label": "Kaufland Konstanz-Petershausen · Zähringerplatz 7, 78464 Konstanz",
+      "retailer": "KAUFLAND",
+      "storeId": "DE5220",
+      "regionId": null,
+      "format": "KAUFLAND_MARKET_HTML",
+      "sourceId": "kaufland-de5220-public",
+      "endpoint": "https://filiale.kaufland.de/service/filiale/konstanz-petershausen-5220.html",
+      "availabilityEndpoint": "https://filiale.kaufland.de/.kloffers.storeName=DE5220.json",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://filiale.kaufland.de/service/filiale/konstanz-petershausen-5220.html",
+        "scopeEvidence": "https://filiale.kaufland.de/.klstorebygeo.storeName=DE5220.json",
+        "reviewedAt": "2026-11-18T10:34:28Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "filiale.kaufland.de"
+        ],
         "cachePermitted": false,
         "minimumRefreshSeconds": 600
       }

@@ -13,14 +13,17 @@ import kotlinx.coroutines.flow.asStateFlow
 internal data class LiveOfferSelection(val offer: LiveOffer, val scope: LiveOfferScope, val authorization: LiveSourceGrant)
 internal data class LiveNeedPreview(val offerId: String, val report: ShoppingReport,
     val line: ShoppingLine, val packs: PackCalculation)
+internal data class LiveComparisonSource(val scope: LiveOfferScope, val result: LiveRefreshResult? = null)
 internal data class LiveOffersUiState(val busy: Boolean = false, val scope: LiveOfferScope? = null,
     val result: LiveRefreshResult? = null, val message: String? = null, val connection: KnusprConnectionInfo? = null,
     val discovery: KnusprToolDiscovery? = null, val authorizationUrl: URI? = null,
     val automatic: Boolean = false, val selectionLoaded: Boolean = false, val comparison: LivePriceComparison? = null,
     val reference: LiveOfferSelection? = null, val authorizedEvidenceRef: String? = null,
     val articleCatalog: List<ProductVersionEntity> = emptyList(), val reviewedOffers: Set<String> = emptySet(),
-    val needPreviews: List<LiveNeedPreview> = emptyList()) {
+    val needPreviews: List<LiveNeedPreview> = emptyList(), val comparisonSource: LiveComparisonSource? = null,
+    val comparedOfferIds: Pair<String, String>? = null) {
     val connected: Boolean get() = connection != null
+    val batches: List<LiveOfferBatch> get() = listOfNotNull(result?.batch, comparisonSource?.result?.batch)
 }
 
 /** No FoodStore/Room writer and no health/profile export. HTTP happens only on
@@ -70,7 +73,22 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         }.sortedBy { it.name }
     }
     private fun reviewedIds(value: LiveOffersUiState, versions: List<ProductVersionEntity>): Set<String> =
-        value.result?.batch?.let { batch -> batch.offers.filter { articles.reviewed(it, batch.scope, versions) != null }.map { it.id }.toSet() } ?: emptySet()
+        value.batches.flatMap { batch -> batch.offers.filter { articles.reviewed(it, batch.scope, versions) != null } }
+            .mapTo(mutableSetOf()) { it.id }
+
+    private fun selection(value: LiveOffersUiState, offerId: String): LiveOfferSelection? =
+        listOfNotNull(value.result, value.comparisonSource?.result).mapNotNull { result ->
+            val batch = result.batch ?: return@mapNotNull null
+            val authorization = result.authorization ?: return@mapNotNull null
+            batch.offers.singleOrNull { it.id == offerId }?.let { LiveOfferSelection(it, batch.scope, authorization) }
+        }.singleOrNull()
+
+    private fun retainDisplayedArticles(value: LiveOffersUiState) {
+        val ids = value.batches.flatMap { it.offers }.mapTo(mutableSetOf()) { it.id }
+        value.reference?.let { ids.add(it.offer.id) }
+        cancelArticlePrompt()
+        articles.retainOnly(ids)
+    }
 
     fun loadArticleCatalog() {
         if (mutable.value.busy) return
@@ -85,19 +103,17 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     fun prepareArticleReview(offerId: String, draft: LiveArticleReviewDraft,
         onPrepared: (LiveArticleReviewSession.Challenge) -> Unit) {
         val value = currentForAction() ?: return
-        val batch = value.result?.batch ?: return
-        val offer = batch.offers.singleOrNull { it.id == offerId } ?: return
-        val grant = value.result.authorization ?: return
+        val (offer, scope, grant) = selection(value, offerId) ?: return
         cancelArticlePrompt(); val expected = ++generation
         mutable.value = value.copy(busy = true, comparison = null, needPreviews = emptyList())
         work = viewModelScope.launch {
             try {
                 val versions = withContext(Dispatchers.IO) { readCatalog() }
                 if (generation != expected) return@launch
-                val challenge = articles.prepare(offer, batch.scope, grant, draft, versions)
+                val challenge = articles.prepare(offer, scope, grant, draft, versions)
                 pendingArticle = challenge.id to expected
                 publishValidated(mutable.value.copy(busy = false, articleCatalog = eligibleCatalog(versions)))
-                onPrepared(challenge)
+                if (pendingArticle?.first == challenge.id) onPrepared(challenge)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { if (generation == expected) {
                 cancelArticlePrompt()
@@ -127,9 +143,8 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     }
     fun previewShoppingNeed(offerId: String, report: ShoppingReport) {
         val value = currentForAction() ?: return
-        val batch = value.result?.batch ?: return
-        val offer = batch.offers.singleOrNull { it.id == offerId } ?: return
-        if (report.scope.purchaseOn != batch.scope.purchaseOn.toString()) {
+        val (offer, scope) = selection(value, offerId) ?: return
+        if (report.scope.purchaseOn != scope.purchaseOn.toString()) {
             mutable.value = value.copy(needPreviews = emptyList(), message = "Einkaufsliste und Angebot müssen denselben Einkaufstag verwenden."); return
         }
         val expected = generation; mutable.value = value.copy(busy = true)
@@ -137,7 +152,7 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
             try {
                 val versions = withContext(Dispatchers.IO) { readCatalog() }
                 if (generation != expected) return@launch
-                val quotes = report.items.mapNotNull { line -> articles.previewNeed(offer, batch.scope, line.need, versions)
+                val quotes = report.items.mapNotNull { line -> articles.previewNeed(offer, scope, line.need, versions)
                     ?.let { LiveNeedPreview(offerId, report, line, it) } }
                 publishValidated(mutable.value.copy(busy = false, needPreviews = quotes,
                     reviewedOffers = reviewedIds(mutable.value, versions),
@@ -152,20 +167,24 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     /** Keep the exact independent authorization of each loaded observation.
      * Replacements with the same source ID do not reauthorize old prices. */
     private fun validated(value: LiveOffersUiState): LiveOffersUiState {
-        val validBatch = value.result?.let { result -> result.batch?.let {
+        fun permitted(result: LiveRefreshResult?): Boolean = result?.batch?.let {
             runtime.permitsSnapshot(it.scope, it.sourceId, result.authorization)
-        } } ?: true
+        } ?: true
+        val validBatch = permitted(value.result)
+        val validOther = validBatch && permitted(value.comparisonSource?.result)
         val validReference = value.reference?.let {
             it.authorization.cachePermitted && runtime.permitsSnapshot(it.scope, it.offer.sourceId, it.authorization)
         } ?: true
-        if (validBatch && validReference) return value
-        cancelArticlePrompt()
-        articles.retainOnly(setOfNotNull(value.reference?.takeIf { validReference }?.offer?.id))
-        return value.copy(result = value.result.takeIf { validBatch }, reference = value.reference.takeIf { validReference },
-            comparison = null, needPreviews = emptyList(), reviewedOffers = emptySet(),
+        if (validBatch && validOther && validReference) return value
+        val remaining = value.copy(result = value.result.takeIf { validBatch },
+            comparisonSource = value.comparisonSource.takeIf { validOther },
+            reference = value.reference.takeIf { validReference }, comparison = null, comparedOfferIds = null, needPreviews = emptyList(),
             authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { validBatch },
             automatic = value.automatic && validBatch,
             message = "Quellenfreigabe oder Geltungsbereich geändert. Betroffene Sitzungsdaten verworfen; diese Quelle erneut ausdrücklich aktualisieren.")
+        retainDisplayedArticles(remaining)
+        val visibleIds = remaining.batches.flatMap { it.offers }.map { it.id }.toSet()
+        return remaining.copy(reviewedOffers = value.reviewedOffers.intersect(visibleIds))
     }
     private fun publishValidated(value: LiveOffersUiState): Job? {
         val checked = validated(value)
@@ -193,25 +212,27 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
         mutable.value = mutable.value.copy(scope = null, result = null, discovery = null, message = null,
             automatic = false, comparison = null, authorizationUrl = null, busy = true, authorizedEvidenceRef = null,
-            reviewedOffers = emptySet(), needPreviews = emptyList())
+            reviewedOffers = emptySet(), needPreviews = emptyList(), comparisonSource = null, comparedOfferIds = null)
         work = viewModelScope.launch {
             try { withContext(Dispatchers.IO) { ticket?.let(privateStore::cancelAttempt); settings.clearSelection() } }
             finally { if (generation == expected) mutable.value = mutable.value.copy(busy = false) }
         }
     }
     fun refresh(scope: LiveOfferScope, automatic: Boolean = false) {
-        if (automatic && (mutable.value.busy || !mutable.value.automatic)) return
+        if (automatic && (mutable.value.busy || !mutable.value.automatic || mutable.value.comparisonSource != null)) return
         articles.retainOnly(setOfNotNull(mutable.value.reference?.takeIf { it.authorization.cachePermitted }?.offer?.id))
         cancelArticlePrompt(); work?.cancel(); val expected = ++generation
-        val keepAutomatic = mutable.value.scope == scope && mutable.value.automatic
+        val canSave = scope.searchTerm == null
+        val keepAutomatic = canSave && mutable.value.scope == scope && mutable.value.automatic
         mutable.value = mutable.value.copy(scope = scope, busy = true, result = null, message = null, automatic = keepAutomatic,
-            comparison = null, authorizedEvidenceRef = null, reviewedOffers = emptySet(), needPreviews = emptyList())
+            comparison = null, authorizedEvidenceRef = null, reviewedOffers = emptySet(), needPreviews = emptyList(),
+            comparisonSource = null, comparedOfferIds = null)
         work = viewModelScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    if (!automatic) settings.select(scope, keepAutomatic)
+                    if (!automatic && canSave) settings.select(scope, keepAutomatic)
                     val result = runtime.refresh(scope, automatic).also {
-                        if (it.status in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED)) settings.select(scope, false)
+                        if (canSave && it.status in setOf(LiveRefreshStatus.BLOCKED, LiveRefreshStatus.FAILED)) settings.select(scope, false)
                     }
                     result
                 }
@@ -228,9 +249,68 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
             catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false, message = "Auswahl oder Quelle konnte nicht geprüft werden.") }
         }
     }
+    fun loadComparison(scope: LiveOfferScope) {
+        val value = currentForAction() ?: return
+        val primary = value.result?.takeIf { it.status == LiveRefreshStatus.LOADED }?.batch ?: return
+        if (scope.retailer == primary.scope.retailer || scope.retailer.stationary == null || scope.searchTerm != null ||
+            (scope.storeId == null && scope.regionId == null) || scope.purchaseOn != primary.scope.purchaseOn ||
+            primary.offers.none { it.isComparisonCandidate(primary.scope) }) return
+        val expected = ++generation
+        val next = withoutComparisonSource(value).copy(busy = true, comparisonSource = LiveComparisonSource(scope), message = null)
+        mutable.value = next
+        work = viewModelScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { runtime.refresh(scope) }
+                val fresh = if (result.status == LiveRefreshStatus.LOADED) result else result.copy(batch = null)
+                if (generation == expected) publishValidated(mutable.value.copy(busy = false,
+                    comparisonSource = LiveComparisonSource(scope, fresh)))
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { if (generation == expected) mutable.value = mutable.value.copy(busy = false,
+                comparisonSource = LiveComparisonSource(scope, LiveRefreshResult(LiveRefreshStatus.FAILED))) }
+        }
+    }
+
+    private fun withoutComparisonSource(value: LiveOffersUiState): LiveOffersUiState {
+        val ids = value.result?.batch?.offers.orEmpty().map { it.id }.toSet()
+        val remaining = value.copy(comparisonSource = null, comparison = null, comparedOfferIds = null,
+            reviewedOffers = value.reviewedOffers.intersect(ids),
+            needPreviews = value.needPreviews.filter { it.offerId in ids })
+        retainDisplayedArticles(remaining)
+        return remaining
+    }
+
+    fun closeComparison() {
+        val value = mutable.value
+        if (value.busy || value.comparisonSource == null) return
+        generation++
+        publishValidated(withoutComparisonSource(value))
+    }
+
+    fun leaveOfferPage() {
+        val value = mutable.value
+        if (value.scope?.searchTerm == null && value.comparisonSource == null && value.result?.cachePermitted != false &&
+            (!value.busy || value.scope == null)) return
+        generation++
+        work?.cancel()
+        val result = value.result?.takeIf { it.cachePermitted }
+        mutable.value = withoutComparisonSource(value.copy(result = result, busy = false,
+            scope = value.scope?.takeIf { it.searchTerm == null },
+            authorizedEvidenceRef = value.authorizedEvidenceRef.takeIf { result != null }, message = null))
+    }
+
+    fun compareSources(targetId: String, alternativeId: String) {
+        val value = currentForAction() ?: return
+        val primary = value.result?.batch ?: return
+        val other = value.comparisonSource?.result?.batch ?: return
+        val target = primary.offers.singleOrNull { it.id == targetId && it.isComparisonCandidate(primary.scope) } ?: return
+        val alternative = other.offers.singleOrNull { it.id == alternativeId && it.isComparisonCandidate(other.scope) } ?: return
+        compareReviewed(value, target, primary.scope, alternative, other.scope)
+    }
+
     fun setAutomatic(enabled: Boolean) {
         val value = currentForAction() ?: return
         val scope = value.scope ?: return
+        if (scope.searchTerm != null) return
         cancelArticlePrompt(); val expected = ++generation
         mutable.value = mutable.value.copy(busy = true)
         work = viewModelScope.launch {
@@ -270,7 +350,7 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
         val current = mutable.value
         readConnection()
         if (current.result?.refreshAfter?.let { java.time.Instant.now() < it } == true) return
-        if (current.automatic) current.scope?.let { refresh(it, automatic = true) }
+        if (current.automatic && current.comparisonSource == null) current.scope?.let { refresh(it, automatic = true) }
     }
     fun compare(targetId: String, alternativeId: String) {
         val value = currentForAction() ?: return
@@ -282,11 +362,13 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     }
     private fun compareReviewed(value: LiveOffersUiState, target: LiveOffer, targetScope: LiveOfferScope,
         alternative: LiveOffer, alternativeScope: LiveOfferScope) {
+        val ids = target.id to alternative.id
         suppliedComparison?.let {
-            publishValidated(value.copy(comparison = it.compare(target, targetScope, alternative, alternativeScope, java.time.Instant.now())))
+            publishValidated(value.copy(comparedOfferIds = ids,
+                comparison = it.compare(target, targetScope, alternative, alternativeScope, java.time.Instant.now())))
             return
         }
-        val expected = generation; mutable.value = value.copy(busy = true)
+        val expected = generation; mutable.value = value.copy(busy = true, comparison = null, comparedOfferIds = ids)
         work = viewModelScope.launch {
             try {
                 val versions = withContext(Dispatchers.IO) { readCatalog() }
@@ -421,7 +503,9 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     fun cancel() {
         cancelArticlePrompt()
         work?.cancel(); val expected = ++generation; val ticket = authTicket; authTicket = null
-        mutable.value = mutable.value.copy(busy = true, authorizationUrl = null, message = "Abgebrochen. Keine Buchung erzeugt.")
+        val value = mutable.value
+        val remaining = if (value.comparisonSource?.result == null) value.copy(comparisonSource = null) else value
+        mutable.value = remaining.copy(busy = true, authorizationUrl = null, message = "Abgebrochen. Keine Buchung erzeugt.")
         work = viewModelScope.launch {
             try { withContext(Dispatchers.IO) { ticket?.let(privateStore::cancelAttempt) } }
             finally { if (generation == expected) mutable.value = mutable.value.copy(busy = false) }

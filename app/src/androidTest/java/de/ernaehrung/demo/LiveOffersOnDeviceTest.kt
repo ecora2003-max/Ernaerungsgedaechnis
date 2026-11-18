@@ -39,6 +39,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LiveOffersOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    private val noProductionProfiles = ReviewedOfferSources.decode(ReviewedOfferSourceFixtures.document())
     @Before fun prepare() {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         prepareUnlockedTestDevice()
@@ -68,10 +69,19 @@ class LiveOffersOnDeviceTest {
             listOf(line), emptyList(), emptyList(), null, null, true, ShoppingBudget(null, null, null, null))
         val before = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
         val health = db.healthDao().history("com.sec.android.app.shealth"); val bodies = db.bodyDao().versions()
-        val config = PennyPublicSourceFixtures.configuration(day, id)
+        val secondSource = "synthetic-rewe-${UUID.randomUUID()}"
+        val secondProfile = ReviewedOfferSourceFixtures.row(LiveRetailer.REWE, day, "9999002", secondSource).toMutableMap()
+        val secondApproval = requireNotNull(OfferJson.objectValue(secondProfile["approval"]))
+        secondProfile["approval"] = secondApproval + ("cachePermitted" to false)
+        val config = PennyPublicSourceFixtures.configuration(day, id, secondProfile)
+        assertEquals(2, config.profiles.size)
         val calls = java.util.concurrent.atomic.AtomicInteger()
         val http = OfferHttp { request -> calls.incrementAndGet(); OfferHttpReply(200, mapOf("content-type" to "application/json"),
-            if (request.uri.path == "/.rest/market") PennyPublicSourceFixtures.markets() else PennyPublicSourceFixtures.offers()) }
+            when (request.uri.host) {
+                "www.penny.de" -> if (request.uri.path == "/.rest/market") PennyPublicSourceFixtures.markets() else PennyPublicSourceFixtures.offers()
+                "www.rewe.de" -> """{"products":[{"id":101,"title":"Synthetic second market offer","pricing":{"current":129,"regular":189,"refund":25}}]}"""
+                else -> error("Unexpected synthetic retailer request")
+            }) }
         var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
         fun mount() = compose.runOnUiThread {
             model = ViewModelProvider(models, object : ViewModelProvider.Factory {
@@ -85,8 +95,8 @@ class LiveOffersOnDeviceTest {
             } }
         }
         fun check(text: String) { finishDeviceTextEditing(compose); compose.onNodeWithText(text).performScrollTo().performClick() }
-        fun authenticate(sku: String) {
-            tap("live_review_$sku")
+        fun authenticate(sku: String, source: String = id, tag: String = "live_review_$sku") {
+            tap(tag)
             compose.waitUntil(25_000) { model.state.value.articleCatalog.any { it.id == versionId } }
             tap("Eigene Produktfassung"); tap("choose_$versionId")
             compose.onNodeWithTag("article_review_type").performScrollTo().performTextReplacement("Selbst geprüfter synthetischer Artikel")
@@ -106,7 +116,7 @@ class LiveOffersOnDeviceTest {
                 editor != null
             }
             requireNotNull(editor).click(); device.waitForIdle(); device.executeShellCommand("input text 2468"); device.pressEnter()
-            compose.waitUntil(25_000) { "$id:$sku" in model.state.value.reviewedOffers && !model.state.value.busy }
+            compose.waitUntil(25_000) { "$source:$sku" in model.state.value.reviewedOffers && !model.state.value.busy }
         }
         try {
             mount(); ready(); tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_$id"); ready(); tap("live_offers_refresh"); ready()
@@ -122,12 +132,32 @@ class LiveOffersOnDeviceTest {
             tap("Alternativangebot dieser Liste"); tap("choose_$id:synthetic-zero")
             check("Waren-Grundpreise geprüft vergleichen"); ready()
             compose.onNodeWithTag("live_comparison_result").assertTextEquals("Alternative hat einen geringeren Waren-Grundpreis.")
+            tap("Zweiter Händler und Markt"); tap("choose_$secondSource")
+            tap("live_load_comparison"); ready()
+            assertEquals(LiveRetailer.PENNY, PrivateOfferSettings.forApp(context).selection()!!.scope.retailer)
+            assertEquals(LiveRefreshStatus.LOADED, model.state.value.comparisonSource?.result?.status)
+            assertFalse(model.state.value.comparisonSource!!.result!!.cachePermitted)
+            tap("Referenz aus PENNY"); tap("choose_$id:synthetic-a")
+            tap("Alternative aus REWE"); tap("choose_$secondSource:101")
+            compose.onNodeWithTag("live_compare_markets").assertIsNotEnabled()
+            authenticate("101", secondSource, "live_comparison_review_alternative")
+            tap("live_compare_markets"); ready()
+            compose.onNodeWithTag("live_comparison_result").assertTextEquals("REWE hat einen geringeren Waren-Grundpreis.")
+            tap("live_comparison_need_alternative"); ready()
+            compose.onNodeWithTag("live_need_cost").assertTextEquals("Warenkosten für diesen Bedarf: 3,87 €")
+            assertEquals(150_000L, model.state.value.needPreviews.single().packs.surplus)
+            tap("live_close_comparison"); ready()
+            assertNull(model.state.value.comparisonSource); assertNull(model.state.value.comparison)
+            assertTrue(model.state.value.needPreviews.isEmpty())
+            assertEquals(setOf("$id:synthetic-a", "$id:synthetic-zero"), model.state.value.reviewedOffers)
             assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
             assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(bodies, db.bodyDao().versions())
             assertTrue(model.state.value.result!!.batch!!.offers.all { it.quantityMilli == null && it.validFrom == null })
-            compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; models = ViewModelStore(); mount(); ready()
+            compose.runOnUiThread { compose.activity.setContent {} }
+            compose.waitUntil(25_000) { model.state.value.result == null && model.state.value.reviewedOffers.isEmpty() }
+            compose.runOnUiThread { models.clear() }; models = ViewModelStore(); mount(); ready()
             assertTrue(model.state.value.reviewedOffers.isEmpty()); assertTrue(model.state.value.needPreviews.isEmpty())
-            assertNull(model.state.value.comparison); assertNull(model.state.value.result); assertEquals(2, calls.get()); assertNull(network.activeNetwork)
+            assertNull(model.state.value.comparison); assertNull(model.state.value.result); assertEquals(3, calls.get()); assertNull(network.activeNetwork)
         } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
         finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; PrivateOfferSettings.forApp(context).clearSelection() }
     }
@@ -224,7 +254,8 @@ class LiveOffersOnDeviceTest {
             compose.waitUntil(25_000) {
                 compose.onAllNodes(hasTestTag("live_profile_details") and hasText("DE123", substring = true)).fetchSemanticsNodes().size == 1
             }
-            compose.onNodeWithTag("live_profile_details").assertTextEquals("Synthetische Filiale DE123 · Geltung $day bis ${day.plusDays(6)}")
+            compose.onNodeWithTag("live_profile_details").assertTextEquals(
+                "Synthetische Filiale DE123 · Quellenprofil $day bis ${day.plusDays(6)}; Artikelgültigkeit jeweils am Angebot prüfen.")
             assertTrue(model.state.value.automatic); assertEquals(1, calls.get())
             tap("live_offers_refresh"); ready()
             assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
@@ -373,7 +404,8 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, LiveOfferRuntime(sources, registry), http) as T
+                        LiveOffersViewModel(context, LiveOfferRuntime(sources, registry), http,
+                            sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -448,7 +480,7 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, runtime, http) as T
+                        LiveOffersViewModel(context, runtime, http, sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -503,27 +535,38 @@ class LiveOffersOnDeviceTest {
             PrivateOfferSettings.forApp(context).clearSelection()
         }
     }
-    @Test fun unconfiguredRetailersStayBlockedAndPublicPennyFailsOfflineWithoutLosingFactsOrReplayingConsent(): Unit = runBlocking {
+    @Test fun unconfiguredRetailersStayBlockedAndConfiguredPublicSourcesFailOfflineWithoutLosingFactsOrReplayingConsent(): Unit = runBlocking {
         val context = compose.activity.applicationContext
         val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         assertNull(connectivity.activeNetwork)
         val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
         val operations = dao.operationCount(); val movements = dao.stockMovementSnapshotRows()
         val prices = dao.allPaidPrices(); val bodies = db.bodyDao().versions(); val health = db.healthDao().history("com.sec.android.app.shealth")
+        val profiles = ReviewedOfferSources.bundled(context).profiles
         try {
             compose.onNodeWithTag("workspace_tab_MORE").performClick(); tap("workspace_go_SHOPPING")
             tap("shopping_open_live_offers"); ready()
             for (retailer in LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }) {
                 tap("Angebotsanbieter"); tap("choose_${retailer.name}"); ready()
-                if (retailer == LiveRetailer.PENNY) {
-                    tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_penny-4030085-top-angebote"); ready()
+                val profile = profiles.singleOrNull { it.retailer == retailer }
+                if (profile != null) {
+                    tap("Bestätigte Filiale oder Angebotsregion"); tap("choose_${profile.id}"); ready()
+                }
+                if (profile?.interactiveSearch == true) {
+                    compose.onNodeWithTag("live_offers_refresh").assertIsNotEnabled()
+                    compose.onNodeWithTag("live_search_term").performScrollTo().performTextInput("Synthetischer Offline-Suchbegriff")
                 }
                 tap("live_offers_refresh")
-                if (retailer == LiveRetailer.PENNY) compose.waitUntil(25_000) {
+                if (profile != null) compose.waitUntil(25_000) {
                     compose.onAllNodesWithText("Netzabruf konnte nicht abgeschlossen werden.").fetchSemanticsNodes().size == 1
                 } else compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_offers_blocked").fetchSemanticsNodes().size == 1 }
-                tap("live_automatic_toggle"); ready()
-                compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
+                if (profile?.interactiveSearch == true) {
+                    compose.onNodeWithTag("live_automatic_toggle").assertDoesNotExist()
+                    assertNull(PrivateOfferSettings.forApp(context).selection())
+                } else {
+                    tap("live_automatic_toggle"); ready()
+                    compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
+                }
             }
             tap("Angebotsanbieter"); tap("choose_KNUSPR"); ready()
             compose.onNodeWithTag("knuspr_connect").assertIsNotEnabled()
@@ -634,7 +677,7 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, runtime, http, comparison) as T
+                        LiveOffersViewModel(context, runtime, http, comparison, sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) { LiveOffersScreen(providedModel = model) }
@@ -652,8 +695,8 @@ class LiveOffersOnDeviceTest {
             compose.onNodeWithText("Waren-Grundpreise geprüft vergleichen").performScrollTo().performClick()
             compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_comparison_result").fetchSemanticsNodes().size == 1 }
             compose.onNodeWithTag("live_comparison_result").assertTextEquals("Alternative hat einen geringeren Waren-Grundpreis.")
-            compose.onNodeWithText("Referenz: 3,98 €/kg · NET").assertExists()
-            compose.onNodeWithText("Alternative: 2,99 €/kg · NET").assertExists()
+            compose.onNodeWithText("Referenz · 3,98 €/kg · NET").assertExists()
+            compose.onNodeWithText("Alternative · 2,99 €/kg · NET").assertExists()
             tap("live_automatic_toggle"); ready()
             compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik für diese angewendete Auswahl eingeschaltet")
             tap("live_offers_refresh"); ready(); assertEquals(1, calls) // same durable source interval
