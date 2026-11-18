@@ -39,6 +39,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LiveOffersOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    private val noProductionProfiles = ReviewedOfferSources.decode(ReviewedOfferSourceFixtures.document())
     @Before fun prepare() {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         prepareUnlockedTestDevice()
@@ -253,7 +254,8 @@ class LiveOffersOnDeviceTest {
             compose.waitUntil(25_000) {
                 compose.onAllNodes(hasTestTag("live_profile_details") and hasText("DE123", substring = true)).fetchSemanticsNodes().size == 1
             }
-            compose.onNodeWithTag("live_profile_details").assertTextEquals("Synthetische Filiale DE123 · Geltung $day bis ${day.plusDays(6)}")
+            compose.onNodeWithTag("live_profile_details").assertTextEquals(
+                "Synthetische Filiale DE123 · Quellenprofil $day bis ${day.plusDays(6)}; Artikelgültigkeit jeweils am Angebot prüfen.")
             assertTrue(model.state.value.automatic); assertEquals(1, calls.get())
             tap("live_offers_refresh"); ready()
             assertEquals(LiveRefreshStatus.THROTTLED, model.state.value.result?.status)
@@ -402,7 +404,8 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, LiveOfferRuntime(sources, registry), http) as T
+                        LiveOffersViewModel(context, LiveOfferRuntime(sources, registry), http,
+                            sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -477,7 +480,7 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, runtime, http) as T
+                        LiveOffersViewModel(context, runtime, http, sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
@@ -665,7 +668,7 @@ class LiveOffersOnDeviceTest {
             compose.runOnUiThread {
                 model = ViewModelProvider(models, object : ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                        LiveOffersViewModel(context, runtime, http, comparison) as T
+                        LiveOffersViewModel(context, runtime, http, comparison, sources = noProductionProfiles) as T
                 })[LiveOffersViewModel::class.java]
                 compose.activity.setContent { DemoTheme {
                     Column(Modifier.fillMaxSize().systemBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) { LiveOffersScreen(providedModel = model) }
@@ -683,8 +686,8 @@ class LiveOffersOnDeviceTest {
             compose.onNodeWithText("Waren-Grundpreise geprüft vergleichen").performScrollTo().performClick()
             compose.waitUntil(25_000) { compose.onAllNodesWithTag("live_comparison_result").fetchSemanticsNodes().size == 1 }
             compose.onNodeWithTag("live_comparison_result").assertTextEquals("Alternative hat einen geringeren Waren-Grundpreis.")
-            compose.onNodeWithText("Referenz: 3,98 €/kg · NET").assertExists()
-            compose.onNodeWithText("Alternative: 2,99 €/kg · NET").assertExists()
+            compose.onNodeWithText("Referenz · 3,98 €/kg · NET").assertExists()
+            compose.onNodeWithText("Alternative · 2,99 €/kg · NET").assertExists()
             tap("live_automatic_toggle"); ready()
             compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik für diese angewendete Auswahl eingeschaltet")
             tap("live_offers_refresh"); ready(); assertEquals(1, calls) // same durable source interval
