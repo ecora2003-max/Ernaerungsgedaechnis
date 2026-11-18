@@ -110,6 +110,7 @@ jobs:
               'aldi-sued-public-offers':('ALDI_SUED','www.aldi-sued.de',None,False),
               'aldi-sued-bl16-product-search':('ALDI_SUED','api.aldi-sued.de','BL16',True),
               'kaufland-de5220-public':('KAUFLAND','filiale.kaufland.de','DE5220',False),
+              'lidl-de7434-plus-offers':('LIDL','offers.lidlplus.com','DE7434',False),
               'rewe-1356345-product-search':('REWE','www.rewe.de','1356345',True),
           }
           sources=[]
@@ -121,6 +122,7 @@ jobs:
               assert source['actualSdk']==35 and source['actualNetworkValidated'] and source['actualFactsUnchanged']
               assert source['sourceHost']==host and source['storeId']==store and source['branchConfirmed']==(store is not None)
               assert source['productSearch']==search
+              assert source['appPricesNotUsedForComparison']==(retailer=='LIDL')
               assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False
               assert source['uidRxDelta']>0 and source['uidTxDelta']>0
               maximum=12 if retailer=='ALDI_SUED' and search else 512 if retailer=='ALDI_NORD' else 256

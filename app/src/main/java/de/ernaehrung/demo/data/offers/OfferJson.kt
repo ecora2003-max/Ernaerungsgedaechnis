@@ -1,6 +1,7 @@
 package de.ernaehrung.demo.data.offers
 
 import de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson
+import de.ernaehrung.demo.data.local.AppCalendar
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant
@@ -78,12 +79,14 @@ internal object PublishedOfferDecoders {
         }
     }
 
-    fun lidl(raw: String, sourceId: String, storeKey: String, fetchedAt: Instant, sourceUrl: String): List<LiveOffer> {
+    fun lidl(raw: String, sourceId: String, storeKey: String, fetchedAt: Instant, sourceUrl: String,
+        market: LiveStoreScopeEvidence? = null): List<LiveOffer> {
         require(storeKey.matches(Regex("DE[0-9]+")))
         val root = OfferJson.read(raw); val rows = root["offers"] as? List<*>
             ?: throw OfferSourceFailure(OfferSourceFailureCode.UNSUPPORTED_SOURCE_SCHEMA)
         require(rows.size <= 256)
-        OfferJson.integer(root["totalOffers"])?.let { require(it == rows.size.toLong()) }
+        val total = OfferJson.integer(root["totalOffers"])
+        if (total != null || market != null) require(total == rows.size.toLong())
         return rows.mapNotNull { value ->
             val row = OfferJson.objectValue(value) ?: return@mapNotNull null
             if (row["offerType"] != "StoreSpecialPriceDiscount" || row["category"] != "Store" ||
@@ -91,13 +94,33 @@ internal object PublishedOfferDecoders {
             val id = OfferJson.text(row["id"]) ?: return@mapNotNull null
             val title = OfferJson.text(row["title"]) ?: return@mapNotNull null
             val box = OfferJson.objectValue(row["priceBox"]) ?: return@mapNotNull null
-            val from = date(row["startValidityDate"]) ?: return@mapNotNull null
-            val until = date(row["endValidityDate"]) ?: return@mapNotNull null
+            fun visibleDate(key: String): LocalDate? {
+                val localDay = date(row[key]) ?: return null
+                val utcKey = key + "UTC"
+                return if (market == null || utcKey !in row) localDay
+                else localDay.takeIf { OfferJson.instant(row[utcKey])?.let(AppCalendar::today) == it }
+            }
+            val from = visibleDate("startValidityDate") ?: return@mapNotNull null
+            val until = visibleDate("endValidityDate") ?: return@mapNotNull null
             if (until < from) return@mapNotNull null
+            val price = OfferJson.euroCents(box["largePartNumeric"] ?: box["largePartString"])
+            val unitPrice = OfferJson.text(row["pricePerUnit"])
+            val discount = OfferJson.text(box["discountMessage"])
+            val appPrice = if (market != null) {
+                if (row["redemptionChannel"] != "Store" || box["priceSymbol"] != "€")
+                    return@mapNotNull null
+                price?.takeIf { it <= 100_000_000L } ?: return@mapNotNull null
+            } else null
             LiveOffer("$sourceId:$id", sourceId, LiveRetailer.LIDL, title, id, null,
-                OfferJson.euroCents(box["largePartNumeric"] ?: box["largePartString"]), null, null, null, null,
-                LiveOfferKind.PROMOTION, from, until, null, fetchedAt, storeKey, null, null, LiveOfferApplicability.STORE_CONFIRMED,
-                OfferJson.text(box["discountMessage"]), false, sourceUrl, OfferJson.text(row["packaging"]) ?: OfferJson.text(row["pricePerUnit"]))
+                price.takeIf { market == null }, null, null, null, null,
+                LiveOfferKind.PROMOTION, from, until, null, fetchedAt, storeKey, null, null,
+                LiveOfferApplicability.STORE_CONFIRMED,
+                if (market == null) discount else listOfNotNull(
+                    "In Lidl Plus veröffentlichter Preis. Teilnahme und Einlösung in Lidl Plus prüfen.", discount
+                ).joinToString(" "), false, sourceUrl, OfferJson.text(row["packaging"]),
+                priceDetails = LivePriceDetails(appCents = appPrice,
+                    brand = OfferJson.text(row["brand"]), unitPriceDisplay = unitPrice),
+                storeEvidence = market)
         }
     }
 

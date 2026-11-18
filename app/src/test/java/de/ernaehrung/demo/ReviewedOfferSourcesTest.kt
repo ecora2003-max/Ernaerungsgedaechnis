@@ -242,4 +242,55 @@ class ReviewedOfferSourcesTest {
         assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(scope.copy(searchTerm = "Toast")).status)
         assertEquals(1, requests.size)
     }
+
+    @Test fun lidlPlusUsesTheVerifiedMarketAndKeepsAppPricesOutOfGoodsComparison(): Unit = runBlocking {
+        val directory = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
+        val profile = directory.profiles.single { it.id == "lidl-de7434-plus-offers" }
+        assertFalse(profile.allowsGoodsComparison)
+        val selected = profile.scope(LocalDate.parse("2026-11-19"))
+        var now = Instant.parse("2026-11-19T10:00:00Z")
+        var directoryStoreNumber = "7434"
+        val requests = mutableListOf<OfferHttpRequest>()
+        val runtime = directory.runtime(OfferHttp { request ->
+            requests += request
+            when (request.uri.host) {
+                "www.lidl.de" -> OfferHttpReply(200, mapOf("content-type" to "text/html"),
+                    """<link rel="canonical" href="${profile.availabilityEndpoint}"><h1>Lidl Filiale Malchower Weg 134, 13053 Berlin</h1>
+                    <a href="https://survey2.medallia.eu/example?TNC=$directoryStoreNumber">Gib uns Feedback zur Filiale</a>""")
+                "offers.lidlplus.com" -> OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                    """{"totalOffers":3,"offers":[
+                    {"id":"app-1","title":"Synthetisch","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"Store","priceBox":{"priceSymbol":"€","largePartNumeric":0,"smallPartNumeric":2.99},
+                     "startValidityDate":"2026-11-19T00:00:00+00:00","endValidityDate":"2026-11-21T23:59:59+00:00",
+                     "startValidityDateUTC":"2026-11-18T23:00:00Z","endValidityDateUTC":"2026-11-21T22:59:59Z",
+                     "packaging":"Beispielpackung","pricePerUnit":"Quelleinheit"},
+                    {"id":"web-1","title":"Online","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"OnlineShop","priceBox":{"priceSymbol":"€","largePartNumeric":1.99},
+                     "startValidityDate":"2026-11-19","endValidityDate":"2026-11-21"},
+                    {"id":"expired-1","title":"Alt","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"Store","priceBox":{"priceSymbol":"€","largePartNumeric":1.99},
+                     "startValidityDate":"2026-11-16","endValidityDate":"2026-11-17"}]}""")
+                else -> error("Unexpected request")
+            }
+        }, MemoryOfferRefreshJournal()) { now }
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(selected.copy(storeId = "DE7602")).status)
+        assertTrue(requests.isEmpty())
+        val observation = runtime.refresh(selected)
+        assertEquals(LiveRefreshStatus.LOADED, observation.status)
+        assertEquals(listOf(profile.availabilityEndpoint, profile.endpoint), requests.map(OfferHttpRequest::uri))
+        val offer = observation.batch!!.offers.single()
+        assertEquals("Lidl", offer.storeEvidence!!.marketName)
+        assertEquals("Malchower Weg 134, 13053 Berlin", offer.storeEvidence.address)
+        assertEquals(0L, offer.priceDetails!!.appCents)
+        assertEquals("Quelleinheit", offer.priceDetails.unitPriceDisplay)
+        assertNull(offer.merchandiseCents); assertNull(offer.priceDetails.regularCents); assertNull(offer.checkoutCents)
+        assertTrue(offer.applicable(selected)); assertFalse(offer.isComparisonCandidate(selected))
+        assertFalse(observation.cachePermitted)
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(selected).status)
+        now = now.plusSeconds(601); directoryStoreNumber = "1111"
+        val changed = runtime.refresh(selected)
+        assertEquals("SCOPE_UNAVAILABLE", changed.code); assertNull(changed.batch)
+        assertEquals(profile.availabilityEndpoint, requests.last().uri)
+        assertEquals(3, requests.size)
+    }
 }

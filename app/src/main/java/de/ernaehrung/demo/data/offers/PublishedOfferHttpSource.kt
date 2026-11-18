@@ -16,7 +16,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     enum class Format { LIDL_STORE_V4, EDEKA_MARKET, PENNY_REGION, ALDI_NORD_NEXT_DATA, ALDI_NORD_CURRENT_DATA, KAUFLAND_STORE,
         REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC, REWE_MARKET_HTML,
-        KAUFLAND_MARKET_HTML }
+        KAUFLAND_MARKET_HTML, LIDL_PLUS_MARKET }
     private val aldiNord get() = format == Format.ALDI_NORD_NEXT_DATA || format == Format.ALDI_NORD_CURRENT_DATA
     override val maximumOffers get() = when {
         aldiNord -> 512
@@ -30,9 +30,11 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     override val endpoints: Set<URI> get() = setOfNotNull(endpoint, availabilityEndpoint)
     init {
         requirePublicHttps(endpoint); exactScope.validate(); require(sourceId.isNotBlank())
-        require(format !in setOf(Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML)) { "Use the canonical market source" }
+        require(format !in setOf(Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML,
+            Format.LIDL_PLUS_MARKET)) { "Use the canonical market source" }
         require(exactScope.retailer == when (format) {
-            Format.LIDL_STORE_V4 -> LiveRetailer.LIDL; Format.EDEKA_MARKET -> LiveRetailer.EDEKA
+            Format.LIDL_STORE_V4, Format.LIDL_PLUS_MARKET -> LiveRetailer.LIDL
+            Format.EDEKA_MARKET -> LiveRetailer.EDEKA
             Format.PENNY_REGION -> LiveRetailer.PENNY
             Format.ALDI_NORD_NEXT_DATA, Format.ALDI_NORD_CURRENT_DATA -> LiveRetailer.ALDI_NORD
             Format.KAUFLAND_STORE, Format.KAUFLAND_MARKET_HTML -> LiveRetailer.KAUFLAND
@@ -146,7 +148,8 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 val windows = array.map { requireNotNull(OfferJson.objectValue(it)) }
                 PublishedOfferDecoders.kaufland(raw, windows, sourceId, requireNotNull(scope.storeId), scope.purchaseOn, at, endpoint.toString())
             }
-            Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML -> error("Use the canonical market source")
+            Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML, Format.LIDL_PLUS_MARKET ->
+                error("Use the canonical market source")
         }
         return LiveOfferBatch(sourceId, scope, at, rows)
     }

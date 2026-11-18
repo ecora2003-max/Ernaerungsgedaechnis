@@ -266,8 +266,18 @@ class LiveOffersOnDeviceTest {
             compose.waitUntil(25_000) { model.state.value.result?.status == LiveRefreshStatus.LOADED }
             compose.onNodeWithText("Synthetisches Angebot DE456").assertExists()
             compose.onNodeWithText("Synthetisches Angebot DE123").assertDoesNotExist(); assertEquals(2, calls.get())
-            val controls = File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText()
-            assertFalse(controls.contains("Synthetisches Angebot")); assertFalse(controls.contains("1.99"))
+            val controls = OfferJson.read(File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText())
+            assertEquals(setOf("format", "selection", "attempts"), controls.keys)
+            assertEquals(mapOf("retailer" to "LIDL", "store" to "DE456", "region" to null,
+                "delivery" to null, "purchaseOn" to day.toString(), "automatic" to false), controls["selection"])
+            val attempts = requireNotNull(OfferJson.objectValue(controls["attempts"]))
+            assertTrue(attempts.keys.containsAll(setOf("$profileRun-DE123", "$profileRun-DE456")))
+            attempts.values.forEach { value ->
+                val attempt = requireNotNull(OfferJson.objectValue(value))
+                assertEquals(setOf("at", "automaticPaused"), attempt.keys)
+                assertNotNull(OfferJson.instant(attempt["at"]))
+                assertTrue(attempt["automaticPaused"] is Boolean)
+            }
             assertEquals(operations, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())
             assertEquals(paid, dao.allPaidPrices()); assertEquals(body, db.bodyDao().versions())
             assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertNull(network.activeNetwork)

@@ -256,12 +256,15 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     model, state, batch, shopping, onOpenCatalog,
                     articleToReview?.first?.takeIf { articleToReview?.second == true },
                     onReview = { id -> articleToReview = id?.let { it to true } })
-                if (batch.offers.size > 1) {
-                    IdPicker("Referenzangebot dieser Liste", batch.offers.map { it.id to it.title }, target) { target = it }
-                    IdPicker("Alternativangebot dieser Liste", batch.offers.map { it.id to it.title }, alternative) { alternative = it }
+                val comparable = batch.offers.filter { it.isComparisonCandidate(batch.scope) }
+                if (comparable.size > 1) {
+                    IdPicker("Referenzangebot dieser Liste", comparable.map { it.id to it.title }, target) { target = it }
+                    IdPicker("Alternativangebot dieser Liste", comparable.map { it.id to it.title }, alternative) { alternative = it }
                     OutlinedButton({ model.compare(target, alternative) }, enabled = target.isNotBlank() && alternative.isNotBlank() && !state.busy) { Text("Waren-Grundpreise geprüft vergleichen") }
                 }
                 if (rows.isEmpty()) Text("Keine passenden geladenen Angebote. Keine Aussage über das gesamte Sortiment.")
+                if (batch.offers.any { it.priceDetails?.appCents != null && it.merchandiseCents == null })
+                    Text("Reine Apppreise bleiben von Einkaufsbedarf und Warenpreisvergleich getrennt.", Modifier.testTag("live_app_price_only"))
                 rows.drop(page * 25).take(25).forEach { offer -> Panel {
                     Section(offer.title, when (offer.kind) { LiveOfferKind.PROMOTION -> "Aktionsangabe"; LiveOfferKind.REGULAR -> "Normalpreisangabe"; else -> "Preisart ungeklärt" })
                     fun cents(value: Long?) = value?.let { BigDecimal.valueOf(it, 2).toPlainString().replace('.', ',') + " €" } ?: "unbekannt"
@@ -298,21 +301,23 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                                 .onFailure { selectionError = "Originalangebot konnte nicht geöffnet werden." }
                         }, modifier = Modifier.testTag("live_product_page_${offer.sourceProductId}")) { Text("Originalangebot öffnen") }
                     }
-                    Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
-                        else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
-                    val scopeConfirmed = offer.matchesLocation(batch.scope)
-                    if (!scopeConfirmed) Text("Für den Filialpreisvergleich fehlt eine bestätigte Zuordnung dieser Angabe zu einer Filiale oder Region.")
-                    OutlinedButton({ articleToReview = offer.id to false }, enabled = !state.busy && scopeConfirmed,
-                        modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
-                    if (articleToReview == (offer.id to false)) OfferArticleReviewPanel(model, offer, batch.scope,
-                        state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }
-                    if (shopping != null) OutlinedButton({ model.previewShoppingNeed(offer.id, shopping) },
-                        enabled = !state.busy && offer.id in state.reviewedOffers,
-                        modifier = Modifier.testTag("live_need_${offer.sourceProductId}")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
-                    OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
-                        modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
-                    if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,
-                        modifier = Modifier.testTag("live_reference_compare_${offer.id}")) { Text("Mit Sitzungsreferenz vergleichen") }
+                    if (offer.merchandiseCents != null) {
+                        Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
+                            else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
+                        val scopeConfirmed = offer.matchesLocation(batch.scope)
+                        if (!scopeConfirmed) Text("Für den Filialpreisvergleich fehlt eine bestätigte Zuordnung dieser Angabe zu einer Filiale oder Region.")
+                        OutlinedButton({ articleToReview = offer.id to false }, enabled = !state.busy && scopeConfirmed,
+                            modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
+                        if (articleToReview == (offer.id to false)) OfferArticleReviewPanel(model, offer, batch.scope,
+                            state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }
+                        if (shopping != null) OutlinedButton({ model.previewShoppingNeed(offer.id, shopping) },
+                            enabled = !state.busy && offer.id in state.reviewedOffers,
+                            modifier = Modifier.testTag("live_need_${offer.sourceProductId}")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
+                        OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
+                            modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
+                        if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,
+                            modifier = Modifier.testTag("live_reference_compare_${offer.id}")) { Text("Mit Sitzungsreferenz vergleichen") }
+                    }
                 } }
             }
         }

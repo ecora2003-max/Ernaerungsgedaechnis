@@ -31,7 +31,7 @@ internal fun LiveOfferMarketComparison(model: LiveOffersViewModel, state: LiveOf
     shopping: ShoppingReport?, onOpenCatalog: (() -> Unit)?, reviewing: String?, onReview: (String?) -> Unit) {
     val firstOffers = remember(primary) { primary.offers.filter { it.isComparisonCandidate(primary.scope) } }
     val candidates = model.configuredSources.filter { profile ->
-        !profile.interactiveSearch && profile.retailer != primary.scope.retailer && (profile.storeId != null || profile.regionId != null) &&
+        profile.allowsGoodsComparison && !profile.interactiveSearch && profile.retailer != primary.scope.retailer && (profile.storeId != null || profile.regionId != null) &&
             profile.supports(profile.scope(primary.scope.purchaseOn), Instant.now())
     }
     val secondary = state.comparisonSource

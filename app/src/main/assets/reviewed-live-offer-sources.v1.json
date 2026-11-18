@@ -104,6 +104,32 @@
       }
     },
     {
+      "id": "lidl-de7434-plus-offers",
+      "revision": 1,
+      "label": "Lidl Malchower Weg 134, 13053 Berlin · Lidl Plus",
+      "retailer": "LIDL",
+      "storeId": "DE7434",
+      "regionId": null,
+      "format": "LIDL_PLUS_MARKET",
+      "sourceId": "lidl-de7434-plus-offers",
+      "endpoint": "https://offers.lidlplus.com/app/api/v4/DE/DE7434/offers",
+      "availabilityEndpoint": "https://www.lidl.de/s/de-DE/filialen/berlin-lichtenberg/malchower-weg-134/",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://offers.lidlplus.com/app/api/v4/DE/DE7434/offers",
+        "scopeEvidence": "https://www.lidl.de/s/de-DE/filialen/berlin-lichtenberg/malchower-weg-134/",
+        "reviewedAt": "2026-11-18T23:35:12Z",
+        "from": "2026-11-19",
+        "until": "2027-02-17",
+        "allowedHosts": [
+          "offers.lidlplus.com",
+          "www.lidl.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
       "id": "rewe-1356345-product-search",
       "revision": 1,
       "label": "REWE Leipziger Platz 12, 10117 Berlin · Produktsuche",

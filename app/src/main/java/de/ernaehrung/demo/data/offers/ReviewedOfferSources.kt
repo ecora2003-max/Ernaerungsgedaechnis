@@ -28,6 +28,8 @@ internal class ReviewedOfferSources private constructor(
         private val hosts: Set<String>, private val cachePermitted: Boolean,
         private val minimumRefreshSeconds: Long?, val interactiveSearch: Boolean, private val nextWeekEndpoint: URI?
     ) {
+        val allowsGoodsComparison get() = format != PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET
+
         fun scope(day: LocalDate, searchTerm: String? = null) = LiveOfferScope(retailer, storeId, regionId, null, day, searchTerm)
         fun supports(scope: LiveOfferScope, at: Instant): Boolean {
             val today = AppCalendar.today(at)
@@ -43,6 +45,8 @@ internal class ReviewedOfferSources private constructor(
                 PennyStoreOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             PublishedOfferHttpSource.Format.KAUFLAND_MARKET_HTML ->
                 KauflandMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
+            PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET ->
+                LidlMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             else -> {
                 val nextWeek = nextWeekEndpoint != null && scope.purchaseOn.with(DayOfWeek.MONDAY) ==
                     AppCalendar.today(now()).with(DayOfWeek.MONDAY).plusWeeks(1)
@@ -153,6 +157,9 @@ internal class ReviewedOfferSources private constructor(
                     " $sourceEvidence · Scope $scopeEvidence", digest,
                 Collections.unmodifiableSet(hosts), approval["cachePermitted"] as Boolean, floor, search, nextWeek)
             require(result.retailer != LiveRetailer.KNUSPR)
+            if (result.endpoint.host == "offers.lidlplus.com") require(
+                result.format == PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET &&
+                    approval["cachePermitted"] == false && floor != null)
             if (search) {
                 val validSearch = when (result.format) {
                     PublishedOfferHttpSource.Format.REWE_STATIONARY ->

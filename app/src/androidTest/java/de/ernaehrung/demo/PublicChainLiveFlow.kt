@@ -104,7 +104,19 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val result = requireNotNull(model.state.value.result)
         assertEquals("${retailer.name}: ${result.code}/${result.transportDiagnostic}", LiveRefreshStatus.LOADED, result.status)
         val batch = requireNotNull(result.batch)
-        assertTrue(batch.offers.isNotEmpty()); assertTrue(batch.offers.any { it.merchandiseCents != null })
+        assertTrue(batch.offers.isNotEmpty())
+        val onlyAppPrices = retailer == LiveRetailer.LIDL
+        if (onlyAppPrices) {
+            assertTrue(batch.offers.all { it.merchandiseCents == null && it.checkoutCents == null &&
+                it.priceDetails?.appCents != null && !it.conditionsConfirmed && it.applicable(batch.scope) })
+            val first = batch.offers.first()
+            compose.onNodeWithTag("live_app_price_only").assertExists()
+            compose.onNodeWithTag("live_app_price_${first.sourceProductId}").assertExists()
+            compose.onNodeWithTag("live_review_${first.sourceProductId}").assertDoesNotExist()
+            compose.onNodeWithTag("live_load_comparison").assertDoesNotExist()
+        } else {
+            assertTrue(batch.offers.any { it.merchandiseCents != null })
+        }
         assertTrue(batch.offers.size <= if (retailer == LiveRetailer.ALDI_NORD) 512 else 256)
         assertFalse(batch.coverageComplete); assertFalse(result.fromCache); assertFalse(result.cachePermitted)
         val expectedScope = if (expectedStore == null) LiveOfferApplicability.CHAIN_REPORTED else LiveOfferApplicability.STORE_CONFIRMED
@@ -151,13 +163,13 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val sent = TrafficStats.getUidTxBytes(context.applicationInfo.uid) - tx
         assertTrue(received > 0 && sent > 0)
         val digest = MessageDigest.getInstance("SHA-256").digest(batch.offers.joinToString("\n") {
-            "${it.id}|${it.merchandiseCents}|${it.sourceUrl}|${it.fetchedAt}"
+            "${it.id}|${it.merchandiseCents}|${it.priceDetails?.appCents}|${it.sourceUrl}|${it.fetchedAt}"
         }.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
         val proof = JSONObject().put("retailer", retailer.name).put("profileId", profile.id)
             .put("sourceId", batch.sourceId).put("sourceHost", profile.endpoint.host)
             .put("offerCount", batch.offers.size).put("offerFingerprint", digest).put("uidRxDelta", received).put("uidTxDelta", sent)
             .put("branchConfirmed", expectedStore != null).put("storeId", expectedStore ?: JSONObject.NULL)
-            .put("productSearch", searchTerm != null)
+            .put("productSearch", searchTerm != null).put("appPricesNotUsedForComparison", onlyAppPrices)
             .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
             .put("observedAt", batch.fetchedAt.toString())
         assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
