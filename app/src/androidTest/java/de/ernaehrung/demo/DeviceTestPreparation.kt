@@ -58,7 +58,7 @@ internal fun finishDeviceTextEditing(
  * result or remove its secure lock: the subsequent auth-bound Keystore tests
  * must still use Android's real credential Activity and real signatures.
  */
-internal fun prepareUnlockedTestDevice() {
+internal fun prepareUnlockedTestDevice(offline: Boolean = true) {
     // @Before executes before each test's own fixture guard. Refuse a physical
     // phone before touching its lock screen or typing the synthetic CI PIN.
     assertTrue("Synthetic CI preparation requires a disposable emulator",
@@ -78,7 +78,7 @@ internal fun prepareUnlockedTestDevice() {
         device.waitForIdle()
         Log.w("EG_DEVICE_TEST", "Closed the CI Pixel Launcher ANR before the app test")
     }
-    if (Build.VERSION.SDK_INT >= 30) {
+    if (offline && Build.VERSION.SDK_INT >= 30) {
         device.executeShellCommand("cmd connectivity airplane-mode enable")
         device.executeShellCommand("svc wifi disable")
         device.executeShellCommand("svc data disable")
@@ -103,7 +103,7 @@ internal fun prepareUnlockedTestDevice() {
         // authenticated. No PIN editor is needed once the actual lock is gone.
         if (!keyguard.isKeyguardLocked) {
             device.waitForIdle()
-            if (Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
+            if (offline && Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
             return
         }
         assertNotNull("CI test device remained locked without an accessible PIN editor", editor)
@@ -132,7 +132,7 @@ internal fun prepareUnlockedTestDevice() {
         assertFalse("CI fixture PIN did not unlock the device", keyguard.isKeyguardLocked)
     }
     device.waitForIdle()
-    if (Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
+    if (offline && Build.VERSION.SDK_INT == 26) prepareApi26OfflineDevice(device,target)
     Log.i("EG_DEVICE_TEST", "after: keyguard=${keyguard.isKeyguardLocked}, foreground=${device.currentPackageName}")
 }
 

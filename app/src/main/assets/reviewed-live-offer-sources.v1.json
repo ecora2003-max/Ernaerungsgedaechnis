@@ -52,31 +52,6 @@
       }
     },
     {
-      "id": "netto-public-weekly",
-      "revision": 1,
-      "label": "Netto Marken-Discount · öffentliche Filialwerbung · konkrete Filiale ungeprüft",
-      "retailer": "NETTO_MD",
-      "storeId": null,
-      "regionId": null,
-      "format": "NETTO_BRANCH_HTML",
-      "sourceId": "netto-public-weekly",
-      "endpoint": "https://www.netto-online.de/angebote/c-N07",
-      "availabilityEndpoint": null,
-      "weekStartsOn": null,
-      "approval": {
-        "sourceEvidence": "https://www.netto-online.de/angebote/c-N07",
-        "scopeEvidence": "https://www.netto-online.de/angebote/c-N07",
-        "reviewedAt": "2026-11-17T20:29:00Z",
-        "from": "2026-11-17",
-        "until": "2027-02-15",
-        "allowedHosts": [
-          "www.netto-online.de"
-        ],
-        "cachePermitted": false,
-        "minimumRefreshSeconds": 600
-      }
-    },
-    {
       "id": "aldi-sued-public-offers",
       "revision": 1,
       "label": "ALDI Süd · öffentliche Angebotsseite · konkrete Filiale ungeprüft",
@@ -96,6 +71,56 @@
         "until": "2027-02-15",
         "allowedHosts": [
           "www.aldi-sued.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "rewe-1356345-top",
+      "revision": 1,
+      "label": "REWE Leipziger Platz 12, 10117 Berlin · Top-Angebote",
+      "retailer": "REWE",
+      "storeId": "1356345",
+      "regionId": null,
+      "format": "REWE_MARKET_HTML",
+      "sourceId": "rewe-1356345-top",
+      "endpoint": "https://www.rewe.de/angebote/berlin-mitte/1356345/rewe-leipziger-platz-12/",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.rewe.de/angebote/berlin-mitte/1356345/rewe-leipziger-platz-12/",
+        "scopeEvidence": "https://www.rewe.de/marktseite/berlin-mitte/1356345/rewe-markt-leipziger-platz-12/",
+        "reviewedAt": "2026-11-18T10:31:31Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "www.rewe.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "kaufland-de5220-public",
+      "revision": 1,
+      "label": "Kaufland Konstanz-Petershausen · Zähringerplatz 7, 78464 Konstanz",
+      "retailer": "KAUFLAND",
+      "storeId": "DE5220",
+      "regionId": null,
+      "format": "KAUFLAND_MARKET_HTML",
+      "sourceId": "kaufland-de5220-public",
+      "endpoint": "https://filiale.kaufland.de/service/filiale/konstanz-petershausen-5220.html",
+      "availabilityEndpoint": "https://filiale.kaufland.de/.kloffers.storeName=DE5220.json",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://filiale.kaufland.de/service/filiale/konstanz-petershausen-5220.html",
+        "scopeEvidence": "https://filiale.kaufland.de/.klstorebygeo.storeName=DE5220.json",
+        "reviewedAt": "2026-11-18T10:34:28Z",
+        "from": "2026-11-18",
+        "until": "2027-02-16",
+        "allowedHosts": [
+          "filiale.kaufland.de"
         ],
         "cachePermitted": false,
         "minimumRefreshSeconds": 600

@@ -41,8 +41,12 @@ internal object LiveSourceCatalogue {
     val sources = LiveRetailer.entries.map { retailer -> when (retailer) {
         LiveRetailer.KNUSPR -> LiveSourceInfo(retailer, "knuspr-official-mcp", LiveSourceStatus.DEFERRED,
             "https://www.knuspr.de/mcp-docs", "Für später zurückgestellt. Zuerst werden die acht stationären Händler angeschlossen. Eine vorhandene Anmeldung bleibt erhalten; es wird kein automatischer Knuspr-Abruf gestartet.")
-        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.BLOCKED,
-            SOURCE_EVIDENCE, "Noch kein konkretes EDEKA-Quellen-/Filialprofil hinterlegt. Frühere Einschränkungen quellenbezogen beachten; keine pauschale Händlergenehmigung als universelle Voraussetzung.")
+        LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.RIGHTS_RESTRICTED,
+            "https://www.edeka.de/services/nutzungsbedingungen/",
+            "Die Bedingungen von EDEKA.de beschränken den automatisierten Abruf der Angebotsseite. Die Händlerseite ist im Browser verfügbar.")
+        LiveRetailer.NETTO_MD -> LiveSourceInfo(retailer, "netto-published-offers", LiveSourceStatus.BLOCKED,
+            "https://www.netto-online.de/angebote/c-N07",
+            "Der geprüfte Angebotsabruf wurde auf Android mit HTTP 403 abgewiesen. Die Händlerseite ist im Browser verfügbar.")
         else -> LiveSourceInfo(retailer, "${retailer.name.lowercase()}-published-offers", LiveSourceStatus.BLOCKED,
             SOURCE_EVIDENCE, "Noch kein konkretes Quellen-/Filialprofil hinterlegt. Eine ausdrückliche Händlergenehmigung ist keine pauschale technische Voraussetzung; ein realer zulässiger Endpoint und korrekter Filialbezug fehlen noch.")
     } }
@@ -68,8 +72,8 @@ internal enum class OfferQuantityBasis { NET, DRAINED, GROSS }
 /** Scope metadata is fetched separately from the price tiles. An advertised
  * calendar week does not establish an individual product's validity dates. */
 internal data class LiveStoreScopeEvidence(val marketId: String, val marketName: String,
-    val address: String, val sourceRegionId: String, val weekStartsOn: LocalDate,
-    val scopeSourceUrl: String, val checkedAt: Instant)
+    val address: String, val sourceRegionId: String?, val weekStartsOn: LocalDate?,
+    val scopeSourceUrl: String, val checkedAt: Instant, val availabilitySourceUrl: String? = null)
 internal data class LiveOffer(val id: String, val sourceId: String, val retailer: LiveRetailer, val title: String,
     val sourceProductId: String, val gtin: String?, val merchandiseCents: Long?, val depositCents: Long?,
     val quantityMilli: Long?, val unit: OfferMassUnit?, val quantityBasis: OfferQuantityBasis?, val kind: LiveOfferKind,

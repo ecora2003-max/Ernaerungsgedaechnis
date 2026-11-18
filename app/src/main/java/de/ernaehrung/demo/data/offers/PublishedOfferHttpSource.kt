@@ -15,7 +15,8 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     private val availabilityEndpoint: URI? = null, private val weekStartsOn: java.time.LocalDate? = null,
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     enum class Format { LIDL_STORE_V4, EDEKA_MARKET, PENNY_REGION, ALDI_NORD_NEXT_DATA, KAUFLAND_STORE,
-        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC }
+        REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC, REWE_MARKET_HTML,
+        KAUFLAND_MARKET_HTML }
     override val maximumOffers get() = if (format == Format.ALDI_NORD_NEXT_DATA) 512 else 256
     override val capability = when (format) {
         Format.REWE_STATIONARY, Format.ALDI_SUED_WALK_IN -> RetailerPolicy.Capability.TARGETED_PRODUCT_PRICE_QUERY
@@ -24,12 +25,12 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     override val endpoints: Set<URI> get() = setOfNotNull(endpoint, availabilityEndpoint)
     init {
         requirePublicHttps(endpoint); exactScope.validate(); require(sourceId.isNotBlank())
-        require(format != Format.PENNY_STORE_WEEK) { "Use the separate canonical market/offer reader" }
+        require(format !in setOf(Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML)) { "Use the canonical market source" }
         require(exactScope.retailer == when (format) {
             Format.LIDL_STORE_V4 -> LiveRetailer.LIDL; Format.EDEKA_MARKET -> LiveRetailer.EDEKA
             Format.PENNY_REGION -> LiveRetailer.PENNY; Format.ALDI_NORD_NEXT_DATA -> LiveRetailer.ALDI_NORD
-            Format.KAUFLAND_STORE -> LiveRetailer.KAUFLAND
-            Format.REWE_STATIONARY -> LiveRetailer.REWE
+            Format.KAUFLAND_STORE, Format.KAUFLAND_MARKET_HTML -> LiveRetailer.KAUFLAND
+            Format.REWE_STATIONARY, Format.REWE_MARKET_HTML -> LiveRetailer.REWE
             Format.ALDI_SUED_WALK_IN, Format.ALDI_SUED_NUXT_PUBLIC -> LiveRetailer.ALDI_SUED
             Format.NETTO_BRANCH_HTML -> LiveRetailer.NETTO_MD
             Format.PENNY_STORE_WEEK -> LiveRetailer.PENNY
@@ -44,6 +45,10 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             endpoint.rawPath in setOf("/angebote/c-N07", "/lebensmittel-angebote/c-N07941") && endpoint.rawQuery == null)
         if (format == Format.ALDI_SUED_NUXT_PUBLIC) require(endpoint.toString() == "https://www.aldi-sued.de/angebote" &&
             exactScope.storeId == null && exactScope.regionId == null && exactScope.deliveryAreaId == null)
+        if (format == Format.REWE_MARKET_HTML) {
+            require(exactScope.regionId == null)
+            ReweMarketOfferDecoder.requireEndpoint(endpoint, requireNotNull(exactScope.storeId))
+        }
     }
 
     /** Exactly one bounded, explicitly configured search. No private shopping
@@ -74,14 +79,14 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     }
     override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
         require(scope == exactScope)
-        val html = format in setOf(Format.NETTO_BRANCH_HTML, Format.ALDI_SUED_NUXT_PUBLIC)
+        val html = format in setOf(Format.NETTO_BRANCH_HTML, Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML)
         val embedded = format in setOf(Format.ALDI_NORD_NEXT_DATA, Format.KAUFLAND_STORE)
         val reply = http.execute(OfferHttpRequest(endpoint,
             headers = when { html -> mapOf("Accept" to "text/html")
                 embedded -> mapOf("Accept" to "application/json, text/html")
-                else -> emptyMap() } + mapOf("User-Agent" to
-                    "Ernaehrungsgedaechtnis public-offers (+https://github.com/ecora2003-max/Ernaerungsgedaechnis)"),
-            maximumResponseBytes = if (format == Format.ALDI_SUED_NUXT_PUBLIC) 2_097_152 else 1_048_576)); reply.requireSuccess()
+                else -> emptyMap() } + mapOf("User-Agent" to PUBLIC_OFFER_AGENT),
+            maximumResponseBytes = if (format in setOf(Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML))
+                2_097_152 else 1_048_576)); reply.requireSuccess()
         val media = reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
         require(media in when { html -> setOf("text/html")
             embedded -> setOf("application/json", "application/ld+json", "text/html")
@@ -119,6 +124,9 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             Format.ALDI_SUED_NUXT_PUBLIC -> withContext(Dispatchers.Default) {
                 AldiSuedPublicOfferDecoder.decode(reply.text, sourceId, at, endpoint.toString())
             }
+            Format.REWE_MARKET_HTML -> withContext(Dispatchers.Default) {
+                ReweMarketOfferDecoder.decode(reply.text, sourceId, scope, endpoint, at)
+            }
             Format.KAUFLAND_STORE -> {
                 val array = de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.decode("{\"rows\":${requireNotNull(availabilityText)}}",
                     de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.Limits(maxChars = 1_048_576, maxDepth = 24, maxNodes = 50_000))["rows"] as? List<*>
@@ -126,7 +134,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 val windows = array.map { requireNotNull(OfferJson.objectValue(it)) }
                 PublishedOfferDecoders.kaufland(raw, windows, sourceId, requireNotNull(scope.storeId), scope.purchaseOn, at, endpoint.toString())
             }
-            Format.PENNY_STORE_WEEK -> error("Use the canonical market/offer reader")
+            Format.PENNY_STORE_WEEK, Format.KAUFLAND_MARKET_HTML -> error("Use the canonical market source")
         }
         return LiveOfferBatch(sourceId, scope, at, rows)
     }

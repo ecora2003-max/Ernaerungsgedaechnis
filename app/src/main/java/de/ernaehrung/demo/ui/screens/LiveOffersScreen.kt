@@ -214,9 +214,10 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 Text("${if (result.fromCache) "Letzter Sitzungsstand" else "Abgerufen"} ${batch.fetchedAt} · Quelle ${batch.sourceId} · Abdeckung unvollständig")
                 batch.offers.mapNotNull { it.storeEvidence }.distinct().forEach { evidence ->
                     Text("Markt: ${evidence.marketName} · ${evidence.address}", Modifier.testTag("live_canonical_market"))
-                    Text("Offizielle Verkaufsregion ${evidence.sourceRegionId} · Angebotswoche ab ${evidence.weekStartsOn}. Einzelne Artikelzeiträume sind damit nicht bestätigt.")
+                    evidence.sourceRegionId?.let { Text("Offizielle Verkaufsregion $it") }
+                    evidence.weekStartsOn?.let { Text("Angebotswoche ab $it. Einzelne Artikelzeiträume sind damit nicht bestätigt.") }
                     Text("Marktzuordnung geprüft ${evidence.checkedAt} · ${evidence.scopeSourceUrl}")
-                    Text("Gelesen werden die veröffentlichten Top-Angebote dieser Woche; keine vollständige Sortiments- oder Angebotsabdeckung.")
+                    evidence.availabilitySourceUrl?.let { Text("Filialgültigkeit aus $it") }
                 }
                 Field("Geladene Angebote filtern · bleibt lokal", filter, { filter = it }, modifier = Modifier.testTag("live_offer_filter"))
                 val rows = batch.offers.filter { it.title.contains(filter, ignoreCase = true) }

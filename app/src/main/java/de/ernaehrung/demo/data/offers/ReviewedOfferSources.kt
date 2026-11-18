@@ -30,11 +30,13 @@ internal class ReviewedOfferSources private constructor(
             scope.storeId == storeId && scope.regionId == regionId && scope.deliveryAreaId == null &&
             scope.purchaseOn in permittedFrom..permittedUntil && at >= reviewedAt &&
             (weekStartsOn == null || scope.purchaseOn in weekStartsOn..weekStartsOn.plusDays(6))
-        fun source(scope: LiveOfferScope, http: OfferHttp, now: () -> Instant): AuthorizedOfferSource =
-            if (format == PublishedOfferHttpSource.Format.PENNY_STORE_WEEK) {
-                require(weekStartsOn == null)
+        fun source(scope: LiveOfferScope, http: OfferHttp, now: () -> Instant): AuthorizedOfferSource = when (format) {
+            PublishedOfferHttpSource.Format.PENNY_STORE_WEEK ->
                 PennyStoreOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
-            } else PublishedOfferHttpSource(endpoint, sourceId, scope, format, http, availabilityEndpoint, weekStartsOn, now)
+            PublishedOfferHttpSource.Format.KAUFLAND_MARKET_HTML ->
+                KauflandMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
+            else -> PublishedOfferHttpSource(endpoint, sourceId, scope, format, http, availabilityEndpoint, weekStartsOn, now)
+        }
         fun grant(scope: LiveOfferScope) = LiveSourceGrant(sourceId, retailer, evidence, permittedFrom,
             permittedUntil, hosts, cachePermitted, minimumRefreshSeconds, scope,
             when (format) {

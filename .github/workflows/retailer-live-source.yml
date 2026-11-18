@@ -8,6 +8,7 @@ on:
       - 'app/src/main/java/de/ernaehrung/demo/ui/screens/LiveOffersScreen.kt'
       - 'app/src/androidTest/java/de/ernaehrung/demo/PublicRetailerLiveOnDeviceTest.kt'
       - 'app/src/androidTest/java/de/ernaehrung/demo/PublicChainLiveFlow.kt'
+      - 'app/src/androidTest/java/de/ernaehrung/demo/DeviceTestPreparation.kt'
       - 'app/src/androidTest/java/de/ernaehrung/demo/SyntheticPersistenceInstrumentation.kt'
       - '.github/workflows/retailer-live-source.yml'
   workflow_dispatch:
@@ -107,11 +108,13 @@ jobs:
           assert chains['format']=='EG_REAL_PUBLIC_CHAIN_UI_V1' and chains['status']=='PASS'
           assert chains['sourceCommit']==os.environ['EG_SOURCE_COMMIT'] and chains['actualSdk']==35
           assert chains['actualNetworkValidated'] and chains['actualFactsUnchanged']
-          expected={'ALDI_NORD':'www.aldi-nord.de','ALDI_SUED':'www.aldi-sued.de','NETTO_MD':'www.netto-online.de'}
-          assert len(chains['sources'])==3 and {s['retailer'] for s in chains['sources']}==set(expected)
+          expected={'ALDI_NORD':('www.aldi-nord.de',None),'ALDI_SUED':('www.aldi-sued.de',None),
+                    'REWE':('www.rewe.de','1356345'),'KAUFLAND':('filiale.kaufland.de','DE5220')}
+          assert len(chains['sources'])==len(expected) and {s['retailer'] for s in chains['sources']}==set(expected)
           for source in chains['sources']:
-              assert source['sourceHost']==expected[source['retailer']]
-              assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False and source['branchConfirmed'] is False
+              host,store=expected[source['retailer']]
+              assert source['sourceHost']==host and source['storeId']==store and source['branchConfirmed']==(store is not None)
+              assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False
               assert source['uidRxDelta']>0 and source['uidTxDelta']>0
               assert 0<source['offerCount']<=(512 if source['retailer']=='ALDI_NORD' else 256)
           reports=list(Path('app/build/outputs/androidTest-results/connected').rglob('TEST-*.xml'))

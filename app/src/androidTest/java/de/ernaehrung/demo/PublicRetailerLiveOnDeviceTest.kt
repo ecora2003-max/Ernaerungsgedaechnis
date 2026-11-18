@@ -1,8 +1,5 @@
 package de.ernaehrung.demo
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -19,7 +16,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.UiDevice
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.ui.DemoTheme
@@ -27,8 +23,6 @@ import de.ernaehrung.demo.ui.LiveOffersViewModel
 import de.ernaehrung.demo.ui.screens.LiveOffersScreen
 import java.security.MessageDigest
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import org.junit.*
 import org.junit.Assert.*
@@ -40,39 +34,14 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PublicRetailerLiveOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
-    @Test fun publicNationalListingsUseActualProductionAndroidUiAndKeepTheirUnconfirmedBranchScope(): Unit = runBlocking {
+    @Test fun publicAdditionalListingsMatchTheirChainOrMarketScopeInTheProductionAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose)
     }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         assertEquals("true", InstrumentationRegistry.getArguments().getString("eg_live_source"))
-        prepareUnlockedTestDevice()
         val context = compose.activity.applicationContext
-        val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        // The shared credential preparation deliberately leaves the other
-        // suites offline. Restore networking only inside this explicit live
-        // test, after preparation; the workflow's earlier Wi-Fi switch is not
-        // enough. Require validated Wi-Fi before constructing the real model.
-        device.executeShellCommand("cmd connectivity airplane-mode disable")
-        device.executeShellCommand("svc wifi enable")
-        device.executeShellCommand("svc data disable")
-        var scanned = false; var joined = false
-        withTimeout(45_000) {
-            while (true) {
-                val caps = network.activeNetwork?.let { network.getNetworkCapabilities(it) }
-                if (caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
-                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
-                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) break
-                if (!scanned && device.executeShellCommand("cmd wifi status").lineSequence().any { it.trim() == "Wifi is enabled" }) {
-                    device.executeShellCommand("cmd wifi start-scan"); scanned = true
-                }
-                if (scanned && !joined && device.executeShellCommand("cmd wifi list-scan-results").contains("VirtWifi")) {
-                    device.executeShellCommand("cmd wifi connect-network VirtWifi open"); joined = true
-                }
-                delay(250)
-            }
-        }
+        val device = preparePublicRetailerLiveNetwork(context)
         val config = ReviewedOfferSources.bundled(context)
         assertEquals(0, config.invalidProfiles)
         val profile = config.profiles.single { it.id == "penny-4030085-top-angebote" }
@@ -115,7 +84,7 @@ class PublicRetailerLiveOnDeviceTest {
                 it.sourceUrl.startsWith("https://www.penny.de/.rest/offers/by-category/") &&
                 it.storeEvidence?.scopeSourceUrl == "https://www.penny.de/.rest/market" })
             val proof = requireNotNull(batch.offers.first().storeEvidence)
-            assertEquals("4030085", proof.marketId); assertTrue(proof.sourceRegionId.isNotBlank())
+            assertEquals("4030085", proof.marketId); assertTrue(proof.sourceRegionId?.isNotBlank() == true)
             compose.onNodeWithTag("live_canonical_market").assertTextEquals("Markt: ${proof.marketName} · ${proof.address}")
             compose.onNodeWithText(batch.offers.first().title).assertExists()
             assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows())

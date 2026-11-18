@@ -119,14 +119,16 @@ class ReviewedOfferSourcesTest {
 
     @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertEquals(4, bundled.profiles.size)
+        assertEquals(0, bundled.invalidProfiles); assertEquals(5, bundled.profiles.size)
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
         assertTrue(penny.grant(penny.scope(LocalDate.parse("2026-11-17"))).evidenceRef.startsWith("PUBLIC_SOURCE "))
-        val national = bundled.profiles.filter { it.retailer != LiveRetailer.PENNY }
-        assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED, LiveRetailer.NETTO_MD), national.map { it.retailer }.toSet())
+        val national = bundled.profiles.filter { it.storeId == null }
+        assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED), national.map { it.retailer }.toSet())
         assertTrue(national.all { it.storeId == null && it.regionId == null && !it.grant(it.scope(LocalDate.parse("2026-11-17"))).cachePermitted })
+        assertEquals(mapOf(LiveRetailer.REWE to "1356345", LiveRetailer.KAUFLAND to "DE5220"),
+            bundled.profiles.filter { it.retailer in setOf(LiveRetailer.REWE, LiveRetailer.KAUFLAND) }.associate { it.retailer to it.storeId })
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
             assertEquals("https", url.scheme); assertNull(url.rawQuery); assertNull(url.rawUserInfo); assertNull(url.fragment)

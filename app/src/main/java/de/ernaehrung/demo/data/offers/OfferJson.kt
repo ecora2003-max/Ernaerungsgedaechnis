@@ -6,6 +6,11 @@ import java.math.BigInteger
 import java.time.Instant
 import java.time.LocalDate
 
+private val quantityRate = Regex("je\\s+(?:[0-9]+(?:[,.][0-9]+)?\\s*)?(?:kg|g|l|ml)", RegexOption.IGNORE_CASE)
+
+/** A price for a weight or volume is not a price for a purchasable pack. */
+internal fun publicQuantityRate(label: String?): Boolean = label?.let(quantityRate::matches) == true
+
 /** Common strict JSON mechanics, not an invented remote supplier schema.
  * Concrete adapters select their own pinned source fields. Unknown stays null. */
 internal object OfferJson {

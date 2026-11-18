@@ -33,18 +33,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 
-/** Explicit live class only: real default HTTP/UI, no fixture replies or
- * independently forged article confirmations. National advertising remains
- * national; this cannot prove a local branch price or complete market coverage. */
-internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>) {
+/** Used only by the explicitly selected live suite on disposable emulators. */
+internal suspend fun preparePublicRetailerLiveNetwork(context: Context): UiDevice {
     check(Build.VERSION.SDK_INT == 35)
     check(InstrumentationRegistry.getArguments().getString("eg_live_source") == "true")
-    prepareUnlockedTestDevice()
-    val context = compose.activity.applicationContext
+    // The runner enabled Wi-Fi before the suite. Repeated airplane-mode
+    // toggles could leave an old validated network visible during DNS teardown.
+    prepareUnlockedTestDevice(offline = false)
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
     val network = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    device.executeShellCommand("cmd connectivity airplane-mode disable")
-    device.executeShellCommand("svc wifi enable"); device.executeShellCommand("svc data disable")
     var scanned = false; var joined = false
     withTimeout(45_000) {
         while (true) {
@@ -60,15 +57,25 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             delay(250)
         }
     }
+    return device
+}
+
+/** Read public listings through the default HTTP and Android UI. Check each
+ * store's released profile and the scope rendered in the returned offers. */
+internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>) {
+    val context = compose.activity.applicationContext
+    val device = preparePublicRetailerLiveNetwork(context)
     val config = ReviewedOfferSources.bundled(context); assertEquals(0, config.invalidProfiles)
     val db = FoodDatabase.localSandbox(context); val dao = db.foodDao()
     val before = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
     val health = db.healthDao().history("com.sec.android.app.shealth"); val body = db.bodyDao().versions()
     val settings = PrivateOfferSettings.forApp(context)
     val proofs = JSONArray()
-    for (retailer in listOf(LiveRetailer.ALDI_NORD, LiveRetailer.NETTO_MD, LiveRetailer.ALDI_SUED)) {
+    val expectedStores = linkedMapOf(LiveRetailer.ALDI_NORD to null, LiveRetailer.ALDI_SUED to null,
+        LiveRetailer.REWE to "1356345", LiveRetailer.KAUFLAND to "DE5220")
+    for ((retailer, expectedStore) in expectedStores) {
         val profile = config.profiles.single { it.retailer == retailer }
-        assertNull(profile.storeId); assertNull(profile.regionId)
+        assertEquals(expectedStore, profile.storeId); assertNull(profile.regionId)
         settings.clearSelection()
         val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
         val rx = TrafficStats.getUidRxBytes(context.applicationInfo.uid); val tx = TrafficStats.getUidTxBytes(context.applicationInfo.uid)
@@ -99,8 +106,17 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             assertTrue(batch.offers.isNotEmpty()); assertTrue(batch.offers.any { it.merchandiseCents != null })
             assertTrue(batch.offers.size <= if (retailer == LiveRetailer.ALDI_NORD) 512 else 256)
             assertFalse(batch.coverageComplete); assertFalse(result.fromCache); assertFalse(result.cachePermitted)
-            assertTrue(batch.offers.all { it.retailer == retailer && it.applicability == LiveOfferApplicability.CHAIN_REPORTED &&
-                it.storeId == null && it.regionId == null && URI(it.sourceUrl).host == profile.endpoint.host })
+            val expectedScope = if (expectedStore == null) LiveOfferApplicability.CHAIN_REPORTED else LiveOfferApplicability.STORE_CONFIRMED
+            assertTrue(batch.offers.all { it.retailer == retailer && it.applicability == expectedScope &&
+                it.storeId == expectedStore && it.regionId == null && URI(it.sourceUrl).host == profile.endpoint.host })
+            if (expectedStore != null) {
+                val market = requireNotNull(batch.offers.first().storeEvidence)
+                assertEquals(expectedStore, market.marketId)
+                compose.onNodeWithTag("live_canonical_market").assertTextEquals("Markt: ${market.marketName} · ${market.address}")
+                if (retailer == LiveRetailer.KAUFLAND) {
+                    assertTrue(batch.offers.all { it.validFrom != null && it.validUntil != null && it.applicable(batch.scope) })
+                }
+            }
             val pages = (batch.offers.size + 24) / 25
             compose.onNodeWithTag("live_offer_page").assertTextEquals("${batch.offers.size} geladene Treffer · Seite 1/$pages")
             assertTrue(compose.onAllNodesWithText(batch.offers.first().title).fetchSemanticsNodes().isNotEmpty())
@@ -117,7 +133,8 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             }.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
             proofs.put(JSONObject().put("retailer", retailer.name).put("sourceId", batch.sourceId).put("sourceHost", profile.endpoint.host)
                 .put("offerCount", batch.offers.size).put("offerFingerprint", digest).put("uidRxDelta", received).put("uidTxDelta", sent)
-                .put("branchConfirmed", false).put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
+                .put("branchConfirmed", expectedStore != null).put("storeId", expectedStore ?: JSONObject.NULL)
+                .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
                 .put("observedAt", batch.fetchedAt.toString()))
         } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
         finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; settings.clearSelection() }
