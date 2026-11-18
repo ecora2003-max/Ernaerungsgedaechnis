@@ -1,6 +1,6 @@
 # Direkte Rezeptgenerierung mit Gemini
 
-Stand 08.11.2026; P1 nach technisch geprüftem P0-Anschluss #288. Reale Händler-/Knuspr-Daten sind weiter extern blockiert, siehe [LIVE_OFFERS](LIVE_OFFERS.md). **Technischer Anschluss als #289 auf Main `592abafd83e57cc488bf7ec1584e790c1fa18196` nativ geprüft; reale Modell-/Gesamt-App-Abnahme bleibt offen.**
+Der technische Anschluss der drei Modi wurde auf Main `592abafd83e57cc488bf7ec1584e790c1fa18196` nativ geprüft. Die Abnahme mit tatsächlichen Modellantworten ist offen. Die Händlernachweise stehen im Angebotskapitel. [PR #289](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/289), [Liveangebote](LIVE_OFFERS.md)
 
 ## Bedienung und gemeinsame Prüfung
 
