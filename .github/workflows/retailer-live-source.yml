@@ -87,11 +87,10 @@ jobs:
             adb shell cmd connectivity airplane-mode disable
             adb shell svc wifi enable
             adb shell svc data disable
-            suite_status=0
-            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.ernaehrung.demo.PublicRetailerLiveOnDeviceTest -Pandroid.testInstrumentationRunnerArguments.eg_live_source=true -Pandroid.testInstrumentationRunnerArguments.source_sha=$EG_SOURCE_COMMIT || suite_status=$?
             mkdir -p app/build/outputs/live-source-evidence
+            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=de.ernaehrung.demo.PublicRetailerLiveOnDeviceTest -Pandroid.testInstrumentationRunnerArguments.eg_live_source=true -Pandroid.testInstrumentationRunnerArguments.source_sha=$EG_SOURCE_COMMIT || touch app/build/outputs/retailer-live-test-failed
             adb pull /sdcard/Download/eg-public-retailer-live app/build/outputs/live-source-evidence/device
-            exit "$suite_status"
+            test ! -e app/build/outputs/retailer-live-test-failed
       - name: Verify live metadata, exact source and original executed test
         run: |
           python3 - <<'PY'
