@@ -31,6 +31,10 @@ Die optionale Auswahl liest **alle von Health Connect freigegebenen Quellpakete*
 - Nach dem Lesestand endende Originalintervalle bleiben unverändert zurückgestellt. Keine Abschneidung, Hochrechnung oder Zukunftsdauer. Spätere Freigabe und Quellkorrekturen erhalten eigene lokale Versionen; identische Retries erzeugen keine Dubletten.
 - Nur vollständig abgedeckte, gewählte Quelldatensätze werden beim Fehlen als nicht mehr sichtbar markiert. Andere gespeicherte Typen/Zeiträume bleiben erhalten und gelten nicht als frisch geprüft. Die Rohwertanzeige lässt sich unabhängig nach Datentyp und tatsächlichem Quellpaket filtern; das ändert keine Lesefreigabe und löst keinen SDK-Aufruf aus. So bleiben auch ältere Waagenwerte neben umfangreichen Pulsreihen auffindbar. Fehlende Sichtbarkeit ist kein behaupteter Quell-Löschbeweis.
 
+## Körperfettwerte im Körperverlauf
+
+Im Körperverlauf lassen sich die vorhandenen Datumsfenster mit einem früheren Stichtag öffnen. Die Ansicht liest ausschließlich die lokale Kopie der aktuellen sichtbaren Körperfett-Quellstände. Importierte Messpunkte haben eine eigene Anzeige mit Quellpaket, Gerät, UTC-Zeit, Originaloffset und Version. Der Originaloffset bestimmt den lokalen Messtag. Fehlt er, bleibt der Wert mit UTC und seiner Herkunft unter „Quellmessungen ohne überlieferten lokalen Tag“ sichtbar. Messprinzip und Messbedingungen bleiben unbekannt. Die Ansicht verwendet die vorhandene Rohpunktgrafik. Datum und Zeitraum bleiben bei der Wiederherstellung dieser Ansicht ausgewählt. Statistik und Energiebedarf bleiben eigene Abnahmegates.
+
 ## Löschung, Sicherung und Abnahme
 
 Die Zusatzansicht kann nur ihre eigene Kopie löschen/ausschalten. Die gemeinsame Löschung in Fitness löscht und stoppt Basis- und Zusatzkopie atomar. Manuelle Messungen/Trainings, Ernährung, Bestand und Health-Connect-Quelldaten bleiben erhalten. Opaque Retrysperren verhindern, dass ein alter Import Daten wiederbelebt oder eine alte Löschung neuere Daten entfernt. Auch ein bereits vor Room20 abgeschlossener Basis-Löschauftrag darf beim Retry keine neu hinzugekommenen Zusatzdaten löschen.

@@ -37,6 +37,9 @@ internal class HealthExtraOperations(private val db: FoodDatabase, private val n
         "health_extra_versions", "health_extra_samples").map {
         readCache()
     }
+    fun observeBodyFat() = db.invalidationTracker.createFlow("health_extra_versions").map {
+        dao.latest(HealthExtraKind.BODY_FAT.name).filter { it.visible }.map { it.stored(emptyList()) }
+    }
     suspend fun readCache(): HealthExtraCache = db.withTransaction {
         val auth = state()
         HealthExtraCache(auth, auth.lastSuccessRunId?.let { dao.run(it) }, assemble(dao.latest(), dao.latestSamples()))
