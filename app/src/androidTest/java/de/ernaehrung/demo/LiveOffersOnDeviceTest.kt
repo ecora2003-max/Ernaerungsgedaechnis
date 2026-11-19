@@ -71,6 +71,10 @@ class LiveOffersOnDeviceTest {
         val health = db.healthDao().history("com.sec.android.app.shealth"); val bodies = db.bodyDao().versions()
         val secondSource = "synthetic-rewe-${UUID.randomUUID()}"
         val secondProfile = ReviewedOfferSourceFixtures.row(LiveRetailer.REWE, day, "9999002", secondSource).toMutableMap()
+        secondProfile["interactiveSearch"] = true
+        secondProfile["endpoint"] = "https://www.rewe.de/api/stationary-product-search/products"
+        val comparisonTerm = "Testware & Käse"
+        val requestedComparison = AtomicReference<URI>()
         val secondApproval = requireNotNull(OfferJson.objectValue(secondProfile["approval"]))
         secondProfile["approval"] = secondApproval + ("cachePermitted" to false)
         val config = PennyPublicSourceFixtures.configuration(day, id, secondProfile)
@@ -79,7 +83,10 @@ class LiveOffersOnDeviceTest {
         val http = OfferHttp { request -> calls.incrementAndGet(); OfferHttpReply(200, mapOf("content-type" to "application/json"),
             when (request.uri.host) {
                 "www.penny.de" -> if (request.uri.path == "/.rest/market") PennyPublicSourceFixtures.markets() else PennyPublicSourceFixtures.offers()
-                "www.rewe.de" -> """{"products":[{"id":101,"title":"Synthetic second market offer","pricing":{"current":129,"regular":189,"refund":25}}]}"""
+                "www.rewe.de" -> {
+                    requestedComparison.set(request.uri)
+                    """{"term":"$comparisonTerm","products":[{"id":101,"title":"Synthetic second market offer","pricing":{"current":129,"regular":189,"refund":25}}]}"""
+                }
                 else -> error("Unexpected synthetic retailer request")
             }) }
         var models = ViewModelStore(); lateinit var model: LiveOffersViewModel
@@ -133,7 +140,13 @@ class LiveOffersOnDeviceTest {
             check("Waren-Grundpreise geprüft vergleichen"); ready()
             compose.onNodeWithTag("live_comparison_result").assertTextEquals("Alternative hat einen geringeren Waren-Grundpreis.")
             tap("Zweiter Händler und Markt"); tap("choose_$secondSource")
+            compose.onNodeWithTag("live_load_comparison").assertIsNotEnabled()
+            assertNull(requestedComparison.get())
+            compose.onNodeWithTag("live_comparison_search_term").performScrollTo().performTextInput(comparisonTerm)
+            assertNull(requestedComparison.get())
             tap("live_load_comparison"); ready()
+            assertEquals("query=Testware+%26+K%C3%A4se&wwIdent=9999002", requestedComparison.get().rawQuery)
+            compose.onNodeWithTag("live_comparison_applied_search").assertTextEquals("Abgefragter Produktname · $comparisonTerm")
             assertEquals(LiveRetailer.PENNY, PrivateOfferSettings.forApp(context).selection()!!.scope.retailer)
             assertEquals(LiveRefreshStatus.LOADED, model.state.value.comparisonSource?.result?.status)
             assertFalse(model.state.value.comparisonSource!!.result!!.cachePermitted)
@@ -150,6 +163,7 @@ class LiveOffersOnDeviceTest {
             assertNull(model.state.value.comparisonSource); assertNull(model.state.value.comparison)
             assertTrue(model.state.value.needPreviews.isEmpty())
             assertEquals(setOf("$id:synthetic-a", "$id:synthetic-zero"), model.state.value.reviewedOffers)
+            assertFalse(File(context.noBackupFilesDir, "live-offer-controls-v1.json").readText().contains(comparisonTerm))
             assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
             assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(bodies, db.bodyDao().versions())
             assertTrue(model.state.value.result!!.batch!!.offers.all { it.quantityMilli == null && it.validFrom == null })
