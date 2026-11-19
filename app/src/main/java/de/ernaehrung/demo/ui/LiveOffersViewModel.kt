@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.ernaehrung.demo.data.offers.*
 import de.ernaehrung.demo.data.local.*
+import java.time.Instant
 import java.net.URI
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -252,9 +253,11 @@ internal class LiveOffersViewModel(context: Context, runtime: LiveOfferRuntime? 
     fun loadComparison(scope: LiveOfferScope) {
         val value = currentForAction() ?: return
         val primary = value.result?.takeIf { it.status == LiveRefreshStatus.LOADED }?.batch ?: return
-        if (scope.retailer == primary.scope.retailer || scope.retailer.stationary == null || scope.searchTerm != null ||
+        if (scope.retailer == primary.scope.retailer || scope.retailer.stationary == null ||
             (scope.storeId == null && scope.regionId == null) || scope.purchaseOn != primary.scope.purchaseOn ||
             primary.offers.none { it.isComparisonCandidate(primary.scope) }) return
+        if (scope.searchTerm != null && (runCatching { scope.validate() }.isFailure ||
+                sources.profile(scope, Instant.now())?.allowsGoodsComparison != true)) return
         val expected = ++generation
         val next = withoutComparisonSource(value).copy(busy = true, comparisonSource = LiveComparisonSource(scope), message = null)
         mutable.value = next

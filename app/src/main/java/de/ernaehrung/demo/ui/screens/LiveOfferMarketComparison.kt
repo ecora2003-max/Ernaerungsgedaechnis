@@ -20,6 +20,7 @@ import de.ernaehrung.demo.data.offers.LiveOfferScope
 import de.ernaehrung.demo.data.offers.LivePriceComparison
 import de.ernaehrung.demo.data.offers.LiveRefreshStatus
 import de.ernaehrung.demo.data.offers.formatReviewedOfferRate
+import de.ernaehrung.demo.ui.Field
 import de.ernaehrung.demo.ui.LiveOffersUiState
 import de.ernaehrung.demo.ui.LiveOffersViewModel
 import de.ernaehrung.demo.ui.Panel
@@ -30,27 +31,43 @@ import java.time.Instant
 internal fun LiveOfferMarketComparison(model: LiveOffersViewModel, state: LiveOffersUiState, primary: LiveOfferBatch,
     shopping: ShoppingReport?, onOpenCatalog: (() -> Unit)?, reviewing: String?, onReview: (String?) -> Unit) {
     val firstOffers = remember(primary) { primary.offers.filter { it.isComparisonCandidate(primary.scope) } }
+    val at = Instant.now()
     val candidates = model.configuredSources.filter { profile ->
-        profile.allowsGoodsComparison && !profile.interactiveSearch && profile.retailer != primary.scope.retailer && (profile.storeId != null || profile.regionId != null) &&
-            profile.supports(profile.scope(primary.scope.purchaseOn), Instant.now())
+        profile.allowsGoodsComparison && profile.retailer != primary.scope.retailer &&
+            (profile.storeId != null || profile.regionId != null) && profile.supportsDay(primary.scope.purchaseOn, at)
     }
     val secondary = state.comparisonSource
     if (firstOffers.isEmpty() || (candidates.isEmpty() && secondary == null)) return
     var profileId by remember(primary) { mutableStateOf("") }
     val selectedProfile = candidates.singleOrNull { it.id == profileId }
+    var searchTerm by remember(primary, profileId) { mutableStateOf("") }
+    val searchRetailer = selectedProfile?.takeIf { it.interactiveSearch }?.retailer?.title
     Panel {
         Section("Preise zweier Händler vergleichen", "Einkaufstag ${primary.scope.purchaseOn}")
         IdPicker("Zweiter Händler und Markt", candidates.map { it.id to "${it.retailer.title} · ${it.label}" }, profileId) {
             profileId = it
         }
-        OutlinedButton({ selectedProfile?.let { model.loadComparison(it.scope(primary.scope.purchaseOn)) } },
-            enabled = selectedProfile != null && !state.busy, modifier = Modifier.testTag("live_load_comparison")) {
-            Text("Angebote des zweiten Markts laden")
+        if (searchRetailer != null) {
+            Field("Produktname für $searchRetailer", searchTerm, { if (it.length <= 200) searchTerm = it },
+                modifier = Modifier.testTag("live_comparison_search_term"))
+            Text("Beim Abruf wird nur dieser Suchbegriff an $searchRetailer gesendet.")
+        }
+        OutlinedButton({
+            selectedProfile?.let { profile ->
+                model.loadComparison(profile.scope(primary.scope.purchaseOn, searchTerm.trim().takeIf { searchRetailer != null }))
+                searchTerm = ""
+            }
+        }, enabled = selectedProfile != null && !state.busy && (searchRetailer == null || searchTerm.isNotBlank()),
+            modifier = Modifier.testTag("live_load_comparison")) {
+            Text(if (searchRetailer != null) "Suchbegriff an $searchRetailer senden"
+                else "Angebote des zweiten Markts laden")
         }
         if (secondary != null) {
             Text("Zweiter Markt · ${secondary.scope.retailer.title} · ${secondary.scope.storeId ?: secondary.scope.regionId}")
+            secondary.scope.searchTerm?.let { Text("Abgefragter Produktname · $it", Modifier.testTag("live_comparison_applied_search")) }
             if (state.automatic) Text("Die automatische Aktualisierung wartet, bis du den Vergleich schließt.")
-            OutlinedButton(model::closeComparison, enabled = !state.busy, modifier = Modifier.testTag("live_close_comparison")) {
+            OutlinedButton({ model.closeComparison(); searchTerm = "" }, enabled = !state.busy,
+                modifier = Modifier.testTag("live_close_comparison")) {
                 Text("Zweiten Markt schließen")
             }
             val secondResult = secondary.result

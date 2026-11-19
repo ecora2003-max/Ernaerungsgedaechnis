@@ -31,15 +31,19 @@ internal class ReviewedOfferSources private constructor(
         val allowsGoodsComparison get() = format != PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET
 
         fun scope(day: LocalDate, searchTerm: String? = null) = LiveOfferScope(retailer, storeId, regionId, null, day, searchTerm)
-        fun supports(scope: LiveOfferScope, at: Instant): Boolean {
+        fun supportsDay(day: LocalDate, at: Instant): Boolean {
             val today = AppCalendar.today(at)
             val monday = today.with(DayOfWeek.MONDAY)
-            return scope.retailer == retailer && scope.storeId == storeId && scope.regionId == regionId &&
-                scope.deliveryAreaId == null && scope.purchaseOn in permittedFrom..permittedUntil && at >= reviewedAt &&
-                interactiveSearch == (scope.searchTerm != null) && (!interactiveSearch || scope.purchaseOn == today) &&
-                (nextWeekEndpoint == null || scope.purchaseOn in monday..monday.plusDays(13)) &&
-                (weekStartsOn == null || scope.purchaseOn in weekStartsOn..weekStartsOn.plusDays(6))
+            return day in permittedFrom..permittedUntil && at >= reviewedAt &&
+                (!interactiveSearch || day == today) &&
+                (nextWeekEndpoint == null || day in monday..monday.plusDays(13)) &&
+                (weekStartsOn == null || day in weekStartsOn..weekStartsOn.plusDays(6))
         }
+
+        fun supports(scope: LiveOfferScope, at: Instant): Boolean =
+            scope.retailer == retailer && scope.storeId == storeId && scope.regionId == regionId &&
+                scope.deliveryAreaId == null && interactiveSearch == (scope.searchTerm != null) &&
+                supportsDay(scope.purchaseOn, at)
         fun source(scope: LiveOfferScope, http: OfferHttp, now: () -> Instant): AuthorizedOfferSource = when (format) {
             PublishedOfferHttpSource.Format.PENNY_STORE_WEEK ->
                 PennyStoreOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
