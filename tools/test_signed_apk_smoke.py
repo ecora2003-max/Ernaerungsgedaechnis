@@ -130,7 +130,7 @@ class SignedApkRefusalTest(unittest.TestCase):
                 '*) echo "UNAUTHORIZED MUTATION OR READ"; exit 9;;\nesac\n')
             script.chmod(0o755)
             env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ["PATH"], EG_SMOKE_CALLS=str(root / "calls"))
-            result = subprocess.run([sys.executable, str(Path(__file__).with_name("check_signed_apk_smoke.py")), "missing-metadata.json"],
+            result = subprocess.run([sys.executable, str(Path(__file__).with_name("check_signed_apk_smoke.py")), "missing-metadata.json", "missing-predecessor.json"],
                 env=env, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(0, result.returncode)
             self.assertIn("Refusing", result.stderr)

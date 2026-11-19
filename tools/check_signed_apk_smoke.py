@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Execute the exact signed milestone on a fresh disposable emulator.
 
-Never replaces an existing installation, clears data, uninstalls, grants health
-rights, or reads a physical device. Only the newly installed empty watch-test
-package is launched, navigated, stopped and inspected. No database is exported
-as an artifact; only empty-fact counts and schema/provenance evidence survive.
+Refuses a pre-existing installation or physical device. An optional update
+starts from a verified predecessor installed by this run on the same empty
+emulator. No data is cleared, no packages uninstalled, and no health rights
+granted. Only schema, empty-fact and installation evidence leave the emulator.
 """
 import hashlib
 from contextlib import closing
@@ -97,14 +97,64 @@ def guard():
     return sdk
 
 
-def main(metadata_file):
+def verified_archive(metadata_path, meta):
+    assert meta["package"] == PACKAGE and meta["signerCertificateSha256"] == CERTIFICATE
+    assert Path(meta["apkFile"]).name == meta["apkFile"]
+    apk = metadata_path.parent / meta["apkFile"]
+    digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+    assert digest == meta["sha256"] and apk.stat().st_size == meta["bytes"]
+    build_tools = Path(os.environ["ANDROID_HOME"]) / "build-tools/35.0.0"
+    badging = command([str(build_tools / "aapt"), "dump", "badging", str(apk)])
+    assert "package: name='" + PACKAGE + "' versionCode='" + str(meta["versionCode"]) + "'" in badging
+    signature = command([str(build_tools / "apksigner"), "verify", "--verbose", "--print-certs", str(apk)])
+    assert "certificate SHA-256 digest: " + meta["signerCertificateSha256"] in signature
+    assert "Verified using v2 scheme (APK Signature Scheme v2): true" in signature
+    assert "Verified using v3 scheme (APK Signature Scheme v3): true" in signature
+    return apk, digest, badging, signature
+
+
+def install_and_check_version(apk, version, *, replace=False):
+    install = ["install", "-r"] if replace else ["install"]
+    command(ADB + install + [str(apk)])
+    installed = command(ADB + ["shell", "dumpsys", "package", PACKAGE])
+    assert re.search(r"(?m)^\s*versionCode=" + str(version) + r"\b", installed)
+
+
+def copy_private_snapshot(base, required=False):
+    for suffix in ("", "-wal", "-shm"):
+        result = subprocess.run(ADB + ["exec-out", "run-as", PACKAGE, "cat", "databases/food-local-sandbox.db" + suffix],
+            capture_output=True, timeout=20)
+        if result.returncode == 0:
+            Path(str(base) + suffix).write_bytes(result.stdout)
+        elif not suffix:
+            if required:
+                raise RuntimeError("New signed APK did not create its local Room database")
+            return False
+    return True
+
+
+def wait_for_room(schema):
+    # Keep this newly installed application alive until its actual database
+    # initialization is committed. Never kill a still-opening Room database
+    # merely because its independently rendered UI already appeared.
+    readiness = dict(ready=False)
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        with tempfile.TemporaryDirectory(prefix="eg-empty-apk-ready-") as tmp:
+            base = Path(tmp) / "empty.db"
+            if copy_private_snapshot(base):
+                readiness = schema_snapshot(base, schema)
+        if readiness["ready"]:
+            break
+        time.sleep(0.2)
+    return readiness
+
+
+def main(metadata_file, predecessor_file=None):
     sdk = guard()  # No install or application-file read may precede this guard.
     metadata_path = Path(metadata_file)
     meta = json.loads(metadata_path.read_text())
-    assert meta["package"] == PACKAGE and meta["versionCode"] > 0
-    assert meta["signerCertificateSha256"] == CERTIFICATE
-    assert re.fullmatch("[0-9a-f]{40}", meta["sourceCommit"])
-    assert Path(meta["apkFile"]).name == meta["apkFile"]
+    assert meta["versionCode"] > 0 and re.fullmatch("[0-9a-f]{40}", meta["sourceCommit"])
     output = Path("app/build/outputs/device-diagnostics/watch-apk")
     output.mkdir(parents=True, exist_ok=True)
     inputs = source_trees()
@@ -122,19 +172,34 @@ def main(metadata_file):
     available = subprocess.run(["git", "cat-file", "-e", meta["sourceCommit"] + "^{commit}"], capture_output=True).returncode == 0
     if available:
         assert inputs == source_trees(meta["sourceCommit"])
-    apk = metadata_path.parent / meta["apkFile"]
-    digest = hashlib.sha256(apk.read_bytes()).hexdigest()
-    assert digest == meta["sha256"] and apk.stat().st_size == meta["bytes"]
-    build_tools = Path(os.environ["ANDROID_HOME"]) / "build-tools/35.0.0"
-    badging = command([str(build_tools / "aapt"), "dump", "badging", str(apk)])
-    assert "package: name='" + PACKAGE + "' versionCode='" + str(meta["versionCode"]) + "'" in badging
-    signature = command([str(build_tools / "apksigner"), "verify", "--verbose", "--print-certs", str(apk)])
-    assert "certificate SHA-256 digest: " + meta["signerCertificateSha256"] in signature
-    assert "Verified using v2 scheme (APK Signature Scheme v2): true" in signature
-    assert "Verified using v3 scheme (APK Signature Scheme v3): true" in signature
+    apk, digest, badging, signature = verified_archive(metadata_path, meta)
+    schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/"
+                             + str(meta["schema"]) + ".json").read_text())["database"]
+    upgrade = {}
+    if predecessor_file is not None:
+        previous_path = Path(predecessor_file)
+        previous = json.loads(previous_path.read_text())
+        assert previous["schema"] == meta["schema"]
+        assert previous["signerCertificateSha256"] == meta["signerCertificateSha256"]
+        assert 0 < previous["versionCode"] < meta["versionCode"]
+        old_apk, old_digest, _, _ = verified_archive(previous_path, previous)
+        install_and_check_version(old_apk, previous["versionCode"])
+        command(ADB + ["shell", "am", "start", "-W", "-n", PACKAGE + "/de.ernaehrung.demo.MainActivity"])
+        prior_room = wait_for_room(schema)
+        if not prior_room["ready"]:
+            raise RuntimeError("Predecessor Room schema was not ready before update: " + json.dumps(prior_room))
+        marker_path = "files/eg-signed-apk-update-proof"
+        command(ADB + ["shell", f"run-as {PACKAGE} sh -c 'mkdir -p files && printf %s {old_digest} > {marker_path}'"])
+        command(ADB + ["shell", "am", "force-stop", PACKAGE])
+        upgrade = dict(previousVersionCode=previous["versionCode"], previousApkSha256=old_digest,
+                       previousSchemaReady=True)
+
     (output / "signature.txt").write_text(signature + "\n")
     (output / "badging.txt").write_text(badging + "\n")
-    command(ADB + ["install", "-r", str(apk)])
+    install_and_check_version(apk, meta["versionCode"], replace=bool(upgrade))
+    if upgrade:
+        assert command(ADB + ["exec-out", "run-as", PACKAGE, "cat", marker_path]) == upgrade["previousApkSha256"]
+        upgrade["appPrivateMarkerPreserved"] = True
     command(ADB + ["shell", "am", "start", "-W", "-n", PACKAGE + "/de.ernaehrung.demo.MainActivity"])
     remote = "/sdcard/Download/eg-synthetic-test-diagnostics/signed-watch-apk.xml"
     command(ADB + ["shell", "mkdir", "-p", str(Path(remote).parent)])
@@ -172,6 +237,15 @@ def main(metadata_file):
 
     tap("Mehr")
     tap("Angebote & Preisvergleich", scroll=True)
+    if upgrade:
+        tap("Angebotsanbieter", scroll=True, prefix=True)
+        tap("Lidl")
+        tap("Bestätigte Filiale oder Angebotsregion", scroll=True, prefix=True)
+        tap("Lidl Malchower Weg 134, 13053 Berlin · Lidl Plus")
+        control("DE7434 · keine Regionskennung", scroll=True)
+        upgrade["lidlMarketProfileReached"] = True
+        command(ADB + ["shell", "input", "keyevent", "KEYCODE_BACK"])
+        tap("Angebote & Preisvergleich", scroll=True)
     tap("Angebotsanbieter", scroll=True, prefix=True)
     tap("Knuspr", scroll=True)
     # The supplier explanation can put connection controls below the fold.
@@ -196,33 +270,7 @@ def main(metadata_file):
     else:
         raise RuntimeError("Signed APK additional-health screen was not reached")
 
-    schema = json.loads(Path("app/schemas/de.ernaehrung.demo.data.local.FoodDatabase/" + str(meta["schema"]) + ".json").read_text())["database"]
-
-    def copy_private_snapshot(base, required=False):
-        for suffix in ("", "-wal", "-shm"):
-            result = subprocess.run(ADB + ["exec-out", "run-as", PACKAGE, "cat", "databases/food-local-sandbox.db" + suffix],
-                capture_output=True, timeout=20)
-            if result.returncode == 0:
-                Path(str(base) + suffix).write_bytes(result.stdout)
-            elif not suffix:
-                if required:
-                    raise RuntimeError("New signed APK did not create its local Room database")
-                return False
-        return True
-
-    # Keep this newly installed application alive until its actual database
-    # initialization is committed. Never kill a still-opening Room database
-    # merely because its independently rendered UI already appeared.
-    readiness = dict(ready=False)
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        with tempfile.TemporaryDirectory(prefix="eg-empty-apk-ready-") as tmp:
-            base = Path(tmp) / "empty.db"
-            if copy_private_snapshot(base):
-                readiness = schema_snapshot(base, schema)
-        if readiness["ready"]:
-            break
-        time.sleep(0.2)
+    readiness = wait_for_room(schema)
     (output / "room-readiness.json").write_text(json.dumps(readiness, indent=2) + "\n")
     if not readiness["ready"]:
         raise RuntimeError("New signed APK Room schema was not committed before stop: " + json.dumps(readiness, sort_keys=True))
@@ -252,9 +300,11 @@ def main(metadata_file):
         healthConsentCreated=False, actualFactsCreated=False, physicalDevice=False,
         offersScreenReached=True, knusprConsentRequired=True, storedCredentialRenewalOffered=False)
     proof["schemaReadyBeforeStop"] = True
+    if upgrade:
+        proof["upgrade"] = upgrade
     (output / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
     print("SIGNED_APK_UI_SCHEMA_PASS:", json.dumps(proof, sort_keys=True))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(*sys.argv[1:])

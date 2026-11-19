@@ -1,0 +1,37 @@
+{
+  "provenanceFormat": "EG_SIGNED_APK_SOURCE_V2",
+  "sourceCommit": "d38add3eea58e939a548722505487c370e9fdab3",
+  "package": "de.ernaehrung.demo.watchspike",
+  "label": "EG · Watch-Test",
+  "versionCode": 13,
+  "versionName": "0.13.0-live-prices",
+  "sha256": "2f69e528c74e6e9e002595c19fd88db52713a570024b4f73ffe99e90bbe25bf8",
+  "bytes": 67407739,
+  "signerCertificateSha256": "03a27323cc90758409fbc5a7d370f222e01b030671a288082b43d09032c72857",
+  "schema": 20,
+  "staticChecks": [
+    "V2/V3",
+    "16KiB ZIP alignment",
+    "unchanged payload after signing",
+    "same source profiles in Git and APK",
+    "no test components or price fixtures",
+    "4 64-bit libraries with 16KiB load alignment"
+  ],
+  "applicationTreeSha": "9a560933629417b94f4d8191c34085c5594df26c",
+  "buildSourceTrees": {
+    "app": "9a560933629417b94f4d8191c34085c5594df26c",
+    "nano-runtime": "ddd27a1c1eb36c14b81478bea1592579a44569c1",
+    "build.gradle.kts": "8bb424681e9bc051cb8379cb3b93f6afe0857da1",
+    "settings.gradle.kts": "3dbfd9a762210943e94f45bd2796558d454cc179",
+    "gradle.properties": "a87e07697e50e8f71f4e237c4fcff7c005ae1d0c",
+    "gradle": "2cb49d2434cc6ac4d8c70328352135e604642f7f",
+    "gradlew": "f5feea6d6b116baaca5a2642d4d9fa1f47d574a7",
+    "gradlew.bat": "9b42019c7915b971238526075306ffba3b666dd5"
+  },
+  "apkFile": "EG-Watch-Test-v0.13.0.apk",
+  "buildArguments": [
+    "-PegWatchSpike=true",
+    ":app:assembleDebug"
+  ],
+  "physicalModelAndWatchAcceptance": "OPEN"
+}
