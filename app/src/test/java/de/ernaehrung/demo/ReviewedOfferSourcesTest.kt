@@ -119,7 +119,10 @@ class ReviewedOfferSourcesTest {
 
     @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertEquals(5, bundled.profiles.size)
+        assertEquals(0, bundled.invalidProfiles)
+        assertEquals(setOf("penny-4030085-top-angebote", "aldi-nord-public-week", "aldi-sued-public-offers",
+            "aldi-sued-bl16-product-search", "lidl-de7434-plus-offers", "rewe-1356345-product-search",
+            "kaufland-de5220-public"), bundled.profiles.map { it.id }.toSet())
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
@@ -131,6 +134,9 @@ class ReviewedOfferSourcesTest {
         val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE }
         assertEquals("1356345", rewe.storeId); assertTrue(rewe.interactiveSearch)
         assertEquals(PublishedOfferHttpSource.Format.REWE_STATIONARY, rewe.format)
+        val south = bundled.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
+        assertEquals("BL16", south.storeId)
+        assertEquals(PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN, south.format)
         assertTrue(bundled.profiles.none { it.retailer == LiveRetailer.NETTO_MD })
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
@@ -206,5 +212,88 @@ class ReviewedOfferSourcesTest {
         assertEquals("Synthetic next", runtime.refresh(next).batch!!.offers.single().title)
         assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(today.plusWeeks(2))).status)
         assertEquals(listOf("/angebote.html", "/angebote-vorschau.html"), calls)
+    }
+
+    @Test fun aldiSuedWalkInSearchUsesOnlyTheApprovedShopAndKeepsAnAdvertisedRateSeparate(): Unit = runBlocking {
+        val directory = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
+        val profile = directory.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
+        val date = LocalDate.parse("2026-11-19")
+        val captured = Instant.parse("2026-11-19T09:00:00Z")
+        val requests = mutableListOf<OfferHttpRequest>()
+        val runtime = directory.runtime(OfferHttp { request ->
+            requests += request
+            OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                """{"data":[{"sku":"synthetic-1","name":"Synthetic item","price":{"amountRelevant":119,"bottleDeposit":0,
+                    "currencyCode":"EUR","comparisonDisplay":"1,59 €/1 kg"}}]}""")
+        }, MemoryOfferRefreshJournal()) { captured }
+        val scope = profile.scope(date, "Brot & Käse")
+        assertFalse(runtime.automaticAllowed(scope))
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(scope, automatic = true).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(scope.copy(storeId = "BL11")).status)
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(profile.scope(date)).status)
+        assertTrue(requests.isEmpty())
+        val result = runtime.refresh(scope)
+        assertEquals(LiveRefreshStatus.LOADED, result.status)
+        assertEquals("q=Brot+%26+K%C3%A4se&servicePoint=BL16&serviceType=walk-in&limit=12&offset=0&currency=EUR",
+            requests.single().uri.rawQuery)
+        assertEquals("api.aldi-sued.de", requests.single().uri.host)
+        val offer = result.batch!!.offers.single()
+        assertEquals("BL16", offer.storeId); assertEquals(119L, offer.merchandiseCents); assertEquals(0L, offer.depositCents)
+        assertEquals("1,59 €/1 kg", offer.priceDetails?.unitPriceDisplay)
+        assertNull(offer.priceDetails?.regularCents); assertNull(offer.unitPriceText()); assertNull(offer.validFrom)
+        assertFalse(result.cachePermitted)
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(scope.copy(searchTerm = "Toast")).status)
+        assertEquals(1, requests.size)
+    }
+
+    @Test fun lidlPlusUsesTheVerifiedMarketAndKeepsAppPricesOutOfGoodsComparison(): Unit = runBlocking {
+        val directory = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
+        val profile = directory.profiles.single { it.id == "lidl-de7434-plus-offers" }
+        assertFalse(profile.allowsGoodsComparison)
+        val selected = profile.scope(LocalDate.parse("2026-11-19"))
+        var now = Instant.parse("2026-11-19T10:00:00Z")
+        var directoryStoreNumber = "7434"
+        val requests = mutableListOf<OfferHttpRequest>()
+        val runtime = directory.runtime(OfferHttp { request ->
+            requests += request
+            when (request.uri.host) {
+                "www.lidl.de" -> OfferHttpReply(200, mapOf("content-type" to "text/html"),
+                    """<link rel="canonical" href="${profile.availabilityEndpoint}"><h1><span>Lidl Filiale</span>Malchower Weg 134, 13053 Berlin</h1>
+                    <a href="https://survey2.medallia.eu/example?TNC=$directoryStoreNumber">Gib uns Feedback zur Filiale</a>""")
+                "offers.lidlplus.com" -> OfferHttpReply(200, mapOf("content-type" to "application/json"),
+                    """{"totalOffers":3,"offers":[
+                    {"id":"app-1","title":"Synthetisch","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"Store","priceBox":{"priceSymbol":"€","largePartNumeric":0,"smallPartNumeric":2.99},
+                     "startValidityDate":"2026-11-19T00:00:00+00:00","endValidityDate":"2026-11-21T23:59:59+00:00",
+                     "startValidityDateUTC":"2026-11-18T23:00:00Z","endValidityDateUTC":"2026-11-21T22:59:59Z",
+                     "packaging":"Beispielpackung","pricePerUnit":"Quelleinheit"},
+                    {"id":"web-1","title":"Online","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"OnlineShop","priceBox":{"priceSymbol":"€","largePartNumeric":1.99},
+                     "startValidityDate":"2026-11-19","endValidityDate":"2026-11-21"},
+                    {"id":"expired-1","title":"Alt","offerType":"StoreSpecialPriceDiscount","category":"Store",
+                     "redemptionChannel":"Store","priceBox":{"priceSymbol":"€","largePartNumeric":1.99},
+                     "startValidityDate":"2026-11-16","endValidityDate":"2026-11-17"}]}""")
+                else -> error("Unexpected request")
+            }
+        }, MemoryOfferRefreshJournal()) { now }
+        assertEquals(LiveRefreshStatus.BLOCKED, runtime.refresh(selected.copy(storeId = "DE7602")).status)
+        assertTrue(requests.isEmpty())
+        val observation = runtime.refresh(selected)
+        assertEquals(LiveRefreshStatus.LOADED, observation.status)
+        assertEquals(listOf(profile.availabilityEndpoint, profile.endpoint), requests.map(OfferHttpRequest::uri))
+        val offer = observation.batch!!.offers.single()
+        assertEquals("Lidl", offer.storeEvidence!!.marketName)
+        assertEquals("Malchower Weg 134, 13053 Berlin", offer.storeEvidence.address)
+        assertEquals(0L, offer.priceDetails!!.appCents)
+        assertEquals("Quelleinheit", offer.priceDetails.unitPriceDisplay)
+        assertNull(offer.merchandiseCents); assertNull(offer.priceDetails.regularCents); assertNull(offer.checkoutCents)
+        assertTrue(offer.applicable(selected)); assertFalse(offer.isComparisonCandidate(selected))
+        assertFalse(observation.cachePermitted)
+        assertEquals(LiveRefreshStatus.THROTTLED, runtime.refresh(selected).status)
+        now = now.plusSeconds(601); directoryStoreNumber = "1111"
+        val changed = runtime.refresh(selected)
+        assertEquals("SCOPE_UNAVAILABLE", changed.code); assertNull(changed.batch)
+        assertEquals(profile.availabilityEndpoint, requests.last().uri)
+        assertEquals(3, requests.size)
     }
 }

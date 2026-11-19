@@ -28,7 +28,7 @@ internal data class LiveOfferScope(val retailer: LiveRetailer, val storeId: Stri
         if (retailer == LiveRetailer.KNUSPR) require(storeId == null && regionId == null) { "Knuspr-Liefergebiet ist keine stationäre Filiale oder Verkaufsregion." }
         else require(deliveryAreaId == null) { "Stationäre Filiale und Liefergebiet getrennt wählen." }
         if (searchTerm != null) {
-            require(retailer == LiveRetailer.REWE && storeId != null && regionId == null)
+            require(retailer in setOf(LiveRetailer.REWE, LiveRetailer.ALDI_SUED) && storeId != null && regionId == null)
             require(searchTerm.isNotBlank() && searchTerm.length <= 200 && searchTerm == searchTerm.trim() &&
                 searchTerm.none(Char::isISOControl)) { "Einen Suchbegriff mit höchstens 200 Zeichen eingeben." }
         }

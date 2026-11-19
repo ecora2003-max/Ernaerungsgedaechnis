@@ -78,6 +78,58 @@
       }
     },
     {
+      "id": "aldi-sued-bl16-product-search",
+      "revision": 1,
+      "label": "ALDI Süd Bodanstraße 1, 78462 Konstanz · Produktsuche",
+      "retailer": "ALDI_SUED",
+      "storeId": "BL16",
+      "regionId": null,
+      "format": "ALDI_SUED_WALK_IN",
+      "sourceId": "aldi-sued-bl16-product-search",
+      "endpoint": "https://api.aldi-sued.de/v3/product-search",
+      "interactiveSearch": true,
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://api.aldi-sued.de/v3/product-search?q=Sandwichtoast&servicePoint=BL16&serviceType=walk-in&limit=12&offset=0&currency=EUR",
+        "scopeEvidence": "https://api.aldi-sued.de/v2/service-points?latitude=47.67&longitude=9.18&radius=5&limit=5&offset=0",
+        "reviewedAt": "2026-11-18T23:07:30Z",
+        "from": "2026-11-19",
+        "until": "2027-02-17",
+        "allowedHosts": [
+          "api.aldi-sued.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
+      "id": "lidl-de7434-plus-offers",
+      "revision": 1,
+      "label": "Lidl Malchower Weg 134, 13053 Berlin · Lidl Plus",
+      "retailer": "LIDL",
+      "storeId": "DE7434",
+      "regionId": null,
+      "format": "LIDL_PLUS_MARKET",
+      "sourceId": "lidl-de7434-plus-offers",
+      "endpoint": "https://offers.lidlplus.com/app/api/v4/DE/DE7434/offers",
+      "availabilityEndpoint": "https://www.lidl.de/s/de-DE/filialen/berlin-lichtenberg/malchower-weg-134/",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://offers.lidlplus.com/app/api/v4/DE/DE7434/offers",
+        "scopeEvidence": "https://www.lidl.de/s/de-DE/filialen/berlin-lichtenberg/malchower-weg-134/",
+        "reviewedAt": "2026-11-18T23:35:12Z",
+        "from": "2026-11-19",
+        "until": "2027-02-17",
+        "allowedHosts": [
+          "offers.lidlplus.com",
+          "www.lidl.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 600
+      }
+    },
+    {
       "id": "rewe-1356345-product-search",
       "revision": 1,
       "label": "REWE Leipziger Platz 12, 10117 Berlin · Produktsuche",

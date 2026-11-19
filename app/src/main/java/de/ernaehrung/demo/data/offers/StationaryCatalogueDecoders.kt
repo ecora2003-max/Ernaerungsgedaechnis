@@ -69,7 +69,8 @@ internal object StationaryCatalogueDecoders {
                 null, null, null, at, storeId, null, null, LiveOfferApplicability.STORE_CONFIRMED,
                 null, false, url, priceDetails = LivePriceDetails(previousDisplay = (price["wasPriceDisplay"] as? String)
                     ?.takeIf { it.isNotBlank() && it.length <= 1000 },
-                    brand = OfferJson.text(p["brandName"])))
+                    brand = OfferJson.text(p["brandName"]),
+                    unitPriceDisplay = OfferJson.text(price["comparisonDisplay"])?.takeIf { it.length <= 1000 }))
         }
     }
 }

@@ -70,7 +70,7 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
     val before = dao.operationCount(); val stock = dao.stockMovementSnapshotRows(); val paid = dao.allPaidPrices()
     val health = db.healthDao().history("com.sec.android.app.shealth"); val body = db.bodyDao().versions()
     val settings = PrivateOfferSettings.forApp(context)
-    val profile = config.profiles.single { it.retailer == retailer }
+    val profile = config.profiles.single { it.retailer == retailer && it.storeId == expectedStore }
     assertEquals(expectedStore, profile.storeId); assertNull(profile.regionId)
     assertEquals(searchTerm != null, profile.interactiveSearch)
     settings.clearSelection()
@@ -104,7 +104,19 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val result = requireNotNull(model.state.value.result)
         assertEquals("${retailer.name}: ${result.code}/${result.transportDiagnostic}", LiveRefreshStatus.LOADED, result.status)
         val batch = requireNotNull(result.batch)
-        assertTrue(batch.offers.isNotEmpty()); assertTrue(batch.offers.any { it.merchandiseCents != null })
+        assertTrue(batch.offers.isNotEmpty())
+        val onlyAppPrices = retailer == LiveRetailer.LIDL
+        if (onlyAppPrices) {
+            assertTrue(batch.offers.all { it.merchandiseCents == null && it.checkoutCents == null &&
+                it.priceDetails?.appCents != null && !it.conditionsConfirmed && it.applicable(batch.scope) })
+            val first = batch.offers.first()
+            compose.onNodeWithTag("live_app_price_only").assertExists()
+            compose.onNodeWithTag("live_app_price_${first.sourceProductId}").assertExists()
+            compose.onNodeWithTag("live_review_${first.sourceProductId}").assertDoesNotExist()
+            compose.onNodeWithTag("live_load_comparison").assertDoesNotExist()
+        } else {
+            assertTrue(batch.offers.any { it.merchandiseCents != null })
+        }
         assertTrue(batch.offers.size <= if (retailer == LiveRetailer.ALDI_NORD) 512 else 256)
         assertFalse(batch.coverageComplete); assertFalse(result.fromCache); assertFalse(result.cachePermitted)
         val expectedScope = if (expectedStore == null) LiveOfferApplicability.CHAIN_REPORTED else LiveOfferApplicability.STORE_CONFIRMED
@@ -114,11 +126,18 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             assertEquals(searchTerm, batch.scope.searchTerm)
             assertNull(settings.selection())
             assertFalse(model.state.value.automatic)
-            val price = batch.offers.first { it.priceDetails?.regularCents != null && it.merchandiseCents != null }
-            assertEquals("/api/stationary-product-search/products", URI(price.sourceUrl).rawPath)
+            val rewe = retailer == LiveRetailer.REWE
+            val price = batch.offers.first {
+                val details = it.priceDetails
+                val hasPublishedDetail = if (rewe) details?.regularCents != null else details?.unitPriceDisplay != null
+                it.merchandiseCents != null && hasPublishedDetail
+            }
+            assertEquals(if (rewe) "/api/stationary-product-search/products" else "/v3/product-search", URI(price.sourceUrl).rawPath)
             assertNull(price.validFrom); assertNull(price.validUntil)
             compose.onNodeWithTag("live_applied_search").assertTextEquals("Geladene Suche · $searchTerm")
-            compose.onNodeWithTag("live_regular_${price.sourceProductId}").assertExists()
+            compose.onNodeWithTag("live_profile_details").assertTextContains(profile.label, substring = true)
+            val priceField = if (rewe) "regular" else "unit_text"
+            compose.onNodeWithTag("live_${priceField}_${price.sourceProductId}").assertExists()
         } else if (expectedStore != null) {
             val market = requireNotNull(batch.offers.first().storeEvidence)
             assertEquals(expectedStore, market.marketId)
@@ -144,12 +163,13 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         val sent = TrafficStats.getUidTxBytes(context.applicationInfo.uid) - tx
         assertTrue(received > 0 && sent > 0)
         val digest = MessageDigest.getInstance("SHA-256").digest(batch.offers.joinToString("\n") {
-            "${it.id}|${it.merchandiseCents}|${it.sourceUrl}|${it.fetchedAt}"
+            "${it.id}|${it.merchandiseCents}|${it.priceDetails?.appCents}|${it.sourceUrl}|${it.fetchedAt}"
         }.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
-        val proof = JSONObject().put("retailer", retailer.name).put("sourceId", batch.sourceId).put("sourceHost", profile.endpoint.host)
+        val proof = JSONObject().put("retailer", retailer.name).put("profileId", profile.id)
+            .put("sourceId", batch.sourceId).put("sourceHost", profile.endpoint.host)
             .put("offerCount", batch.offers.size).put("offerFingerprint", digest).put("uidRxDelta", received).put("uidTxDelta", sent)
             .put("branchConfirmed", expectedStore != null).put("storeId", expectedStore ?: JSONObject.NULL)
-            .put("productSearch", searchTerm != null)
+            .put("productSearch", searchTerm != null).put("appPricesNotUsedForComparison", onlyAppPrices)
             .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
             .put("observedAt", batch.fetchedAt.toString())
         assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
@@ -158,13 +178,14 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             .also { require(it.matches(Regex("[0-9a-f]{40}"))) }
         proof.put("format", "EG_REAL_PUBLIC_CHAIN_UI_V1").put("status", "PASS").put("sourceCommit", source)
             .put("actualSdk", Build.VERSION.SDK_INT).put("actualNetworkValidated", true).put("actualFactsUnchanged", true)
-        writePublicChainProof(device, proof, retailer)
+        writePublicChainProof(device, proof, profile.id)
     } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }
     finally { compose.runOnUiThread { compose.activity.setContent {}; models.clear() }; settings.clearSelection() }
 }
 
-private fun writePublicChainProof(device: UiDevice, proof: JSONObject, retailer: LiveRetailer) {
-    val path = "/sdcard/Download/eg-public-retailer-live/market-${retailer.name}.json"
+private fun writePublicChainProof(device: UiDevice, proof: JSONObject, profileId: String) {
+    require(profileId.matches(Regex("[a-z0-9-]{1,160}")))
+    val path = "/sdcard/Download/eg-public-retailer-live/market-$profileId.json"
     val bytes = proof.toString(2).toByteArray(Charsets.UTF_8).also { require(it.size <= 16_384) }
     device.executeShellCommand("mkdir -p /sdcard/Download/eg-public-retailer-live")
     val pipes = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommandRw("dd of=$path")

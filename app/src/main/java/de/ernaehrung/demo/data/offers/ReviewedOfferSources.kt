@@ -28,6 +28,8 @@ internal class ReviewedOfferSources private constructor(
         private val hosts: Set<String>, private val cachePermitted: Boolean,
         private val minimumRefreshSeconds: Long?, val interactiveSearch: Boolean, private val nextWeekEndpoint: URI?
     ) {
+        val allowsGoodsComparison get() = format != PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET
+
         fun scope(day: LocalDate, searchTerm: String? = null) = LiveOfferScope(retailer, storeId, regionId, null, day, searchTerm)
         fun supports(scope: LiveOfferScope, at: Instant): Boolean {
             val today = AppCalendar.today(at)
@@ -43,13 +45,21 @@ internal class ReviewedOfferSources private constructor(
                 PennyStoreOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             PublishedOfferHttpSource.Format.KAUFLAND_MARKET_HTML ->
                 KauflandMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
+            PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET ->
+                LidlMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             else -> {
                 val nextWeek = nextWeekEndpoint != null && scope.purchaseOn.with(DayOfWeek.MONDAY) ==
                     AppCalendar.today(now()).with(DayOfWeek.MONDAY).plusWeeks(1)
                 val request = when {
                     interactiveSearch -> {
                         val encoded = URLEncoder.encode(requireNotNull(scope.searchTerm), "UTF-8")
-                        URI("$endpoint?query=$encoded&wwIdent=${scope.storeId}")
+                        val parameters = when (format) {
+                            PublishedOfferHttpSource.Format.REWE_STATIONARY -> "query=$encoded&wwIdent=${scope.storeId}"
+                            PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN ->
+                                "q=$encoded&servicePoint=${scope.storeId}&serviceType=walk-in&limit=12&offset=0&currency=EUR"
+                            else -> error("No interactive price query for this source")
+                        }
+                        URI("$endpoint?$parameters")
                     }
                     nextWeek -> requireNotNull(nextWeekEndpoint)
                     else -> endpoint
@@ -147,10 +157,21 @@ internal class ReviewedOfferSources private constructor(
                     " $sourceEvidence · Scope $scopeEvidence", digest,
                 Collections.unmodifiableSet(hosts), approval["cachePermitted"] as Boolean, floor, search, nextWeek)
             require(result.retailer != LiveRetailer.KNUSPR)
-            if (search) require(result.format == PublishedOfferHttpSource.Format.REWE_STATIONARY &&
-                result.endpoint.toString() == "https://www.rewe.de/api/stationary-product-search/products" &&
-                result.storeId?.matches(Regex("[0-9]{4,10}")) == true && result.regionId == null &&
-                approval["cachePermitted"] == false && floor != null)
+            if (result.endpoint.host == "offers.lidlplus.com") require(
+                result.format == PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET &&
+                    approval["cachePermitted"] == false && floor != null)
+            if (search) {
+                val validSearch = when (result.format) {
+                    PublishedOfferHttpSource.Format.REWE_STATIONARY ->
+                        result.endpoint.toString() == "https://www.rewe.de/api/stationary-product-search/products" &&
+                            result.storeId?.matches(Regex("[0-9]{4,10}")) == true
+                    PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN ->
+                        result.endpoint.toString() == "https://api.aldi-sued.de/v3/product-search" &&
+                            result.storeId?.matches(Regex("[A-Z]{1,3}[0-9]{2,6}")) == true
+                    else -> false
+                }
+                require(validSearch && result.regionId == null && approval["cachePermitted"] == false && floor != null)
+            }
             if (nextWeek != null) require(result.format == PublishedOfferHttpSource.Format.ALDI_NORD_CURRENT_DATA &&
                 result.endpoint.toString() == "https://www.aldi-nord.de/angebote.html" &&
                 nextWeek.toString() == "https://www.aldi-nord.de/angebote-vorschau.html" && nextWeek.host in hosts &&

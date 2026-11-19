@@ -40,11 +40,17 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicAldiSuedOffersReachTheAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.ALDI_SUED, expectedStore = null)
     }
+    @Test fun publicAldiSuedSearchShowsPricesForTheChosenWalkInMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.ALDI_SUED, expectedStore = "BL16", searchTerm = "Sandwichtoast")
+    }
     @Test fun publicKauflandOffersAndExactMarketValidityReachTheAndroidUi(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.KAUFLAND, expectedStore = "DE5220")
     }
     @Test fun publicReweSearchShowsCurrentAndRegularPricesForTheChosenMarket(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.REWE, expectedStore = "1356345", searchTerm = "Haferflocken")
+    }
+    @Test fun publicLidlAppPricesStaySeparateInTheConfirmedMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.LIDL, expectedStore = "DE7434")
     }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))

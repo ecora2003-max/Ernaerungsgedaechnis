@@ -1,6 +1,6 @@
 # Angebote und Preisvergleich – P0-Anschluss
 
-**Stand 18.11.2026.** PENNY ist nach erfolgreich ausgeführtem Android-Liveabruf auf Main. PR #307 erweitert die App um zwei öffentliche ALDI-Listen sowie die konkreten Märkte REWE 1356345 und Kaufland DE5220. Die App zeigt die ALDI-Listen mit Hinweis auf die fehlende Filialzuordnung an. Die Android-Abnahme der zusätzlichen Quellen läuft. Netto antwortete in der Geräte-CI mit HTTP 403. Der Build aktiviert dieses Profil vorerst nicht. [Test- und Quellenstand](STATUS.md).
+**Stand 19.11.2026.** Fünf Händlerpfade sind auf Main mit echten Android-HTTPS-Antworten geprüft. PR #310 ergänzt den separaten ALDI-Süd-Preisabruf für BL16 und datierte Lidl-Plus-Preise der Filiale DE7434. Der erste ALDI-Süd-Livejob mit dem neuen Filialpfad war erfolgreich. Die gemeinsame Geräteprüfung läuft. [Test- und Quellenstand](STATUS.md).
 
 **17.11.2026 – erste reale Quelle konfiguriert:** PENNY-Markt4030085, Winterfeldtstr.74/10781 Berlin, öffentlich beobachtete aktuelle Verkaufsregion15A-01-56 und zehn Top-Angebote der KW47. Der neue `PENNY_STORE_WEEK`-Leser prüft vor jedem Abruf die aktuelle kanonische Markt→Region-Zuordnung; eine nächste Woche nur mit deren eigenem veröffentlichten Feld. Keine stillschweigende Annahme, dass diese Filiale der persönliche Markt des Nutzers sei: ausdrückliche Filial-/Datumsauswahl vor Abruf. Der echte Android-Liveabruf für diesen Markt und der gerätegebundene Artikel- und Bedarfsablauf wurden mit PR #306 abgenommen. [Aktueller Test-/Merge-/Quellenstand](STATUS.md).
 
@@ -38,8 +38,8 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 | Anbieter | App-Anzeige | Technischer Anschluss / konkreter fehlender Nachweis |
 |---|---|---|
 | ALDI Nord | Live für die laufende Woche geprüft | Für den Einkaufstag in der laufenden oder nächsten Woche wird die passende veröffentlichte Liste geladen. Beide Abrufe teilen denselben Mindestabstand. Die Filialzuordnung fehlt. |
-| ALDI Süd | Live auf Android geprüft | Nuxt-Angebotsseite mit sichtbaren Produktkarten und SKU-/Centabgleich. Die Filialzuordnung bleibt offen. |
-| Lidl | BLOCKED für Filialpreise | Der offizielle Viewer liefert verlinkte Shopartikel mit numerischen Preisen und Gebietscode 0. Die Zuordnung dieser Preise zu einer konkreten Filiale ist offen. |
+| ALDI Süd | Öffentliche Angebotsseite live geprüft. Filialsuche in Geräteprüfung. | Die Nuxt-Angebotsseite zeigt veröffentlichte Aktionskarten mit ungeprüfter Filialgültigkeit. Für die separat bestätigte Filiale BL16, Bodanstraße 1 in Konstanz, gibt es eine ausdrücklich ausgelöste Produktsuche. Sie zeigt den Warenpreis und veröffentlichte Vergleichsangaben getrennt. |
+| Lidl | Öffentliche Lidl-Plus-Aktionspreise für DE7434 in Android-Prüfung | Die [Filialseite Malchower Weg 134](https://www.lidl.de/s/de-DE/filialen/berlin-lichtenberg/malchower-weg-134/) belegt den Marktcode. Für den Berliner Einkaufstag 19.11. sind 40 numerische Laden-Apppreise belegt. Allgemein erhältliche Waren- und Normalpreise bleiben offen. |
 | REWE | Gezielte Filialpreissuche live geprüft | Beim Markt 1356345, Leipziger Platz 12, sendet ausschließlich die ausdrückliche Suchaktion den eingegebenen Produktnamen an REWE. Die App zeigt den beobachteten Warenpreis, den separat veröffentlichten Normalpreis und Pfand. Suchtext und Ergebnisse bleiben bis zum Verlassen auf der Angebotsseite. Die getrennte automatische Angebotsseite bleibt nach HTTP 403 gesperrt. |
 | PENNY | Android-Liveabruf bestanden | Zehn reale Top-Angebote für Markt 4030085 und Region 15A-01-56 wurden über die Standard-App geladen. Das unabhängige Marktverzeichnis wird vor jedem Abruf ausgewertet. |
 | Kaufland | Filialangebote live geprüft | Markt DE5220 in Konstanz-Petershausen. Gerenderte Filialkarten, unabhängiges Marktverzeichnis sowie datierte Verfügbarkeit je Artikel. Separater XTRA-Preis und separat ausgewiesene Gewichtsrate. |
@@ -49,6 +49,10 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 | Picnic | DEFERRED | Zugangs-/Rechteblockade; langfristiges Ziel bleibt erhalten. Kein P0-Hindernis. |
 
 Nur ein **unabhängiger Host-Nachweis** darf einen bestimmten Quellen-/Capability-/HTTPS-Endpoint-/Filial- oder Liefergebiets-/Zeitraumkontext aktivieren. UI-Kennungen, Lieferantenfelder, OAuth und erfolgreiche HTTP-Antworten erfüllen diesen Nachweis nicht. Mehrere benötigte Endpoints werden alle vor dem ersten Abruf geprüft. Fehlende Quelle startet keinen Netzabruf. Keine Bulk-Katalogspiegelung.
+
+## Lidl-Filialangebote
+
+Vor dem Preisabruf prüft die App die kanonische Filialseite und die dort im Filialfeedback-Link veröffentlichte Nummer. Die App ruft ausschließlich die Filialseite und die passende öffentliche JSON-Angebotsquelle ab. Gültigkeitsdaten bestimmen die Auswahl für den Einkaufstag. Veröffentlichte Apppreise und Original-Grundpreisangaben behalten ihre Quelle und die ungeprüften Einlösebedingungen. Apppreise gelangen weder in Bedarfsberechnungen noch in den allgemeinen Warenpreisvergleich. Die Daten bleiben auf der Angebotsseite und können nach dem profilgebundenen Mindestabstand erneut gelesen werden.
 
 ## Aktualisierung, Anzeige und Vergleich
 
