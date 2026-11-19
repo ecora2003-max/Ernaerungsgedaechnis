@@ -58,8 +58,10 @@ internal class LidlMarketOfferSource(
         val document = Jsoup.parse(html)
         val canonical = document.select("link[rel=canonical]").singleOrNull()?.attr("href")
         val heading = document.select("h1").singleOrNull()?.text()
-        val address = heading?.takeIf { it.startsWith("Lidl Filiale ") }
-            ?.removePrefix("Lidl Filiale ")?.takeIf { it.isNotBlank() }
+        // Lidl renders the heading prefix in a span immediately followed by
+        // the address. Jsoup preserves the absent separator between those nodes.
+        val address = heading?.takeIf { it.startsWith("Lidl Filiale") }
+            ?.removePrefix("Lidl Filiale")?.trim()?.takeIf { it.isNotBlank() }
         val feedbackLink = document.select("a[href]").singleOrNull { it.text() == "Gib uns Feedback zur Filiale" }
         val feedback = feedbackLink?.let { runCatching { URI(it.attr("href")) }.getOrNull() }
         // The directory's store-specific feedback link publishes the numeric

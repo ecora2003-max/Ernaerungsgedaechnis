@@ -119,7 +119,10 @@ class ReviewedOfferSourcesTest {
 
     @Test fun bundledProductionProfileUsesTheRealPublicCanonicalMarketAndNoSyntheticPermission() {
         val bundled = ReviewedOfferSources.bundled(ApplicationProvider.getApplicationContext())
-        assertEquals(0, bundled.invalidProfiles); assertEquals(6, bundled.profiles.size)
+        assertEquals(0, bundled.invalidProfiles)
+        assertEquals(setOf("penny-4030085-top-angebote", "aldi-nord-public-week", "aldi-sued-public-offers",
+            "aldi-sued-bl16-product-search", "lidl-de7434-plus-offers", "rewe-1356345-product-search",
+            "kaufland-de5220-public"), bundled.profiles.map { it.id }.toSet())
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
@@ -255,7 +258,7 @@ class ReviewedOfferSourcesTest {
             requests += request
             when (request.uri.host) {
                 "www.lidl.de" -> OfferHttpReply(200, mapOf("content-type" to "text/html"),
-                    """<link rel="canonical" href="${profile.availabilityEndpoint}"><h1>Lidl Filiale Malchower Weg 134, 13053 Berlin</h1>
+                    """<link rel="canonical" href="${profile.availabilityEndpoint}"><h1><span>Lidl Filiale</span>Malchower Weg 134, 13053 Berlin</h1>
                     <a href="https://survey2.medallia.eu/example?TNC=$directoryStoreNumber">Gib uns Feedback zur Filiale</a>""")
                 "offers.lidlplus.com" -> OfferHttpReply(200, mapOf("content-type" to "application/json"),
                     """{"totalOffers":3,"offers":[
