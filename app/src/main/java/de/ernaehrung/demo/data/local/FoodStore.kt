@@ -141,6 +141,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val workoutSourceWindow = WorkoutSourceWindowReader(db, healthExtra::readCache)
     internal fun watchWorkoutSourceWindow(target: de.ernaehrung.demo.data.fitness.WorkoutSourceTarget) = workoutSourceWindow.observe(target)
     internal fun healthExtraCache() = healthExtra.observe()
+    internal fun watchImportedBodyFat() = healthExtra.observeBodyFat()
     internal suspend fun authorizeHealthExtra(key: String, selection: de.ernaehrung.demo.data.fitness.HealthExtraSelection?,
         provider: de.ernaehrung.demo.data.fitness.HealthExtraSource, confirmed: Boolean) = healthExtra.authorize(key, selection, provider, confirmed)
     internal suspend fun syncHealthExtra(key: String, provider: de.ernaehrung.demo.data.fitness.HealthExtraSource) = healthExtra.sync(key, provider)

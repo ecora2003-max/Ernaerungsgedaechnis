@@ -20,6 +20,7 @@ internal data class BodyMeasurementUiState(val history: BodyMeasurementHistory? 
 internal class BodyMeasurementViewModel(private val store: FoodStore) : ViewModel() {
     private val mutable = MutableStateFlow(BodyMeasurementUiState())
     val state = mutable.asStateFlow()
+    val importedBodyFat = store.watchImportedBodyFat().map { Result.success(it) }.catch { emit(Result.failure(it)) }
     private var action: Job? = null
     private var observer: Job? = null
     private val historyRefresh = MutableStateFlow(0L)
