@@ -2,7 +2,7 @@
 
 [**EG · Watch-Test v0.13.0 als APK herunterladen**](EG-Watch-Test-v0.13.0.apk?raw=true)
 
-Auf GitHub findest du die APK unter **Releases → EG · Watch-Test v0.13.0 → Assets**. Im Repository führt auch **Code → downloads → EG-Watch-Test-v0.13.0.apk → Download raw file** zur selben Datei. [Release öffnen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.13.0)
+Auf GitHub führt **Releases → EG · Watch-Test v0.13.0 → APK herunterladen** zur Datei. Im Repository funktioniert auch **Code → downloads → EG-Watch-Test-v0.13.0.apk → Download raw file**. [Release öffnen](https://github.com/ecora2003-max/Ernaerungsgedaechnis/releases/tag/watch-test-v0.13.0)
 
 **Mehr → Angebote & Preisvergleich** zeigt öffentliche Preise und Angebote von PENNY, Kaufland, ALDI Nord, ALDI Süd, REWE und Lidl. PENNY und Kaufland haben bestätigte Märkte. ALDI Süd und REWE bieten zusätzlich ausdrücklich ausgelöste Filialproduktsuchen. Lidl-Plus-Preise sind für den Berliner Markt am Malchower Weg sichtbar. Der Warenpreisvergleich verwendet nur Artikel und Gebinde mit bestätigtem Filialbezug und geprüften Preisbedingungen. Weitere Händler- und Normalpreisquellen stehen aus. [Anbieterstand](../docs/LIVE_OFFERS.md)
 
