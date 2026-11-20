@@ -1,0 +1,3 @@
+# Historische Governance-Unterlagen (Stand bis 18.11.2026)
+
+Diese Originaldateien sind als unveränderte Git-Blobs archiviert, nicht gelöscht. Sie enthalten veraltete Zeitpläne, Pausierungen, ältere Freigabematrizen, P0/P1-Bedingungen und Prozessanweisungen. **Nicht als aktuelle Arbeitsanweisung einlesen.** Die vier maßgeblichen Dateien liegen im Hauptprojekt: AGENTS.md, docs/NOW.md, docs/REQUIREMENTS.md und docs/ACCEPTANCE.md. `docs/STATUS.md` wird wegen des zurzeit offenen funktionalen PR #308 und dessen Änderungen an dieser Datei vorerst unverschoben belassen; es ist ein historisches Nachschlagewerk.
