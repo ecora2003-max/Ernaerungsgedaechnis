@@ -1,6 +1,7 @@
 package de.ernaehrung.demo.data.local
 
 import androidx.room.withTransaction
+import java.time.LocalDate
 
 data class ProductInput(
     val name: String, val brand: String? = null, val unit: BaseUnit = BaseUnit.GRAM,
@@ -50,6 +51,7 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     private val stock = StockOperations(db, now)
     private val kitchen = KitchenOperations(db, now)
     private val nutrition = NutritionReader(db)
+    private val fitnessEnergyCoverage = FitnessEnergyCoverageReader(db, nutrition)
     private val planning = PlanningOperations(db, now)
     private val demand = PlanningReader(db, now)
     private val planNutritionReader = PlanNutritionReader(db, now)
@@ -767,6 +769,8 @@ class FoodStore(private val db: FoodDatabase, private val now: () -> Long = Syst
     suspend fun savePlan(key: String, input: PlanInput, previousVersionId: String? = null) = planning.save(key, input, previousVersionId)
     suspend fun cancelPlan(key: String, previousVersionId: String, reason: String) = planning.cancel(key, previousVersionId, reason)
     fun watchDay(date: String) = nutrition.watchDay(date)
+    internal fun watchFitnessEnergyCoverage(end: LocalDate, period: EnergyCoveragePeriod) =
+        fitnessEnergyCoverage.watch(end, period)
     fun watchRecipeNutrition(id: String) = nutrition.watchRecipe(id)
     suspend fun dayNutrition(date: String) = nutrition.day(date)
     suspend fun recipeNutrition(id: String) = nutrition.recipe(id)

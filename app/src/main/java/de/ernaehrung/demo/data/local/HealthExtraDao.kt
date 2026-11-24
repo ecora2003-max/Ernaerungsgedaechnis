@@ -2,6 +2,8 @@ package de.ernaehrung.demo.data.local
 
 import androidx.room.*
 
+internal data class HealthSourceInterval(val sourcePackage: String, val startAt: Long, val endAt: Long)
+
 /** Only FoodStore's health-extra operations write these tables. */
 @Dao
 internal interface HealthExtraDao {
@@ -16,6 +18,13 @@ internal interface HealthExtraDao {
         FROM health_extra_versions v WHERE v.sourcePackage=h.sourcePackage AND v.kind=h.kind AND v.externalId=h.externalId)
         ORDER BY h.startAt DESC,h.sourcePackage,h.kind,h.externalId""")
     suspend fun latest(kind: String? = null): List<HealthExtraVersionEntity>
+    @Query("""SELECT h.sourcePackage, h.startAt, h.endAt FROM health_extra_versions h
+        WHERE h.kind='ACTIVE_ENERGY' AND h.visible=1 AND h.scalarBits IS NOT NULL
+        AND h.startAt<:end AND h.endAt>:start AND h.endAt>h.startAt
+        AND NOT EXISTS (SELECT 1 FROM health_extra_versions newer
+            WHERE newer.sourcePackage=h.sourcePackage AND newer.kind=h.kind AND newer.externalId=h.externalId
+            AND newer.revision>h.revision)""")
+    suspend fun activeEnergyIntervals(start: Long, end: Long): List<HealthSourceInterval>
     @Query("""SELECT s.* FROM health_extra_samples s WHERE s.revision=(SELECT MAX(v.revision)
         FROM health_extra_versions v WHERE v.sourcePackage=s.sourcePackage AND v.kind=s.kind AND v.externalId=s.externalId)
         ORDER BY s.sourcePackage,s.kind,s.externalId,s.position""")

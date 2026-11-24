@@ -10,7 +10,8 @@ internal object AppCalendar {
 
     fun today(at: Instant = Instant.now()): LocalDate = at.atZone(berlin).toLocalDate()
 
+    fun startOfDayMillis(day: LocalDate): Long = day.atStartOfDay(berlin).toInstant().toEpochMilli()
+
     /** Last representable millisecond of the local day, including 23/25-hour DST days. */
-    fun endOfDayMillis(day: LocalDate): Long =
-        day.plusDays(1).atStartOfDay(berlin).toInstant().toEpochMilli() - 1L
+    fun endOfDayMillis(day: LocalDate): Long = startOfDayMillis(day.plusDays(1)) - 1L
 }

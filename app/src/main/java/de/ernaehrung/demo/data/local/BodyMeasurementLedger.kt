@@ -33,6 +33,8 @@ internal data class BodyMeasurementVersionEntity(@PrimaryKey val id: String, val
         BodyMethod.valueOf(method), methodDetail, conditions, BodyQuality.valueOf(quality), excludedFromTrend)
 }
 
+internal data class RecordedWeightDay(val localDate: String, val count: Int)
+
 @Dao
 internal interface BodyMeasurementDao {
     @Query("SELECT * FROM body_measurement_runs WHERE id=:id") suspend fun run(id: String): BodyMeasurementRunEntity?
@@ -41,6 +43,13 @@ internal interface BodyMeasurementDao {
     suspend fun versions(): List<BodyMeasurementVersionEntity>
     @Query("SELECT * FROM body_measurement_versions WHERE seriesId=:series ORDER BY revision DESC LIMIT 1")
     suspend fun latest(series: String): BodyMeasurementVersionEntity?
+    @Query("""SELECT w.localDate, COUNT(*) AS count FROM body_measurement_versions w
+        WHERE w.metric='WEIGHT' AND w.decimalValue IS NOT NULL AND w.excludedFromTrend=0
+        AND w.localDate BETWEEN :start AND :end
+        AND NOT EXISTS (SELECT 1 FROM body_measurement_versions newer
+            WHERE newer.seriesId=w.seriesId AND newer.revision>w.revision)
+        GROUP BY w.localDate""")
+    suspend fun recordedWeightDays(start: String, end: String): List<RecordedWeightDay>
     @Query("SELECT * FROM body_measurements ORDER BY measuredAt DESC, id") suspend fun legacy(): List<BodyMeasurementEntity>
     @Query("SELECT * FROM body_measurement_versions WHERE legacyOriginId=:id AND legacyField=:field")
     suspend fun forLegacy(id: String, field: String): BodyMeasurementVersionEntity?

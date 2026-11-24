@@ -42,7 +42,7 @@ internal fun rememberFitnessModel(): FitnessViewModel {
 internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onOpenBody: (() -> Unit)? = null,
     onOpenBodyHistory: (() -> Unit)? = null, nutritionContent: (@Composable () -> Unit)? = null,
     onOpenTraining: (() -> Unit)? = null, onOpenExtra: (() -> Unit)? = null,
-    onOpenSourceWindow: ((HealthRecordVersionEntity) -> Unit)? = null) {
+    onOpenSourceWindow: ((HealthRecordVersionEntity) -> Unit)? = null, onOpenEnergyCoverage: (() -> Unit)? = null) {
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -74,6 +74,9 @@ internal fun FitnessScreen(model: FitnessViewModel = rememberFitnessModel(), onO
         }
         onOpenBody?.let { open ->
             BodyMeasurementSummary(open, onOpenBodyHistory)
+        }
+        onOpenEnergyCoverage?.let { open ->
+            OutlinedButton(open, Modifier.testTag("fitness_open_energy_coverage")) { Text("Datenlage für die Energieanalyse") }
         }
         Text("Galaxy Watch 4 synchronisiert zunächst mit Samsung Health auf dem Smartphone. Dort müssen Schritte und Training für Health Connect freigegeben sein. Die Übernahme kann verzögert sein.")
         Text(when (state.availability) {

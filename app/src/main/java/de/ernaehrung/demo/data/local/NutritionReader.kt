@@ -10,12 +10,20 @@ internal class NutritionReader(private val db: FoodDatabase) {
     private val dao = db.foodDao()
     fun watchDay(date: String): Flow<DayNutrition> = invalidations().map { day(date) }.distinctUntilChanged()
     fun watchRecipe(id: String): Flow<NutritionResult> = invalidations().map { recipe(id) }.distinctUntilChanged()
-    private fun invalidations() = db.invalidationTracker.createFlow("product_versions", "batches", "batch_reviews", "stock_movements",
-        "productions", "recipe_versions", "recipe_ingredients", "consumption_events", "operation_reversals", "diary_days", "operations")
+    fun invalidations(vararg additionalTables: String) =
+        db.invalidationTracker.createFlow("product_versions", "batches", "batch_reviews", "stock_movements",
+            "productions", "recipe_versions", "recipe_ingredients", "consumption_events", "operation_reversals",
+            "diary_days", "operations", *additionalTables)
 
-    suspend fun day(date: String): DayNutrition = db.withTransaction {
-        WriteRules.date(date)
+    suspend fun day(date: String): DayNutrition = db.withTransaction { readDay(date, Resolver()) }
+
+    suspend fun days(dates: List<String>): List<DayNutrition> = db.withTransaction {
         val resolver = Resolver()
+        dates.map { readDay(it, resolver) }
+    }
+
+    private suspend fun readDay(date: String, resolver: Resolver): DayNutrition {
+        WriteRules.date(date)
         val meals = dao.activeMeals(date).map { event ->
             val version = dao.version(event.productVersionId)
             MealNutrition(event, version?.name ?: "Artikelversion fehlt", version?.baseUnit ?: BaseUnit.GRAM, version?.revision,
@@ -28,7 +36,7 @@ internal class NutritionReader(private val db: FoodDatabase) {
             meals.map { meal -> listOf(meal.event.id, meal.event.operationId, meal.event.productVersionId, meal.event.amount,
                 Nutrient.entries.map { n -> meal.nutrition[n].let { listOf(it.knownAmount?.stripTrailingZeros()?.toPlainString(), it.knownCount,
                     it.missingCount, it.gaps.map { g -> g.name }.sorted(), it.qualities.map { q -> q.name }.sorted()) } }) })
-        DayNutrition(date, status, storedDay?.confirmedAt, meals, NutritionResult.sum(meals.map { it.nutrition }), snapshot)
+        return DayNutrition(date, status, storedDay?.confirmedAt, meals, NutritionResult.sum(meals.map { it.nutrition }), snapshot)
     }
 
     /** Exact referenced version, including a historical produced-food lineage.
