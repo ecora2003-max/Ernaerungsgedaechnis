@@ -2,6 +2,7 @@ package de.ernaehrung.demo.data.offers
 
 import de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson
 import de.ernaehrung.demo.data.local.AppCalendar
+import de.ernaehrung.demo.data.local.Money
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Instant
@@ -183,10 +184,38 @@ internal object PublishedOfferDecoders {
                 if (matches.size == 1) { from = priceDate(matches.single(), "validFrom"); until = priceDate(matches.single(), "validUntil") }
             }
             if (from != null && until != null && until < from) return@mapNotNull null
-            LiveOffer("$sourceId:$id", sourceId, LiveRetailer.ALDI_NORD, title, id, null, amount, null,
+            val deposit = OfferJson.euroCents(row["depositValue"])?.takeIf { cents ->
+                when (row["isDepositProduct"]) {
+                    true -> cents > 0L
+                    false -> cents == 0L
+                    else -> false
+                }
+            }
+            LiveOffer("$sourceId:$id", sourceId, LiveRetailer.ALDI_NORD, title, id, null, amount, deposit,
                 null, null, null, LiveOfferKind.PROMOTION, from, until, null, fetchedAt, null, null, null,
-                LiveOfferApplicability.CHAIN_REPORTED, null, false, sourceUrl, OfferJson.text(row["salesUnit"]))
+                LiveOfferApplicability.CHAIN_REPORTED, null, false, sourceUrl, OfferJson.text(row["salesUnit"]),
+                priceDetails = aldiNordPriceDetails(row, price))
         }
+    }
+
+    private fun aldiNordPriceDetails(row: Map<String, Any?>, price: Map<String, Any?>?): LivePriceDetails? {
+        val baseRates = (price?.get("basePrice") as? List<*>)?.mapNotNull { entry ->
+            val rate = OfferJson.objectValue(entry) ?: return@mapNotNull null
+            val cents = OfferJson.euroCents(rate["basePriceValue"]) ?: return@mapNotNull null
+            val basis = OfferJson.text(rate["basePriceScale"]) ?: return@mapNotNull null
+            "${Money.format(cents)} / $basis"
+        }?.joinToString(" · ")?.let(OfferJson::text)
+        val earlier = OfferJson.objectValue(price?.get("strikePrice"))?.let { reference ->
+            OfferJson.euroCents(reference["strikePriceValue"])?.let { cents ->
+                listOfNotNull(OfferJson.text(reference["strikePriceLabel"]), Money.format(cents)).joinToString(" ")
+            }
+        }
+        val discount = OfferJson.text(OfferJson.objectValue(price?.get("priceTagLabels"))?.get("promoText1"))
+            ?.takeIf { it.matches(Regex("-[0-9]{1,3}\\s*%")) }
+        val sourceComparison = OfferJson.text(listOfNotNull(earlier, discount).joinToString(" · "))
+        val brand = OfferJson.text(row["brandName"])
+        if (baseRates == null && sourceComparison == null && brand == null) return null
+        return LivePriceDetails(previousDisplay = sourceComparison, brand = brand, unitPriceDisplay = baseRates)
     }
 
     /** Store-scoped availability must be fetched/configured independently. A

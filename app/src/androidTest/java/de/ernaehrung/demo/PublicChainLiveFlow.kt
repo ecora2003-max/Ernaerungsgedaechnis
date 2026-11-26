@@ -178,6 +178,11 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             assertTrue(batch.offers.all { URI(it.sourceUrl).rawPath == "/angebote.html" })
             assertTrue(batch.offers.any { row -> row.validFrom?.let { it <= batch.scope.purchaseOn } == true &&
                 row.validUntil?.let { batch.scope.purchaseOn <= it } == true && row.merchandiseCents != null })
+            assertTrue(batch.offers.all { it.priceDetails?.regularCents == null && it.quantityMilli == null })
+            batch.offers.take(25).firstOrNull { it.priceDetails?.unitPriceDisplay != null }?.let { row ->
+                compose.onNodeWithTag("live_unit_text_${row.sourceProductId}").assertTextContains(
+                    requireNotNull(row.priceDetails?.unitPriceDisplay), substring = true)
+            }
         }
         if (retailer in setOf(LiveRetailer.EDEKA, LiveRetailer.NETTO_MD)) {
             assertTrue(batch.offers.all { it.applicable(batch.scope) && !it.conditionsConfirmed && it.quantityMilli == null })
@@ -206,6 +211,8 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             .put("offerCount", batch.offers.size).put("offerFingerprint", digest).put("uidRxDelta", received).put("uidTxDelta", sent)
             .put("branchConfirmed", expectedStore != null).put("storeId", expectedStore ?: JSONObject.NULL)
             .put("productSearch", searchTerm != null).put("appPricesNotUsedForComparison", onlyAppPrices)
+            .put("offersWithPublishedUnitPrice", batch.offers.count { it.priceDetails?.unitPriceDisplay != null })
+            .put("offersWithPositiveDeposit", batch.offers.count { (it.depositCents ?: 0L) > 0L })
             .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
             .put("observedAt", batch.fetchedAt.toString())
         verifyLocalFacts()
