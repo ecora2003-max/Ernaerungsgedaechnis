@@ -52,6 +52,12 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicLidlAppPricesStaySeparateInTheConfirmedMarket(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.LIDL, expectedStore = "DE7434")
     }
+    @Test fun publicEdekaJakobiOffersReachTheVerifiedWormsMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.EDEKA, expectedStore = "JAKOBI-WORMS")
+    }
+    @Test fun publicNettoStoreOffersReachTheVerifiedWeimarMarket(): Unit = runBlocking {
+        publicChainLiveFlow(compose, LiveRetailer.NETTO_MD, expectedStore = "1787")
+    }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
         assertTrue(Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk_gphone"))
         assertEquals("true", InstrumentationRegistry.getArguments().getString("eg_live_source"))

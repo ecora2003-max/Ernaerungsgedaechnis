@@ -48,10 +48,10 @@ internal object LiveSourceCatalogue {
             "https://www.knuspr.de/mcp-docs", "Für später zurückgestellt. Zuerst werden die acht stationären Händler angeschlossen. Eine vorhandene Anmeldung bleibt erhalten; es wird kein automatischer Knuspr-Abruf gestartet.")
         LiveRetailer.EDEKA -> LiveSourceInfo(retailer, "edeka-published-offers", LiveSourceStatus.RIGHTS_RESTRICTED,
             "https://www.edeka.de/services/nutzungsbedingungen/",
-            "Die Bedingungen von EDEKA.de beschränken den automatisierten Abruf der Angebotsseite. Die Händlerseite ist im Browser verfügbar.")
+            "EDEKA.de beschränkt den automatisierten Abruf. Für einzelne Märkte gibt es eigene Händlerseiten.")
         LiveRetailer.NETTO_MD -> LiveSourceInfo(retailer, "netto-published-offers", LiveSourceStatus.BLOCKED,
             "https://www.netto-online.de/angebote/c-N07",
-            "Der geprüfte Angebotsabruf wurde auf Android mit HTTP 403 abgewiesen. Die Händlerseite ist im Browser verfügbar.")
+            "Die allgemeine Angebotsübersicht hat den Android-Abruf abgewiesen. Für einzelne Märkte gibt es eigene Filialseiten.")
         LiveRetailer.REWE -> LiveSourceInfo(retailer, "rewe-market-offers", LiveSourceStatus.BLOCKED,
             "https://www.rewe.de/angebote/berlin-mitte/1356345/rewe-leipziger-platz-12/",
             "Die Angebotsseite dieses Markts hat den Android-Abruf mit HTTP 403 abgewiesen. Du kannst sie im Browser öffnen.")
@@ -83,7 +83,7 @@ internal data class LiveStoreScopeEvidence(val marketId: String, val marketName:
     val address: String, val sourceRegionId: String?, val weekStartsOn: LocalDate?,
     val scopeSourceUrl: String, val checkedAt: Instant, val availabilitySourceUrl: String? = null)
 internal data class LiveOffer(val id: String, val sourceId: String, val retailer: LiveRetailer, val title: String,
-    val sourceProductId: String, val gtin: String?, val merchandiseCents: Long?, val depositCents: Long?,
+    val sourceProductId: String?, val gtin: String?, val merchandiseCents: Long?, val depositCents: Long?,
     val quantityMilli: Long?, val unit: OfferMassUnit?, val quantityBasis: OfferQuantityBasis?, val kind: LiveOfferKind,
     val validFrom: LocalDate?, val validUntil: LocalDate?, val sourceObservedAt: Instant?, val fetchedAt: Instant,
     val storeId: String?, val regionId: String?, val deliveryAreaId: String?, val applicability: LiveOfferApplicability,
@@ -91,7 +91,8 @@ internal data class LiveOffer(val id: String, val sourceId: String, val retailer
     val priceDetails: LivePriceDetails? = null, val storeEvidence: LiveStoreScopeEvidence? = null,
     val productPageUrl: String? = null) {
     init {
-        require(id.isNotBlank() && sourceId.isNotBlank() && sourceProductId.isNotBlank() && title.isNotBlank() && title.length <= 1000)
+        require(id.isNotBlank() && sourceId.isNotBlank() && title.isNotBlank() && title.length <= 1000)
+        require(sourceProductId == null || sourceProductId.isNotBlank())
         require(merchandiseCents == null || merchandiseCents in 0L..1_000_000_000_000L)
         require(depositCents == null || depositCents in 0L..1_000_000_000_000L)
         require(quantityMilli == null || quantityMilli in 1L..1_000_000_000_000L)

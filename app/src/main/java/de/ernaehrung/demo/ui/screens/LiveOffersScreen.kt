@@ -266,19 +266,20 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                 if (batch.offers.any { it.priceDetails?.appCents != null && it.merchandiseCents == null })
                     Text("Reine Apppreise bleiben von Einkaufsbedarf und Warenpreisvergleich getrennt.", Modifier.testTag("live_app_price_only"))
                 rows.drop(page * 25).take(25).forEach { offer -> Panel {
+                    val rowTag = offer.sourceProductId ?: offer.id
                     Section(offer.title, when (offer.kind) { LiveOfferKind.PROMOTION -> "Aktionsangabe"; LiveOfferKind.REGULAR -> "Normalpreisangabe"; else -> "Preisart ungeklärt" })
                     fun cents(value: Long?) = value?.let { BigDecimal.valueOf(it, 2).toPlainString().replace('.', ',') + " €" } ?: "unbekannt"
                     Text("Warenpreis: ${cents(offer.merchandiseCents)} · Pfand: ${cents(offer.depositCents)} · zusammen: ${cents(offer.checkoutCents)}")
                     offer.priceDetails?.let { detail ->
                         detail.brand?.let { Text("Markenangabe der Quelle: $it") }
                         Text("Normalpreisangabe der Quelle: ${cents(detail.regularCents)}",
-                            Modifier.testTag("live_regular_${offer.sourceProductId}"))
+                            Modifier.testTag("live_regular_$rowTag"))
                         detail.previousDisplay?.let { Text("Frühere Preisangabe als Originaltext: $it · Betrag und Gültigkeit nicht unabhängig bestätigt",
-                            Modifier.testTag("live_previous_${offer.sourceProductId}")) }
+                            Modifier.testTag("live_previous_$rowTag")) }
                         detail.appCents?.let { Text("Bedingter Apppreis der Quelle: ${cents(it)} · getrennt vom allgemeinen Warenpreis",
-                            Modifier.testTag("live_app_price_${offer.sourceProductId}")) }
+                            Modifier.testTag("live_app_price_$rowTag")) }
                         detail.unitPriceDisplay?.let { Text("Veröffentlichte Grundpreisangabe: $it · Packungsmenge und Mengenbasis ungeprüft",
-                            Modifier.testTag("live_unit_text_${offer.sourceProductId}")) }
+                            Modifier.testTag("live_unit_text_$rowTag")) }
                         detail.wishlistUntilLocal?.let { Text("Zusätzliche lokale Zeitangabe der Quelle: $it · Bedeutung als Angebotsende ungeprüft") }
                     }
                     Text("Menge: ${offer.quantityMilli?.let(Amounts::format) ?: "unbekannt"} ${offer.unit?.label.orEmpty()} · Basis ${offer.quantityBasis?.name ?: "unbekannt"}")
@@ -294,25 +295,25 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                     }} · ${offer.storeId ?: offer.deliveryAreaId ?: offer.regionId ?: "keine genaue Zuordnung"}")
                     if (!offer.conditionsConfirmed) Text("Diese Quellangabe allein bestätigt keine Preisbedingungen. Ein Vergleich benötigt zusätzlich einen unabhängigen Nachweis.")
                     offer.conditions?.let { Text(it) }
-                    Text("Quellenartikel ${offer.sourceProductId} · ${offer.sourceUrl}")
+                    Text(offer.sourceProductId?.let { "Quellenartikel $it · ${offer.sourceUrl}" } ?: "Quelle ${offer.sourceUrl}")
                     offer.productPageUrl?.let { page ->
                         OutlinedButton({
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page))) }
                                 .onFailure { selectionError = "Originalangebot konnte nicht geöffnet werden." }
-                        }, modifier = Modifier.testTag("live_product_page_${offer.sourceProductId}")) { Text("Originalangebot öffnen") }
+                        }, modifier = Modifier.testTag("live_product_page_$rowTag")) { Text("Originalangebot öffnen") }
                     }
                     if (offer.merchandiseCents != null) {
                         Text(if (offer.id in state.reviewedOffers) "Artikel und Gebinde für diese Sitzung gerätegebunden bestätigt. Bei jeder Aktion erneut geprüft."
-                            else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_${offer.sourceProductId}"))
+                            else "Produktfassung und Gebinde noch nicht unabhängig bestätigt.", Modifier.testTag("live_article_status_$rowTag"))
                         val scopeConfirmed = offer.matchesLocation(batch.scope)
                         if (!scopeConfirmed) Text("Für den Filialpreisvergleich fehlt eine bestätigte Zuordnung dieser Angabe zu einer Filiale oder Region.")
                         OutlinedButton({ articleToReview = offer.id to false }, enabled = !state.busy && scopeConfirmed,
-                            modifier = Modifier.testTag("live_review_${offer.sourceProductId}")) { Text("Mit eigenem Produkt abgleichen") }
+                            modifier = Modifier.testTag("live_review_$rowTag")) { Text("Mit eigenem Produkt abgleichen") }
                         if (articleToReview == (offer.id to false)) OfferArticleReviewPanel(model, offer, batch.scope,
                             state.articleCatalog, !state.busy, onOpenCatalog) { articleToReview = null }
                         if (shopping != null) OutlinedButton({ model.previewShoppingNeed(offer.id, shopping) },
                             enabled = !state.busy && offer.id in state.reviewedOffers,
-                            modifier = Modifier.testTag("live_need_${offer.sourceProductId}")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
+                            modifier = Modifier.testTag("live_need_$rowTag")) { Text("Livepreis auf bekannten Einkaufsbedarf anwenden") }
                         OutlinedButton({ model.rememberReference(offer.id) }, enabled = !state.busy,
                             modifier = Modifier.testTag("live_remember_${offer.id}")) { Text("Als Vergleichsreferenz wählen") }
                         if (state.reference != null) OutlinedButton({ model.compareWithReference(offer.id) }, enabled = !state.busy,

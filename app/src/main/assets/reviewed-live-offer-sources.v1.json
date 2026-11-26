@@ -179,6 +179,56 @@
         "cachePermitted": false,
         "minimumRefreshSeconds": 600
       }
+    },
+    {
+      "id": "edeka-jakobi-worms-highlights",
+      "revision": 1,
+      "label": "EDEKA Jakobi Mittelochsenplatz 4, 67547 Worms · Wochenangebote",
+      "retailer": "EDEKA",
+      "storeId": "JAKOBI-WORMS",
+      "regionId": null,
+      "format": "EDEKA_JAKOBI_HIGHLIGHTS",
+      "sourceId": "edeka-jakobi-worms-highlights",
+      "endpoint": "https://www.edeka-jakobi.de/",
+      "availabilityEndpoint": "https://www.edeka-jakobi.de/worms",
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.edeka-jakobi.de/",
+        "scopeEvidence": "https://www.edeka-jakobi.de/worms",
+        "reviewedAt": "2026-11-24T16:48:00Z",
+        "from": "2026-11-24",
+        "until": "2027-02-22",
+        "allowedHosts": [
+          "www.edeka-jakobi.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 900
+      }
+    },
+    {
+      "id": "netto-1787-store-offers",
+      "revision": 1,
+      "label": "Netto Marcel-Paul-Str. 63, 99427 Weimar · Filialangebote",
+      "retailer": "NETTO_MD",
+      "storeId": "1787",
+      "regionId": null,
+      "format": "NETTO_STORE_HTML",
+      "sourceId": "netto-1787-store-offers",
+      "endpoint": "https://www.netto-online.de/filialen/weimar/marcel-paul-str-63/1787",
+      "availabilityEndpoint": null,
+      "weekStartsOn": null,
+      "approval": {
+        "sourceEvidence": "https://www.netto-online.de/filialen/weimar/marcel-paul-str-63/1787",
+        "scopeEvidence": "https://www.netto-online.de/filialen/weimar/marcel-paul-str-63/1787",
+        "reviewedAt": "2026-11-24T16:48:00Z",
+        "from": "2026-11-24",
+        "until": "2027-02-22",
+        "allowedHosts": [
+          "www.netto-online.de"
+        ],
+        "cachePermitted": false,
+        "minimumRefreshSeconds": 900
+      }
     }
   ]
 }

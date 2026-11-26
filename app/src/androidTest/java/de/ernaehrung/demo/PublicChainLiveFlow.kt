@@ -151,6 +151,14 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             assertTrue(batch.offers.any { row -> row.validFrom?.let { it <= batch.scope.purchaseOn } == true &&
                 row.validUntil?.let { batch.scope.purchaseOn <= it } == true && row.merchandiseCents != null })
         }
+        if (retailer in setOf(LiveRetailer.EDEKA, LiveRetailer.NETTO_MD)) {
+            assertTrue(batch.offers.all { it.applicable(batch.scope) && !it.conditionsConfirmed && it.quantityMilli == null })
+            if (retailer == LiveRetailer.EDEKA) assertTrue(batch.offers.all { it.sourceProductId == null && it.gtin == null })
+            else assertTrue(batch.offers.all { !it.sourceProductId.isNullOrBlank() })
+            tap("live_automatic_toggle"); ready()
+            assertTrue(model.state.value.automatic)
+            compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik für diese angewendete Auswahl eingeschaltet")
+        }
         val pages = (batch.offers.size + 24) / 25
         compose.onNodeWithTag("live_offer_page").assertTextEquals("${batch.offers.size} geladene Treffer · Seite 1/$pages")
         assertTrue(compose.onAllNodesWithText(batch.offers.first().title).fetchSemanticsNodes().isNotEmpty())
