@@ -116,17 +116,24 @@ jobs:
               'netto-1787-store-offers':('NETTO_MD','www.netto-online.de','1787',False),
           }
           sources=[]
+          refusals=[]
           for profile,(retailer,host,store,search) in expected.items():
               source=json.loads((root/f'device/market-{profile}.json').read_text())
-              assert source['format']=='EG_REAL_PUBLIC_CHAIN_UI_V1' and source['status']=='PASS'
               assert source['profileId']==profile and source['retailer']==retailer
               assert source['sourceCommit']==os.environ['EG_SOURCE_COMMIT']
               assert source['actualSdk']==35 and source['actualNetworkValidated'] and source['actualFactsUnchanged']
-              assert source['sourceHost']==host and source['storeId']==store and source['branchConfirmed']==(store is not None)
-              assert source['productSearch']==search
-              assert source['appPricesNotUsedForComparison']==(retailer=='LIDL')
+              assert source['sourceHost']==host and source['storeId']==store
               assert source['defaultProductionHttp'] and source['sourceRepliesInjected'] is False
               assert source['uidRxDelta']>0 and source['uidTxDelta']>0
+              if source['format']=='EG_PUBLIC_RETAILER_REFUSAL_V1':
+                  assert profile=='netto-1787-store-offers'
+                  assert source['status']=='ACCESS_BLOCKED' and source['httpStatus']==403
+                  assert source['automaticPaused'] and source['shownOffers']==0
+                  refusals.append(source)
+                  continue
+              assert source['format']=='EG_REAL_PUBLIC_CHAIN_UI_V1' and source['status']=='PASS'
+              assert source['branchConfirmed']==(store is not None) and source['productSearch']==search
+              assert source['appPricesNotUsedForComparison']==(retailer=='LIDL')
               maximum=12 if retailer=='ALDI_SUED' and search else 512 if retailer=='ALDI_NORD' else 256
               assert 0<source['offerCount']<=maximum
               sources.append(source)
@@ -140,7 +147,11 @@ jobs:
           for source in sources:
               source.update({key:proof[key] for key in ('subjectApkSha256','testApkSha256')})
               (root/f"bound-{source['profileId']}.json").write_text(json.dumps(source,indent=2)+'\n')
-          print('REAL_PUBLIC_RETAILER_UI_PASS',json.dumps(proof))
+          for refusal in refusals:
+              refusal.update({key:proof[key] for key in ('subjectApkSha256','testApkSha256')})
+              (root/f"refused-{refusal['profileId']}.json").write_text(json.dumps(refusal,indent=2)+'\n')
+          print('REAL_PUBLIC_RETAILER_UI',json.dumps({'liveProfiles':1+len(sources),
+              'accessRefusedProfiles':[row['profileId'] for row in refusals]}))
           PY
       - name: Upload original evidence only; no supplier response archive or APK
         if: ${{ always() }}

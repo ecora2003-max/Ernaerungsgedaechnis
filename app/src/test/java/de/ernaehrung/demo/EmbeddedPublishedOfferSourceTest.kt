@@ -24,8 +24,13 @@ class EmbeddedPublishedOfferSourceTest {
         val endpoint = URI("https://www.aldi-nord.de/synthetic-next-offers")
         val scope = LiveOfferScope(LiveRetailer.ALDI_NORD, null, null, null, day)
         val requests = mutableListOf<OfferHttpRequest>()
+        val html = fixture("aldi_nord.html") + "<!--" + "p".repeat(1_460_000) + "-->"
         val source = PublishedOfferHttpSource(endpoint, "synthetic", scope, PublishedOfferHttpSource.Format.ALDI_NORD_NEXT_DATA,
-            OfferHttp { requests += it; OfferHttpReply(200, mapOf("content-type" to "text/html; charset=UTF-8"), fixture("aldi_nord.html")) }) { at }
+            OfferHttp {
+                requests += it
+                require(it.maximumResponseBytes >= html.toByteArray().size)
+                OfferHttpReply(200, mapOf("content-type" to "text/html; charset=UTF-8"), html)
+            }) { at }
         val grant = LiveSourceGrant("synthetic", scope.retailer, "synthetic-independent-host-only", day, day,
             setOf(endpoint.host), true, null, scope)
         val result = LiveOfferRuntime(mapOf(scope.retailer to source), LivePermissionRegistry { grant }) { at }.refresh(scope)
@@ -33,6 +38,7 @@ class EmbeddedPublishedOfferSourceTest {
         expected("aldi_nord", result.batch!!.offers.single())
         assertEquals(1, requests.size); assertEquals(endpoint, requests.single().uri)
         assertEquals("GET", requests.single().method); assertNull(requests.single().body)
+        assertEquals(ALDI_NORD_HTML_LIMIT, requests.single().maximumResponseBytes)
         assertFalse(result.batch.coverageComplete)
     }
     @Test fun kauflandHtmlNeedsBothAuthorizedRepliesAndItsTimestampIncludesTheLaterStoreReply(): Unit = runBlocking {
@@ -69,6 +75,7 @@ class EmbeddedPublishedOfferSourceTest {
     }
     @Test fun missingOrAmbiguousScriptsAndUnapprovedSecondEndpointCannotProducePartialPrices(): Unit = runBlocking {
         assertTrue(runCatching { EmbeddedPublishedOfferJson.aldiNord("<html>Missing script</html>") }.isFailure)
+        assertTrue(runCatching { EmbeddedPublishedOfferJson.aldiNord("x".repeat(ALDI_NORD_HTML_LIMIT + 1)) }.isFailure)
         assertTrue(runCatching { EmbeddedPublishedOfferJson.aldiNord(fixture("aldi_nord.html") + fixture("aldi_nord.html")) }.isFailure)
         assertTrue(runCatching { EmbeddedPublishedOfferJson.kaufland("<script>window.x = {};</script>") }.isFailure)
         assertTrue(runCatching { EmbeddedPublishedOfferJson.kaufland(fixture("kaufland.html") + fixture("kaufland.html")) }.isFailure)

@@ -55,7 +55,7 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicEdekaJakobiOffersReachTheVerifiedWormsMarket(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.EDEKA, expectedStore = "JAKOBI-WORMS")
     }
-    @Test fun publicNettoStoreOffersReachTheVerifiedWeimarMarket(): Unit = runBlocking {
+    @Test fun publicNettoStoreShowsVerifiedOffersOrRecordsAnExplicitRefusal(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.NETTO_MD, expectedStore = "1787")
     }
     @Test fun publicPennyMarketAndActualOffersReachTheProductionUiWithoutAnyActualFoodOrHealthWrite(): Unit = runBlocking {
