@@ -96,6 +96,12 @@ tasks.withType<Test>().configureEach {
         check(directory.isDirectory || directory.mkdirs()) { "Cannot create testHome: $directory" }
         systemProperty("user.home", directory.absolutePath)
     }
+    providers.gradleProperty("robolectricSdkDir").orNull?.let { path ->
+        val directory = file(path)
+        check(directory.isDirectory) { "Robolectric SDK directory is missing: $directory" }
+        systemProperty("robolectric.offline", "true")
+        systemProperty("robolectric.dependency.dir", directory.absolutePath)
+    }
     // Optional build-host proxy, never embedded into the application.
     listOf("https.proxyHost","https.proxyPort","http.proxyHost","http.proxyPort","javax.net.ssl.trustStore").forEach { key->
         System.getProperty(key)?.let {systemProperty(key,it)}
