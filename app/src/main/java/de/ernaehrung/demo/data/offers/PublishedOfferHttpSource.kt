@@ -103,8 +103,11 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             headers = when { html -> mapOf("Accept" to "text/html")
                 embedded -> mapOf("Accept" to "application/json, text/html")
                 else -> mapOf("Accept" to "application/json") } + mapOf("User-Agent" to PUBLIC_OFFER_AGENT),
-            maximumResponseBytes = if (format in setOf(Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML))
-                2_097_152 else 1_048_576)); reply.requireSuccess()
+            maximumResponseBytes = when {
+                aldiNord -> ALDI_NORD_HTML_LIMIT
+                format in setOf(Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML) -> 2_097_152
+                else -> 1_048_576
+            })); reply.requireSuccess()
         val media = reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
         require(media in when { html -> setOf("text/html")
             embedded -> setOf("application/json", "application/ld+json", "text/html")
