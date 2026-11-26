@@ -162,7 +162,8 @@ fun LocalWorkspaceApp() {
                     } else if (page == WorkspacePage.BODY) {
                         BodyMeasurementScreen()
                     } else if (page == WorkspacePage.BODY_RAW) {
-                        BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) })
+                        BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) },
+                            onOpenHealthExtra = { go(WorkspacePage.HEALTH_EXTRA) })
                     } else if (page == WorkspacePage.TRAINING) {
                         TrainingJournalScreen(onOpenFitness = { go(WorkspacePage.FITNESS) }, onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
                             onOpenSourceWindow = ::openSourceWindow)

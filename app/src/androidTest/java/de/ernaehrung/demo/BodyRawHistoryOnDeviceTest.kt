@@ -14,6 +14,7 @@ import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
 import de.ernaehrung.demo.ui.Forest
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -21,9 +22,8 @@ import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 
-/** Actual default navigation and local calendar windows. Synthetic manual body
- * values only: this does not prove a physical Watch or provider import.
- */
+/** Actual default navigation and local calendar windows for synthetic manual
+ * values and an independently authorized synthetic Health Connect source copy. */
 @RunWith(AndroidJUnit4::class)
 class BodyRawHistoryOnDeviceTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
@@ -52,7 +52,26 @@ class BodyRawHistoryOnDeviceTest {
         val mealsBefore = db.foodDao().activeConsumptionCount()
         val authBefore = db.healthDao().state("com.sec.android.app.shealth")
         val healthBefore = db.healthDao().history("com.sec.android.app.shealth")
+        assertTrue(db.healthExtraDao().latest().isEmpty())
+        val older = today.minusDays(42)
+        val offset = ZoneOffset.ofHours(9)
+        val point = older.atTime(0, 15).toInstant(offset).toEpochMilli()
+        val source = SyntheticExtraSource().apply {
+            response = { query ->
+                val dated = syntheticExtraRecord(query, HealthExtraKind.BODY_FAT).copy(
+                    externalId = "older-body-fat", startAt = point, startOffsetSeconds = offset.totalSeconds,
+                    scalarBits = 9.125.toRawBits())
+                val undated = dated.copy(externalId = "unknown-body-fat-day", startOffsetSeconds = null,
+                    clientRecordId = "synthetic-undated-body-fat", scalarBits = 13.375.toRawBits())
+                HealthExtraSnapshot(query = query, capturedAt = query.requestedAt, records = listOf(dated, undated))
+            }
+        }
         try {
+            store.authorizeHealthExtra("$token-import-authorize",
+                HealthExtraSelection(setOf(HealthExtraKind.BODY_FAT), 90, historyOptIn = true), source, true)
+            store.syncHealthExtra("$token-import-sync", source)
+            store.authorizeHealthExtra("$token-import-stop", null, source, true)
+            val importedBefore = store.watchImportedBodyFat().first()
             val zero = store.saveBodyMeasurement("$token-zero", BodyMeasurementInput(BodyMetric.WEIGHT, "0,000", today.toString(),
                 device = "Synthetische Testwaage", method = BodyMethod.SCALE, conditions = "Morgens"), null, true)
             val originalInput = BodyMeasurementInput(BodyMetric.WEIGHT, "72,10", today.minusDays(1).toString())
@@ -67,6 +86,10 @@ class BodyRawHistoryOnDeviceTest {
             val originals = db.bodyDao().versions()
             val runCount = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM body_measurement_runs").use { it.moveToFirst(); it.getInt(0) }
             tap("workspace_tab_MORE"); tap("workspace_go_BODY_RAW"); waitTag("body_raw_value_$zero")
+            waitTag("body_raw_health_value_unknown-body-fat-day")
+            compose.onNodeWithTag("body_raw_health_value_unknown-body-fat-day").performScrollTo().assertTextEquals("13,375 %")
+            compose.onNodeWithText("Lokale Quellzeit: unbekannt").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("body_raw_health_value_older-body-fat").assertDoesNotExist()
             compose.onNodeWithTag("body_raw_value_$zero").performScrollTo().assertTextContains("0,000 kg", substring = true)
             compose.onNodeWithTag("body_raw_value_$unknown").performScrollTo().assertTextContains("Unbekannt", substring = true)
             compose.onNodeWithTag("body_raw_value_$original").assertDoesNotExist()
@@ -90,6 +113,20 @@ class BodyRawHistoryOnDeviceTest {
             compose.onNodeWithTag("body_raw_value_$excluded").performScrollTo().assertTextContains("9999,9999", substring = true)
             compose.onNodeWithText("Bioimpedanz · Geräteschätzung · Geräteschätzung").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("Messbedingungen: Abends nach Sport").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("body_raw_reference_field").performScrollTo().performTextReplacement("2026-02-30")
+            compose.onNodeWithTag("body_raw_apply_reference").assertIsNotEnabled()
+            compose.onNodeWithTag("body_raw_reference_field").performScrollTo().performTextReplacement(older.toString())
+            finishDeviceTextEditing(compose)
+            tap("body_raw_apply_reference")
+            waitTag("body_raw_health_value_older-body-fat")
+            compose.onNodeWithTag("body_raw_health_value_older-body-fat").performScrollTo().assertTextEquals("9,125 %")
+            compose.onNodeWithTag("body_plot_BODY_FAT_Health Connect_%").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Lokale Quellzeit: ${older}T00:15+09:00").performScrollTo().assertIsDisplayed()
+            compose.activityRule.scenario.recreate()
+            waitTag("body_raw_health_value_older-body-fat")
+            assertEquals(importedBefore, store.watchImportedBodyFat().first()); assertEquals(1, source.reads)
+            tap("body_raw_today")
+            compose.onNodeWithTag("body_raw_health_value_older-body-fat").assertDoesNotExist()
             tap("body_raw_period_DAYS_90"); waitTag("body_raw_value_$corrected")
             compose.onNodeWithTag("body_raw_value_$corrected").performScrollTo().assertTextContains("72,200", substring = true)
             compose.onNodeWithTag("body_raw_value_$outside").assertDoesNotExist()
@@ -104,6 +141,9 @@ class BodyRawHistoryOnDeviceTest {
             assertEquals(mealsBefore, db.foodDao().activeConsumptionCount())
             assertEquals(authBefore, db.healthDao().state("com.sec.android.app.shealth"))
             assertEquals(healthBefore, db.healthDao().history("com.sec.android.app.shealth"))
+            store.purgeHealthExtra("$token-import-cleanup", true)
+            compose.waitUntil(25_000) { compose.onAllNodesWithTag("body_raw_imported").fetchSemanticsNodes().isEmpty() }
+            assertEquals(originals, db.bodyDao().versions())
             tap("body_raw_open_editor"); waitTag("body_save")
             compose.onNodeWithTag("body_confirm").performScrollTo().assertIsOff()
             compose.onNodeWithTag("body_save").assertIsNotEnabled()
@@ -117,6 +157,9 @@ class BodyRawHistoryOnDeviceTest {
         } catch (failure: Throwable) {
             captureDeviceFailureEvidence("body-raw-history")
             throw failure
-        } finally { store.purgeBodyMeasurements("$token-cleanup", true) }
+        } finally {
+            store.purgeHealthExtra("$token-import-cleanup", true)
+            store.purgeBodyMeasurements("$token-cleanup", true)
+        }
     }
 }

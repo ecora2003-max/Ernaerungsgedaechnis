@@ -11,10 +11,11 @@ internal interface HealthExtraDao {
     @Query("SELECT * FROM health_extra_runs") suspend fun runs(): List<HealthExtraRunEntity>
     @Query("SELECT * FROM health_extra_versions") suspend fun versions(): List<HealthExtraVersionEntity>
     @Query("SELECT * FROM health_extra_samples") suspend fun samples(): List<HealthExtraSampleEntity>
-    @Query("""SELECT h.* FROM health_extra_versions h WHERE h.revision=(SELECT MAX(v.revision)
+    @Query("""SELECT h.* FROM health_extra_versions h
+        WHERE (:kind IS NULL OR h.kind=:kind) AND h.revision=(SELECT MAX(v.revision)
         FROM health_extra_versions v WHERE v.sourcePackage=h.sourcePackage AND v.kind=h.kind AND v.externalId=h.externalId)
         ORDER BY h.startAt DESC,h.sourcePackage,h.kind,h.externalId""")
-    suspend fun latest(): List<HealthExtraVersionEntity>
+    suspend fun latest(kind: String? = null): List<HealthExtraVersionEntity>
     @Query("""SELECT s.* FROM health_extra_samples s WHERE s.revision=(SELECT MAX(v.revision)
         FROM health_extra_versions v WHERE v.sourcePackage=s.sourcePackage AND v.kind=s.kind AND v.externalId=s.externalId)
         ORDER BY s.sourcePackage,s.kind,s.externalId,s.position""")
