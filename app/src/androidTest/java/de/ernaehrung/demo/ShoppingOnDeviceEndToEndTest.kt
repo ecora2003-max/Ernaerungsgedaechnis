@@ -206,7 +206,7 @@ class ShoppingOnDeviceEndToEndTest {
             assertTrue(db.foodDao().purchases().isEmpty())
             tap("Bonposition 1 prüfen")
             field("Geprüfte Positionsbezeichnung 1", "Tofu manuell korrigiert")
-            choose("Produktvorschlag der Bonposition 1", version)
+            choose("Produktvorschlag der Bonposition 1", "")
             field("Grund / Herkunft der Bonbestätigung", "Originalbeleg und Zahlung selbst geprüft")
             // A visible save button and a recognized receipt cannot confirm payment.
             tap("Geprüften Bon als bezahlten Einkauf übernehmen")
@@ -221,8 +221,8 @@ class ShoppingOnDeviceEndToEndTest {
             val purchase = db.foodDao().purchases().single()
             val receipt = requireNotNull(db.foodDao().receipt(purchase.receiptId))
             val lines = db.foodDao().receiptLines(receipt.id)
-            val line = lines.single { it.versionId == version }
-            assertEquals("Tofu manuell korrigiert", line.interpretedName)
+            val line = lines.single { it.interpretedName == "Tofu manuell korrigiert" }
+            assertNull(line.versionId)
             assertEquals(497L, receipt.totalCents)
             val purchaseInput = PurchaseInput(receipt.merchant, receipt.purchasedOn, receipt.totalCents,
                 // Replay the original submitted order. Persisted line IDs are
@@ -237,21 +237,9 @@ class ShoppingOnDeviceEndToEndTest {
             tap("Ausgabenzeitraum anzeigen")
             compose.waitUntil(25_000) { model.expenses.value.report?.purchases?.size == 1 }
             val suffix = line.id.take(8)
-            tap("Privaten Bezahlpreis prüfen $suffix")
-            field("Bezahlte Einheiten $suffix", "1")
-            field("Zugeordneter Rabatt in EUR $suffix", "0")
-            tap("Rabattzuordnung vollständig geprüft $suffix")
-            tap("Positionsbetrag ohne Pfand geprüft $suffix")
-            tap("Bezahlte Einheiten geprüft $suffix")
-            tap("Lebensmittel und Produktversion geprüft $suffix")
-            field("Grund der privaten Preisbestätigung $suffix", "Eine geprüfte Kaufeinheit ohne Pfand")
-            tap("Privaten historischen Preis ausdrücklich bestätigen $suffix")
-            tap("Privaten Bezahlpreis speichern $suffix")
-            saved(model)
-            assertEquals(199L, db.foodDao().allPaidPrices().single().unitPriceCents)
-            assertEquals(2, db.foodDao().prices().size) // No conversion of receipt history into an offer.
-            tap("Neuen Vorgang beginnen")
+            compose.onNodeWithText("Privaten Bezahlpreis prüfen $suffix").assertDoesNotExist()
             tap("Position ins Lager buchen $suffix")
+            choose("Kauf-Produktversion $suffix", version)
             choose("Kauf-Lagerort $suffix", location)
             field("Nutzbarer Zugang in g $suffix", "200")
             field("Mengenbasis der Position $suffix", "200 g nutzbares Nettogewicht")
@@ -265,6 +253,22 @@ class ShoppingOnDeviceEndToEndTest {
             val stock = requireNotNull(db.foodDao().receiptBooking(line.id))
             val batch = db.foodDao().planningBatches().single().batch
             assertEquals(200_000L, db.foodDao().balance(batch.id))
+            assertTrue(db.foodDao().allPaidPrices().isEmpty())
+            tap("Neuen Vorgang beginnen")
+            tap("Privaten Bezahlpreis prüfen $suffix")
+            compose.onNodeWithText("Produktzuordnung aus dem bestätigten Lagerzugang").assertExists()
+            field("Bezahlte Einheiten $suffix", "1")
+            field("Zugeordneter Rabatt in EUR $suffix", "0")
+            tap("Rabattzuordnung vollständig geprüft $suffix")
+            tap("Positionsbetrag ohne Pfand geprüft $suffix")
+            tap("Bezahlte Einheiten geprüft $suffix")
+            tap("Lebensmittel und Produktversion geprüft $suffix")
+            field("Grund der privaten Preisbestätigung $suffix", "Eine geprüfte Kaufeinheit ohne Pfand")
+            tap("Privaten historischen Preis ausdrücklich bestätigen $suffix")
+            tap("Privaten Bezahlpreis speichern $suffix")
+            saved(model)
+            assertEquals(199L, db.foodDao().allPaidPrices().single().unitPriceCents)
+            assertEquals(2, db.foodDao().prices().size) // No conversion of receipt history into an offer.
             tap("Neuen Vorgang beginnen")
             tap("Ausgaben vollständig abgleichen / wieder öffnen")
             tap("Alle Ausgaben im angezeigten Zeitraum vollständig erfasst und geprüft")
@@ -322,6 +326,8 @@ class ShoppingOnDeviceEndToEndTest {
             assertTrue(runCatching { store.cancelPurchase("cancel-too-early",
                 ReversalInput(purchase.operationId, day, "Testkorrektur"), true) }.isFailure)
             store.reverse("reverse-device-stock", ReversalInput(stock.operationId, day, "Testkorrektur"), true)
+            assertTrue(store.activeHistoricalPaidPrices().isEmpty())
+            assertEquals(1, db.foodDao().purchases().size)
             store.cancelPurchase("cancel-device-purchase", ReversalInput(purchase.operationId, day, "Testkorrektur"), true)
             assertEquals(0L, db.foodDao().balance(batch.id))
             assertEquals(1, db.foodDao().allPaidPrices().size) // Historical record preserved.

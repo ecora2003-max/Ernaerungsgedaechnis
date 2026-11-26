@@ -35,8 +35,8 @@ for file in files:
 print(f"JUNIT_XML: files={len(files)} tests={counts['tests']} "
       f"failures={counts['failures']} errors={counts['errors']} "
       f"skipped={counts['skipped']} migrations={migration_tests}")
-if counts["tests"] < 980:
-    raise SystemExit("FAIL: unexpected regression in host JVM test count (<980)")
+if counts["tests"] < 981:
+    raise SystemExit("FAIL: unexpected regression in host JVM test count (<981)")
 if migration_tests < 19:
     raise SystemExit("FAIL: missing synthetic 1..19 -> Room 20 migration tests")
 if any(counts[key] for key in ("failures", "errors", "skipped")):

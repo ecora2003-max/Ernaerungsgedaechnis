@@ -52,9 +52,16 @@ internal class PaidReceiptPriceReader(private val db: FoodDatabase) {
         if (line.receiptId != event.receiptId) return@withTransaction rejected("INVALID_LINE_IDENTITY")
         if (dao.reversal(event.operationId) != null) return@withTransaction rejected("REVERSED_PURCHASE_OR_LINE")
         if (!input.foodAndProductConfirmed) return@withTransaction rejected("UNCONFIRMED_PURCHASE_OR_LINE")
-        if (line.versionId == null || line.versionId != input.expectedProductVersionId)
+        val versionId = line.versionId ?: run {
+            val booking = dao.receiptBooking(line.id) ?: return@withTransaction rejected("PRODUCT_VERSION_MISMATCH")
+            if (dao.reversal(booking.operationId) != null) return@withTransaction rejected("REVERSED_PURCHASE_OR_LINE")
+            val stockOperation = dao.operation(booking.operationId)?.takeIf { it.kind == "RECEIPT" }
+            val batch = stockOperation?.resultId?.let { dao.batch(it) }
+            batch?.takeIf { it.originOperationId == booking.operationId }?.versionId
+        }
+        if (versionId == null || versionId != input.expectedProductVersionId)
             return@withTransaction rejected("PRODUCT_VERSION_MISMATCH")
-        val version = dao.version(line.versionId) ?: return@withTransaction rejected("PRODUCT_VERSION_MISSING")
+        val version = dao.version(versionId) ?: return@withTransaction rejected("PRODUCT_VERSION_MISSING")
         if (input.allocatedDiscountCents == null) return@withTransaction rejected("DISCOUNT_ACCOUNTING_UNKNOWN")
         if (receipt.totalCents == null) return@withTransaction rejected("UNKNOWN_PAID_RECEIPT_TOTAL")
         // Explicit FOOD confirmation cannot turn obviously nonfood, discount, deposit or return evidence into merchandise.

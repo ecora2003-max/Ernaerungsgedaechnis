@@ -69,11 +69,17 @@ internal object HistoricalPaidComparisonKernel {
 internal class HistoricalPaidComparisonReader(private val db: FoodDatabase) {
     private val dao = db.foodDao()
     suspend fun compare(scope: HistoricalPaidComparisonScope): HistoricalPaidComparison = db.withTransaction {
-        val evidence = dao.allPaidPrices().map { row ->
-            val reversal = dao.reversal(row.purchaseOperationId)
-            val reversedAt = reversal?.let { dao.operation(it.reversalOperationId)?.recordedAt ?: Long.MIN_VALUE }
+        val evidence = dao.allPaidPrices().mapNotNull { row ->
+            val line = dao.receiptLine(row.receiptLineId) ?: return@mapNotNull null
+            val stockProof = if (line.versionId == null) {
+                val entry = dao.receiptBooking(line.id) ?: return@mapNotNull null
+                dao.operation(entry.operationId) ?: return@mapNotNull null
+            } else null
+            val reversedAt = listOfNotNull(row.purchaseOperationId, stockProof?.id).mapNotNull { operation ->
+                dao.reversal(operation)?.let { dao.operation(it.reversalOperationId)?.recordedAt ?: Long.MIN_VALUE }
+            }.minOrNull()
             HistoricalPaidEvidence(row.id, row.receiptLineId, row.versionId, row.purchasedOn,
-                row.unitPriceCents, row.purchaseUnits, row.recordedAt, reversedAt)
+                row.unitPriceCents, row.purchaseUnits, maxOf(row.recordedAt, stockProof?.recordedAt ?: 0L), reversedAt)
         }
         HistoricalPaidComparisonKernel.project(scope, evidence)
     }
