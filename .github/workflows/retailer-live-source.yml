@@ -112,7 +112,6 @@ jobs:
               'kaufland-de5220-public':('KAUFLAND','filiale.kaufland.de','DE5220',False),
               'lidl-de7434-plus-offers':('LIDL','offers.lidlplus.com','DE7434',False),
               'rewe-1356345-product-search':('REWE','www.rewe.de','1356345',True),
-              'rewe-national-top-offers':('REWE','www.rewe.de',None,False),
               'edeka-jakobi-worms-highlights':('EDEKA','www.edeka-jakobi.de','JAKOBI-WORMS',False),
               'netto-1787-store-offers':('NETTO_MD','www.netto-online.de','1787',False),
           }

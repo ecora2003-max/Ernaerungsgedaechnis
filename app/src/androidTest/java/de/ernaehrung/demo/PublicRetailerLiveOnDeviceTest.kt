@@ -49,9 +49,6 @@ class PublicRetailerLiveOnDeviceTest {
     @Test fun publicReweSearchShowsCurrentAndRegularPricesForTheChosenMarket(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.REWE, expectedStore = "1356345", searchTerm = "Haferflocken")
     }
-    @Test fun publicReweNationalOffersStaySeparateFromTheTargetedBranchSearch(): Unit = runBlocking {
-        publicChainLiveFlow(compose, LiveRetailer.REWE, expectedStore = null)
-    }
     @Test fun publicLidlAppPricesStaySeparateInTheConfirmedMarket(): Unit = runBlocking {
         publicChainLiveFlow(compose, LiveRetailer.LIDL, expectedStore = "DE7434")
     }

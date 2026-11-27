@@ -156,31 +156,6 @@
       }
     },
     {
-      "id": "rewe-national-top-offers",
-      "revision": 1,
-      "label": "REWE · Nationale Top-Angebote",
-      "retailer": "REWE",
-      "storeId": null,
-      "regionId": null,
-      "format": "REWE_NATIONAL_HTML",
-      "sourceId": "rewe-national-top-offers",
-      "endpoint": "https://www.rewe.de/angebote/nationale-angebote/topangebote/",
-      "availabilityEndpoint": null,
-      "weekStartsOn": null,
-      "approval": {
-        "sourceEvidence": "https://www.rewe.de/angebote/nationale-angebote/topangebote/",
-        "scopeEvidence": "https://www.rewe.de/angebote/nationale-angebote/",
-        "reviewedAt": "2026-11-27T03:22:00Z",
-        "from": "2026-11-27",
-        "until": "2027-02-25",
-        "allowedHosts": [
-          "www.rewe.de"
-        ],
-        "cachePermitted": false,
-        "minimumRefreshSeconds": 900
-      }
-    },
-    {
       "id": "kaufland-de5220-public",
       "revision": 1,
       "label": "Kaufland Konstanz-Petershausen · Zähringerplatz 7, 78464 Konstanz",

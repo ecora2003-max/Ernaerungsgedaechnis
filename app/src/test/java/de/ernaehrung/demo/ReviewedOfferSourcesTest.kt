@@ -122,28 +122,25 @@ class ReviewedOfferSourcesTest {
         assertEquals(0, bundled.invalidProfiles)
         assertEquals(setOf("penny-4030085-top-angebote", "aldi-nord-public-week", "aldi-sued-public-offers",
             "aldi-sued-bl16-product-search", "lidl-de7434-plus-offers", "rewe-1356345-product-search",
-            "rewe-national-top-offers", "kaufland-de5220-public", "edeka-jakobi-worms-highlights", "netto-1787-store-offers"),
+            "kaufland-de5220-public", "edeka-jakobi-worms-highlights", "netto-1787-store-offers"),
             bundled.profiles.map { it.id }.toSet())
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
         assertTrue(penny.grant(penny.scope(LocalDate.parse("2026-11-17"))).evidenceRef.startsWith("PUBLIC_SOURCE "))
         val national = bundled.profiles.filter { it.storeId == null }
-        assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED, LiveRetailer.REWE), national.map { it.retailer }.toSet())
+        assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED), national.map { it.retailer }.toSet())
         assertTrue(national.all { it.storeId == null && it.regionId == null && !it.grant(it.scope(LocalDate.parse("2026-11-17"))).cachePermitted })
         assertEquals("DE5220", bundled.profiles.single { it.retailer == LiveRetailer.KAUFLAND }.storeId)
-        val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE && it.interactiveSearch }
+        val nationalDay = LocalDate.parse("2026-11-27")
+        val nationalSnapshot = Instant.parse("2026-11-27T08:00:00Z")
+        val nationalScope = LiveOfferScope(LiveRetailer.REWE, null, null, null, nationalDay)
+        assertNull(bundled.profile(nationalScope, nationalSnapshot))
+        assertNull(bundled.runtime(OfferHttp { error("Unconfigured national source") },
+            MemoryOfferRefreshJournal()) { nationalSnapshot }.policy(nationalScope))
+        val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE }
         assertEquals("1356345", rewe.storeId); assertTrue(rewe.interactiveSearch)
         assertEquals(PublishedOfferHttpSource.Format.REWE_STATIONARY, rewe.format)
-        val reweNational = national.single { it.retailer == LiveRetailer.REWE }
-        val nationalObservedAt = Instant.parse("2026-11-27T08:00:00Z")
-        val nationalDay = LocalDate.parse("2026-11-27")
-        assertFalse(reweNational.interactiveSearch)
-        assertEquals(ReweMarketOfferDecoder.NATIONAL_ENDPOINT, reweNational.endpoint.toString())
-        assertTrue(reweNational.supportsDay(nationalDay, nationalObservedAt))
-        assertFalse(reweNational.supportsDay(nationalDay.plusDays(3), nationalObservedAt))
-        assertEquals(RetailerPolicy.Capability.PUBLISHED_OFFER_COLLECTION,
-            reweNational.grant(reweNational.scope(nationalDay)).capability)
         val south = bundled.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
         assertEquals("BL16", south.storeId)
         assertEquals(PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN, south.format)
