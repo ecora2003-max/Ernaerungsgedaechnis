@@ -16,7 +16,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     private val now: () -> Instant = Instant::now) : AuthorizedOfferSource {
     enum class Format { LIDL_STORE_V4, EDEKA_MARKET, PENNY_REGION, ALDI_NORD_NEXT_DATA, ALDI_NORD_CURRENT_DATA, KAUFLAND_STORE,
         REWE_STATIONARY, ALDI_SUED_WALK_IN, NETTO_BRANCH_HTML, PENNY_STORE_WEEK, ALDI_SUED_NUXT_PUBLIC, REWE_MARKET_HTML,
-        KAUFLAND_MARKET_HTML, LIDL_PLUS_MARKET, EDEKA_JAKOBI_HIGHLIGHTS, NETTO_STORE_HTML }
+        KAUFLAND_MARKET_HTML, LIDL_PLUS_MARKET, EDEKA_JAKOBI_HIGHLIGHTS, NETTO_STORE_HTML, REWE_NATIONAL_HTML }
     private val aldiNord get() = format == Format.ALDI_NORD_NEXT_DATA || format == Format.ALDI_NORD_CURRENT_DATA
     override val maximumOffers get() = when {
         aldiNord -> 512
@@ -38,7 +38,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             Format.PENNY_REGION -> LiveRetailer.PENNY
             Format.ALDI_NORD_NEXT_DATA, Format.ALDI_NORD_CURRENT_DATA -> LiveRetailer.ALDI_NORD
             Format.KAUFLAND_STORE, Format.KAUFLAND_MARKET_HTML -> LiveRetailer.KAUFLAND
-            Format.REWE_STATIONARY, Format.REWE_MARKET_HTML -> LiveRetailer.REWE
+            Format.REWE_STATIONARY, Format.REWE_MARKET_HTML, Format.REWE_NATIONAL_HTML -> LiveRetailer.REWE
             Format.ALDI_SUED_WALK_IN, Format.ALDI_SUED_NUXT_PUBLIC -> LiveRetailer.ALDI_SUED
             Format.NETTO_BRANCH_HTML, Format.NETTO_STORE_HTML -> LiveRetailer.NETTO_MD
             Format.PENNY_STORE_WEEK -> LiveRetailer.PENNY
@@ -64,6 +64,8 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             require(exactScope.regionId == null)
             ReweMarketOfferDecoder.requireEndpoint(endpoint, requireNotNull(exactScope.storeId))
         }
+        if (format == Format.REWE_NATIONAL_HTML) require(endpoint.toString() == ReweMarketOfferDecoder.NATIONAL_ENDPOINT &&
+            exactScope.storeId == null && exactScope.regionId == null)
     }
 
     /** Exactly one bounded, explicitly configured search. No private shopping
@@ -97,7 +99,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
     override suspend fun fetch(scope: LiveOfferScope): LiveOfferBatch {
         require(scope == exactScope)
         val html = format in setOf(Format.NETTO_BRANCH_HTML, Format.NETTO_STORE_HTML,
-            Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML)
+            Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML, Format.REWE_NATIONAL_HTML)
         val embedded = aldiNord || format == Format.KAUFLAND_STORE
         val reply = http.execute(OfferHttpRequest(endpoint,
             headers = when { html -> mapOf("Accept" to "text/html")
@@ -105,7 +107,7 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
                 else -> mapOf("Accept" to "application/json") } + mapOf("User-Agent" to PUBLIC_OFFER_AGENT),
             maximumResponseBytes = when {
                 aldiNord -> ALDI_NORD_HTML_LIMIT
-                format in setOf(Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML) -> 2_097_152
+                format in setOf(Format.ALDI_SUED_NUXT_PUBLIC, Format.REWE_MARKET_HTML, Format.REWE_NATIONAL_HTML) -> 2_097_152
                 else -> 1_048_576
             })); reply.requireSuccess()
         val media = reply.headers["content-type"]?.substringBefore(';')?.trim()?.lowercase()
@@ -151,6 +153,9 @@ internal class PublishedOfferHttpSource(override val endpoint: URI, private val 
             }
             Format.REWE_MARKET_HTML -> withContext(Dispatchers.Default) {
                 ReweMarketOfferDecoder.decode(reply.text, sourceId, scope, endpoint, at)
+            }
+            Format.REWE_NATIONAL_HTML -> withContext(Dispatchers.Default) {
+                ReweMarketOfferDecoder.decodeNational(reply.text, sourceId, scope, endpoint, at)
             }
             Format.KAUFLAND_STORE -> {
                 val array = de.ernaehrung.demo.data.integration.RecipeDraftBoundedJson.decode("{\"rows\":${requireNotNull(availabilityText)}}",

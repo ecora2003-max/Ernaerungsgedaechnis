@@ -184,6 +184,16 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
                     requireNotNull(row.priceDetails?.unitPriceDisplay), substring = true)
             }
         }
+        if (retailer == LiveRetailer.REWE && searchTerm == null) {
+            assertTrue(batch.offers.all { it.storeEvidence == null && !it.isComparisonCandidate(batch.scope) &&
+                it.validFrom == null && it.validUntil == null && it.priceDetails?.regularCents == null })
+            assertTrue(batch.offers.all { it.sourceUrl == ReweMarketOfferDecoder.NATIONAL_ENDPOINT })
+            val first = batch.offers.first { it.merchandiseCents != null }
+            compose.onNodeWithTag("live_review_${first.sourceProductId}").assertIsNotEnabled()
+            compose.onNodeWithTag("live_load_comparison").assertDoesNotExist()
+            tap("live_automatic_toggle"); ready()
+            assertTrue(model.state.value.automatic)
+        }
         if (retailer in setOf(LiveRetailer.EDEKA, LiveRetailer.NETTO_MD)) {
             assertTrue(batch.offers.all { it.applicable(batch.scope) && !it.conditionsConfirmed && it.quantityMilli == null })
             if (retailer == LiveRetailer.EDEKA) assertTrue(batch.offers.all { it.sourceProductId == null && it.gtin == null })
