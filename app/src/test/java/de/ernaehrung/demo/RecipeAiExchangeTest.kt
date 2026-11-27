@@ -126,6 +126,19 @@ class RecipeAiExchangeTest {
         reject { RecipeDraftManualReview.prepare(checked, emptyList(), emptyMap(), emptySet(), true, now.toInstant().toEpochMilli()) }
     }
 
+    @Test fun outgoingRecipeRequestAndContextUseTheSameTimeBoundaryAsAnImportedDraft() {
+        val flags = Gate.Flags(true, false, false)
+        val value = input(flags).copy(context = context(flags))
+        val issued = now.plusHours(1)
+        val prepared = RecipeAiExchange.prepare(value, "ai-synthetic-timing", issued)
+        val lastValidContext = now.plusDays(1)
+        RecipeAiExchange.requireSendable(prepared, prepared.inputBinding, lastValidContext)
+        RecipeAiExchange.inspectResponse(prepared, prepared.inputBinding, response(prepared), lastValidContext)
+        reject { RecipeAiExchange.requireSendable(prepared, prepared.inputBinding, lastValidContext.plusNanos(1)) }
+        reject { RecipeAiExchange.requireSendable(prepared, "different-request", issued) }
+        reject { RecipeAiExchange.prepare(value, "ai-synthetic-stale-context", now.plusDays(2)) }
+    }
+
     @Test fun preferenceBindingPreservesNullVersusZeroAndInvalidatesChangedWishPortionsAndSelection() {
         val original = input()
         val key = RecipeAiExchange.inputBinding(original)

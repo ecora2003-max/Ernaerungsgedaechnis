@@ -81,12 +81,20 @@ internal object RecipeDraftV1Import {
                 throw IllegalArgumentException(name + " must be an offset date-time")
             }
     }
-    private fun withinWindow(value: OffsetDateTime, now: Instant, name: String) {
-        require(!value.toInstant().isAfter(now.plusSeconds(300))) {
+    private fun withinWindow(value: Instant, now: Instant, name: String) {
+        require(!value.isAfter(now.plusSeconds(300))) {
             name + " is in the future"
         }
-        require(!value.toInstant().isBefore(now.minusSeconds(86_400))) {
+        require(!value.isBefore(now.minusSeconds(86_400))) {
             name + " is stale"
+        }
+    }
+
+    internal fun requireDraftTimes(created: Instant, snapshot: Instant?, now: Instant) {
+        withinWindow(created, now, "meta.createdAt")
+        if (snapshot != null) {
+            withinWindow(snapshot, now, "meta.inputsSnapshotAt")
+            require(!snapshot.isAfter(created)) { "snapshot is newer than draft" }
         }
     }
     /**
@@ -150,13 +158,7 @@ internal object RecipeDraftV1Import {
             else date(meta["inputsSnapshotAt"], "meta.inputsSnapshotAt")
         if (meta.containsKey("coverageNote"))
             optionalStr(meta["coverageNote"], "meta.coverageNote")
-        withinWindow(created, now.toInstant(), "meta.createdAt")
-        if (snapshot != null) {
-            withinWindow(snapshot, now.toInstant(), "meta.inputsSnapshotAt")
-            require(!snapshot.toInstant().isAfter(created.toInstant())) {
-                "snapshot is newer than draft"
-            }
-        }
+        requireDraftTimes(created.toInstant(), snapshot?.toInstant(), now.toInstant())
 
         val p = obj(message["payload"], "payload")
         rejectUntrustedBookingClaims(p)
