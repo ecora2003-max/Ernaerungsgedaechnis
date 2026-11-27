@@ -274,7 +274,7 @@ internal fun LiveOffersScreen(providedModel: LiveOffersViewModel? = null, onOpen
                         detail.brand?.let { Text("Markenangabe der Quelle: $it") }
                         Text("Normalpreisangabe der Quelle: ${cents(detail.regularCents)}",
                             Modifier.testTag("live_regular_$rowTag"))
-                        detail.previousDisplay?.let { Text("Frühere Preisangabe als Originaltext: $it · Betrag und Gültigkeit nicht unabhängig bestätigt",
+                        detail.previousDisplay?.let { Text("Vergleichsangabe der Quelle: $it",
                             Modifier.testTag("live_previous_$rowTag")) }
                         detail.appCents?.let { Text("Bedingter Apppreis der Quelle: ${cents(it)} · getrennt vom allgemeinen Warenpreis",
                             Modifier.testTag("live_app_price_$rowTag")) }

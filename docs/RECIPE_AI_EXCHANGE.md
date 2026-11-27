@@ -1,6 +1,17 @@
-# Freie Rezeptwünsche mit einer KI bearbeiten
+# Rezept mit Gemini oder einer anderen KI entwerfen
 
-Der vereinbarte Weg aus Produktplan §21 ist ein bewusster JSON-Austausch. Die App benötigt dafür keinen API-Schlüssel und kein Pflichtabo. Die gewählte KI-App kann eigene Zugangsbedingungen haben. Ohne Teilen gibt es keine Übertragung und keine Modellanfrage. Der lokale Offline-Generator bleibt unabhängig davon verfügbar; seine festen Kombinationen sind kein Sprachmodell.
+Unter **Mehr → Rezepte & Küche → Rezeptvorschläge und JSON-Import → Rezept mit ChatGPT oder anderer KI entwerfen** kannst du direkt mit Gemini arbeiten oder eine vorbereitete Anfrage mit einer anderen KI-App teilen. Der Offline-Generator ist im selben Rezeptbereich verfügbar.
+
+## Direkt mit Gemini
+
+1. Gib deinen Rezeptwunsch ein und wähle unter **Direktes Rezeptmodell** eine Variante. Für **Nano 3** führt **Gewählte lokale Modellvariante prüfen** zur AICore-Statusprüfung. Google führt das Pixel 9 Pro XL unter Nano 3. Die App zeigt den tatsächlich gemeldeten Modellnamen an, sobald AICore bereit ist. [Google-Geräteliste](https://developers.google.com/ml-kit/genai/#custom_generation_and_agent_device_support)
+2. **Nano 4 Fast** benötigt ein Gerät mit dieser Modellvariante und Zugriff auf die AICore-Vorschau. Die App prüft die gewählte Variante. Wenn ein Systemdownload angeboten wird, braucht er eine eigene Bestätigung. [AICore Developer Preview](https://developers.google.com/ml-kit/genai/aicore-dev-preview)
+3. Für **Gemini Cloud API** einen eigenen Schlüssel in der App privat speichern, die offizielle Modellliste prüfen und ein Modell auswählen. Cloud-Anfragen können je nach Google-Tarif Kosten verursachen. Die App verlangt nach der Vorschau für jede einzelne Anfrage eine ausdrückliche Freigabe. [Gemini API](https://ai.google.dev/gemini-api/docs/api-key)
+4. Verwende **KI-Anfrage lokal vorbereiten**, lies die angezeigte Anfrage und tippe auf **Mit ausgewähltem Modell direkt generieren**. Prüfe danach jede Zutat im Entwurf. Speichern, Herstellen und Verzehr sind jeweils eigene Bestätigungen.
+
+Die physische Abnahme erfordert für beide Nano-Varianten je eine echte Rezeptantwort mit gemeldetem Modellnamen und separat belegter Netzfreiheit während der Inferenz. Für Cloud braucht sie eine echte, einzeln freigegebene API-Antwort. Die bisherigen Android-Tests prüfen den Standard-UI-Pfad, tatsächliche SDK-Verfügbarkeit auf dem Emulator, lokalen Schlüsselschutz und Cloud-Zustimmung mit synthetischem Transport. [Originaler API-26-Gerätetest](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/45865750640/artifacts/15140259893)
+
+## Mit einer anderen KI-App teilen
 
 1. **Mehr → Rezepte & Küche → Rezeptvorschläge und JSON-Import** öffnen. Portionen, Ausschlüsse und bei Bedarf Rezeptvorgaben einstellen.
 2. Optional den eigenen lokalen Bestand/Einkaufsbedarf auswählen und **Aktuellen lokalen Kontext prüfen** drücken. Angebote sind für den KI-Export gesperrt: eine Anzeigefreigabe ist keine Weitergabefreigabe.
@@ -17,4 +28,4 @@ Antworten müssen zum aktuellen Anfragebezug gehören und den gepinnten `recipe.
 
 Automatisierte Tests verwenden einen klar benannten synthetischen Android-Empfänger und eine synthetische Antwortdatei. Das belegt den tatsächlichen Systemaustausch und die Sicherheitsgrenzen; es ist kein Nachweis einer echten Modellantwort oder einer vollständig abgenommenen Rezept-KI.
 
-Der zusätzliche zusammenhängende Android-Fall `RecipeAiLifecycleOnDeviceTest` führt die Standard-App vom tatsächlichen System-Chooser über eine synthetische Antwort und unabhängige Artikel-/Basis-/RAW-Prüfung zur tatsächlichen Geräte-PIN/Android-Keystore-Bestätigung, Rezeptpersistenz, bestätigten Herstellung und separat bestätigtem Verzehr. Er prüft Operationszähler, tatsächliche Entnahmen/Ausbeute, einzelne Verzehrnährwerte, Neustart, eine unabhängige SQLite-Verbindung und fehlendes Standardnetz. Die Kompilierung besteht; die tatsächliche 33. Geräteausführung ist noch offen. Das ergänzt die getrennten Belege und ersetzt keinen realen Modell- oder physischen Watch-Nachweis.
+Der Gerätefall `RecipeAiLifecycleOnDeviceTest` ist auf API 26 tatsächlich ausgeführt worden. Er prüft das Teilen über die Android-App-Auswahl, den Import einer synthetischen Antwort, die Artikel- und Mengenprüfung, die Geräte-PIN, die gespeicherte Rezeptversion, die bestätigte Herstellung und den getrennt bestätigten Verzehr. Neustart, fehlendes Standardnetz und Schutz vor doppelten Buchungen sind Teil der Prüfung. [Originaler Gerätetest](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/45865750640/artifacts/15140259893)

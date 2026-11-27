@@ -97,4 +97,41 @@ class HistoricalPaidComparisonTest {
         assertTrue(dao.allPaidPrices().isEmpty())
         assertTrue(dao.prices().isEmpty())
     }
+
+    @Test fun lateConfirmedStockAssignmentCanSupportASeparatePrivatePriceUntilItIsReversed() = runBlocking {
+        val boughtOn = "2026-10-30"
+        val first = at(firstTime)
+        val product = first.rememberProduct("late-product", ProductInput("Tofu"))
+        val other = first.rememberProduct("other-product", ProductInput("Bohnen"))
+        val location = first.addLocation("cellar", "Testlager", true)
+        val receipt = first.savePurchase("late-purchase", PurchaseInput("Testmarkt", boughtOn, 398L,
+            listOf(PurchaseLineInput("TOFU 2x", "Tofu", totalCents = 398L)), "Bestätigte Zahlung"), true)
+        val line = dao.receiptLines(receipt).single()
+        val basis = PaidPriceBasisReview("late-purchase", line.id, product, 2L, 0L, null,
+            discountReconciled = true, amountExcludesDeposit = true, unitsConfirmed = true,
+            foodAndProductConfirmed = true, basisReason = "Beleg und zwei Gebinde geprüft")
+        assertFalse(first.previewHistoricalPaidPrice(basis).eligible)
+        val later = at(secondTime)
+        val batch = later.bookPurchaseLine("late-stock", PurchaseStockInput(line.id,
+            BatchInput(product, location, 400_000L, boughtOn), true, "400 g nutzbar", "Artikel geklärt"), true)
+        assertTrue(later.activeHistoricalPaidPrices().isEmpty())
+        assertFalse(later.previewHistoricalPaidPrice(basis.copy(expectedProductVersionId = other)).eligible)
+        assertNull(dao.receiptLine(line.id)?.versionId)
+        val id = later.saveHistoricalPaidPrice("late-price", basis, true)
+        assertEquals(id, later.saveHistoricalPaidPrice("late-price", basis, true))
+        assertEquals(199L, later.activeHistoricalPaidPrices().single().unitPriceCents)
+        assertEquals(400_000L, dao.balance(batch))
+        val scope = HistoricalPaidComparisonScope(product, "2026-10-31", millis(secondTime))
+        assertTrue(later.historicalPaidComparison(scope.copy(knownAtMillis = millis(firstTime))).references.isEmpty())
+        assertEquals(id, later.historicalPaidComparison(scope).references.single().observationId)
+
+        val corrected = at(reversalTime)
+        corrected.reverse("late-reversal", ReversalInput("late-stock", "2026-11-01", "Artikel falsch zugeordnet"), true)
+        assertEquals("REVERSED_PURCHASE_OR_LINE", corrected.previewHistoricalPaidPrice(basis).rejectionReason)
+        assertTrue(corrected.activeHistoricalPaidPrices().isEmpty())
+        assertEquals(id, corrected.historicalPaidPriceAudit().single().id)
+        assertEquals(id, corrected.historicalPaidComparison(scope).references.single().observationId)
+        assertTrue(corrected.historicalPaidComparison(scope.copy(knownAtMillis = millis(reversalTime))).references.isEmpty())
+        assertNull(dao.reversal("late-purchase")); assertTrue(dao.prices().isEmpty())
+    }
 }

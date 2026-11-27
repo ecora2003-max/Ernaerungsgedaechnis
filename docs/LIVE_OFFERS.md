@@ -1,6 +1,6 @@
 # Angebote und Preisvergleich – P0-Anschluss
 
-**Stand 19.11.2026.** Die App hat sieben geprüfte Liveprofile für sechs Händler. In [PR #310](https://github.com/ecora2003-max/Ernaerungsgedaechnis/pull/310) kamen die Produktsuche für ALDI Süd BL16 und datierte Lidl-Plus-Angebote für DE7434 hinzu. Der echte Android-Abruf hat für beide Filialen bestanden. Der Warenpreisvergleich verwendet bestätigte Warenpreise und Gebinde. [Test- und Quellenstand](STATUS.md).
+**Stand 26.11.2026.** Der Android-Livelauf hat acht Quellenprofile bei sieben Händlern erfolgreich erreicht, darunter EDEKA Jakobi in Worms. Zwei Profile gehören zu ALDI Süd. Netto Weimar antwortete mit HTTP 403. Der Warenpreisvergleich verwendet bestätigte Warenpreise und Gebinde. [Android-Livelauf](https://github.com/ecora2003-max/Ernaerungsgedaechnis/actions/runs/45865750651) · [Test- und Quellenstand](STATUS.md)
 
 **17.11.2026 – erste reale Quelle konfiguriert:** PENNY-Markt4030085, Winterfeldtstr.74/10781 Berlin, öffentlich beobachtete aktuelle Verkaufsregion15A-01-56 und zehn Top-Angebote der KW47. Der neue `PENNY_STORE_WEEK`-Leser prüft vor jedem Abruf die aktuelle kanonische Markt→Region-Zuordnung; eine nächste Woche nur mit deren eigenem veröffentlichten Feld. Keine stillschweigende Annahme, dass diese Filiale der persönliche Markt des Nutzers sei: ausdrückliche Filial-/Datumsauswahl vor Abruf. Der echte Android-Liveabruf für diesen Markt und der gerätegebundene Artikel- und Bedarfsablauf wurden mit PR #306 abgenommen. [Aktueller Test-/Merge-/Quellenstand](STATUS.md).
 
@@ -50,13 +50,17 @@ Die vorhandene abgeschlossene Quellenbewertung [EG-Preisdaten@5c52bf7/SOURCES](h
 
 Nur ein **unabhängiger Host-Nachweis** darf einen bestimmten Quellen-/Capability-/HTTPS-Endpoint-/Filial- oder Liefergebiets-/Zeitraumkontext aktivieren. UI-Kennungen, Lieferantenfelder, OAuth und erfolgreiche HTTP-Antworten erfüllen diesen Nachweis nicht. Mehrere benötigte Endpoints werden alle vor dem ersten Abruf geprüft. Fehlende Quelle startet keinen Netzabruf. Keine Bulk-Katalogspiegelung.
 
+## Veröffentlichte Preisangaben bei ALDI Nord
+
+ALDI Nord liefert für veröffentlichte Karten zusätzlich Marken, Grundpreisangaben, Pfand und durchgestrichene Vergleichsangaben. Die Oberfläche zeigt diese Felder getrennt. Ein ausdrücklich ausgewiesenes Pfand von null und ein unbekannter Betrag sind unterscheidbar. Ein veröffentlichter UVP bleibt eine Vergleichsangabe. Der Beleg zur Angebotswoche gilt auf Kettenebene. [ALDI Nord Wochenangebote](https://www.aldi-nord.de/angebote.html)
+
 ## Lidl-Filialangebote
 
 Vor dem Preisabruf prüft die App die kanonische Filialseite und die dort im Filialfeedback-Link veröffentlichte Nummer. Die App ruft ausschließlich die Filialseite und die passende öffentliche JSON-Angebotsquelle ab. Gültigkeitsdaten bestimmen die Auswahl für den Einkaufstag. Veröffentlichte Apppreise und Original-Grundpreisangaben behalten ihre Quelle und die ungeprüften Einlösebedingungen. Apppreise gelangen weder in Bedarfsberechnungen noch in den allgemeinen Warenpreisvergleich. Die Daten bleiben auf der Angebotsseite und können nach dem profilgebundenen Mindestabstand erneut gelesen werden.
 
 ## Netto Weimar und EDEKA Jakobi Worms
 
-Bei Netto müssen die kanonische URL, die Filialnummer und die Anschrift im strukturierten Markteintrag zusammenpassen. Das Datum der Themengruppe entscheidet über die Gültigkeit. Die App liest die Artikelnummer aus dem bereits gelieferten HTML und sendet ausschließlich den GET an die Filialseite. Pfand und Apppreise behalten ihre getrennten Felder. [Filialseite](https://www.netto-online.de/filialen/weimar/marcel-paul-str-63/1787) · [Abrufregeln](https://www.netto-online.de/robots.txt)
+Bei Netto müssen die kanonische URL, die Filialnummer und die Anschrift im strukturierten Markteintrag zusammenpassen. Das Datum der Themengruppe entscheidet über die Gültigkeit. Die App liest die Artikelnummer aus dem bereits gelieferten HTML und sendet ausschließlich den GET an die Filialseite. Pfand und Apppreise behalten ihre getrennten Felder. Das separat veröffentlichte Sonderprospekt zur Preissenkung vom 26.11. ist eine datierte Ausgabe. Daraus ergibt sich kein fortlaufender Feed mit bestätigtem Bezug zu Weimar. [Filialseite](https://www.netto-online.de/filialen/weimar/marcel-paul-str-63/1787) · [Abrufregeln](https://www.netto-online.de/robots.txt) · [Sonderprospekt](https://sonderprospekt.netto-online.de/preissenkung_2026-11-26/)
 
 Jakobis Startseite liefert den Text und die Preise der Wochen-Highlights. Für Worms müssen die dort veröffentlichte Angebotswoche und die auf der eigenen Filialseite ausgewiesene Woche übereinstimmen. Die Karten liefern Preis und Titel. Artikelnummer, GTIN, bestätigte Packungsmenge und Pfand bleiben unbekannt. Für den Vergleich prüft der Nutzer deshalb die eigene Produktfassung und das Gebinde anhand des Angebots. Beide Marktprofile verwenden den üblichen manuellen Abruf und die zuschaltbare Vordergrund-Aktualisierung mit 15 Minuten Mindestabstand. [Filiale](https://www.edeka-jakobi.de/worms) · [Impressum](https://www.edeka-jakobi.de/impressum.php) · [Abrufregeln](https://www.edeka-jakobi.de/robots.txt)
 
@@ -97,4 +101,4 @@ Nach Anmeldung liest **Lesefunktionen prüfen** tatsächlich `initialize`/`tools
 
 ## Offene Abnahme
 
-Synthetische Protokoll-/Parser-/Hosttests und echte Emulatorfälle sind getrennt von **echten Händler-/OAuth-/Preis-/Liefergebietsbelegen** zu dokumentieren. Alle neun Live-Anschlüsse und P0 bleiben offen, bis reale autorisierte Ergebnisse nachgewiesen sind. Nächster konkreter externer Schritt: autorisierter Knuspr-Login auf dem Testgerät, tatsächliche Tool-/Antwortschemata und freigegebenen gezielten Leseumfang prüfen; für klassische Händler jeweils konkret freigegebenen Feed und kanonischen Filialkontext bereitstellen. Danach dieselben vorbereiteten Gate-/Anzeige-/Vergleichspfade mit echten Daten abnehmen. P1 erst nach Abschluss bzw. belegter externer Blockade des P0-Vertikalschnitts gemäß Auftrag.
+Für Netto fehlt ein erfolgreicher Android-Abruf. Für ALDI Nord fehlt der bestätigte Filialbezug. Lidl liefert in der geprüften Filiale bedingte Apppreise, während allgemeine Warenpreise offenbleiben. Bei REWE ist die ausdrücklich gestartete Filialsuche live belegt. Eine automatisch abrufbare Quelle für dessen Wochenangebote bleibt offen. Die bestätigten Profile decken jeweils nur ihre veröffentlichte Auswahl ab. Picnic und Knuspr sind zurückgestellt. [Weiterer Arbeitsstand](STATUS.md)

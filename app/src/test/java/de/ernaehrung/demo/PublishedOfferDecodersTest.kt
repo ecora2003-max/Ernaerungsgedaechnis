@@ -35,4 +35,30 @@ class PublishedOfferDecodersTest {
         assertEquals(day.plusDays(1), row.validFrom); assertEquals("DE1234", row.storeId)
         assertNull(row.depositCents); assertFalse(row.conditionsConfirmed)
     }
+
+    @Test fun aldiNordKeepsPublishedRatesAndComparisonLabelsAndDistinguishesAbsentDepositFromZero() {
+        val raw = """{"props":{"pageProps":{"apiData":[["OFFER_GET",{"req":{"week":"current"},
+            "res":{"algoliaDataMap":{
+                "bottle":{"name":"Synthetisches Getränk","isDepositProduct":true,"depositValue":0.25,
+                    "brandName":"Testmarke","salesUnit":"0,5-L-Flasche","currentPrice":{"priceValue":0.79,
+                    "basePrice":[{"basePriceValue":1.58,"basePriceScale":"Liter"}],
+                    "strikePrice":{"strikePriceValue":1.20,"strikePriceLabel":"UVP"},"priceTagLabels":{"promoText1":"-34 %"}}},
+                "known-zero":{"name":"Synthetische Ware","isDepositProduct":false,"depositValue":0,"currentPrice":2.49},
+                "missing":{"name":"Synthetisch unbekannt","isDepositProduct":false,"currentPrice":2.49},
+                "conflicting":{"name":"Widerspruch","isDepositProduct":false,"depositValue":0.25,"currentPrice":2.49}
+            }}}]]}}}"""
+        val rows = PublishedOfferDecoders.aldiNordCurrent(raw, "synthetic", at, "https://feed.example.test/offers")
+            .associateBy { it.sourceProductId }
+        val bottle = rows.getValue("bottle")
+        assertEquals(79L, bottle.merchandiseCents)
+        assertEquals(25L, bottle.depositCents)
+        assertEquals(104L, bottle.checkoutCents)
+        assertNull(bottle.quantityMilli)
+        assertEquals("1,58 € / Liter", bottle.priceDetails?.unitPriceDisplay)
+        assertEquals("UVP 1,20 € · -34 %", bottle.priceDetails?.previousDisplay)
+        assertNull(bottle.priceDetails?.regularCents)
+        assertEquals(0L, rows.getValue("known-zero").depositCents)
+        assertNull(rows.getValue("missing").depositCents)
+        assertNull(rows.getValue("conflicting").depositCents)
+    }
 }

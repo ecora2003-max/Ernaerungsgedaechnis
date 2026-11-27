@@ -154,8 +154,10 @@ private fun PurchaseHistory(purchase: PurchaseView, data: LocalDataState, blocke
             Text("${line.line.interpretedName ?: "Bezeichnung unbekannt"} · Position ${line.line.id.take(8)}")
             line.line.originalText?.let { Text("Original: $it") }
             Text("Positionsbetrag: ${line.line.totalCents?.let(Money::format) ?: "Ungeklärt"} · wird nicht zusätzlich als Ausgabe gezählt")
-            if (value.cancellation == null && line.line.versionId != null) {
-                HistoricalPaidPriceEditor(value.event.operationId, line.line, blocked, operation, model)
+            val stockVersion = line.batch?.versionId?.takeIf { line.booking != null && line.reversedBy == null }
+            val priceVersion = line.line.versionId ?: stockVersion
+            if (value.cancellation == null && priceVersion != null) key(priceVersion) {
+                HistoricalPaidPriceEditor(value.event.operationId, line.line, priceVersion, blocked, operation, model)
             }
             val stockId = line.booking?.operationId ?: line.line.stockOperationId
             if (stockId != null) {
@@ -169,9 +171,8 @@ private fun PurchaseHistory(purchase: PurchaseView, data: LocalDataState, blocke
 
 /** A separately confirmed private receipt-line price, never a live offer or stock event. */
 @Composable
-private fun HistoricalPaidPriceEditor(purchaseOperationId: String, line: ReceiptLineEntity,
+private fun HistoricalPaidPriceEditor(purchaseOperationId: String, line: ReceiptLineEntity, versionId: String,
     blocked: State<Boolean>, operation: State<String>, model: LocalDataViewModel) {
-    val versionId = line.versionId ?: return
     var units by rememberSaveable { mutableStateOf("") }
     var discount by rememberSaveable { mutableStateOf("") }
     var deposit by rememberSaveable { mutableStateOf("") }
@@ -184,6 +185,7 @@ private fun HistoricalPaidPriceEditor(purchaseOperationId: String, line: Receipt
     val suffix = line.id.take(8)
     Fold("Privaten Bezahlpreis prüfen $suffix") {
         Text("Belegposition $suffix · Produktversion ${versionId.take(8)} · Positionsbetrag ${line.totalCents?.let(Money::format) ?: "unbekannt"}")
+        if (line.versionId == null) Text("Produktzuordnung aus dem bestätigten Lagerzugang")
         Hint("Nur tatsächlich bezahlte Lebensmittelpositionen. Stückzahl, Rabatte und Pfand getrennt am Originalbeleg prüfen. Dies ist kein aktuelles Händlerangebot.")
         Field("Bezahlte Einheiten $suffix", units, { units = it; confirmed = false })
         Field("Zugeordneter Rabatt in EUR $suffix", discount, { discount = it; confirmed = false })

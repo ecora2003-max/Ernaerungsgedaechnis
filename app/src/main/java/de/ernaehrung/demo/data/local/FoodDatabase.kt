@@ -92,8 +92,13 @@ internal interface FoodDao {
     @Query("SELECT * FROM paid_price_observations WHERE receiptLineId=:id") suspend fun paidPriceForLine(id: String): PaidPriceObservationEntity?
     @Query("SELECT * FROM paid_price_observations ORDER BY purchasedOn, id") suspend fun allPaidPrices(): List<PaidPriceObservationEntity>
     @Query("""SELECT p.* FROM paid_price_observations p
+        JOIN receipt_lines l ON l.id=p.receiptLineId
         LEFT JOIN operation_reversals r ON r.originalOperationId = p.purchaseOperationId
-        WHERE r.originalOperationId IS NULL ORDER BY p.purchasedOn, p.id""")
+        LEFT JOIN receipt_stock_bookings s ON s.lineId=l.id
+        LEFT JOIN operation_reversals sr ON sr.originalOperationId=s.operationId
+        WHERE r.originalOperationId IS NULL
+        AND (l.versionId IS NOT NULL OR (s.operationId IS NOT NULL AND sr.originalOperationId IS NULL))
+        ORDER BY p.purchasedOn, p.id""")
     suspend fun activePaidPrices(): List<PaidPriceObservationEntity>
     @Query("SELECT * FROM price_observations ORDER BY id") suspend fun prices(): List<PriceObservationEntity>
     @Query("SELECT * FROM budgets ORDER BY id") suspend fun budgets(): List<BudgetEntity>
