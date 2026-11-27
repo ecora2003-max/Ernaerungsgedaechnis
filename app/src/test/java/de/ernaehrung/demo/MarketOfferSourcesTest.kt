@@ -118,6 +118,50 @@ class MarketOfferSourcesTest {
         }.code)
     }
 
+    @Test fun reweNationalWeekKeepsComparisonsAndDepositSeparateAndCannotBecomeAFilialOffer() {
+        val endpoint = URI(ReweMarketOfferDecoder.NATIONAL_ENDPOINT)
+        val scope = LiveOfferScope(LiveRetailer.REWE, null, null, null, day)
+        val arrow = """<div data-offer-id="0000000000000001" data-offer-nan="1001" data-category="topangebote" data-offer-week="2026/47">
+            <article class="cor-offer-renderer-tile">
+            <div class="cor-offer-price-arrow"><div class="cor-offer-price-arrow__old"><s>1,59 €</s>*</div>
+            <div class="cor-offer-price-arrow__new">0,99 €</div></div>
+            <a data-offer-title="Synthetisches Getränk" href="javascript:;">Synthetisches Getränk</a>
+            <span class="cor-offer-information__additional">je 250-ml-Flasche</span>
+            <span class="cor-offer-information__additional">(1 l = 3,96 €)</span>
+            <span class="cor-offer-information__additional">zzgl. 0,25 € Pfand</span>
+            <p class="cor-offer-information__cross-out-legal-text">*Niedrigster Preis der letzten 30 Tage: 0,99 €</p>
+            </article></div>"""
+        val html = """<link rel="canonical" href="$endpoint">
+            <div data-offer-details-deeplink-ww-ident-value=""></div>
+            <button id="sos-week-tabs__tab-0" aria-selected="true">
+                <span class="sos-tabs__tab-subtitle">16.11. bis 22.11.</span>
+            </button>
+            <div data-tab-id="sos-week-tabs__tab-0"><div id="sos-categories-current">
+            <section id="topangebote-current-week">$arrow
+            ${reweCard("0000000000000002", "Kondition", "", "2026/47", "REWE Bonus <s>1,99 €</s>*", "je Packung")}
+            ${reweCard("0000000000000003", "Echter Markt", "1356345", "2026/47", "Aktion", "je Packung")}
+            ${reweCard("0000000000000004", "Frühere Woche", "", "2026/46", "Aktion", "je Packung")}
+            </section></div></div>"""
+        val offer = ReweMarketOfferDecoder.decodeNational(html, "synthetic-national-rewe", scope, endpoint, at).single()
+        assertEquals("1001", offer.sourceProductId)
+        assertEquals(99L, offer.merchandiseCents)
+        assertEquals(25L, offer.depositCents)
+        assertEquals(124L, offer.checkoutCents)
+        assertEquals("(1 l = 3,96 €)", offer.priceDetails?.unitPriceDisplay)
+        assertEquals("Statt 1,59 € · Niedrigster Preis der letzten 30 Tage: 0,99 €", offer.priceDetails?.previousDisplay)
+        assertNull(offer.priceDetails?.regularCents)
+        assertNull(offer.quantityMilli)
+        assertNull(offer.validFrom)
+        assertNull(offer.validUntil)
+        assertNull(offer.storeEvidence)
+        assertEquals(LiveOfferApplicability.CHAIN_REPORTED, offer.applicability)
+        assertFalse(offer.isComparisonCandidate(scope))
+        assertEquals(OfferSourceFailureCode.SCOPE_UNAVAILABLE, assertThrows(OfferSourceFailure::class.java) {
+            ReweMarketOfferDecoder.decodeNational(html.replace("16.11. bis 22.11.", "09.11. bis 15.11."),
+                "synthetic-national-rewe", scope, endpoint, at)
+        }.code)
+    }
+
     @Test fun kauflandReadsIndependentMarketAndAvailabilityAndNeverMergesAmbiguousWindowsOrCardPrices(): Unit = runBlocking {
         val visited = mutableListOf<URI>()
         val html = """<link rel="canonical" href="$marketPage"><div data-t-name="StoreDetails" data-force-store-change="DE5220"></div>
@@ -156,7 +200,7 @@ class MarketOfferSourcesTest {
     }
 
     private fun reweCard(id: String, name: String, store: String, week: String, label: String, unit: String, extra: String = "") =
-        """<div data-offer-id="$id" data-offer-nan="99001" data-offer-wwident="$store" data-offer-week="$week">
+        """<div data-offer-id="$id" data-offer-nan="99001" data-offer-wwident="$store" data-offer-week="$week" data-category="topangebote">
             <article class="cor-offer-renderer-tile"><a data-offer-title="$name" data-offer-wwident="$store">$name</a>
             <span class="cor-offer-information__additional">$unit</span><span class="cor-offer-information__additional">$extra</span>
             <div class="cor-offer-price__tag"><span class="cor-offer-price__tag-label">$label</span>

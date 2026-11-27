@@ -132,6 +132,12 @@ class ReviewedOfferSourcesTest {
         assertEquals(setOf(LiveRetailer.ALDI_NORD, LiveRetailer.ALDI_SUED), national.map { it.retailer }.toSet())
         assertTrue(national.all { it.storeId == null && it.regionId == null && !it.grant(it.scope(LocalDate.parse("2026-11-17"))).cachePermitted })
         assertEquals("DE5220", bundled.profiles.single { it.retailer == LiveRetailer.KAUFLAND }.storeId)
+        val nationalDay = LocalDate.parse("2026-11-27")
+        val nationalSnapshot = Instant.parse("2026-11-27T08:00:00Z")
+        val nationalScope = LiveOfferScope(LiveRetailer.REWE, null, null, null, nationalDay)
+        assertNull(bundled.profile(nationalScope, nationalSnapshot))
+        assertNull(bundled.runtime(OfferHttp { error("Unconfigured national source") },
+            MemoryOfferRefreshJournal()) { nationalSnapshot }.policy(nationalScope))
         val rewe = bundled.profiles.single { it.retailer == LiveRetailer.REWE }
         assertEquals("1356345", rewe.storeId); assertTrue(rewe.interactiveSearch)
         assertEquals(PublishedOfferHttpSource.Format.REWE_STATIONARY, rewe.format)

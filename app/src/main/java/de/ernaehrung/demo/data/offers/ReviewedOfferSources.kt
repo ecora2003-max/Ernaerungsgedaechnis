@@ -36,6 +36,7 @@ internal class ReviewedOfferSources private constructor(
             val monday = today.with(DayOfWeek.MONDAY)
             return day in permittedFrom..permittedUntil && at >= reviewedAt &&
                 (!interactiveSearch || day == today) &&
+                (format != PublishedOfferHttpSource.Format.REWE_NATIONAL_HTML || day in monday..monday.plusDays(6)) &&
                 (nextWeekEndpoint == null || day in monday..monday.plusDays(13)) &&
                 (weekStartsOn == null || day in weekStartsOn..weekStartsOn.plusDays(6))
         }
@@ -167,7 +168,8 @@ internal class ReviewedOfferSources private constructor(
                 result.format == PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET &&
                     approval["cachePermitted"] == false && floor != null)
             if (result.format in setOf(PublishedOfferHttpSource.Format.EDEKA_JAKOBI_HIGHLIGHTS,
-                    PublishedOfferHttpSource.Format.NETTO_STORE_HTML)) require(approval["cachePermitted"] == false && floor != null)
+                    PublishedOfferHttpSource.Format.NETTO_STORE_HTML, PublishedOfferHttpSource.Format.REWE_NATIONAL_HTML))
+                require(approval["cachePermitted"] == false && floor != null)
             if (search) {
                 val validSearch = when (result.format) {
                     PublishedOfferHttpSource.Format.REWE_STATIONARY ->

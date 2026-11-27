@@ -8,6 +8,7 @@ import de.ernaehrung.demo.data.integration.RecipeAiExchange
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.time.OffsetDateTime
 import java.util.UUID
 
 internal data class DirectRecipeCompletion(val id: String, val requestId: String, val inputBinding: String,
@@ -65,6 +66,9 @@ internal class DirectRecipeAiViewModel(context: Context,
             "CLOUD_MODEL_NOT_AVAILABLE" -> "Das gewählte Modell steht über die API nicht mehr zur Verfügung. Prüfe die Modellliste erneut."
             "CLOUD_KEY_OR_ACCESS" -> "Gemini hat den Zugriff abgewiesen. Prüfe den Schlüssel und den API-Zugriff in deinem Google-Konto."
             "CLOUD_QUOTA" -> "Gemini meldet ein erreichtes Abfragelimit. Prüfe das Kontingent deines Tarifs vor einem erneuten Versuch."
+            "CLOUD_BILLING" -> "Gemini verlangt eine Prüfung der Abrechnung. Öffne die Abrechnung deines Google-Projekts."
+            "CLOUD_NETWORK_UNAVAILABLE" -> "Die Gemini API ist über das aktuelle Netz gerade nicht erreichbar."
+            "CLOUD_REQUEST_REJECTED" -> "Gemini hat die Anfrage abgewiesen. Prüfe Modell und Anfrage vor einem neuen Versuch."
             "MODEL_TIMEOUT" -> "Der Modellaufruf hat zu lange gedauert. Prüfe den Status vor einem erneuten Versuch."
             "REQUEST_TOO_LARGE" -> "Der vorbereitete Auftrag ist für das lokale Modell zu lang. Wähle weniger Produktversionen oder kürze den Wunsch."
             "INCOMPLETE_REPLY" -> "Das Modell hat keine vollständige Antwort geliefert. Versuch es bei Bedarf mit einem kürzeren Auftrag."
@@ -129,6 +133,12 @@ internal class DirectRecipeAiViewModel(context: Context,
     fun generate(request: RecipeAiExchange.Prepared, inputBinding: String, consent: GeminiCloudConsent?) {
         val current = mutable.value
         if (!current.ready || current.busy || request.inputBinding != inputBinding) return
+        try {
+            RecipeAiExchange.requireSendable(request, inputBinding, OffsetDateTime.now())
+        } catch (_: IllegalArgumentException) {
+            mutable.value = current.copy(message = "Anfrage oder Kontext erneut prüfen und die KI-Anfrage neu vorbereiten.")
+            return
+        }
         action { expected ->
             val reply = if (current.mode == DirectRecipeMode.CLOUD) {
                 val config = withContext(Dispatchers.IO) { store.read() }

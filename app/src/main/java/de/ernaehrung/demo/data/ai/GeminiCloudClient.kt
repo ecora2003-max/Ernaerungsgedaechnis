@@ -29,14 +29,38 @@ internal class GeminiCloudClient(private val http: OfferHttp = HttpsOfferHttp())
         fun validModelName(name: String) = name.matches(Regex("models/gemini-[A-Za-z0-9._-]{1,150}"))
     }
     private suspend fun get(path: String, key: String): Map<String, Any?> {
-        val reply = http.execute(OfferHttpRequest(URI(ROOT + path), headers = mapOf("x-goog-api-key" to key)))
-        checkStatus(reply.status); return OfferJson.read(reply.text)
+        val reply = execute(OfferHttpRequest(URI(ROOT + path), headers = mapOf("x-goog-api-key" to key)),
+            modelRequest = validModelName(path))
+        return OfferJson.read(reply.text)
     }
-    private fun checkStatus(status: Int) {
-        if (status !in 200..299) throw DirectModelFailure(when (status) {
-            401, 403 -> "CLOUD_KEY_OR_ACCESS"; 429 -> "CLOUD_QUOTA"; 400 -> "CLOUD_REQUEST_REJECTED"
+
+    private suspend fun execute(request: OfferHttpRequest, modelRequest: Boolean): OfferHttpReply {
+        val reply = try {
+            http.execute(request)
+        } catch (failure: OfferSourceFailure) {
+            throw DirectModelFailure(when {
+                failure.transportDiagnostic == OfferTransportDiagnostic.TIMEOUT -> "MODEL_TIMEOUT"
+                failure.code == OfferSourceFailureCode.NETWORK_UNAVAILABLE -> "CLOUD_NETWORK_UNAVAILABLE"
+                else -> "CLOUD_UNAVAILABLE"
+            })
+        }
+        if (reply.status in 200..299) return reply
+        throw DirectModelFailure(when (reply.status) {
+            401, 403 -> "CLOUD_KEY_OR_ACCESS"
+            402 -> "CLOUD_BILLING"
+            404 -> if (modelRequest) "CLOUD_MODEL_NOT_AVAILABLE" else "CLOUD_UNAVAILABLE"
+            429 -> "CLOUD_QUOTA"
+            400 -> if (invalidApiKey(reply.text)) "CLOUD_KEY_OR_ACCESS" else "CLOUD_REQUEST_REJECTED"
             else -> "CLOUD_UNAVAILABLE"
         })
+    }
+
+    private fun invalidApiKey(text: String): Boolean {
+        val error = runCatching { OfferJson.objectValue(OfferJson.read(text)["error"]) }.getOrNull()
+        val details = error?.get("details") as? List<*> ?: return false
+        return details.mapNotNull(OfferJson::objectValue).any {
+            it["@type"] == "type.googleapis.com/google.rpc.ErrorInfo" && it["reason"] == "API_KEY_INVALID"
+        }
     }
     private fun model(value: Any?): GeminiCloudModel? {
         val row = OfferJson.objectValue(value) ?: return null
@@ -75,9 +99,9 @@ internal class GeminiCloudClient(private val http: OfferHttp = HttpsOfferHttp())
             ?: throw DirectModelFailure("CLOUD_MODEL_NOT_AVAILABLE")
         val payload = mapOf("contents" to listOf(mapOf("role" to "user", "parts" to listOf(mapOf("text" to prepared.prompt)))),
             "generationConfig" to mapOf("candidateCount" to 1, "maxOutputTokens" to 2048, "responseMimeType" to "application/json"))
-        val reply = http.execute(OfferHttpRequest(URI(ROOT + modelName + ":generateContent"), "POST",
-            JsonOutput.encode(payload).toByteArray(), mapOf("Content-Type" to "application/json", "x-goog-api-key" to key)))
-        checkStatus(reply.status)
+        val reply = execute(OfferHttpRequest(URI(ROOT + modelName + ":generateContent"), "POST",
+            JsonOutput.encode(payload).toByteArray(), mapOf("Content-Type" to "application/json", "x-goog-api-key" to key)),
+            modelRequest = true)
         val response = OfferJson.read(reply.text)
         val version = OfferJson.text(response["modelVersion"])
         if (response["modelVersion"] != null &&

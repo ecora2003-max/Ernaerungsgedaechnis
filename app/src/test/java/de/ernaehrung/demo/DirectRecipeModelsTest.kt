@@ -119,4 +119,27 @@ class DirectRecipeModelsTest {
         assertEquals(wrong, reply.text)
         assertTrue(runCatching { RecipeAiExchange.inspectResponse(prepared, prepared.inputBinding, reply.text, now) }.isFailure)
     }
+
+    @Test fun cloudDistinguishesUnavailableModelInvalidKeyAndNetworkFailureWithoutSendingARecipe(): Unit = runBlocking {
+        val details = """{"error":{"message":"$key","details":[
+            {"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID"}]}}"""
+        for ((status, text, expected) in listOf(Triple(400, details, "CLOUD_KEY_OR_ACCESS"),
+            Triple(404, "missing model", "CLOUD_MODEL_NOT_AVAILABLE"))) {
+            val requests = mutableListOf<OfferHttpRequest>()
+            val client = GeminiCloudClient(OfferHttp { request ->
+                requests += request
+                OfferHttpReply(status, emptyMap(), text)
+            })
+            val failed = runCatching { client.generate(key, prepared, prepared.inputBinding, "revision", id, consent()) }
+            val cause = failed.exceptionOrNull() as DirectModelFailure
+            assertEquals(expected, cause.code)
+            assertFalse(cause.toString().contains(key))
+            assertNull(requests.single().body)
+        }
+        val offline = GeminiCloudClient(OfferHttp {
+            throw OfferSourceFailure(OfferSourceFailureCode.NETWORK_UNAVAILABLE, OfferTransportDiagnostic.DNS)
+        })
+        val result = runCatching { offline.listModels(key) }
+        assertEquals("CLOUD_NETWORK_UNAVAILABLE", (result.exceptionOrNull() as DirectModelFailure).code)
+    }
 }

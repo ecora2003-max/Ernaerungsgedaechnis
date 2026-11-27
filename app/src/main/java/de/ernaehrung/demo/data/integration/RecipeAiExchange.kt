@@ -87,7 +87,11 @@ internal object RecipeAiExchange {
         require(!issuedAt.toInstant().isBefore(Instant.EPOCH))
         val binding = inputBinding(input)
         val snapshotAt = contextBinding(input)?.snapshotAt
-        require(snapshotAt == null || !snapshotAt.isAfter(issuedAt.toInstant())) { "Kontext liegt in der Zukunft." }
+        try {
+            RecipeDraftV1Import.requireDraftTimes(issuedAt.toInstant(), snapshotAt, issuedAt.toInstant())
+        } catch (_: IllegalArgumentException) {
+            throw IllegalArgumentException("Aktuellen lokalen Kontext erneut prüfen.")
+        }
         val flags = mapOf("considerStock" to input.flags.considerStock,
             "considerShopping" to input.flags.considerShopping, "considerOffers" to false)
         val template = linkedMapOf<String, Any?>(
@@ -144,6 +148,11 @@ internal object RecipeAiExchange {
             "Auswahl für die Android-Freigabe zu groß. Weniger Produktversionen auswählen."
         }
         return Prepared(binding, requestId, issuedAt, snapshotAt, input.portions, input.flags, prompt, template)
+    }
+
+    fun requireSendable(prepared: Prepared, currentInputBinding: String?, now: OffsetDateTime) {
+        require(currentInputBinding == prepared.inputBinding) { "Anfrage wurde geändert. Antwort erneut anfordern." }
+        RecipeDraftV1Import.requireDraftTimes(prepared.issuedAt.toInstant(), prepared.snapshotAt, now.toInstant())
     }
 
     fun inspectResponse(prepared: Prepared, currentInputBinding: String, json: String,

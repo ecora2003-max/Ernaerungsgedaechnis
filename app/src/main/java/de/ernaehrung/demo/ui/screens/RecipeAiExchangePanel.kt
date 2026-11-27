@@ -143,7 +143,8 @@ internal fun RecipeAiExchangePanel(
         if (selected.size != selectedIds.size) Button(onClick = { selectedIds = emptySet() }, enabled = !busy) {
             Text("Veraltete Produktauswahl entfernen")
         }
-        DirectRecipeAiControls(directModel, directState, prepared, inputKey, editingEnabled && !busy)
+        DirectRecipeAiControls(directModel, directState, editingEnabled && !busy)
+        if (prepared == null) DirectRecipeAiFeedback(directModel, directState)
         Button(enabled = editingEnabled && !busy && inputKey != null,
             modifier = Modifier.testTag("recipe_ai_prepare"), onClick = {
                 try {
@@ -156,8 +157,9 @@ internal fun RecipeAiExchangePanel(
         prepared?.let { request ->
             Text("Genau dieser Text wird bei direkter Generierung oder beim Teilen übergeben. Rezeptwunsch und Ausschlüsse können persönliche Angaben enthalten. Für Cloud und Teilen gelten jeweils eigene ausdrückliche Freigaben. Keine Freigabe ist eine Rezept- oder Kaufbestätigung.")
             OutlinedTextField(request.prompt, {}, readOnly = true,
-                modifier = Modifier.fillMaxWidth().testTag("recipe_ai_prompt"), label = { Text("Anfrage vor dem Teilen prüfen") },
+                modifier = Modifier.fillMaxWidth().testTag("recipe_ai_prompt"), label = { Text("Vorbereitete KI-Anfrage prüfen") },
                 minLines = 4, maxLines = 10)
+            DirectRecipeGenerationControls(directModel, directState, request, inputKey, editingEnabled && !busy)
             Row {
                 Checkbox(approved, { approved = it }, enabled = editingEnabled && !busy,
                     modifier = Modifier.testTag("recipe_ai_export_approval"))
@@ -166,10 +168,14 @@ internal fun RecipeAiExchangePanel(
             Button(enabled = editingEnabled && !busy && approved,
                 modifier = Modifier.testTag("recipe_ai_share"), onClick = {
                     try {
+                        RecipeAiExchange.requireSendable(request, latestKey, OffsetDateTime.now())
                         androidContext.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"; putExtra(Intent.EXTRA_TEXT, request.prompt)
                         }, "Rezeptanfrage teilen"))
                         error = "Freigabeauswahl geöffnet. Das bestätigt weder eine Übertragung noch eine erzeugte Antwort."
+                    } catch (_: IllegalArgumentException) {
+                        approved = false
+                        error = "Anfrage oder Kontext erneut prüfen und die KI-Anfrage neu vorbereiten."
                     } catch (_: Exception) { error = "Keine passende App zum Teilen verfügbar. Anfrage bleibt lokal." }
                 }) { Text("Anfrage mit KI-App teilen") }
             Text("Lass die KI ausschließlich das Antwort-JSON liefern. Füge es unten ein oder wähle eine selbst gespeicherte UTF-8-JSON-Datei. Anfragenummer, Zeitpunkt, Portionen und Kontext müssen unverändert bleiben. Eine Antwort ist immer ein ungeprüfter Entwurf.")

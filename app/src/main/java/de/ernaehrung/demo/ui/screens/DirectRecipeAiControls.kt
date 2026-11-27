@@ -13,9 +13,7 @@ import de.ernaehrung.demo.data.integration.RecipeAiExchange
 import de.ernaehrung.demo.ui.*
 
 @Composable
-internal fun DirectRecipeAiControls(model: DirectRecipeAiViewModel, state: DirectRecipeAiState,
-    request: RecipeAiExchange.Prepared?, currentInputBinding: String?, editingEnabled: Boolean) {
-    var cloudConsent by remember(request?.requestId, currentInputBinding, state.binding, editingEnabled) { mutableStateOf(false) }
+internal fun DirectRecipeAiControls(model: DirectRecipeAiViewModel, state: DirectRecipeAiState, editingEnabled: Boolean) {
     var downloadConsent by remember(state.mode, state.info.status) { mutableStateOf(false) }
     var apiKey by remember { mutableStateOf("") }
     Section("Direkt mit Gemini entwerfen", "Lokales Modell oder ausdrücklich gewählte optionale Cloud")
@@ -54,21 +52,34 @@ internal fun DirectRecipeAiControls(model: DirectRecipeAiViewModel, state: Direc
         Text("Modelle können groß sein und Wi-Fi benötigen. Preview kann eine eigene AICore-Teilnahme erfordern. Abbrechen beendet die Beobachtung; ein bereits gestarteter Systemdownload kann weiterlaufen.")
     }
     state.downloadedBytes?.let { Text("Heruntergeladene Bytes: $it") }
-    if (request != null) {
-        Text("Für direkte Generierung wird genau die unten vorbereitete und angezeigte Anfrage verwendet. Die Antwort wird über dieselbe unabhängige v1-/Produktversions-/Allergenprüfung eingelesen. Speichern, Herstellung und Verzehr bleiben getrennte ausdrücklich bestätigte Schritte.")
-        if (state.mode == DirectRecipeMode.CLOUD) Check("Diesen angezeigten Wunsch und ausgewählten Kontext jetzt an Google senden; mögliche API-Kosten akzeptieren", cloudConsent) { cloudConsent = it }
-        Button({
-            val consent = if (state.mode == DirectRecipeMode.CLOUD) GeminiCloudConsent(request.requestId, request.inputBinding,
-                state.revision, state.selectedCloudModel.orEmpty(), cloudConsent) else null
-            cloudConsent = false
-            model.generate(request, currentInputBinding.orEmpty(), consent)
-        }, enabled = editingEnabled && state.ready && currentInputBinding == request.inputBinding &&
-            (state.mode != DirectRecipeMode.CLOUD || cloudConsent), modifier = Modifier.testTag("direct_ai_generate")) { Text("Mit ausgewähltem Modell direkt generieren") }
-    } else Text("Wunsch, Produktauswahl und Vorgaben prüfen und die KI-Anfrage unten lokal vorbereiten.")
+    OutlinedButton(model::clearConfiguration, enabled = !state.busy, modifier = Modifier.testTag("direct_ai_forget")) { Text("Private Modellkonfiguration verwerfen") }
+}
+
+@Composable
+internal fun DirectRecipeAiFeedback(model: DirectRecipeAiViewModel, state: DirectRecipeAiState) {
     if (state.busy) {
         LinearProgressIndicator(Modifier.fillMaxWidth())
         if (!state.configurationBusy) OutlinedButton(model::cancelRequest) { Text("Modellvorgang abbrechen") }
     }
     state.message?.let { Text(it, Modifier.testTag("direct_ai_message")) }
-    OutlinedButton(model::clearConfiguration, enabled = !state.busy, modifier = Modifier.testTag("direct_ai_forget")) { Text("Private Modellkonfiguration verwerfen") }
+}
+
+@Composable
+internal fun DirectRecipeGenerationControls(model: DirectRecipeAiViewModel, state: DirectRecipeAiState,
+    request: RecipeAiExchange.Prepared, currentInputBinding: String?, editingEnabled: Boolean) {
+    var cloudConsent by remember(request.requestId, currentInputBinding, state.binding, editingEnabled) { mutableStateOf(false) }
+    if (state.mode == DirectRecipeMode.CLOUD) {
+        Check("Diesen angezeigten Wunsch und ausgewählten Kontext jetzt an Google senden; mögliche API-Kosten akzeptieren",
+            cloudConsent) { cloudConsent = it }
+    }
+    Button({
+        val consent = if (state.mode == DirectRecipeMode.CLOUD) GeminiCloudConsent(request.requestId, request.inputBinding,
+            state.revision, state.selectedCloudModel.orEmpty(), cloudConsent) else null
+        cloudConsent = false
+        model.generate(request, currentInputBinding.orEmpty(), consent)
+    }, enabled = editingEnabled && state.ready && currentInputBinding == request.inputBinding &&
+        (state.mode != DirectRecipeMode.CLOUD || cloudConsent), modifier = Modifier.testTag("direct_ai_generate")) {
+        Text("Mit ausgewähltem Modell direkt generieren")
+    }
+    DirectRecipeAiFeedback(model, state)
 }
