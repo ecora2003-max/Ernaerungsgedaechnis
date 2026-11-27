@@ -31,6 +31,7 @@ import de.ernaehrung.demo.data.fitness.WorkoutSourceTarget
 import de.ernaehrung.demo.ui.screens.BodyMeasurementScreen
 import de.ernaehrung.demo.ui.screens.BodyRawHistoryScreen
 import de.ernaehrung.demo.ui.screens.FitnessNutritionSummary
+import de.ernaehrung.demo.ui.screens.FitnessEnergyCoverageScreen
 import de.ernaehrung.demo.ui.screens.TrainingJournalScreen
 import de.ernaehrung.demo.ui.screens.DataQualityScreen
 import de.ernaehrung.demo.ui.screens.BatchReviewScreen
@@ -45,7 +46,7 @@ private enum class WorkspacePage(val title: String, val section: String? = null)
     HOME("Start"), STOCK("Lager", "Lager"), SCAN("Scan", "Erkennung"),
     PLAN("Planung", "Planung"), MORE("Mehr"), CATALOG("Katalog", "Katalog"), STORAGE_CAPACITY("Lagerorte & Kapazität"), NUTRITION_GOALS("Persönliche Ernährungsziele"), PERSONAL_RESTRICTIONS("Persönliche Ausschlüsse"),
     KITCHEN("Rezepte & Küche", "Küche"), SHOPPING("Einkaufsvorschläge", "Einkauf"), OFFERS("Angebote & Preisvergleich"),
-    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), WORKOUT_SOURCE("Trainingszeitfenster"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
+    PURCHASES("Bezahlte Käufe", "Käufe"), NUTRITION("Ernährung", "Ernährung"), HISTORY("Chronik", "Chronik"), FITNESS("Fitness"), HEALTH_EXTRA("Weitere Gesundheitsdaten"), WORKOUT_SOURCE("Trainingszeitfenster"), BODY("Körpermessungen"), BODY_RAW("Körperverlauf"), ENERGY_COVERAGE("Datenlage für die Energieanalyse"), TRAINING("Trainingsjournal"), QUALITY("Datenqualität"), BATCH_REVIEW("Chargenangaben"), BACKUP("Daten & Sicherungen");
     val tab get() = when (this) {
         HOME, NUTRITION -> HOME
         STOCK, CATALOG, BATCH_REVIEW, STORAGE_CAPACITY -> STOCK
@@ -144,6 +145,7 @@ fun LocalWorkspaceApp() {
                         FitnessScreen(onOpenBody = { go(WorkspacePage.BODY) },
                             onOpenExtra = { go(WorkspacePage.HEALTH_EXTRA) },
                             onOpenSourceWindow = ::openSourceWindow,
+                            onOpenEnergyCoverage = { go(WorkspacePage.ENERGY_COVERAGE) },
                             onOpenTraining = { go(WorkspacePage.TRAINING) },
                             onOpenBodyHistory = { go(WorkspacePage.BODY_RAW) }, nutritionContent = {
                                 FitnessNutritionSummary(requestedDay, daily, onOpen = { go(WorkspacePage.NUTRITION) })
@@ -161,6 +163,8 @@ fun LocalWorkspaceApp() {
                             onOpenCatalog = { go(WorkspacePage.CATALOG) })
                     } else if (page == WorkspacePage.BODY) {
                         BodyMeasurementScreen()
+                    } else if (page == WorkspacePage.ENERGY_COVERAGE) {
+                        FitnessEnergyCoverageScreen(onOpenDiary = { day -> model.showDay(day); go(WorkspacePage.NUTRITION) })
                     } else if (page == WorkspacePage.BODY_RAW) {
                         BodyRawHistoryScreen(onOpenEditor = { go(WorkspacePage.BODY) },
                             onOpenHealthExtra = { go(WorkspacePage.HEALTH_EXTRA) })

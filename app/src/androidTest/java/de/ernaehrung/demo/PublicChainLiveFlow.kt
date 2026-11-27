@@ -77,6 +77,12 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
     val models = ViewModelStore(); lateinit var model: LiveOffersViewModel
     val rx = TrafficStats.getUidRxBytes(context.applicationInfo.uid); val tx = TrafficStats.getUidTxBytes(context.applicationInfo.uid)
     assertTrue(rx >= 0 && tx >= 0)
+    suspend fun verifyLocalFacts() {
+        assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
+        assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(body, db.bodyDao().versions())
+    }
+    fun sourceCommit() = requireNotNull(InstrumentationRegistry.getArguments().getString("source_sha"))
+        .also { require(it.matches(Regex("[0-9a-f]{40}"))) }
     fun ready() = compose.waitUntil(25_000) { model.state.value.selectionLoaded && !model.state.value.busy }
     fun tap(tag: String) {
         finishDeviceTextEditing(compose)
@@ -102,6 +108,28 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
         tap("live_offers_refresh")
         compose.waitUntil(90_000) { !model.state.value.busy && model.state.value.result != null }
         val result = requireNotNull(model.state.value.result)
+        if (profile.id == "netto-1787-store-offers" && result.code == "ACCESS_BLOCKED") {
+            assertEquals(LiveRefreshStatus.FAILED, result.status)
+            assertNull(result.batch); assertFalse(result.fromCache); assertFalse(result.cachePermitted)
+            compose.onNodeWithTag("live_offer_page").assertDoesNotExist()
+            tap("live_automatic_toggle"); ready()
+            assertFalse(model.state.value.automatic)
+            compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik ausgeschaltet")
+            assertEquals(false, settings.selection()?.automatic)
+            val received = TrafficStats.getUidRxBytes(context.applicationInfo.uid) - rx
+            val sent = TrafficStats.getUidTxBytes(context.applicationInfo.uid) - tx
+            assertTrue(received > 0 && sent > 0)
+            verifyLocalFacts()
+            val proof = JSONObject().put("format", "EG_PUBLIC_RETAILER_REFUSAL_V1")
+                .put("status", "ACCESS_BLOCKED").put("httpStatus", 403).put("profileId", profile.id)
+                .put("sourceHost", profile.endpoint.host).put("storeId", expectedStore)
+                .put("retailer", retailer.name).put("sourceCommit", sourceCommit()).put("actualSdk", Build.VERSION.SDK_INT)
+                .put("actualNetworkValidated", true).put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
+                .put("actualFactsUnchanged", true).put("automaticPaused", true).put("shownOffers", 0)
+                .put("uidRxDelta", received).put("uidTxDelta", sent)
+            writePublicChainProof(device, proof, profile.id)
+            return
+        }
         assertEquals("${retailer.name}: ${result.code}/${result.transportDiagnostic}", LiveRefreshStatus.LOADED, result.status)
         val batch = requireNotNull(result.batch)
         assertTrue(batch.offers.isNotEmpty())
@@ -151,6 +179,14 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             assertTrue(batch.offers.any { row -> row.validFrom?.let { it <= batch.scope.purchaseOn } == true &&
                 row.validUntil?.let { batch.scope.purchaseOn <= it } == true && row.merchandiseCents != null })
         }
+        if (retailer in setOf(LiveRetailer.EDEKA, LiveRetailer.NETTO_MD)) {
+            assertTrue(batch.offers.all { it.applicable(batch.scope) && !it.conditionsConfirmed && it.quantityMilli == null })
+            if (retailer == LiveRetailer.EDEKA) assertTrue(batch.offers.all { it.sourceProductId == null && it.gtin == null })
+            else assertTrue(batch.offers.all { !it.sourceProductId.isNullOrBlank() })
+            tap("live_automatic_toggle"); ready()
+            assertTrue(model.state.value.automatic)
+            compose.onNodeWithTag("live_automatic_status").assertTextEquals("Automatik für diese angewendete Auswahl eingeschaltet")
+        }
         val pages = (batch.offers.size + 24) / 25
         compose.onNodeWithTag("live_offer_page").assertTextEquals("${batch.offers.size} geladene Treffer · Seite 1/$pages")
         assertTrue(compose.onAllNodesWithText(batch.offers.first().title).fetchSemanticsNodes().isNotEmpty())
@@ -172,11 +208,8 @@ internal suspend fun publicChainLiveFlow(compose: AndroidComposeTestRule<Activit
             .put("productSearch", searchTerm != null).put("appPricesNotUsedForComparison", onlyAppPrices)
             .put("defaultProductionHttp", true).put("sourceRepliesInjected", false)
             .put("observedAt", batch.fetchedAt.toString())
-        assertEquals(before, dao.operationCount()); assertEquals(stock, dao.stockMovementSnapshotRows()); assertEquals(paid, dao.allPaidPrices())
-        assertEquals(health, db.healthDao().history("com.sec.android.app.shealth")); assertEquals(body, db.bodyDao().versions())
-        val source = requireNotNull(InstrumentationRegistry.getArguments().getString("source_sha"))
-            .also { require(it.matches(Regex("[0-9a-f]{40}"))) }
-        proof.put("format", "EG_REAL_PUBLIC_CHAIN_UI_V1").put("status", "PASS").put("sourceCommit", source)
+        verifyLocalFacts()
+        proof.put("format", "EG_REAL_PUBLIC_CHAIN_UI_V1").put("status", "PASS").put("sourceCommit", sourceCommit())
             .put("actualSdk", Build.VERSION.SDK_INT).put("actualNetworkValidated", true).put("actualFactsUnchanged", true)
         writePublicChainProof(device, proof, profile.id)
     } catch (failure: Throwable) { captureDeviceFailureEvidence("live-offers-flow"); throw failure }

@@ -7,6 +7,7 @@ import de.ernaehrung.demo.data.backup.*
 import de.ernaehrung.demo.data.fitness.*
 import de.ernaehrung.demo.data.local.*
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -116,6 +117,62 @@ class HealthExtraRoomTest {
         val history = store.healthExtraHistory("test.synthetic.scale", "BODY_FAT", "synthetic-BODY_FAT")
         assertEquals(3, history.size); assertEquals((-0.0).toRawBits(), history.last().record.scalarBits)
         assertTrue(history.last().visible)
+    }
+
+    @Test fun energyCoverageReadsConfirmedDiaryAndCurrentLocalSourcesAcrossTheShortBerlinDay(): Unit = runBlocking {
+        val end = LocalDate.parse("2025-04-04")
+        val shortDay = LocalDate.parse("2025-03-30")
+        val previousDay = shortDay.minusDays(1)
+        val nextDay = shortDay.plusDays(1)
+        val shortStart = AppCalendar.startOfDayMillis(shortDay)
+        val shortEnd = AppCalendar.startOfDayMillis(nextDay)
+        val knownZero = store.rememberProduct("zero-product", ProductInput("Synthetic zero energy", energyKcal = 0.0))
+        store.consume("zero-meal", ConsumptionInput(knownZero, previousDay.toString(), "Synthetic meal", 100_000), true)
+        store.consume("partial-day", ConsumptionInput(knownZero, shortDay.toString(), "Synthetic meal", 100_000), true)
+        for (date in listOf(previousDay, end)) {
+            val dateText = date.toString()
+            store.setDayStatus("complete-$date", dateText, DayStatus.COMPLETE, store.dayNutrition(dateText).snapshot, true)
+        }
+        val weight = BodyMeasurementInput(BodyMetric.WEIGHT, "72.5", previousDay.toString(), method = BodyMethod.SCALE)
+        val prior = store.saveBodyMeasurement("weight", weight, null, true)
+        store.saveBodyMeasurement("corrected-weight", weight.copy(localDate = shortDay.toString(),
+            correctionReason = "Correct measurement date"), prior, true)
+        store.saveBodyMeasurement("excluded-weight", weight.copy(excludedFromTrend = true), null, true)
+        store.saveBodyMeasurement("unknown-weight", weight.copy(rawValue = null), null, true)
+
+        val extra = SyntheticExtraSource()
+        val selected = HealthExtraSelection(setOf(HealthExtraKind.ACTIVE_ENERGY, HealthExtraKind.TOTAL_ENERGY))
+        extra.response = { q ->
+            val active = syntheticExtraRecord(q, HealthExtraKind.ACTIVE_ENERGY)
+            val total = syntheticExtraRecord(q, HealthExtraKind.TOTAL_ENERGY)
+            HealthExtraSnapshot(query = q, capturedAt = q.requestedAt, records = listOf(
+                active.copy(startAt = shortStart - 60_000, endAt = shortStart + 60_000),
+                active.copy(externalId = "same-source-second-record", clientRecordId = null,
+                    startAt = shortEnd - 60_000, endAt = shortEnd),
+                total.copy(startAt = shortEnd, endAt = shortEnd + 60_000)))
+        }
+        enable(extra, s = selected)
+        store.syncHealthExtra("coverage-source", extra)
+        val operationsBefore = store.operations().first()
+        val coverage = store.watchFitnessEnergyCoverage(end, EnergyCoveragePeriod.DAYS_14)
+        val reports = coverage.first()
+        assertEquals(List(14) { end.minusDays(it.toLong()) }, reports.map { it.date })
+        val byDay = reports.associateBy { it.date }
+        assertEquals(listOf(previousDay), reports.filter { it.completeIntake }.map { it.date })
+        assertEquals(0, byDay.getValue(previousDay).foodEnergy.knownAmount?.signum())
+        assertNull(byDay.getValue(end).foodEnergy.knownAmount)
+        assertEquals(DayStatus.COMPLETE, byDay.getValue(end).diaryStatus)
+        assertEquals(1, byDay.getValue(shortDay).weightMeasurements)
+        assertEquals(0, byDay.getValue(previousDay).weightMeasurements)
+        val activeDays = mapOf(previousDay to setOf("test.synthetic.phone"), shortDay to setOf("test.synthetic.phone"))
+        assertEquals(activeDays, reports.filter { it.activitySources.isNotEmpty() }.associate { it.date to it.activitySources })
+
+        clock += 1_000
+        extra.response = { q -> syntheticExtraSnapshot(q).copy(records = listOf(syntheticExtraRecord(q, HealthExtraKind.TOTAL_ENERGY))) }
+        store.syncHealthExtra("coverage-source-removed", extra)
+        assertTrue(coverage.first().all { it.activitySources.isEmpty() })
+        assertEquals(operationsBefore, store.operations().first())
+        assertEquals(2, extra.reads)
     }
 
     @Test fun stoppedOrChangedConsentDuringReadRejectsLatePayloadAndNewerSuccessSurvivesFailure(): Unit = runBlocking {

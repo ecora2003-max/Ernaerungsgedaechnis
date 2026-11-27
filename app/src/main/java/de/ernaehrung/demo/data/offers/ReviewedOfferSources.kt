@@ -51,6 +51,8 @@ internal class ReviewedOfferSources private constructor(
                 KauflandMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET ->
                 LidlMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
+            PublishedOfferHttpSource.Format.EDEKA_JAKOBI_HIGHLIGHTS ->
+                EdekaJakobiMarketOfferSource(endpoint, requireNotNull(availabilityEndpoint), sourceId, scope, http, now)
             else -> {
                 val nextWeek = nextWeekEndpoint != null && scope.purchaseOn.with(DayOfWeek.MONDAY) ==
                     AppCalendar.today(now()).with(DayOfWeek.MONDAY).plusWeeks(1)
@@ -164,6 +166,8 @@ internal class ReviewedOfferSources private constructor(
             if (result.endpoint.host == "offers.lidlplus.com") require(
                 result.format == PublishedOfferHttpSource.Format.LIDL_PLUS_MARKET &&
                     approval["cachePermitted"] == false && floor != null)
+            if (result.format in setOf(PublishedOfferHttpSource.Format.EDEKA_JAKOBI_HIGHLIGHTS,
+                    PublishedOfferHttpSource.Format.NETTO_STORE_HTML)) require(approval["cachePermitted"] == false && floor != null)
             if (search) {
                 val validSearch = when (result.format) {
                     PublishedOfferHttpSource.Format.REWE_STATIONARY ->

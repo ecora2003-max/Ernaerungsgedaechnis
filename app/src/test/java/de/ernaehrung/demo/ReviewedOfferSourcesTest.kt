@@ -122,7 +122,8 @@ class ReviewedOfferSourcesTest {
         assertEquals(0, bundled.invalidProfiles)
         assertEquals(setOf("penny-4030085-top-angebote", "aldi-nord-public-week", "aldi-sued-public-offers",
             "aldi-sued-bl16-product-search", "lidl-de7434-plus-offers", "rewe-1356345-product-search",
-            "kaufland-de5220-public"), bundled.profiles.map { it.id }.toSet())
+            "kaufland-de5220-public", "edeka-jakobi-worms-highlights", "netto-1787-store-offers"),
+            bundled.profiles.map { it.id }.toSet())
         val penny = bundled.profiles.single { it.retailer == LiveRetailer.PENNY }
         assertEquals(LiveRetailer.PENNY, penny.retailer); assertEquals("4030085", penny.storeId)
         assertEquals(PublishedOfferHttpSource.Format.PENNY_STORE_WEEK, penny.format)
@@ -137,7 +138,8 @@ class ReviewedOfferSourcesTest {
         val south = bundled.profiles.single { it.retailer == LiveRetailer.ALDI_SUED && it.interactiveSearch }
         assertEquals("BL16", south.storeId)
         assertEquals(PublishedOfferHttpSource.Format.ALDI_SUED_WALK_IN, south.format)
-        assertTrue(bundled.profiles.none { it.retailer == LiveRetailer.NETTO_MD })
+        assertEquals("1787", bundled.profiles.single { it.retailer == LiveRetailer.NETTO_MD }.storeId)
+        assertEquals("JAKOBI-WORMS", bundled.profiles.single { it.retailer == LiveRetailer.EDEKA }.storeId)
         LiveRetailer.entries.filter { it != LiveRetailer.KNUSPR }.forEach {
             val url = requireNotNull(LiveSourceCatalogue.officialWebsite(it))
             assertEquals("https", url.scheme); assertNull(url.rawQuery); assertNull(url.rawUserInfo); assertNull(url.fragment)
